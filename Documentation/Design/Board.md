@@ -9,11 +9,19 @@
 - Extendable Classes
 - Operator overloading with Traits. e.g.
 - ```wrl
+
+  trait PartialEq<T> {
+    Equals(Other: T): Boolean
+  }
+
+  class EmployeeList implements PartialEq<This> {
+    Items: ArrayOf<Employee>;
+
+    EmployeeList() {
+      This.Items = [];
+    }
   
-  class EmployeeList implements PartialEq {
-    Items: ArrayOf<Employee> = []
-  
-    [PartialEq.Equals](Other: EmployeeList) {
+    [PartialEq.Equals](Other: This): Boolean {
       return This.Items == Other.Items
     }
   }
@@ -49,7 +57,53 @@
 - A markdown, xml and JSON parser in `Core.Data`.
 - A title case and a sentence case method for strings.
 - A random items picker and a shuffler for arrays.
-- A `Maybe` object and an `Outcome` object.
+- A `Maybe` object and an `Outcome` class.
+  ```
+  import Core.Internals.{Nil, IsNil};
+
+  # Creates a `Maybe` with no value. 
+  export function None<T>(): Maybe<T> {
+    return Maybe(Nil)
+  }
+  
+  # Creates a `Maybe` with an internal value.
+  export function Some<T>(Value: T): Maybe<T> {
+    return Maybe(Value)
+  }
+
+  # A value that may or may not exist.
+  export class Maybe<T> {
+    Value: T;
+
+    Maybe(Value: T) {
+      This.Value = Value;
+    }
+ 
+    IsNone(): Boolean {
+      return IsNil(This.Value);
+    }
+
+    IsSome(): Boolean {
+      return !IsNil(This.Value);
+    }
+   
+    Unwrap(): T {
+      if IsNil(This.Value) {
+        Panic("Called Unwrap on a None Value");
+      } else {
+        return This.Value;
+      }
+    }
+
+    UnwrapOr(Value: T) {
+      if IsNil(This.Value) {
+        return Value;
+      } else {
+        return This.Value;
+      }
+    }
+  }
+  ```
 - An `EventEmitter` class in `Core.Utils`.
 - A `Record.ToMap()` method that turns a record to a mutable map.
 - `Core.Net.Request` to make HTTP requests.
