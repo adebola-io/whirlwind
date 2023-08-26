@@ -7,10 +7,10 @@
 - Optional parameters, that become `Maybe`s in the function code.
 - Rest parameters that become Arrays in function code.
 - Extendable Classes
-- Operator overloading with Traits. e.g.
+- Operator overloading with Interfaces. e.g.
 - ```ts
 
-  trait PartialEq<T> {
+  interface PartialEq<T> {
     Equals(Other: T): Boolean
   }
 
