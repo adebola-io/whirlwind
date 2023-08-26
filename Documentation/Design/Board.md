@@ -22,7 +22,7 @@
     }
   
     [PartialEq.Equals](Other: This): Boolean {
-      return This.Items == Other.Items
+      return This.Items == Other.Items;
     }
   }
   
@@ -63,12 +63,12 @@
 
   /// Creates a `Maybe` with no value. 
   export function None<T>(): Maybe<T> {
-    return Maybe(Nil)
+    return Maybe(Nil);
   }
   
   /// Creates a `Maybe` with an internal value.
   export function Some<T>(Value: T): Maybe<T> {
-    return Maybe(Value)
+    return Maybe(Value);
   }
 
   /// A value that may or may not exist.
