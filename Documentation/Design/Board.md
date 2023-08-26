@@ -66,7 +66,7 @@
     return Maybe(Nil)
   }
   
-  # Creates a `Maybe` with an internal value.
+  /// Creates a `Maybe` with an internal value.
   export function Some<T>(Value: T): Maybe<T> {
     return Maybe(Value)
   }
