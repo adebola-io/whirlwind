@@ -1,7 +1,12 @@
-Import Core.Net.Http.{Server, DefineEndpoints};
+import Core.{
+  Net.{Server, DefineEndpoints},
+  Async.Await,
+  Utils.Logger
+};
 
-Fn Main() {
-    NewServer := Server();
+function Main() {
+    AppLogger := Logger();
+    NewServer := Server("http");
 
     Endpoints := DefineEndpoints([
         ["GET", "/hello", Fn (Request, Response) {
@@ -10,5 +15,13 @@ Fn Main() {
     ]);
 
     NewServer.AddEndpoints(Endpoints);
-    NewServer.Listen(8080);
+    NewServer.SetPort(8080);
+
+    StartOutcome := Await(NewServer.Start());
+    
+    if StartOutCome.IsOk() {
+      AppLogger.Success("Server started successfully.");
+    } else {
+      AppLogger.Error("Server could not start. Error: {StartOutcome.Error().Message}");
+    }
 }
