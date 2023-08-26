@@ -28,7 +28,7 @@
   
   ```
 - Records: immutable key-value stores.
-  ```wrl
+  ```ts
   
   record Messages {
     1 = "Hello, World!"
@@ -61,7 +61,7 @@
   ```ts
   import Core.Internals.{Nil, IsNil};
 
-  # Creates a `Maybe` with no value. 
+  /// Creates a `Maybe` with no value. 
   export function None<T>(): Maybe<T> {
     return Maybe(Nil)
   }
@@ -71,7 +71,7 @@
     return Maybe(Value)
   }
 
-  # A value that may or may not exist.
+  /// A value that may or may not exist.
   export class Maybe<T> {
     Value: T;
 
