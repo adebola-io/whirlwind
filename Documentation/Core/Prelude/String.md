@@ -1,11 +1,10 @@
-# Static Methods
-
-# Instance Methods
+# Strings
+Strings are sequences of characters.
 
 -  ## At
 
 ```whirl
-    Test {
+    Test "Tests String.At method" {
         Str := "This is a world premiere!";
         Assert(Str.At(3)).Equals("s")
     }
@@ -14,11 +13,11 @@
 -  ## Append
 
 ```whirl
-    Test {
+    Test "Tests String.Append method" {
         Str := "Hello";
         Str.Append(", world!");
 
-        Assert(String).Equals("Hello, world!");
+        Assert(Str).Equals("Hello, world!");
     }
 ```
 
@@ -26,11 +25,11 @@
 -  ## Clear
 
 ```whirl
-    Test {
+    Test "Tests String.Clear Method" {
         Str := "This is a string.";
         Str.Clear();
 
-        Assert(Str.Len()).Equals(0);
+        Assert(Str.Length()).Equals(0);
     }
 ```
 
@@ -38,7 +37,7 @@
 
 -  ## Compare
 -  ## Contains
--  ## Len
+-  ## Length
 -  ## Reverse
 -  ## Slice
 -  ## Replace
