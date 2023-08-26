@@ -1,5 +1,5 @@
 import Core.{
-  Net.{Server, DefineEndpoints},
+  Net.{Server, Endpoint},
   Async.Await,
   Utils.Logger
 };
@@ -8,10 +8,10 @@ function Main() {
     AppLogger := Logger();
     NewServer := Server("http");
 
-    Endpoints := DefineEndpoints([
-        ["GET", "/hello", Fn (Request, Response) {
+    Endpoints := [
+        Endpoint("GET", "/hello", Fn (Request, Response) {
             Response.Status(200).Json("Hello, world!")
-        }]
+        })
     ]);
 
     NewServer.AddEndpoints(Endpoints);
