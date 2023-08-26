@@ -1,12 +1,12 @@
-# Functions
+# `Core.FS`
 
--  ## get_file
--  ## exists
--  ## read_file_content
--  ## delete_directory
--  ## delete_file
--  ## write_to_file
--  ## append_to_file
--  ## make_directory
--  ## make_file
--  ## read_directory
+-  ## FS.File
+-  ## FS.Exists
+-  ## FS.ReadFile
+-  ## FS.DeleteDir
+-  ## FS.DeleteFile
+-  ## FS.WriteFile
+-  ## FS.AppendFile
+-  ## FS.MkDir
+-  ## FS.MkFile
+-  ## FS.ReadDir
