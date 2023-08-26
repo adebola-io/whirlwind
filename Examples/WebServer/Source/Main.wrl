@@ -9,7 +9,7 @@ function Main() {
     NewServer := Server("http");
 
     Endpoints := [
-        Endpoint("GET", "/hello", Fn (Request, Response) {
+        Endpoint("GET", "/hello", function (Request, Response) {
             Response.Status(200).Json("Hello, world!")
         })
     ]);
