@@ -14,7 +14,7 @@
     Items: ArrayOf<Employee> = []
   
     [PartialEq.Equals](Other: EmployeeList) {
-      This.Items == Other.Items
+      return This.Items == Other.Items
     }
   }
   
