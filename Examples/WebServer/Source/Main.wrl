@@ -1,0 +1,14 @@
+Import Core.Net.Http.{Server, DefineEndpoints};
+
+Fn Main() {
+    NewServer := Server();
+
+    Endpoints := DefineEndpoints([
+        ["GET", "/hello", Fn (Request, Response) {
+            Response.Status(200).Json("Hello, world!")
+        }]
+    ]);
+
+    NewServer.AddEndpoints(Endpoints);
+    NewServer.Listen(8080);
+}
