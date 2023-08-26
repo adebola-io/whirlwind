@@ -8,7 +8,7 @@
 - Rest parameters that become Arrays in function code.
 - Extendable Classes
 - Operator overloading with Traits. e.g.
-- ```wrl
+- ```ts
 
   trait PartialEq<T> {
     Equals(Other: T): Boolean
@@ -58,7 +58,7 @@
 - A title case and a sentence case method for strings.
 - A random items picker and a shuffler for arrays.
 - A `Maybe` object and an `Outcome` class.
-  ```
+  ```ts
   import Core.Internals.{Nil, IsNil};
 
   # Creates a `Maybe` with no value. 
