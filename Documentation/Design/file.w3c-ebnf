@@ -1,0 +1,218 @@
+Program ::= (Comment | TopLevelDeclaration)*
+
+Comment ::= BlockComment | LineComment
+
+TopLevelDeclaration ::= ExportDeclaration | ImportDeclaration | TestDeclaration | Declaration
+
+BlockComment ::= "/*" Char* "*/"
+
+LineComment ::= "///" [^'\n']* [\n]
+
+ExportDeclaration ::= "export " Declaration
+
+ImportDeclaration ::= "import " ImportSpecifier ";"
+
+TestDeclaration ::= "test " StringLiteral Block
+
+Declaration ::= VariableDeclaration
+                | ConstantDeclaration
+                | ClassDeclaration
+                | FunctionDeclaration
+                | RecordDeclaration
+                | TraitDeclaration
+                | TypeDeclaration
+
+ImportSpecifier ::= Identifier (ImportTarget | Alias)?
+
+StringLiteral ::= ("'" [^']* "'") | ('"' [^"]* '"')
+
+Block ::= "{" StatementList? "}"
+
+VariableDeclaration ::= (Identifier | DestructurePattern) TypeLabel? ":=" Expression ";" | "var " Identifier VariableInitializer? ";"
+
+ConstantDeclaration ::= "const " (Identifier | DestructurePattern) VariableInitializer ";"
+
+ClassDeclaration ::= "class " Identifier GenericParameterList? ExtendsLabel? ImplementsLabel? ClassBody
+
+FunctionDeclaration ::= "async "? "fn " Identifier GenericParameterList? TypedParameterList TypeLabel? Block
+
+RecordDeclaration ::= "record " Identifier "{" RecordMapList? "}"
+
+TraitDeclaration ::= "trait " Identifier (TraitList | ";")
+
+TypeDeclaration ::= "type " Identifier GenericParameterList? "=" Type
+
+Char ::= [#x0-#x7F]
+
+Identifier ::= ( Word | "_") Number* Identifier?
+
+ImportTarget ::= "." ImportTargetList
+
+Alias ::= "as " Identifier
+
+StatementList ::= Statement+
+
+TypeLabel ::= ":" Type
+
+DestructurePattern ::= "{" IdentifierList "}"
+
+Expression ::= "this"
+               | Literal
+               | Identifier
+               | BinaryExpression
+               | UnaryExpression
+               | UpdateExpression
+               | AssignmentExpression
+               | LogicalExpression
+               | FunctionExpression
+               | ArrayExpression
+               | IndexExpression
+               | RangeExpression
+               | CallExpression
+               | MemberExpression
+               | IfExpression
+               | OptionalExpression
+
+VariableInitializer ::= "=" Expression
+
+GenericParameterList ::= "<" GenericParameters ">"
+
+ExtendsLabel ::= "extends " ClassList
+
+ImplementsLabel ::= "implements " ClassList
+
+ClassBody ::= "{" ClassProperty* "}"
+
+TypedParameterList ::= "(" TypedParameters? ")"
+
+RecordMapList ::= RecordMap ("," RecordMapList?)?
+
+TraitList ::= "{" TraitProperties? "}"
+
+Statement ::= ForStatement
+              | SwitchStatement
+              | WhileStatement
+              | ReturnStatement
+              | BreakStatement
+              | ContinueStatement
+              | ExpressionStatement
+
+Type ::= DiscreteType | MemberType | FunctionType
+
+Word ::= Letter+
+
+Number ::= Digit+
+
+ImportTargetList ::= ImportSpecifier | "{" ImportSpecifiers "}"
+
+IdentifierList ::= Identifier Alias? ("," IdentifierList?)?
+
+Literal ::= StringLiteral | NumberLiteral | BooleanLiteral
+
+BinaryExpression ::= Expression BinaryOperator Expression
+
+UnaryExpression ::= UnaryOperator Expression
+
+UpdateExpression ::= AssignableExpression ("++" | "--")
+
+AssignmentExpression ::= AssignableExpression AssignmentOperator Expression
+
+LogicalExpression ::= Expression LogicalOperator Expression
+
+FunctionExpression ::= "async "? "fn " GenericParameterList? ParameterList TypeLabel? Block
+
+ArrayExpression ::= "[" ArrayElements? "]"
+
+IndexExpression ::= Expression "[" Expression "]"
+
+RangeExpression ::= Expression ".." Expression
+
+CallExpression ::= Expression "(" Expression ")"
+
+MemberExpression ::= Expression "." Expression
+
+IfExpression ::= "if " Expression Block Else?
+
+OptionalExpression ::= Expression "?"
+
+GenericParameters ::= GenericParameter ("," GenericParameters?)?
+
+ClassList ::= (DiscreteType | MemberType) ("," ClassList?)?
+
+GenericArgumentList ::= "<" GenericArguments ">"
+
+ClassProperty ::= Method | Property | TraitImplementation
+
+TypedParameters ::= TypedIdentifier ("," TypedParameters?)?
+
+RecordMap ::= Literal '=' Literal
+
+TraitProperties ::= TypedIdentifier ("," TraitProperties?)?
+
+ForStatement ::= "for " Identifier " in " Expression Block
+
+SwitchStatement ::= "switch " Expression SwitchBlock
+
+WhileStatement ::= "while " Expression Block
+
+ReturnStatement ::= "return " Expression ";"
+
+BreakStatement ::= "break " ";"
+
+ContinueStatement ::= "continue " ";"
+
+ExpressionStatement ::= Expression ";"
+
+DiscreteType ::= Identifier GenericArgumentList?
+
+MemberType ::= Identifier "." (DiscreteType | MemberType)
+
+FunctionType ::= "fn " TypedParameterList TypeLabel
+
+Letter ::= [A-Z] | [a-z]
+
+Digit ::= [0-9]
+
+ImportSpecifiers ::= ImportSpecifier ("," ImportSpecifiers?)?
+
+NumberLiteral ::= Number  | Number "." Number | '0x' ([0-9][A-F])+ | '0o' ([0-7])+ | '0b' ([01])+
+
+BooleanLiteral ::= "true " | "false "
+
+BinaryOperator ::= "+" | "-" | "/" | "*" | "%" | "**" | "&" | "|"| ">>" | "<<" | ">" | "<" | " is "
+
+UnaryOperator ::= "!" | "~" | "+" | "-" | " not " | "++" | "--"
+
+AssignableExpression ::= MemberExpression | Identifier | IndexExpression
+
+AssignmentOperator ::= "=" | "+=" | "++=" | "-=" | "--=" | ""
+
+LogicalOperator ::= "&&" | "||" | " and " | " or "
+
+ParameterList ::= "(" Parameters? ")"
+
+ArrayElements ::= Expression ("," ArrayElements?)?
+
+Else ::= "else " Statement
+
+GenericParameter ::= Identifier TypeLabel? DefaultGenericArgument?
+
+GenericArguments ::= Type ("," GenericArguments?)?
+
+Method ::= Identifier GenericParameterList? ParameterList TypeLabel? Block
+
+Property ::= TypedIdentifier ";"
+
+TraitImplementation ::= "[" Identifier "." Identifier "]" ParameterList TypeLabel? Block
+
+TypedIdentifier ::= Identifier TypeLabel
+
+SwitchBlock ::= "{" SwitchCase* "}"
+
+Parameters ::= Identifier TypeLabel? ("," Parameters?)?
+
+DefaultGenericArgument ::= "=" Type
+
+SwitchCase ::= "case " Expression "=>" Block
+
+

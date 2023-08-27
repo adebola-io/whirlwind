@@ -1,0 +1,143 @@
+{
+   "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+   "name": "Whirl",
+   "patterns": [
+      { "include": "#comment" },
+      { "include": "#string_literal" },
+      { "include": "#boolean_literal" },
+      { "include": "#keyword" },
+      { "include": "#number" },
+      { "include": "#injunction" },
+      { "include": "#inferred_class" },
+      { "include": "#inferred_function" },
+      { "include": "#module_import" },
+      { "include": "#identifier" }
+   ],
+   "repository": {
+      "keyword": {
+         "name": "keyword.control",
+         "match": "\\b(for|fn|in|while|break|continue|if|else|as|return|switch|case)\\b"
+      },
+      "injunction": {
+         "name": "meta.injunction keyword.storage.injunction",
+         "match": "\\b(export|import|test|var|const|class|async|record|trait|type|extends|implements|not|and|or|is)\\b"
+      },
+      "comment": {
+         "patterns": [
+            { "include": "#block_comment" },
+            { "include": "#line_comment" }
+         ]
+      },
+      "block_comment": {
+         "name": "comment.block",
+         "begin": "\\/\\*",
+         "end": "\\*\\/"
+      },
+      "line_comment": {
+         "name": "comment.line",
+         "begin": "//",
+         "end": "\n"
+      },
+      "string_literal": {
+         "name": "string.quoted meta.string",
+         "begin": "\"",
+         "patterns": [
+            { "include": "#single_quote_string" },
+            { "include": "#double_quote_string" }
+         ],
+         "end": "\""
+      },
+      "single_quote_string": {
+         "name": "string.quoted meta.string",
+         "begin": "\\'",
+         "patterns": [
+            { "include": "#string_character_escape" },
+            { "include": "#string_template_expression" }
+         ],
+         "end": "\\'"
+      },
+      "double_quote_string": {
+         "name": "string.quoted meta.string",
+         "begin": "\"",
+         "patterns": [
+            { "include": "#string_character_escape" },
+            { "include": "#string_template_expression" }
+         ],
+         "end": "\""
+      },
+      "string_character_escape": {
+         "name": "constant.character.escape",
+         "match": "\\\\(x[\\dA-Fa-f]{2}|u([\\dA-Fa-f]{4}|\\{[\\dA-Fa-f]+\\})|[0-2][0-7]{0,2}|(3[0-6]|37|[4-7])[0-7]?|.|$)"
+      },
+      "string_template_expression": {
+         "name": "meta.template.expression",
+         "begin": "(\\{)",
+         "beginCaptures": {
+            "1": {
+               "name": "punctuation.expression.embedded-expression-start constant.language.embedded.start"
+            }
+         },
+         "patterns": [{ "include": "$self" }],
+         "end": "(\\})",
+         "endCaptures": {
+            "1": {
+               "name": "punctuation.expression.embedded-expression-end constant.language.embedded.end"
+            }
+         }
+      },
+      "number": {
+         "patterns": [
+            {
+               "name": "constant.numeric.hex",
+               "match": "\\b(?<!\\$)0(?:x|X)[\\dA-Fa-f]+(n)?\\b(?!\\$)"
+            },
+            {
+               "name": "constant.numeric.octal",
+               "match": "\\b(?<!\\$)0(?:o|O)[0-7]+(n)?\\b(?!\\$)"
+            },
+            {
+               "name": "constant.numeric.binary",
+               "match": "\\b(?<!\\$)0(?:b|B)[0-1]+(n)?\\b(?!\\$)"
+            },
+            {
+               "name": "constant.numeric.decimal",
+               "match": "\\b\\d+((\\.\\d+)|n)?\\b(?!\\$)"
+            },
+            {
+               "name": "constant.numeric.exponent",
+               "match": "\\b\\d+e\\d+\\b(?!\\$)"
+            }
+         ]
+      },
+      "inferred_class": {
+         "name": "meta.class class entity.name.class",
+         "match": "\\b([A-Z]+\\w*(?=\\())|((?<=\\b(class|extends|implements)\\s+)\\w+\\b)"
+      },
+      "inferred_function": {
+         "name": "entity.name.function",
+         "match": "\\b\\w+(?=\\()"
+      },
+      "module_import": {
+         "name": "meta.class class entity.name.class",
+         "begin": "(?<=(import\\s+))",
+         "patterns": [
+            { "include": "#import_punctuation" },
+            { "include": "#keyword" }
+         ],
+         "end": "(?=;)"
+      },
+      "import_punctuation": {
+         "name": "punctuation.expression",
+         "match": "\\{|\\}|\\,|\\."
+      },
+      "identifier": {
+         "name": "identifier meta.identifier variable.identifier",
+         "match": "\\w+"
+      },
+      "boolean_literal": {
+         "name": "constant.language.literal",
+         "match": "\\b(true|false)\\b"
+      }
+   },
+   "scopeName": "source.wrl"
+}

@@ -27,3 +27,7 @@ export fn main() {
       logger.error("Server could not start. Error: {error.Message}");
     };
 }
+
+class Node {
+  baseURI: String;
+}

@@ -1,4 +1,4 @@
 /// Sorts an array using merge sort.
-Export Fn MergeSort(array: ArrayOf<Number>): ArrayOf<Number> {
+export fn MergeSort(array: ArrayOf<Number>): ArrayOf<Number> {
     
 }

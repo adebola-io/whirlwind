@@ -1,4 +1,4 @@
-Export Import BogoSort.*;
-Export Import HeapSort.*;
-Export Import BubbleSort.*;
-Export Import MergeSort.*;
+export import BogoSort.*;
+export import HeapSort.*;
+export import BubbleSort.*;
+export import MergeSort.*;
