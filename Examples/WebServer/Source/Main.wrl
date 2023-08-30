@@ -27,4 +27,5 @@ public function Main() {
         .Error(fn (error) {
             logger.error("Server could not start. Error: {error.Message}");
         });
+}
 
