@@ -1,5 +1,5 @@
 use Core.{
-  Net.{Server, Endpoint},
+  Http.{Server, Endpoint},
   Async.Await,
   Utils.Logger
 };
@@ -7,7 +7,7 @@ use Core.{
 /// This is the entry to the program.
 public function Main() {
     logger := Logger();
-    server := Server("http");
+    server := Server();
 
     endpoints := [
         Endpoint("GET", "/hello", fn (request, response) {
