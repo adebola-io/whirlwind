@@ -16,11 +16,11 @@
    "repository": {
       "keyword": {
          "name": "keyword.control",
-         "match": "\\b(for|fn|in|while|break|continue|if|else|as|return|switch|case)\\b"
+         "match": "\\b(for|new|function|fn|in|while|break|continue|if|else|as|return|switch|case)\\b"
       },
       "injunction": {
          "name": "meta.injunction keyword.storage.injunction",
-         "match": "\\b(export|import|test|var|const|class|async|record|trait|type|extends|implements|not|and|or|is)\\b"
+         "match": "\\b(use|public|test|var|const|class|async|record|trait|type|extends|implements|not|and|or|is)\\b"
       },
       "comment": {
          "patterns": [
