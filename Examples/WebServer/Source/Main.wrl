@@ -10,8 +10,10 @@ public function Main() {
     server := new Server();
 
     endpoints := [
-        new Endpoint("GET", "/hello", fn (request, response) {
-            response.Status(200).Json("Hello, world!");
+        new Endpoint(
+            "GET", 
+            "/hello", 
+            fn (req, res) res.Status(200).Json("Hello, world!");
         })
     ];
 
@@ -21,11 +23,7 @@ public function Main() {
     outcome := Await(server.Start());
     
     outcome
-        .Ok(fn () {
-            logger.success("Server started successfully.");
-        })
-        .Error(fn (error) {
-            logger.error("Server could not start. Error: {error.Message}");
-        });
+        .Ok(fn () logger.success("Server started successfully."))
+        .Error(fn (error) logger.error("Server could not start. Error: {error.Message}"));
 }
 
