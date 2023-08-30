@@ -23,7 +23,7 @@ public function Main() {
     outcome := Await(server.Start());
     
     outcome
-        .Ok(fn () logger.success("Server started successfully."))
-        .Error(fn (error) logger.error("Server could not start. Error: {error.Message}"));
+        .isOkThen(fn () logger.log("Server started successfully."))
+        .isErrThen(fn (error) logger.err("Server could not start. Error: {error.Message}"));
 }
 
