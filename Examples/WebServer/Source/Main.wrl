@@ -6,11 +6,11 @@ use Core.{
 
 /// This is the entry to the program.
 public function Main() {
-    logger := Logger();
-    server := Server();
+    logger := new Logger();
+    server := new Server();
 
     endpoints := [
-        Endpoint("GET", "/hello", fn (request, response) {
+        new Endpoint("GET", "/hello", fn (request, response) {
             response.Status(200).Json("Hello, world!");
         })
     ];
