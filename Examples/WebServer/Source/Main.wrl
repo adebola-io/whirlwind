@@ -1,29 +1,30 @@
-import Core.{
+use Core.{
   Net.{Server, Endpoint},
-  Async.await,
+  Async.Await,
   Utils.Logger
 };
 
 /// This is the entry to the program.
-export fn main() {
+public function Main() {
     logger := Logger();
     server := Server("http");
 
     endpoints := [
         Endpoint("GET", "/hello", fn (request, response) {
-            response.status(200).json("Hello, world!");
+            response.Status(200).Json("Hello, world!");
         })
     ];
 
-    server.addEndpoints(endpoints);
-    server.setPort(8080);
+    server.AddEndpoints(endpoints);
+    server.SetPort(8080);
 
-    outcome := await(server.start());
+    outcome := Await(server.Start());
     
-    if outcome.isOk() {
-      logger.success("Server started successfully.");
-    } else {
-      error := outcome.error();
-      logger.error("Server could not start. Error: {error.Message}");
-    };
-}
+    outcome
+        .Ok(fn () {
+            logger.success("Server started successfully.");
+        })
+        .Error(fn (error) {
+            logger.error("Server could not start. Error: {error.Message}");
+        });
+
