@@ -111,7 +111,7 @@
       },
       "inferred_class": {
          "name": "meta.class class entity.name.class",
-         "match": "\\b([A-Z]+\\w*(?=\\())|((?<=\\b(class|extends|implements)\\s+)\\w+\\b)"
+         "match": "\\b([A-Z]+\\w*(?=\\())|((?<=\\b(class|extends|implements|new)\\s+)\\w+\\b)"
       },
       "inferred_function": {
          "name": "entity.name.function",
