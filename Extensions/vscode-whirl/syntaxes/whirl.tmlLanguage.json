@@ -268,7 +268,7 @@
 
       "this": {
          "name": "constant.language",
-         "match": "\\bthis\\b"
+         "match": "\\bthis|super(?=\\s*\\()\\b"
       },
       "identifier": {
          "patterns": [

@@ -1,0 +1,57 @@
+/// A last-in first-out data structure.
+public class Stack<T> {
+    items: ArrayOf<T>;
+    capacity: Integer;
+
+    new(capacity?: Integer) {
+        this.items = [];
+        this.capacity = capacity.UnwrapOr(Core.Math.INFINITY);
+    }
+
+    /// Dynamically change the number of items in the stack.
+    /// If there are currently more items that the new capacity, then the top items will be removed until it matches the new capacity.
+    public SetCapacity(value: Integer) {
+        while value < this.items.Length() {
+            this.items.Pop();
+        }
+        this.capacity = value;
+    }
+
+    /// Returns the top value in the stack without removing it.
+    public Top(): Maybe<T> {
+        this.items.Last()
+    }
+
+    /// Removes the last item from the stack and returns it, if it exists.
+    public Pop(): Maybe<T> {
+        this.items.Pop()
+    }
+
+    /// Enter data into the stack.
+    /// This method will fail if the size of the stack is already at maximum length.
+    public Push(data: T): Outcome<_, StackError> {
+        if this.items.Length() == this.capacity {
+            Err(new StackError("The stack is already full."))
+        } else {
+            this.items.Push(data);
+            Ok(_)
+        }
+    }
+
+    /// Returns the size of the stack.
+    public Size(): Integer {
+        this.items.Length()
+    }
+}
+
+use Core.Testing.Assert;
+
+test "It tests stack pushing and popping" {
+    stack: Stack<Integer> := new Stack();
+    Assert(stack.Size() == 0);
+
+    stack.Push(8);
+    stack.Push(18);
+
+    Assert(stack.Size() == 2);
+}

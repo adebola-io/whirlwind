@@ -3,41 +3,42 @@ use Core.Process.Panic;
 
 /// Creates a `Maybe` with no value.
 public function None<T>(): Maybe<T> {
-    return new Maybe(NULL);
+    new Maybe(NULL)
 }
 
 /// Creates a `Maybe` with an internal value.
 public function Some<T>(value: T): Maybe<T> {
-    return new Maybe(value);
+    new Maybe(value)
 }
 
 /// A value that may or may not exist.
 public class Maybe<T> {
     value: T;
 
-    Maybe(value: T) {
+    new(value: T) {
         this.value = value;
     }
 
     /// Returns a boolean indicating if the Maybe contains no value.
     IsNone(): Boolean {
-        return IsNull(this.value);
+        IsNull(this.value)
     }
 
     /// Returns a boolean indicating whether there is a value contained or not.
     IsSome(): Boolean {
-        error.message;
-        return !IsNull(this.value);
+        !IsNull(this.value)
     }
 
     Unwrap(): T {
-        return if this.IsNone() {
-            Panic(new Error("Called Unwrap on a None Value"));
-        } else { this.value }
+        if this.IsNone() {
+            Panic(new Error("Called Unwrap on a None Value"))
+        } else { 
+            this.value 
+        }
     }
 
     UnwrapOr(value: T): T {
-        return if this.isNone() { value } else { this.value }
+        if this.IsNone() { value } else { this.value }
     }
 }
 
@@ -49,11 +50,12 @@ trait PartialEq<T> {
 class EmployeeList implements PartialEq<This> {
     items: ArrayOf<Employee>;
 
-    EmployeeList() {
+    new() {
         this.items = [];
     }
 
     [PartialEq.Equals](other: This): Boolean {
-        return this.items == other.items;
+        this.items == other.items
     }
 }
+

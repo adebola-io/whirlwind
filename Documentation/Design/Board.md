@@ -25,6 +25,13 @@ record Messages {
 -  Test statements should only be allowed at the top level of the module.
 -  Getters and Setters for object properties.
 -  Only function expressions can have type-inferred parameters.
+-  Prevent instantiation of classes without a constructor.
+-  Extended classes must call be super() method in their constructor.
+-  Constructors are functions with the `new` identifier.
+-  Generate error if class properties are not definitely assigned in the constructor.
+-  `_` represents special catchall/undefined type.
+-  All blocks return either an expression or the `_` type.
+-  `_` cannot be assigned to a variable, only used in wrappers like `Outcome` and `Maybe`.
 -  Garbage collection
 
 ## Ideas for Runtime

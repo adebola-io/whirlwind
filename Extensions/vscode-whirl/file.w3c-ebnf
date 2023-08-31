@@ -40,7 +40,7 @@ RecordDeclaration ::= "record " Identifier "{" RecordMapList? "}"
 
 TraitDeclaration ::= "trait " Identifier ImplementsLabel? (TraitList | ";")
 
-TypeDeclaration ::= "type " Identifier GenericParameterList? "=" Type
+TypeDeclaration ::= "type " Identifier GenericParameterList? "=" TypeExpression
 
 Char ::= [#x0-#x7F]
 
@@ -52,7 +52,7 @@ Alias ::= "as " Identifier
 
 StatementList ::= Statement+
 
-TypeLabel ::= ":" Type
+TypeLabel ::= ":" TypeExpression
 
 DestructurePattern ::= "{" IdentifierList "}"
 
@@ -98,7 +98,10 @@ Statement ::= ForStatement
               | ContinueStatement
               | ExpressionStatement
 
-Type ::= DiscreteType | MemberType | FunctionType
+TypeExpression ::= DiscreteType 
+                   | MemberType 
+                   | FunctionType
+                   | UnionType
 
 Word ::= Letter+
 
@@ -172,6 +175,8 @@ MemberType ::= Identifier "." (DiscreteType | MemberType)
 
 FunctionType ::= "fn " TypedParameterList TypeLabel
 
+UnionType ::= TypeExpression (("or "|"|") TypeExpression)+
+
 Letter ::= [A-Z] | [a-z]
 
 Digit ::= [0-9]
@@ -203,7 +208,7 @@ Else ::= "else " ExpressionBlock
 
 GenericParameter ::= Identifier TypeLabel? DefaultGenericArgument?
 
-GenericArguments ::= Type ("," GenericArguments?)?
+GenericArguments ::= TypeExpression ("," GenericArguments?)?
 
 Method ::= "public "? Identifier GenericParameterList? ParameterList TypeLabel? Block
 
@@ -217,7 +222,7 @@ SwitchBlock ::= "{" SwitchCase* ElseCase? SwitchCase* "}"
 
 Parameters ::= Identifier TypeLabel? ("," Parameters?)?
 
-DefaultGenericArgument ::= "=" Type
+DefaultGenericArgument ::= "=" TypeExpression
 
 SwitchCase ::= "case " Expression "=>" Block
 
