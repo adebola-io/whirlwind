@@ -1,33 +1,58 @@
-import Core.{
-  Net.{Server, Endpoint},
-  Async.await,
-  Utils.Logger
-};
+use Core.Internals.{NULL, IsNull};
+use Core.Process.Panic;
 
-/// This is the entry to the program.
-export fn main() {
-    logger := Logger();
-    server := Server("http");
-
-    endpoints := [
-        Endpoint("GET", "/hello", fn (request, response) {
-            response.status(200).json("Hello, world!");
-        })
-    ];
-
-    server.addEndpoints(endpoints);
-    server.setPort(8080);
-
-    outcome := await(server.start());
-    
-    if outcome.isOk() {
-      logger.success("Server started successfully.");
-    } else {
-      error := outcome.error();
-      logger.error("Server could not start. Error: {error.Message}");
-    };
+/// Creates a `Maybe` with no value.
+public function None<T>(): Maybe<T> {
+    return new Maybe(NULL);
 }
 
-class Node {
-  baseURI: String;
+/// Creates a `Maybe` with an internal value.
+public function Some<T>(value: T): Maybe<T> {
+    return new Maybe(value);
+}
+
+/// A value that may or may not exist.
+public class Maybe<T> {
+    value: T;
+
+    Maybe(value: T) {
+        this.value = value;
+    }
+
+    /// Returns a boolean indicating if the Maybe contains no value.
+    IsNone(): Boolean {
+        return IsNull(this.value);
+    }
+
+    /// Returns a boolean indicating whether there is a value contained or not.
+    IsSome(): Boolean {
+        return !IsNull(this.value);
+    }
+
+    Unwrap(): T {
+        return if this.IsNone() {
+            Panic("Called Unwrap on a None Value");
+        } else { this.value }
+    }
+
+    UnwrapOr(value: T): T {
+        return if this.isNone() { value } else { this.value }
+    }
+}
+
+
+trait PartialEq<T> {
+    Equals: fn(other: T): Boolean;
+}
+
+class EmployeeList implements PartialEq<This> {
+    items: ArrayOf<Employee>;
+
+    EmployeeList() {
+        this.items = [];
+    }
+
+    [PartialEq.Equals](other: This): Boolean {
+        return this.items == other.items;
+    }
 }

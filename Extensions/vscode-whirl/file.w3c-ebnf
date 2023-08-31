@@ -38,7 +38,7 @@ FunctionDeclaration ::= "async "? "function " Identifier GenericParameterList? T
 
 RecordDeclaration ::= "record " Identifier "{" RecordMapList? "}"
 
-TraitDeclaration ::= "trait " Identifier (TraitList | ";")
+TraitDeclaration ::= "trait " Identifier ImplementsLabel? (TraitList | ";")
 
 TypeDeclaration ::= "type " Identifier GenericParameterList? "=" Type
 
@@ -63,6 +63,7 @@ Expression ::= "this"
                | UnaryExpression
                | UpdateExpression
                | AssignmentExpression
+               | NewExpression
                | LogicalExpression
                | FunctionExpression
                | ArrayExpression
@@ -117,6 +118,8 @@ UpdateExpression ::= AssignableExpression ("++" | "--")
 
 AssignmentExpression ::= AssignableExpression AssignmentOperator Expression
 
+NewExpression ::= "new " Expression
+
 LogicalExpression ::= Expression LogicalOperator Expression
 
 FunctionExpression ::= "async "? "fn " GenericParameterList? ParameterList TypeLabel? Block | Expression
@@ -131,7 +134,7 @@ CallExpression ::= Expression "(" Expression ")"
 
 MemberExpression ::= Expression "." Expression
 
-IfExpression ::= "if " Expression Block Else?
+IfExpression ::= "if " Expression ExpressionBlock Else?
 
 OptionalExpression ::= Expression "?"
 
@@ -193,7 +196,10 @@ ParameterList ::= "(" Parameters? ")"
 
 ArrayElements ::= Expression ("," ArrayElements?)?
 
-Else ::= "else " Statement
+// A block that returns its final expression.
+ExpressionBlock ::= Block
+
+Else ::= "else " ExpressionBlock
 
 GenericParameter ::= Identifier TypeLabel? DefaultGenericArgument?
 

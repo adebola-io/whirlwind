@@ -14,7 +14,7 @@ public function Main() {
             "GET", 
             "/hello", 
             fn (req, res) res.Status(200).Json("Hello, world!");
-        })
+        )
     ];
 
     server.AddEndpoints(endpoints);

@@ -4,23 +4,27 @@
    "patterns": [
       { "include": "#comment" },
       { "include": "#string_literal" },
+      { "include": "#class_header" },
+      { "include": "#trait_header" },
+      { "include": "#function" },
       { "include": "#boolean_literal" },
       { "include": "#keyword" },
       { "include": "#number" },
       { "include": "#injunction" },
       { "include": "#inferred_class" },
       { "include": "#inferred_function" },
-      { "include": "#module_import" },
+      { "include": "#this" },
+      { "include": "#type_label" },
       { "include": "#identifier" }
    ],
    "repository": {
       "keyword": {
          "name": "keyword.control",
-         "match": "\\b(for|new|function|fn|in|while|break|continue|if|else|as|return|switch|case)\\b"
+         "match": "\\b(for|function|fn|in|while|break|continue|if|else|as|return|switch|case)\\b"
       },
       "injunction": {
          "name": "meta.injunction keyword.storage.injunction",
-         "match": "\\b(use|public|test|var|const|class|async|record|trait|type|extends|implements|not|and|or|is)\\b"
+         "match": "\\b(use|public|test|var|new|const|class|async|record|trait|type|extends|implements|not|and|or|is)\\b"
       },
       "comment": {
          "patterns": [
@@ -109,34 +113,183 @@
             }
          ]
       },
+
+      "class_header": {
+         "begin": "(\\bclass\\s+)",
+         "beginCaptures": {
+            "1": {
+               "name": "keyword"
+            }
+         },
+         "patterns": [
+            {
+               "begin": "(?<=class\\s+)",
+               "contentName": "meta.class class entity.name.class",
+               "end": "(?=[^\\w])"
+            },
+            { "include": "#generic_params" },
+            { "include": "#implements_label" },
+            { "include": "#extends_label" }
+         ],
+         "end": "(?=\\{)"
+      },
+      "implements_label": {
+         "begin": "(\\bimplements\\s+)",
+         "beginCaptures": {
+            "1": {
+               "name": "keyword"
+            }
+         },
+         "patterns": [
+            { "include": "#type_expression" },
+            { "include": "#generic_args" },
+            { "include": "#punctuation_comma" }
+         ],
+         "end": "(?=[^,\\w\\s\\<\\>]|extends\\s+)"
+      },
+      "extends_label": {
+         "begin": "(\\bextends\\s+)",
+         "beginCaptures": {
+            "1": {
+               "name": "keyword"
+            }
+         },
+         "patterns": [
+            { "include": "#type_expression" },
+            { "include": "#generic_args" },
+            { "include": "#punctuation_comma" }
+         ],
+         "end": "(?=[^,\\w\\s\\<\\>])"
+      },
+      "trait_header": {
+         "begin": "(\\btrait\\s+)",
+         "beginCaptures": {
+            "1": {
+               "name": "keyword"
+            }
+         },
+         "patterns": [
+            {
+               "begin": "(?<=trait\\s+)",
+               "contentName": "meta.class class entity.name.class",
+               "end": "(?=[^\\w])"
+            },
+            { "include": "#generic_params" },
+            { "include": "#implements_label" }
+         ],
+         "end": "(?=\\{)"
+      },
+      "function": {
+         "begin": "(\\bfunction\\s+)",
+         "beginCaptures": {
+            "1": {
+               "name": "keyword.control"
+            }
+         },
+         "patterns": [
+            {
+               "begin": "(?<=function\\s+)",
+               "contentName": "support.function entity.name.function",
+               "end": "(?=[^\\w])"
+            },
+            { "include": "#generic_params" }
+         ],
+         "end": "(?=\\()"
+      },
+
       "inferred_class": {
          "name": "meta.class class entity.name.class",
-         "match": "\\b([A-Z]+\\w*(?=\\())|((?<=\\b(class|extends|implements|new)\\s+)\\w+\\b)"
+         "match": "\\b((?<=\\bnew\\s+)\\w+\\b)"
       },
       "inferred_function": {
          "name": "entity.name.function",
-         "match": "\\b\\w+(?=\\()"
-      },
-      "module_import": {
-         "name": "meta.class class entity.name.class",
-         "begin": "(?<=(import\\s+))",
-         "patterns": [
-            { "include": "#import_punctuation" },
-            { "include": "#keyword" }
-         ],
-         "end": "(?=;)"
+         "match": "\\b\\w+(?=\\s*(\\<.*\\>)?\\s*\\()|\\w+(?=\\s*(\\:\\s*fn))",
+         "captures": {
+            "1": {
+               "patterns": [{ "include": "#generic_args" }]
+            },
+            "2": {
+               "patterns": [{ "include": "#type_label" }]
+            }
+         }
       },
       "import_punctuation": {
          "name": "punctuation.expression",
          "match": "\\{|\\}|\\,|\\."
       },
+      "type_label": {
+         "begin": "\\:\\s*",
+         "patterns": [
+            { "include": "#function_type" },
+            { "include": "#type_expression" }
+         ],
+         "end": "(?=[^\\s|^\\w|\\_|\\.|\\<|\\,])"
+      },
+      "type_name": {
+         "name": "support.type",
+         "match": "\\b\\w+\\b"
+      },
+      "type_expression": {
+         "patterns": [
+            {
+               "name": "constant.language",
+               "match": "\\bThis\\b"
+            },
+            { "include": "#type_name" },
+            { "match": "." },
+            { "include": "#type_name" },
+            { "include": "#generic_args" }
+         ]
+      },
+      "function_type": {
+         "patterns": [{ "include": "#keyword" }]
+      },
+      "generic_args": {
+         "begin": "(?<=\\<\\s*)",
+         "patterns": [
+            { "include": "#type_expression" },
+            { "include": "#generic_args" }
+         ],
+         "end": "(?=\\>)"
+      },
+      "generic_params": {
+         "begin": "(?<=\\<\\s*)",
+         "patterns": [
+            {
+               "name": "constant.language",
+               "match": "\\bThis\\b"
+            },
+            { "include": "#type_name" },
+            { "include": "#type_label" },
+            { "include": "#punctuation_comma" }
+         ],
+         "end": "(?=\\>)"
+      },
+
+      "this": {
+         "name": "constant.language",
+         "match": "\\bthis\\b"
+      },
       "identifier": {
-         "name": "identifier meta.identifier variable.identifier",
-         "match": "\\w+"
+         "patterns": [
+            {
+               "name": "meta.definition.variable.ts variable.other.constant.ts",
+               "match": "\\b[[:upper:][:digit:]_]+\\b"
+            },
+            {
+               "name": "identifier meta.identifier variable.identifier",
+               "match": "\\w+"
+            }
+         ]
       },
       "boolean_literal": {
          "name": "constant.language.literal",
          "match": "\\b(true|false)\\b"
+      },
+
+      "punctuation_comma": {
+         "name": "punctuation.separator.comma.ts",
+         "match": ","
       }
    },
    "scopeName": "source.wrl"
