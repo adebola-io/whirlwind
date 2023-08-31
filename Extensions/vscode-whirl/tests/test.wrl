@@ -26,12 +26,13 @@ public class Maybe<T> {
 
     /// Returns a boolean indicating whether there is a value contained or not.
     IsSome(): Boolean {
+        error.message;
         return !IsNull(this.value);
     }
 
     Unwrap(): T {
         return if this.IsNone() {
-            Panic("Called Unwrap on a None Value");
+            Panic(new Error("Called Unwrap on a None Value"));
         } else { this.value }
     }
 

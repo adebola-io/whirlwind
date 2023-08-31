@@ -19,7 +19,7 @@
    ],
    "repository": {
       "keyword": {
-         "name": "keyword.control",
+         "name": "keyword.control entity.name.keyword support.keyword",
          "match": "\\b(for|function|fn|in|while|break|continue|if|else|as|return|switch|case)\\b"
       },
       "injunction": {
@@ -203,13 +203,13 @@
       },
       "inferred_function": {
          "name": "entity.name.function",
-         "match": "\\b\\w+(?=\\s*(\\<.*\\>)?\\s*\\()|\\w+(?=\\s*(\\:\\s*fn))",
+         "match": "(\\w+|\\[(\\w+)\\.\\w+\\])(?=\\s*(\\<.*\\>)?\\s*\\()|(\\w+)(?=\\s*(\\:\\s*fn))",
          "captures": {
-            "1": {
-               "patterns": [{ "include": "#generic_args" }]
-            },
             "2": {
-               "patterns": [{ "include": "#type_label" }]
+               "name": "entity.name.class support.class"
+            },
+            "3": {
+               "patterns": [{ "include": "#generic_args" }]
             }
          }
       },
@@ -226,7 +226,7 @@
          "end": "(?=[^\\s|^\\w|\\_|\\.|\\<|\\,])"
       },
       "type_name": {
-         "name": "support.type",
+         "name": "support.type entity.name.type",
          "match": "\\b\\w+\\b"
       },
       "type_expression": {
@@ -272,6 +272,10 @@
       },
       "identifier": {
          "patterns": [
+            {
+               "name": "entity variable",
+               "match": "\\b\\w+(?=\\.)\\b"
+            },
             {
                "name": "meta.definition.variable.ts variable.other.constant.ts",
                "match": "\\b[[:upper:][:digit:]_]+\\b"

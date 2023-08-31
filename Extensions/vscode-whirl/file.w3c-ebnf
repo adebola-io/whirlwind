@@ -205,15 +205,15 @@ GenericParameter ::= Identifier TypeLabel? DefaultGenericArgument?
 
 GenericArguments ::= Type ("," GenericArguments?)?
 
-Method ::= Identifier GenericParameterList? ParameterList TypeLabel? Block
+Method ::= "public "? Identifier GenericParameterList? ParameterList TypeLabel? Block
 
-Property ::= TypedIdentifier ";"
+Property ::= "public "? Identifier "? "? TypeLabel ";"
 
 TraitImplementation ::= "[" Identifier "." Identifier "]" ParameterList TypeLabel? Block
 
 TypedIdentifier ::= Identifier TypeLabel
 
-SwitchBlock ::= "{" SwitchCase* "}"
+SwitchBlock ::= "{" SwitchCase* ElseCase? SwitchCase* "}"
 
 Parameters ::= Identifier TypeLabel? ("," Parameters?)?
 
@@ -221,4 +221,5 @@ DefaultGenericArgument ::= "=" Type
 
 SwitchCase ::= "case " Expression "=>" Block
 
+ElseCase ::= "else " "=>" Block
 

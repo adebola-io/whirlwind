@@ -1,1 +1,132 @@
-{}
+{
+   "Class Definition": {
+      "prefix": "class",
+      "isFileTemplate": true,
+      "body": [
+         "class ${1:name} {",
+         "\t${1:name}(${2:parameters}) {",
+         "\t\t$0",
+         "\t}",
+         "}"
+      ],
+      "description": "Class Definition"
+   },
+   "Public Function Definition": {
+      "prefix": "public func",
+      "body": ["/// $2", "public ${1:name}() {", "\t$0", "}"],
+      "description": "Public Function Definition"
+   },
+   "Use Statement": {
+      "prefix": "use",
+      "body": ["use $0;"],
+      "description": "Use external module"
+   },
+   "Print value": {
+      "prefix": "pr",
+      "body": ["Core.Fmt.Print($1);", "$0"],
+      "description": "Print value"
+   },
+   "Print warning": {
+      "prefix": "warn",
+      "body": ["Core.Fmt.PrintWarn($1);", "$0"],
+      "description": "Print warning"
+   },
+   "Print error": {
+      "prefix": "err",
+      "body": ["Core.Fmt.PrintError($1);", "$0"],
+      "description": "Print an error"
+   },
+   "Panic": {
+      "prefix": "panic",
+      "body": ["Core.Process.Panic(new Error(\"$1\"));", "$0"],
+      "description": "Panic expression"
+   },
+   "For-In Loop": {
+      "prefix": "for",
+      "body": [
+         "for (const ${1:element} in ${2:iterator}) {",
+         "\t$TM_SELECTED_TEXT$0",
+         "}"
+      ],
+      "description": "For-In Loop"
+   },
+   "Function Statement": {
+      "prefix": "func",
+      "body": [
+         "function ${1:name}(${2:params}:${3:type}) {",
+         "\t$TM_SELECTED_TEXT$0",
+         "}"
+      ],
+      "description": "Function Statement"
+   },
+   "If Expression": {
+      "prefix": "if",
+      "body": ["if ${1:condition} {", "\t$TM_SELECTED_TEXT$0", "}"],
+      "description": "If Expression"
+   },
+   "If-Else Statement": {
+      "prefix": "ifelse",
+      "body": [
+         "if ${1:condition} {",
+         "\t$TM_SELECTED_TEXT$0",
+         "} else {",
+         "\t",
+         "}"
+      ],
+      "description": "If-Else Expression"
+   },
+   "New Statement": {
+      "prefix": "new",
+      "body": ["${1:name} := new ${2:type}(${3:arguments});$0"],
+      "description": "New Statement"
+   },
+   "Switch Statement": {
+      "prefix": "switch",
+      "body": [
+         "switch ${1:key} {",
+         "\tcase ${2:value} => {",
+         "\t\t$3",
+         "\t}",
+         "\tcase ${4:value} => {",
+         "\t\t$5",
+         "\t}",
+         "\telse => { ",
+         "\t\t$0",
+         "\t}",
+         "}"
+      ],
+      "description": "Switch Statement"
+   },
+   "While Statement": {
+      "prefix": "while",
+      "body": ["while ${1:condition} {", "\t$TM_SELECTED_TEXT$0", "}"],
+      "description": "While Statement"
+   },
+   "Wait Function": {
+      "prefix": "wait",
+      "body": [
+         "Core.Process.WaitThen(fn () {",
+         "\t$TM_SELECTED_TEXT$0",
+         "}, ${1:timeout});"
+      ],
+      "description": "Wait then Function"
+   },
+   "Async Function Statement": {
+      "prefix": "async func",
+      "body": [
+         "async function ${1:name}(${2:params}:${3:type}) {",
+         "\t$TM_SELECTED_TEXT$0",
+         "}"
+      ],
+      "description": "Async Function Statement"
+   },
+   "Async Function Expression": {
+      "prefix": "async fn exp",
+      "body": [
+         "async fn (${1:params}:${2:type}) {",
+         "\t$TM_SELECTED_TEXT$0",
+         "}"
+      ],
+      "description": "Async Function Expression"
+   }
+}
