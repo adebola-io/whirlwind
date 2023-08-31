@@ -21,29 +21,28 @@ public class Maybe<T> {
 
     /// Returns a boolean indicating if the Maybe contains no value.
     IsNone(): Boolean {
-        return IsNull(this.value);
+        IsNull(this.value)
     }
 
     /// Returns a boolean indicating whether there is a value contained or not.
     IsSome(): Boolean {
-        error.message;
-        return !IsNull(this.value);
+        !IsNull(this.value)
     }
 
     Unwrap(): T {
-        return if this.IsNone() {
-            Panic(new Error("Called Unwrap on a None Value"));
+        if this.IsNone() {
+            Panic(new Error("Called Unwrap on a None Value"))
         } else { this.value }
     }
 
     UnwrapOr(value: T): T {
-        return if this.isNone() { value } else { this.value }
+        if this.IsNone() { value } else { this.value }
     }
 }
 
 
 trait PartialEq<T> {
-    Equals: fn(other: T): Boolean;
+    Equals(other: T): Boolean;
 }
 
 class EmployeeList implements PartialEq<This> {
@@ -54,6 +53,6 @@ class EmployeeList implements PartialEq<This> {
     }
 
     [PartialEq.Equals](other: This): Boolean {
-        return this.items == other.items;
+        this.items == other.items
     }
 }
