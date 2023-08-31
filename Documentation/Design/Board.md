@@ -3,22 +3,13 @@
 -  Equality comparison with `==`.
 -  Implicit Return
 -  Reference Comparison with `is`.
--  Atoms can be re-exported using Export Import syntax.
+-  Atoms can be re-exported using public use syntax.
 -  Variables should be declared using `:=` syntax.
 -  Optional parameters, that become `Maybe`s in the function code.
 -  Rest parameters that become Arrays in function code.
 -  Extendable Classes
 -  Operator overloading with traits. e.g.
 -  Records: immutable key-value stores.
-
-```wrl
-
-record Messages {
-  1 = "Hello, World!"
-  2 = "Good day!"
-}
-
-```
 
 # Ideas for Semantics
 

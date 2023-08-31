@@ -44,7 +44,7 @@ public class Maybe<T> {
 
 
 trait PartialEq<T> {
-    Equals: fn(other: T): Boolean;
+    Equals(other: T): Boolean;
 }
 
 class EmployeeList implements PartialEq<This> {
