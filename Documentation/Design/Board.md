@@ -22,6 +22,8 @@
 -  Generate error if class properties are not definitely assigned in the constructor.
 -  `_` represents special catchall/undefined type.
 -  All blocks return either an expression or the `_` type.
+-  Types can be automatically upcasted to superclasses and union types.
+-  Types can be downcasted using the `as` keyword to an inclusive set of supertypes. Downcasting should cause panic if it is incorrect at runtime.
 -  `_` cannot be assigned to a variable, only used in wrappers like `Outcome` and `Maybe`.
 -  Garbage collection
 

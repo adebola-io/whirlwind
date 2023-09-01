@@ -210,11 +210,11 @@ GenericParameter ::= Identifier TypeLabel? DefaultGenericArgument?
 
 GenericArguments ::= TypeExpression ("," GenericArguments?)?
 
-Method ::= "public "? Identifier GenericParameterList? ParameterList TypeLabel? Block
+Method ::= "public "? "static "? Identifier GenericParameterList? ParameterList TypeLabel? Block
 
 Property ::= "public "? Identifier "? "? TypeLabel ";"
 
-TraitImplementation ::= "[" Identifier "." Identifier "]" ParameterList TypeLabel? Block
+TraitImplementation ::= "[" (Identifier ".")+ Identifier "]" ParameterList TypeLabel? Block
 
 TypedIdentifier ::= Identifier TypeLabel
 

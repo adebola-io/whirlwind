@@ -55,3 +55,53 @@ test "It tests stack pushing and popping" {
 
     Assert(stack.Size() == 2);
 }
+
+public type UnsignedInteger = U8Integer | U16Integer | U32Integer;
+public type Integer = UnsignedInteger | SignedInteger;
+public type Float = Float32 | Float64;
+public type Number = SignedInteger | Float | BigInt;
+
+public class Occupation {
+    value: OccupationValue;
+}
+
+class Name implements Core.Fmt.Display {
+    firstName: String;
+    lastName: String;
+
+    [Core.Fmt.Display.ToString](): String {
+        "{this.firstName} {this.lastName}"
+    }
+}
+
+class Person {
+    id: String;
+    name: Name;
+    gender: Male | Female;
+    occupation: Occupation;
+
+    /// Returns a hello message.
+    public SayHello(): String {
+        "{this.name} says Hello!"
+    }
+
+    public isMale(): Boolean {
+        this.gender._type == 1
+    }
+
+    public isFemale(): Boolean {
+        this.gender._type == 2
+    }
+}
+
+class Cylinder extends Circle {
+    new() {
+        super()
+    }
+}
+
+class Image {
+    public Resize() {
+
+    }
+}

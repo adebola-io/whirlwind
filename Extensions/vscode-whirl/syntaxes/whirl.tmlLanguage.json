@@ -4,6 +4,7 @@
    "patterns": [
       { "include": "#comment" },
       { "include": "#string_literal" },
+      { "include": "#type_declaration" },
       { "include": "#class_header" },
       { "include": "#trait_header" },
       { "include": "#function" },
@@ -11,9 +12,10 @@
       { "include": "#keyword" },
       { "include": "#number" },
       { "include": "#injunction" },
-      { "include": "#inferred_class" },
-      { "include": "#inferred_function" },
       { "include": "#this" },
+      { "include": "#inferred_class" },
+      { "include": "#trait_implementation" },
+      { "include": "#inferred_function" },
       { "include": "#type_label" },
       { "include": "#identifier" }
    ],
@@ -24,7 +26,7 @@
       },
       "injunction": {
          "name": "meta.injunction keyword.storage.injunction",
-         "match": "\\b(use|public|test|var|new|const|class|async|record|trait|type|extends|implements|not|and|or|is)\\b"
+         "match": "\\b(use|public|static|test|var|new|const|class|async|record|trait|type|extends|implements|not|and|or|is)\\b"
       },
       "comment": {
          "patterns": [
@@ -43,13 +45,10 @@
          "end": "\n"
       },
       "string_literal": {
-         "name": "string.quoted meta.string",
-         "begin": "\"",
          "patterns": [
             { "include": "#single_quote_string" },
             { "include": "#double_quote_string" }
-         ],
-         "end": "\""
+         ]
       },
       "single_quote_string": {
          "name": "string.quoted meta.string",
@@ -71,7 +70,7 @@
       },
       "string_character_escape": {
          "name": "constant.character.escape",
-         "match": "\\\\(x[\\dA-Fa-f]{2}|u([\\dA-Fa-f]{4}|\\{[\\dA-Fa-f]+\\})|[0-2][0-7]{0,2}|(3[0-6]|37|[4-7])[0-7]?|.|$)"
+         "match": "\\\\(x[\\dA-Fa-f]{2}|u([\\dA-Fa-f]{4}|\\{[\\dA-Fa-f]+\\})|[0-2][0-7]{0,2}|(3[0-6]|37|[4-7])[0-7]?|.)"
       },
       "string_template_expression": {
          "name": "meta.template.expression",
@@ -114,6 +113,26 @@
          ]
       },
 
+      "type_declaration": {
+         "begin": "(\\btype\\s+)",
+         "beginCaptures": {
+            "1": {
+               "name": "keyword"
+            }
+         },
+         "patterns": [
+            { "include": "#type_name" },
+            { "include": "#generic_params" },
+            {
+               "match": "\\s*\\=\\s*"
+            },
+            {
+               "include": "#type_expression"
+            }
+         ],
+         "end": "(?=;)"
+      },
+
       "class_header": {
          "begin": "(\\bclass\\s+)",
          "beginCaptures": {
@@ -142,10 +161,9 @@
          },
          "patterns": [
             { "include": "#type_expression" },
-            { "include": "#generic_args" },
             { "include": "#punctuation_comma" }
          ],
-         "end": "(?=[^,\\w\\s\\<\\>]|extends\\s+)"
+         "end": "(?=[^,\\.\\w\\s\\<\\>]|extends\\s+)"
       },
       "extends_label": {
          "begin": "(\\bextends\\s+)",
@@ -156,10 +174,9 @@
          },
          "patterns": [
             { "include": "#type_expression" },
-            { "include": "#generic_args" },
             { "include": "#punctuation_comma" }
          ],
-         "end": "(?=[^,\\w\\s\\<\\>])"
+         "end": "(?=[^,\\.\\w\\s\\<\\>])"
       },
       "trait_header": {
          "begin": "(\\btrait\\s+)",
@@ -199,17 +216,32 @@
 
       "inferred_class": {
          "name": "meta.class class entity.name.class",
-         "match": "\\b((?<=\\bnew\\s+)\\w+\\b)"
+         "match": "\\b((?<=\\bnew\\s+(\\w+\\s*\\.)*\\s*)\\w+\\b)"
       },
       "inferred_function": {
-         "name": "entity.name.function",
-         "match": "(\\w+|\\[(\\w+)\\.\\w+\\])(?=\\s*(\\<.*\\>)?\\s*\\()|(\\w+)(?=\\s*(\\:\\s*fn))",
+         "name": "entity.name.function support.function",
+         "match": "\\w+(?=\\s*(\\<.*\\>)?\\s*\\()|(\\w+)(?=\\s*(\\:\\s*fn))",
          "captures": {
             "2": {
                "name": "entity.name.class support.class"
             },
-            "3": {
+            "4": {
                "patterns": [{ "include": "#generic_args" }]
+            }
+         }
+      },
+      "trait_implementation": {
+         "name": "entity.name.function support.function",
+         "match": "(\\[(\\s*\\w+\\s*\\.)+\\s*)\\w+(?=\\s*\\]\\s*(\\<.*\\>)?\\s*\\()",
+         "captures": {
+            "1": {
+               "patterns": [
+                  {
+                     "name": "entity.name.class support.class",
+                     "match": "\\w+"
+                  },
+                  { "match": "\\." }
+               ]
             }
          }
       },
@@ -268,7 +300,12 @@
 
       "this": {
          "name": "constant.language",
-         "match": "\\bthis|super(?=\\s*\\()\\b"
+         "match": "\\bthis|super(?=\\s*(\\<\\s*.*\\s*\\>)?\\s*\\()\\b",
+         "captures": {
+            "1": {
+               "patterns": [{ "include": "#generic_args" }]
+            }
+         }
       },
       "identifier": {
          "patterns": [

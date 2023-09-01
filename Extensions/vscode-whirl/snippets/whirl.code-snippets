@@ -13,7 +13,7 @@
    },
    "Public Function Definition": {
       "prefix": "public func",
-      "body": ["/// $2", "public ${1:name}() {", "\t$0", "}"],
+      "body": ["/// $2", "public function ${1:name}() {", "\t$0", "}"],
       "description": "Public Function Definition"
    },
    "Use Statement": {
