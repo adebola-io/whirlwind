@@ -56,51 +56,50 @@ pub enum Comment {
 
 #[derive(PartialEq, Debug)]
 pub enum Bracket {
-    LParens,
-    RParens,
-    LSquare,
-    RSquare,
-    LCurly,
-    RCurly,
+    LParens, // (
+    RParens, // )
+    LSquare, // [
+    RSquare, // ]
+    LCurly,  // {
+    RCurly,  // }
 }
 
 #[derive(PartialEq, Debug)]
 pub enum Operator {
-    Colon,
-    SemiColon,
-    Range,
-    Dot,
-    QuestionMark,
-    Comma,
-    Arrow,
-    // Logical Operators.
-    And,
-    Not,
-    Or,
-    LogicalAnd,
-    LogicalOr,
-    // Assignment Operators.
-    Assign,
-    PlusAssign,
-    SubtractAssign,
-    ColonAssign,
-    // Binary Operators.
-    Add,
-    Subtract,
-    Divide,
-    Multiply,
-    Remainder,
-    PowerOf,
-    BitAnd,
-    BitOr,
-    BitLeftShift,
-    BitRightShift,
-    GreaterThan,
-    LesserThan,
-    Is,
-    // Unary Operators.
-    Negator,
-    LogicalNot,
+    Colon,              // :
+    ColonAssign,        // :=
+    SemiColon,          // ;
+    Dot,                // .
+    Range,              // ..
+    Negator,            // !
+    NotEqual,           // !=
+    QuestionMark,       // ?
+    Comma,              // ,
+    Assign,             // =
+    Arrow,              // =>
+    And,                // and
+    Not,                // not
+    Or,                 // or
+    Ampersand,          // &
+    LogicalAnd,         // &&
+    BitOr,              // |
+    LogicalOr,          // ||
+    Plus,               // +
+    PlusAssign,         // +=
+    Minus,              // -
+    MinusAssign,        // -=
+    Divide,             // /
+    Multiply,           // *
+    Percent,            // %
+    Carat,              // ^
+    LeftShift,          // <<
+    RightShift,         // >>
+    LesserThanOrEqual,  // <=
+    GreaterThanOrEqual, // >=
+    Equal,              // ==
+    LesserThan,         // <
+    GreaterThan,        // >
+    Is,                 // is
 }
 
 #[derive(PartialEq, Debug)]

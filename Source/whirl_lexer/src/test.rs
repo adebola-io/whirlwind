@@ -1,18 +1,36 @@
 #![cfg(test)]
 
 use crate::lex_text;
-use crate::{
-    token::{Span, Token, TokenType},
-    Lexer,
-};
+use crate::token::{Span, Token, TokenType};
+
+#[test]
+fn skip_whitespace_while_lexing() {
+    let mut lexer = lex_text(
+        "    
+    
+    
+    \t
+          
+           
+            
+             \t\r\r\r\r",
+    );
+    assert!(lexer.next().is_none());
+}
+
+#[test]
+fn lex_operators() {
+    let lexer = lex_text(": += & && ! => := ? ! % ^ ==");
+    assert_eq!(lexer.count(), 12)
+}
 
 #[test]
 fn lex_block_comments() {
     // Single Line.
-    let mut lexer1 = lex_text("/* Hello, world */");
+    let mut lexer = lex_text("/* Hello, world */");
 
     assert_eq!(
-        lexer1.get_next_token(),
+        lexer.next(),
         Some(Token {
             token_type: TokenType::block_comment(format!(" Hello, world ")),
             span: Span::from([1, 1, 1, 19]),
@@ -20,13 +38,13 @@ fn lex_block_comments() {
     );
 
     // Multi Line.
-    let mut lexer2 = lex_text(
+    lexer = lex_text(
         "/* Hello, 
     world */",
     );
 
     assert_eq!(
-        lexer2.get_next_token(),
+        lexer.next(),
         Some(Token {
             token_type: TokenType::block_comment(format!(" Hello, \n    world ")),
             span: Span::from([1, 1, 2, 13]),
@@ -34,9 +52,9 @@ fn lex_block_comments() {
     );
 
     // With asterisk and slashes.
-    let mut lexer3 = lex_text("/* Hello, *** world!//* / */");
+    lexer = lex_text("/* Hello, *** world!//* / */");
     assert_eq!(
-        lexer3.get_next_token(),
+        lexer.next(),
         Some(Token {
             token_type: TokenType::block_comment(format!(" Hello, *** world!//* / ")),
             span: Span::from([1, 1, 1, 29]),
@@ -50,7 +68,7 @@ fn lex_line_or_doc_comments() {
     let mut lexer = lex_text("// This is the world premiere!!");
 
     assert_eq!(
-        lexer.get_next_token(),
+        lexer.next(),
         Some(Token {
             token_type: TokenType::line_comment(format!(" This is the world premiere!!")),
             span: Span::from([1, 1, 1, 32])
@@ -61,7 +79,7 @@ fn lex_line_or_doc_comments() {
     lexer = lex_text("/// This is the world premiere!!");
 
     assert_eq!(
-        lexer.get_next_token(),
+        lexer.next(),
         Some(Token {
             token_type: TokenType::doc_comment(format!(" This is the world premiere!!")),
             span: Span::from([1, 1, 1, 33])

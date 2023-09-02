@@ -14,6 +14,7 @@ pub struct TextLexer<'input> {
     line: usize,
     span_start: [usize; 2],
     errors: Vec<LexError>,
+    stash: Option<char>,
 }
 
 pub trait Lexer: LexerInner {
@@ -39,8 +40,8 @@ impl LexerInner for TextLexer<'_> {
         })
     }
 
-    fn start_span(&mut self, offset: usize) {
-        self.span_start = [self.position - offset, self.line];
+    fn start_span(&mut self) {
+        self.span_start = [self.line, self.position - 1];
     }
 
     fn report_span(&self) -> Span {
@@ -56,6 +57,14 @@ impl LexerInner for TextLexer<'_> {
 
     fn add_error(&mut self, error: LexError) {
         self.errors.push(error)
+    }
+
+    fn remove_stashed(&mut self) -> Option<char> {
+        self.stash.take()
+    }
+
+    fn stash(&mut self, ch: char) {
+        self.stash = Some(ch)
     }
 }
 
@@ -80,5 +89,6 @@ pub fn lex_text(input: &str) -> TextLexer {
         line: 1,
         span_start: [1, 1],
         errors: vec![],
+        stash: None,
     }
 }
