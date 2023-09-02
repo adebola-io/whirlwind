@@ -39,12 +39,19 @@ impl TokenType {
     pub fn block_comment(text: String) -> Self {
         TokenType::Comment(Comment::BlockComment(text))
     }
+    pub fn line_comment(text: String) -> Self {
+        TokenType::Comment(Comment::LineComment(text))
+    }
+    pub fn doc_comment(text: String) -> Self {
+        TokenType::Comment(Comment::DocComment(text))
+    }
 }
 
 #[derive(PartialEq, Debug)]
 pub enum Comment {
     LineComment(String),
     BlockComment(String),
+    DocComment(String),
 }
 
 #[derive(PartialEq, Debug)]

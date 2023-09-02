@@ -25,7 +25,7 @@ pub trait Lexer: LexerInner {
     fn errors(&self) -> &Vec<LexError>;
 }
 
-impl<'input> LexerInner for TextLexer<'input> {
+impl LexerInner for TextLexer<'_> {
     fn next_char(&mut self) -> Option<char> {
         self.chars.next().map(|char| {
             if char == '\n' {
@@ -59,9 +59,17 @@ impl<'input> LexerInner for TextLexer<'input> {
     }
 }
 
-impl<'input> Lexer for TextLexer<'input> {
+impl Lexer for TextLexer<'_> {
     fn errors(&self) -> &Vec<LexError> {
         todo!()
+    }
+}
+
+impl Iterator for TextLexer<'_> {
+    type Item = Token;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.get_next_token()
     }
 }
 /// Lexes valid code and returns a token Iterator.

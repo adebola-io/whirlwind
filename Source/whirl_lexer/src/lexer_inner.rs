@@ -10,8 +10,8 @@ pub trait LexerInner {
             '/' => match self.next_char() {
                 // Lex a block comment.
                 Some('*') => self.block_comment(),
-                // Lex a line comment.
-                Some('/') => self.line_comment(),
+                // Lex a line or doc comment.
+                Some('/') => self.line_or_doc_comment(),
                 Some(_) => todo!(),
                 None => Token {
                     token_type: TokenType::Operator(Operator::Divide),
@@ -76,8 +76,34 @@ pub trait LexerInner {
         }
     }
     /// Lexes a line comment. It assumes that `//` has already been encountered.
-    fn line_comment(&mut self) -> Token {
-        todo!()
+    fn line_or_doc_comment(&mut self) -> Token {
+        self.start_span(2);
+
+        let mut text = String::new();
+        let mut is_doc_comment = false;
+
+        if let Some(ch) = self.next_char() {
+            if ch == '/' {
+                is_doc_comment = true;
+            } else {
+                text.push(ch)
+            }
+        }
+
+        loop {
+            match self.next_char() {
+                Some('\n') | None => break,
+                Some(ch) => text.push(ch),
+            }
+        }
+        Token {
+            token_type: if is_doc_comment {
+                TokenType::doc_comment(text)
+            } else {
+                TokenType::line_comment(text)
+            },
+            span: self.report_span(),
+        }
     }
     // Lexes a string.
     fn string(&mut self, quote_type: char) -> Token {
