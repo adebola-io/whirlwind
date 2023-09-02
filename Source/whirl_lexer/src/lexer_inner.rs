@@ -1,6 +1,6 @@
 use crate::{
     error::{LexError, LexErrorPos, LexErrorType},
-    token::{Comment, Keyword, Operator, Span, Token, TokenType},
+    token::{Bracket, Comment, Keyword, Operator, Span, Token, TokenType},
 };
 
 /// Shorthand to generate tokens, while checking if the next character matches a pattern, for multi-character tokens.
@@ -41,7 +41,14 @@ macro_rules! token {
             token_type: TokenType::Keyword(Keyword::$keyword),
             span: $self.report_span()
         }
-    }
+    };
+    // Brackets
+    (Bracket::$bracket: ident, $self: expr) => {
+        Some(Token {
+            token_type: TokenType::Bracket(Bracket::$bracket),
+            span: $self.report_span(),
+        })
+    };
 }
 
 fn is_valid_identifier(ch: char) -> bool {
@@ -104,6 +111,12 @@ pub trait LexerInner {
                 ['>', Operator::RightShift, '=', Operator::GreaterThanOrEqual],
                 self
             ),
+            '(' => token!(Bracket::LParens, self),
+            ')' => token!(Bracket::RParens, self),
+            '[' => token!(Bracket::LSquare, self),
+            ']' => token!(Bracket::RSquare, self),
+            '{' => token!(Bracket::LCurly, self),
+            '}' => token!(Bracket::RCurly, self),
             // Skip whitespaces.
             '\n' | '\t' | ' ' | '\r' => loop {
                 match self.next_char() {

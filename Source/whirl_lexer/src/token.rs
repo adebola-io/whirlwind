@@ -27,7 +27,6 @@ pub enum TokenType {
     Keyword(Keyword),
     Operator(Operator),
     Ident(String),
-    LineComment(String),
     String(String),
     TemplateStringFragment(String),
     Number(f64),

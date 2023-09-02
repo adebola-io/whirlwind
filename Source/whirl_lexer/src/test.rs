@@ -156,3 +156,9 @@ fn lex_identifiers_and_keywords() {
         ],
     )
 }
+
+#[test]
+fn lex_brackets() {
+    let lexer = lex_text("()[]{}");
+    assert_eq!(lexer.count(), 6)
+}
