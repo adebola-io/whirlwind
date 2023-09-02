@@ -29,7 +29,7 @@ impl LanguageServer for Backend {
         Ok(())
     }
 
-    async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
+    async fn hover(&self, _params: HoverParams) -> Result<Option<Hover>> {
         Ok(Some(Hover {
             contents: HoverContents::Array(vec![MarkedString::LanguageString(LanguageString {
                 language: format!("wrl"),

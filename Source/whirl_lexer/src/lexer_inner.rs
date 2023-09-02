@@ -1,6 +1,6 @@
 use crate::{
     error::{LexError, LexErrorPos, LexErrorType},
-    token::{Comment, Operator, Span, Token, TokenType},
+    token::{Operator, Span, Token, TokenType},
 };
 
 pub trait LexerInner {
@@ -12,14 +12,14 @@ pub trait LexerInner {
                 Some('*') => self.block_comment(),
                 // Lex a line comment.
                 Some('/') => self.line_comment(),
-                // Lex a string.
-                Some(ch @ ('\'' | '"')) => self.string(ch),
                 Some(_) => todo!(),
                 None => Token {
                     token_type: TokenType::Operator(Operator::Divide),
                     span: self.report_span(),
                 },
             },
+            // Lex a string.
+            ch @ ('\'' | '"') => self.string(ch),
             ';' => Token {
                 token_type: TokenType::Operator(Operator::SemiColon),
                 span: self.report_span(),
@@ -48,14 +48,17 @@ pub trait LexerInner {
 
         while !text_ended {
             match self.next_char() {
-                Some(ch) => comment_text.push(ch),
                 // Maybe end.
-                Some('*') => match self.next_char() {
+                Some(ch1 @ '*') => match self.next_char() {
                     // End of comment
                     Some('/') => break,
-                    Some(ch) => comment_text.push(ch),
+                    Some(ch2) => {
+                        comment_text.push(ch1);
+                        comment_text.push(ch2);
+                    }
                     None => text_ended = true,
                 },
+                Some(ch) => comment_text.push(ch),
                 None => text_ended = true,
             }
         }
@@ -68,7 +71,7 @@ pub trait LexerInner {
         }
 
         Token {
-            token_type: TokenType::Comment(Comment::BlockComment(comment_text)),
+            token_type: TokenType::block_comment(comment_text),
             span: self.report_span(),
         }
     }

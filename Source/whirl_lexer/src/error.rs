@@ -5,6 +5,7 @@ pub struct LexError {
     pub position: LexErrorPos,
 }
 
+/// The point to mark in an error.
 pub enum LexErrorPos {
     Point([usize; 2]),
     Span(Span),

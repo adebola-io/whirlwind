@@ -17,7 +17,7 @@ pub struct TextLexer<'input> {
 }
 
 pub trait Lexer: LexerInner {
-    /// Asynchronously lexes and provides tokens.
+    /// Asynchronously lexes and provides the next token in a stream.
     fn get_next_token(&mut self) -> Option<Token> {
         self.next_token_inner()
     }
