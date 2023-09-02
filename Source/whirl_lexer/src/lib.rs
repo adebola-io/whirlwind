@@ -30,7 +30,6 @@ impl LexerInner for TextLexer<'_> {
     fn next_char(&mut self) -> Option<char> {
         self.chars.next().map(|char| {
             if char == '\n' {
-                // Return the carriage to the start of a new line.
                 self.position = 1;
                 self.line += 1;
             } else {

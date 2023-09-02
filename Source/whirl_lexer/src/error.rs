@@ -14,4 +14,5 @@ pub enum LexErrorPos {
 pub enum LexErrorType {
     UnexpectedEndOfInput,
     UnterminatedString,
+    InvalidCharacter(char),
 }

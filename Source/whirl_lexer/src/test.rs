@@ -93,3 +93,66 @@ fn lex_line_or_doc_comments() {
     );
     assert_eq!(lexer.count(), 2)
 }
+
+#[test]
+fn lex_identifiers_and_keywords() {
+    // Simple
+    let mut lexer = lex_text("name");
+    assert_eq!(
+        lexer.next(),
+        Some(Token {
+            token_type: TokenType::Ident(format!("name")),
+            span: Span::from([1, 1, 1, 4])
+        })
+    );
+
+    // With keyword
+    lexer = lex_text("public function Add");
+    assert_eq!(
+        lexer.collect::<Vec<Token>>(),
+        vec![
+            Token {
+                token_type: TokenType::Keyword(crate::token::Keyword::Public),
+                span: Span::from([1, 1, 1, 6])
+            },
+            Token {
+                token_type: TokenType::Keyword(crate::token::Keyword::Function),
+                span: Span::from([1, 8, 1, 15])
+            },
+            Token {
+                token_type: TokenType::Ident(format!("Add")),
+                span: Span::from([1, 17, 1, 19])
+            }
+        ],
+    );
+
+    // With keyword substring
+    lexer = lex_text("publicised_forerunner");
+    assert_eq!(
+        lexer.next(),
+        Some(Token {
+            token_type: TokenType::Ident(format!("publicised_forerunner")),
+            span: Span::from([1, 1, 1, 21])
+        })
+    );
+
+    // In expression
+    lexer = lex_text("name + name");
+    assert_eq!(
+        lexer.collect::<Vec<Token>>(),
+        vec![
+            Token {
+                token_type: TokenType::Ident(format!("name")),
+                span: Span::from([1, 1, 1, 4])
+            },
+            Token {
+                token_type: TokenType::Operator(crate::token::Operator::Plus),
+                span: Span::from([1, 6, 1, 7])
+            },
+            Token {
+                token_type: TokenType::Ident(format!("name")),
+                span: Span::from([1, 8, 1, 11])
+            }
+        ],
+    )
+}

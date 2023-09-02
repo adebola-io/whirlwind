@@ -1,4 +1,4 @@
-/// A lexeme is the smallest lexical unit of a  program.
+/// A token is the smallest lexical unit of a Whirl program.
 #[derive(PartialEq, Debug)]
 pub struct Token {
     pub token_type: TokenType,
@@ -29,10 +29,10 @@ pub enum TokenType {
     Ident(String),
     LineComment(String),
     String(String),
-    TemplateString(Vec<TokenType>),
+    TemplateStringFragment(String),
     Number(f64),
     Bracket(Bracket),
-    EOF,
+    Invalid(char),
 }
 
 impl TokenType {
@@ -109,9 +109,8 @@ pub enum Keyword {
     Break,
     Case,
     Const,
-    Continue,
-    Colon,
     Class,
+    Continue,
     Else,
     Enum,
     Extends,
@@ -121,10 +120,8 @@ pub enum Keyword {
     If,
     In,
     Implements,
-    LBracket,
     New,
     Public,
-    RBracket,
     Record,
     Return,
     Static,

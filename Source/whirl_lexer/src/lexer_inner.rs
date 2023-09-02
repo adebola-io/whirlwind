@@ -1,59 +1,63 @@
 use crate::{
     error::{LexError, LexErrorPos, LexErrorType},
-    token::{Comment, Operator, Span, Token, TokenType},
+    token::{Comment, Keyword, Operator, Span, Token, TokenType},
 };
 
 /// Shorthand to generate tokens, while checking if the next character matches a pattern, for multi-character tokens.
 macro_rules! token {
-    // Empty token.
-    ($self: expr) => {
-        Token {
-            token_type: TokenType::EOF,
-            span: $self.report_span(),
-        }
-    };
-    (Operator::$operator: ident, $self: expr) => {
-        Token {
-            token_type: TokenType::Operator(Operator::$operator),
-            span: $self.report_span(),
-        }
-    };
+    // Comments.
     (Comment::$comment: ident ($text: ident), $self: expr) => {
-        Token {
+        Some(Token {
             token_type: TokenType::Comment(Comment::$comment($text)),
             span: $self.report_span(),
-        }
+        })
     };
+    // Operators.
+    (Operator::$operator: ident, $self: expr) => {
+        Some(Token {
+            token_type: TokenType::Operator(Operator::$operator),
+            span: $self.report_span(),
+        })
+    };
+    // Multichar operators.
     (Operator::$default: ident, [$($match: expr, Operator::$result: ident),*], $self: expr) => {{
+        let mut token;
         if let Some(ch) = $self.next_char() {
             match ch {
-                $($match => return token!(Operator::$result, $self),)*
-                _ => $self.stash(ch)
+                $($match => token = token!(Operator::$result, $self).unwrap(),)*
+                _ => {
+                    token = token!(Operator::$default, $self).unwrap();
+                    token.span.end[1] -= 1;
+                    $self.stash(ch)
+                }
             }
-        };
-        let mut token = token!(Operator::$default, $self);
-        token.span.end[1] -= 1;
-        token
+        } else {
+            token = token!(Operator::$default, $self).unwrap()
+        }
+        Some(token)
     }};
+    (Keyword::$keyword: ident, $self: expr) => {
+        Token {
+            token_type: TokenType::Keyword(Keyword::$keyword),
+            span: $self.report_span()
+        }
+    }
+}
+
+fn is_valid_identifier(ch: char) -> bool {
+    matches!(ch, 'A'..='Z' | 'a'..='z' | '_')
 }
 
 pub trait LexerInner {
     fn next_token_inner(&mut self) -> Option<Token> {
         match self.remove_stashed() {
-            Some(ch) => Some(self.token(ch)),
-            None => self.next_char().map(|ch| self.token(ch)),
+            Some(ch) => self.token(ch),
+            None => self.next_char().map(|ch| self.token(ch)).flatten(),
         }
-        .map(|token| {
-            if token.token_type == TokenType::EOF {
-                None
-            } else {
-                Some(token)
-            }
-        })
-        .flatten()
     }
 
-    fn token(&mut self, ch: char) -> Token {
+    /// Scans a token.
+    fn token(&mut self, ch: char) -> Option<Token> {
         self.start_span();
         match ch {
             // Lexing comments.
@@ -63,14 +67,14 @@ pub trait LexerInner {
                         // Lex a block comment.
                         '*' => return self.block_comment(),
                         // Lex a line or doc comment.
-                        '/' => return self.line_or_doc_comment(),
+                        '/' => return Some(self.line_or_doc_comment()),
                         _ => self.stash(ch),
                     }
                 }
                 token!(Operator::Divide, self)
             }
             // Lex a string.
-            ch @ ('\'' | '"') => self.string(ch),
+            ch @ ('\'' | '"') => Some(self.string(ch)),
             // Operators.
             ':' => token!(Operator::Colon, ['=', Operator::ColonAssign], self),
             ';' => token!(Operator::SemiColon, self),
@@ -105,10 +109,21 @@ pub trait LexerInner {
                 match self.next_char() {
                     Some('\n' | '\t' | ' ' | '\r') => {}
                     Some(ch) => return self.token(ch),
-                    None => return token!(self),
+                    None => return None,
                 }
             },
-            _ => todo!(),
+            ch if is_valid_identifier(ch) => Some(self.ident_or_keyword(ch)),
+            // Invalid characters.
+            ch => {
+                self.add_error(LexError {
+                    error_type: LexErrorType::InvalidCharacter(ch),
+                    position: LexErrorPos::Span(self.report_span()),
+                });
+                Some(Token {
+                    token_type: TokenType::Invalid(ch),
+                    span: self.report_span(),
+                })
+            }
         }
     }
 
@@ -130,7 +145,7 @@ pub trait LexerInner {
     fn add_error(&mut self, error: LexError);
 
     /// Lexes a block comment. It assumes that the first `/*` has been encountered.
-    fn block_comment(&mut self) -> Token {
+    fn block_comment(&mut self) -> Option<Token> {
         let mut comment_text = String::new();
         let mut text_ended = false;
 
@@ -160,6 +175,7 @@ pub trait LexerInner {
 
         token!(Comment::BlockComment(comment_text), self)
     }
+
     /// Lexes a line comment. It assumes that `//` has already been encountered.
     fn line_or_doc_comment(&mut self) -> Token {
         let mut text = String::new();
@@ -188,8 +204,68 @@ pub trait LexerInner {
             span: self.report_span(),
         }
     }
-    // Lexes a string.
+
+    /// Lexes a string.
     fn string(&mut self, quote_type: char) -> Token {
         todo!()
+    }
+
+    /// Lexes an identifier or a keyword. It also lexes word operators like `is`, `and`, `or` and `not`.
+    fn ident_or_keyword(&mut self, first_char: char) -> Token {
+        let mut ident_text = String::from(first_char);
+        let mut is_ended = false;
+
+        loop {
+            match self.next_char() {
+                Some(ch) if is_valid_identifier(ch) => ident_text.push(ch),
+                Some(ch) => {
+                    self.stash(ch);
+                    break;
+                }
+                None => {
+                    is_ended = true;
+                    break;
+                }
+            }
+        }
+        let mut token = match ident_text.as_str() {
+            "as" => token!(Keyword::As, self),
+            "and" => token!(Operator::And, self).unwrap(),
+            "async" => token!(Keyword::Async, self),
+            "case" => token!(Keyword::Case, self),
+            "const" => token!(Keyword::Const, self),
+            "class" => token!(Keyword::Class, self),
+            "continue" => token!(Keyword::Continue, self),
+            "else" => token!(Keyword::Else, self),
+            "enum" => token!(Keyword::Enum, self),
+            "extends" => token!(Keyword::Extends, self),
+            "for" => token!(Keyword::For, self),
+            "fn" => token!(Keyword::Fn, self),
+            "function" => token!(Keyword::Function, self),
+            "if" => token!(Keyword::If, self),
+            "in" => token!(Keyword::In, self),
+            "is" => token!(Operator::Is, self).unwrap(),
+            "implements" => token!(Keyword::Implements, self),
+            "new" => token!(Keyword::New, self),
+            "not" => token!(Operator::Not, self).unwrap(),
+            "or" => token!(Operator::Not, self).unwrap(),
+            "public" => token!(Keyword::Public, self),
+            "record" => token!(Keyword::Record, self),
+            "return" => token!(Keyword::Return, self),
+            "static" => token!(Keyword::Static, self),
+            "switch" => token!(Keyword::Switch, self),
+            "test" => token!(Keyword::Test, self),
+            "trait" => token!(Keyword::Trait, self),
+            "type" => token!(Keyword::Type, self),
+            "use" => token!(Keyword::Use, self),
+            "var" => token!(Keyword::Var, self),
+            "while" => token!(Keyword::While, self),
+            _ => Token {
+                token_type: TokenType::Ident(ident_text),
+                span: self.report_span(),
+            },
+        };
+        token.span.end[1] -= if is_ended { 1 } else { 2 };
+        token
     }
 }
