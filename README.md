@@ -19,7 +19,7 @@ TODO
 ## Syntax
 Whirl is inspired heavily by the syntax of languages like Rust and Typescript. An example of Whirl code would be:
 
-```wrl
+```csharp
 public function Add(a: Integer, b: Integer) {
   a + b
 }
