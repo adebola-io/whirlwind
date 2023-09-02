@@ -228,18 +228,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af150ab688ff2122fcef229be89cb50dd66af9e01a4ff320cc137eecc9bacc38"
 
 [[package]]
-name = "language-server"
-version = "0.1.0"
-dependencies = [
- "tokio",
- "tower-lsp",
-]
-
-[[package]]
-name = "lexer"
-version = "0.1.0"
-
-[[package]]
 name = "libc"
 version = "0.2.147"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -347,10 +335,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "parser"
-version = "0.1.0"
-
-[[package]]
 name = "percent-encoding"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -438,10 +422,6 @@ checksum = "567664f262709473930a4bf9e51bf2ebf3348f2e748ccc50dea20646858f8f29"
 dependencies = [
  "bitflags",
 ]
-
-[[package]]
-name = "repl"
-version = "0.1.0"
 
 [[package]]
 name = "rustc-demangle"
@@ -711,10 +691,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "typechecker"
-version = "0.1.0"
-
-[[package]]
 name = "unicode-bidi"
 version = "0.3.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -758,6 +734,34 @@ name = "wasi"
 version = "0.11.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
+
+[[package]]
+name = "whirl_ast"
+version = "0.1.0"
+
+[[package]]
+name = "whirl_language-server"
+version = "0.1.0"
+dependencies = [
+ "tokio",
+ "tower-lsp",
+]
+
+[[package]]
+name = "whirl_lexer"
+version = "0.1.0"
+
+[[package]]
+name = "whirl_parser"
+version = "0.1.0"
+
+[[package]]
+name = "whirl_repl"
+version = "0.1.0"
+
+[[package]]
+name = "whirl_typechecker"
+version = "0.1.0"
 
 [[package]]
 name = "windows-sys"

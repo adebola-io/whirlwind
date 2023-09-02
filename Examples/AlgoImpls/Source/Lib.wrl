@@ -44,6 +44,8 @@ public class Stack<T> {
     }
 }
 
+
+
 use Core.Testing.Assert;
 
 test "It tests stack pushing and popping" {
@@ -61,47 +63,38 @@ public type Integer = UnsignedInteger | SignedInteger;
 public type Float = Float32 | Float64;
 public type Number = SignedInteger | Float | BigInt;
 
-public class Occupation {
-    value: OccupationValue;
+
+public trait PartialEquality {
+    Equals(other: This): Boolean;
+}
+public trait Rangeable {
+    To(other: This): RangeOver<This>;
+}
+public trait PartialOrdering {
+    Max(other: This): This; 
+}
+public trait IndexWith<T, U> {
+    Access(accessor: T): U;
+}
+public trait Addition {
+    Add(other: This): This;
+}
+public trait Subtraction {
+    Subtract(other: This): This;
+}
+public trait Multiplication {
+    Multiply(other: This): This;
+}
+public trait Division {
+    Divide(other: This): This;
 }
 
-class Name implements Core.Fmt.Display {
-    firstName: String;
-    lastName: String;
 
-    [Core.Fmt.Display.ToString](): String {
-        "{this.firstName} {this.lastName}"
-    }
+public trait Display {
+    ToString(): String;
+}
+/// This allows you to declare variables without initializing them.
+public trait Default {
+    Default(): This;
 }
 
-class Person {
-    id: String;
-    name: Name;
-    gender: Male | Female;
-    occupation: Occupation;
-
-    /// Returns a hello message.
-    public SayHello(): String {
-        "{this.name} says Hello!"
-    }
-
-    public isMale(): Boolean {
-        this.gender._type == 1
-    }
-
-    public isFemale(): Boolean {
-        this.gender._type == 2
-    }
-}
-
-class Cylinder extends Circle {
-    new() {
-        super()
-    }
-}
-
-class Image {
-    public Resize() {
-
-    }
-}

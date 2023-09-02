@@ -2,11 +2,14 @@ Program ::= (Comment | TopLevelDeclaration)*
 
 Comment ::= BlockComment | LineComment
 
-TopLevelDeclaration ::= PublicDeclaration | UseDeclaration | TestDeclaration | Declaration
+TopLevelDeclaration ::= PublicDeclaration 
+                        | UseDeclaration 
+                        | TestDeclaration 
+                        | Declaration
 
 BlockComment ::= "/*" Char* "*/"
 
-LineComment ::= "///" [^'\n']* [\n]
+LineComment ::= "//" [^'\n']* [\n]
 
 PublicDeclaration ::= "public " Declaration
 
@@ -20,6 +23,7 @@ Declaration ::= VariableDeclaration
                 | FunctionDeclaration
                 | RecordDeclaration
                 | TraitDeclaration
+                | EnumDeclaration
                 | TypeDeclaration
 
 UseSpecifier ::= Identifier (UseTarget | Alias)?
@@ -28,7 +32,8 @@ StringLiteral ::= ("'" [^']* "'") | ('"' [^"]* '"')
 
 Block ::= "{" StatementList? "}"
 
-VariableDeclaration ::= (Identifier | DestructurePattern) TypeLabel? ":=" Expression ";" | "var " Identifier VariableInitializer? ";"
+VariableDeclaration ::= (Identifier | DestructurePattern) TypeLabel? ":=" Expression ";" 
+                        | "var " Identifier VariableInitializer? ";"
 
 ConstantDeclaration ::= "const " (Identifier | DestructurePattern) VariableInitializer ";"
 
@@ -39,6 +44,8 @@ FunctionDeclaration ::= "async "? "function " Identifier GenericParameterList? T
 RecordDeclaration ::= "record " Identifier "{" RecordMapList? "}"
 
 TraitDeclaration ::= "trait " Identifier ImplementsLabel? (TraitList | ";")
+
+EnumDeclaration ::= "enum " Identifier EnumBlock
 
 TypeDeclaration ::= "type " Identifier GenericParameterList? "=" TypeExpression
 
@@ -58,10 +65,10 @@ DestructurePattern ::= "{" IdentifierList "}"
 
 Expression ::= "this"
                | Literal
+               | Block
                | Identifier
                | BinaryExpression
                | UnaryExpression
-               | UpdateExpression
                | AssignmentExpression
                | NewExpression
                | LogicalExpression
@@ -72,11 +79,14 @@ Expression ::= "this"
                | CallExpression
                | MemberExpression
                | IfExpression
+               | SwitchExpression
                | OptionalExpression
 
 VariableInitializer ::= "=" Expression
 
 GenericParameterList ::= "<" GenericParameters ">"
+
+EnumBlock ::= "{" EnumVariants "}"
 
 ExtendsLabel ::= "extends " ClassList
 
@@ -91,7 +101,6 @@ RecordMapList ::= RecordMap ("," RecordMapList?)?
 TraitList ::= "{" TraitProperties? "}"
 
 Statement ::= ForStatement
-              | SwitchStatement
               | WhileStatement
               | ReturnStatement
               | BreakStatement
@@ -117,8 +126,6 @@ BinaryExpression ::= Expression BinaryOperator Expression
 
 UnaryExpression ::= UnaryOperator Expression
 
-UpdateExpression ::= AssignableExpression ("++" | "--")
-
 AssignmentExpression ::= AssignableExpression AssignmentOperator Expression
 
 NewExpression ::= "new " Expression
@@ -137,11 +144,15 @@ CallExpression ::= Expression "(" Expression ")"
 
 MemberExpression ::= Expression "." Expression
 
-IfExpression ::= "if " Expression ExpressionBlock Else?
+IfExpression ::= "if " Expression Block Else?
+
+SwitchExpression ::=  "switch " Expression SwitchBlock
 
 OptionalExpression ::= Expression "?"
 
 GenericParameters ::= GenericParameter ("," GenericParameters?)?
+
+EnumVariants ::= Identifier ("," EnumVariants?)?
 
 ClassList ::= (DiscreteType | MemberType) ("," ClassList?)?
 
@@ -156,8 +167,6 @@ RecordMap ::= Literal '=' Literal
 TraitProperties ::= TypedIdentifier ("," TraitProperties?)?
 
 ForStatement ::= "for " Identifier " in " Expression Block
-
-SwitchStatement ::= "switch " Expression SwitchBlock
 
 WhileStatement ::= "while " Expression Block
 
@@ -187,13 +196,13 @@ NumberLiteral ::= Number  | Number "." Number | '0x' ([0-9][A-F])+ | '0o' ([0-7]
 
 BooleanLiteral ::= "true " | "false "
 
-BinaryOperator ::= "+" | "-" | "/" | "*" | "%" | "**" | "&" | "|"| ">>" | "<<" | ">" | "<" | " is "
+BinaryOperator ::= "+" | "-" | "/" | "*" | "%" | "^" | "&" | "|"| ">>" | "<<" | ">" | "<" | " is "
 
-UnaryOperator ::= "!" | "~" | "+" | "-" | " not " | "++" | "--"
+UnaryOperator ::= "!" | "~" | "+" | "-" | " not "
 
 AssignableExpression ::= MemberExpression | Identifier | IndexExpression
 
-AssignmentOperator ::= "=" | "+=" | "++=" | "-=" | "--=" | ""
+AssignmentOperator ::= "=" | "+=" | "-="
 
 LogicalOperator ::= "&&" | "||" | " and " | " or "
 
@@ -201,10 +210,7 @@ ParameterList ::= "(" Parameters? ")"
 
 ArrayElements ::= Expression ("," ArrayElements?)?
 
-// A block that returns its final expression.
-ExpressionBlock ::= Block
-
-Else ::= "else " ExpressionBlock
+Else ::= "else " Expression
 
 GenericParameter ::= Identifier TypeLabel? DefaultGenericArgument?
 
@@ -214,7 +220,7 @@ Method ::= "public "? "static "? Identifier GenericParameterList? ParameterList 
 
 Property ::= "public "? Identifier "? "? TypeLabel ";"
 
-TraitImplementation ::= "[" (Identifier ".")+ Identifier "]" ParameterList TypeLabel? Block
+TraitImplementation ::= "[" (Identifier GenericArgumentList? ".")+ Identifier "]" ParameterList TypeLabel? Block
 
 TypedIdentifier ::= Identifier TypeLabel
 
@@ -224,7 +230,9 @@ Parameters ::= Identifier TypeLabel? ("," Parameters?)?
 
 DefaultGenericArgument ::= "=" TypeExpression
 
-SwitchCase ::= "case " Expression "=>" Block
+SwitchCase ::= "case " CasePattern "=>" Expression
 
 ElseCase ::= "else " "=>" Block
+
+CasePattern ::= (Literal (".." Literal)? | Identifier ("." Identifier)*) IfExpression? 
 

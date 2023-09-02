@@ -7,6 +7,8 @@
       { "include": "#type_declaration" },
       { "include": "#class_header" },
       { "include": "#trait_header" },
+      { "include": "#use_declaration" },
+      { "include": "#enum_declaration" },
       { "include": "#function" },
       { "include": "#boolean_literal" },
       { "include": "#keyword" },
@@ -26,7 +28,7 @@
       },
       "injunction": {
          "name": "meta.injunction keyword.storage.injunction",
-         "match": "\\b(use|public|static|test|var|new|const|class|async|record|trait|type|extends|implements|not|and|or|is)\\b"
+         "match": "\\b(use|enum|public|static|test|var|new|const|class|async|record|trait|type|extends|implements|not|and|or|is)\\b"
       },
       "comment": {
          "patterns": [
@@ -196,6 +198,54 @@
          ],
          "end": "(?=\\{)"
       },
+
+      "use_declaration": {
+         "begin": "(\\buse\\b\\s+)",
+         "beginCaptures": {
+            "1": {
+               "name": "keyword"
+            }
+         },
+         "patterns": [
+            {
+               "name": "entity.name.class support.class",
+               "match": "(\\b\\w+\\b)"
+            },
+            { "match": "\\." },
+            { "match": "\\{\\}" }
+         ],
+         "end": "(?=;)"
+      },
+
+      "enum_declaration": {
+         "begin": "(\\benum\\b)\\s+",
+         "beginCaptures": {
+            "1": {
+               "name": "keyword"
+            }
+         },
+         "patterns": [
+            {
+               "begin": "(?<=enum\\s+)",
+               "contentName": "meta.class class entity.name.class",
+               "end": "(?=[^\\w])"
+            },
+            { "include": "#enum_block" }
+         ],
+         "end": "\\s*\\}"
+      },
+      "enum_block": {
+         "begin": "\\{\\s*",
+         "patterns": [
+            {
+               "name": "meta.definition.variable variable.other.constant",
+               "match": "\\b\\w+\\b\\s*"
+            },
+            { "match": "\\," }
+         ],
+         "end": "(?=\\s*\\})"
+      },
+
       "function": {
          "begin": "(\\bfunction\\s+)",
          "beginCaptures": {
@@ -232,7 +282,7 @@
       },
       "trait_implementation": {
          "name": "entity.name.function support.function",
-         "match": "(\\[(\\s*\\w+\\s*\\.)+\\s*)\\w+(?=\\s*\\]\\s*(\\<.*\\>)?\\s*\\()",
+         "match": "(\\[(\\s*\\w+\\s*(\\<.*\\>)?\\s*\\.)+\\s*)\\w+(?=\\s*\\]\\s*(\\<.*\\>)?\\s*\\()",
          "captures": {
             "1": {
                "patterns": [
@@ -314,7 +364,7 @@
                "match": "\\b\\w+(?=\\.)\\b"
             },
             {
-               "name": "meta.definition.variable.ts variable.other.constant.ts",
+               "name": "meta.definition.variable variable.other.constant",
                "match": "\\b[[:upper:][:digit:]_]+\\b"
             },
             {

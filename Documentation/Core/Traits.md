@@ -1,15 +1,31 @@
 # Internal Traits
 
-## Logical
+## Core.Internal.Default
 
-## PartialEq
+Allows the assignment of default values.
 
-## Index
+```wrl
+use Core.Internal.Default;
 
-## Addition
+class Number implements Default {
+    [Default.Default](): This {
+        0
+    }
+}
+```
 
-## Subtraction
+## Core.Fmt.Display
 
-## Multiplication
+## Core.Ops.PartialEquality
 
-## Division
+## Core.Ops.PartialOrdering
+
+## Core.Ops.IndexWith
+
+## Core.Ops.Addition
+
+## Core.Ops.Subtraction
+
+## Core.Ops.Multiplication
+
+## Core.Ops.Division

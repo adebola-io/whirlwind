@@ -1,4 +1,12 @@
 {
+   "Implements Keyword": {
+      "prefix": "imp",
+      "body": "implements "
+   },
+   "Extends Keyword": {
+      "prefix": "ext",
+      "body": "extends "
+   },
    "Class Definition": {
       "prefix": "class",
       "isFileTemplate": true,
@@ -84,10 +92,10 @@
       "prefix": "switch",
       "body": [
          "switch ${1:key} {",
-         "\tcase ${2:value} => {",
+         "\tcase ${2:pattern} => {",
          "\t\t$3",
          "\t}",
-         "\tcase ${4:value} => {",
+         "\tcase ${4:pattern} => {",
          "\t\t$5",
          "\t}",
          "\telse => { ",
