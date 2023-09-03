@@ -1,5 +1,5 @@
 [package]
-name = "whirl_language-server"
+name = "whirl_language_server"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,3 +8,5 @@ edition = "2021"
 [dependencies]
 tokio = { version = "1", features = ["full"] }
 tower-lsp = {version = "0.20.0"}
+whirl_parser = {version = "*", path="../whirl_parser"}
+whirl_ast = {version = "*", path = "../whirl_ast"}

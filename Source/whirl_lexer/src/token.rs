@@ -1,24 +1,10 @@
+use whirl_ast::Span;
+
 /// A token is the smallest lexical unit of a Whirl program.
 #[derive(PartialEq, Debug)]
 pub struct Token {
-    pub token_type: TokenType,
+    pub _type: TokenType,
     pub span: Span,
-}
-
-/// Represents a range in the input text.
-#[derive(PartialEq, Debug)]
-pub struct Span {
-    pub start: [usize; 2],
-    pub end: [usize; 2],
-}
-
-impl From<[usize; 4]> for Span {
-    fn from(value: [usize; 4]) -> Self {
-        Span {
-            start: [value[0], value[1]],
-            end: [value[2], value[3]],
-        }
-    }
 }
 
 #[derive(PartialEq, Debug)]
@@ -43,6 +29,12 @@ impl TokenType {
     }
     pub fn doc_comment(text: String) -> Self {
         TokenType::Comment(Comment::DocComment(text))
+    }
+    pub fn lparen() -> Self {
+        TokenType::Bracket(Bracket::LParens)
+    }
+    pub fn rparens() -> Self {
+        TokenType::Bracket(Bracket::RParens)
     }
 }
 

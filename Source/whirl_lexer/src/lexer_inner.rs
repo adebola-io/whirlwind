@@ -1,6 +1,8 @@
+use whirl_ast::Span;
+
 use crate::{
     error::{LexError, LexErrorPos, LexErrorType},
-    token::{Bracket, Comment, Keyword, Operator, Span, Token, TokenType},
+    token::{Bracket, Comment, Keyword, Operator, Token, TokenType},
 };
 
 /// Shorthand to generate tokens, while checking if the next character matches a pattern, for multi-character tokens.
@@ -8,14 +10,14 @@ macro_rules! token {
     // Comments.
     (Comment::$comment: ident ($text: ident), $self: expr) => {
         Some(Token {
-            token_type: TokenType::Comment(Comment::$comment($text)),
+           _type: TokenType::Comment(Comment::$comment($text)),
             span: $self.report_span(),
         })
     };
     // Operators.
     (Operator::$operator: ident, $self: expr) => {
         Some(Token {
-            token_type: TokenType::Operator(Operator::$operator),
+           _type: TokenType::Operator(Operator::$operator),
             span: $self.report_span(),
         })
     };
@@ -38,14 +40,14 @@ macro_rules! token {
     }};
     (Keyword::$keyword: ident, $self: expr) => {
         Token {
-            token_type: TokenType::Keyword(Keyword::$keyword),
+           _type: TokenType::Keyword(Keyword::$keyword),
             span: $self.report_span()
         }
     };
     // Brackets
     (Bracket::$bracket: ident, $self: expr) => {
         Some(Token {
-            token_type: TokenType::Bracket(Bracket::$bracket),
+           _type: TokenType::Bracket(Bracket::$bracket),
             span: $self.report_span(),
         })
     };
@@ -133,7 +135,7 @@ pub trait LexerInner {
                     position: LexErrorPos::Span(self.report_span()),
                 });
                 Some(Token {
-                    token_type: TokenType::Invalid(ch),
+                    _type: TokenType::Invalid(ch),
                     span: self.report_span(),
                 })
             }
@@ -209,7 +211,7 @@ pub trait LexerInner {
             }
         }
         Token {
-            token_type: if is_doc_comment {
+            _type: if is_doc_comment {
                 TokenType::doc_comment(text)
             } else {
                 TokenType::line_comment(text)
@@ -274,7 +276,7 @@ pub trait LexerInner {
             "var" => token!(Keyword::Var, self),
             "while" => token!(Keyword::While, self),
             _ => Token {
-                token_type: TokenType::Ident(ident_text),
+                _type: TokenType::Ident(ident_text),
                 span: self.report_span(),
             },
         };

@@ -1,11 +1,12 @@
-Program ::= (Comment | TopLevelDeclaration)*
+Program ::= (Comment | TopLevelStatement)*
 
 Comment ::= BlockComment | LineComment
 
-TopLevelDeclaration ::= PublicDeclaration 
+TopLevelStatement ::= PublicDeclaration 
                         | UseDeclaration 
                         | TestDeclaration 
                         | Declaration
+                        | Statement
 
 BlockComment ::= "/*" Char* "*/"
 

@@ -3,9 +3,10 @@ mod lexer_inner;
 mod test;
 mod token;
 
-use error::LexError;
+pub use error::LexError;
 use lexer_inner::LexerInner;
-use token::{Span, Token};
+pub use token::*;
+use whirl_ast::Span;
 
 /// A lexer for tokenizing Whirl text.
 pub struct TextLexer<'input> {
@@ -17,13 +18,25 @@ pub struct TextLexer<'input> {
     stash: Option<char>,
 }
 
-pub trait Lexer: LexerInner {
+pub trait Lexer: LexerInner + Iterator<Item = Token> {
     /// Asynchronously lexes and provides the next token in a stream.
     fn get_next_token(&mut self) -> Option<Token> {
         self.next_token_inner()
     }
+    /// Bypass comments and invalid tokens in the stream and return the next syntactic token.
+    fn next_useful_token(&mut self) -> Option<Token> {
+        loop {
+            match self.next_token_inner() {
+                Some(token) => match token._type {
+                    TokenType::Comment(_) | TokenType::Invalid(_) => {}
+                    _ => return Some(token),
+                },
+                None => return None,
+            }
+        }
+    }
     /// Returns an array of the vectors encountered while parsing.    
-    fn errors(&self) -> &Vec<LexError>;
+    fn errors(&mut self) -> &mut Vec<LexError>;
 }
 
 impl LexerInner for TextLexer<'_> {
@@ -68,8 +81,8 @@ impl LexerInner for TextLexer<'_> {
 }
 
 impl Lexer for TextLexer<'_> {
-    fn errors(&self) -> &Vec<LexError> {
-        todo!()
+    fn errors(&mut self) -> &mut Vec<LexError> {
+        &mut self.errors
     }
 }
 
