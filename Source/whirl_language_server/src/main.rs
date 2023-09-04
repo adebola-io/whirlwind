@@ -1,5 +1,5 @@
 mod document_manager;
-mod hover_info;
+mod hover;
 
 use document_manager::DocumentManager;
 use tower_lsp::jsonrpc::Result;
@@ -45,7 +45,11 @@ impl LanguageServer for Backend {
     }
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
-        self.doc_manager.get_hover_info(params)
+        self.client
+            .log_message(MessageType::INFO, "Hovering...")
+            .await;
+        let hover = self.doc_manager.get_hover_info(params);
+        Ok(hover.map(|h| h.into()))
     }
 }
 

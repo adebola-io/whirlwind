@@ -1,10 +1,6 @@
-use std::{
-    cell::RefCell,
-    rc::Rc,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
-use whirl_ast::FunctionSignature;
+use crate::FunctionSignature;
 
 #[derive(Debug)]
 pub struct ScopeManager {

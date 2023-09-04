@@ -29,14 +29,15 @@ pub struct PublicDeclaration {
     pub span: Span,
 }
 
+/// A node for a function declaration in the AST.
 #[derive(Debug)]
 pub struct FunctionDeclaration {
     pub signature: Arc<Mutex<FunctionSignature>>,
     pub body: Block,
 }
 
-#[derive(Debug)]
 /// An entry to mark a function.
+#[derive(Debug)]
 pub struct FunctionSignature {
     /// Name of the function.
     pub name: Identifier,
@@ -44,6 +45,8 @@ pub struct FunctionSignature {
     pub is_async: bool,
     /// The parameters of the function, if any.
     pub params: Vec<Parameter>,
+    /// Doc comments annotating the function, if any.
+    pub info: Option<Vec<String>>,
     /// Generic Parameters of the function, if any.
     pub generic_params: Option<Vec<GenericParameter>>,
     /// Optional return type.
@@ -70,10 +73,31 @@ pub struct Block {
 }
 
 #[derive(Debug)]
+pub struct SemanticType {}
+
+impl std::fmt::Display for SemanticType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{unknown}}")
+    }
+}
+
+impl Default for SemanticType {
+    fn default() -> Self {
+        Self {}
+    }
+}
+
+#[derive(Debug)]
 pub struct Parameter {
     pub name: Identifier,
     pub type_label: Option<ParserType>,
+    pub inferred_type: SemanticType,
     pub is_optional: bool,
+}
+impl std::fmt::Display for Parameter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.name.name, self.inferred_type)
+    }
 }
 
 #[derive(Debug)]

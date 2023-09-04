@@ -1,15 +1,10 @@
 use std::sync::RwLock;
 
-use tower_lsp::{
-    lsp_types::{
-        DidOpenTextDocumentParams, Hover, HoverContents, HoverParams, MessageType, Position, Url,
-    },
-    Client,
-};
-use whirl_ast::{FunctionSignature, Statement};
+use tower_lsp::lsp_types::{DidOpenTextDocumentParams, HoverParams, Position, Url};
+use whirl_ast::ASTVisitor;
 use whirl_parser::Module;
 
-use crate::hover_info::HoverInfo;
+use crate::hover::{HoverFinder, HoverInfo};
 
 #[derive(Debug)]
 pub struct DocumentManager {
@@ -31,22 +26,14 @@ impl DocumentManager {
         self.documents.write().unwrap().push(file);
     }
     /// Hover over support.
-    pub fn get_hover_info(&self, params: HoverParams) -> tower_lsp::jsonrpc::Result<Option<Hover>> {
+    pub fn get_hover_info(&self, params: HoverParams) -> Option<HoverInfo> {
+        let params = params.text_document_position_params;
         let documents = self.documents.read().unwrap();
-        let document = documents
+        documents
             .iter()
-            .find(|d| d.uri == params.text_document_position_params.text_document.uri);
-        match document {
-            Some(document) => {
-                let hover_info =
-                    document.get_hover_for_position(params.text_document_position_params.position);
-                match hover_info {
-                    Some(hover_info) => hover_info.into(),
-                    None => Ok(None),
-                }
-            }
-            None => Ok(None),
-        }
+            .find(|d| d.uri == params.text_document.uri)
+            .map(|document| document.get_hover_for_position(params.position))
+            .flatten()
     }
     /// Checks if a uri is already being tracked.
     pub fn has(&self, uri: &Url) -> bool {
@@ -67,35 +54,12 @@ pub struct WhirlDocument {
 
 impl WhirlDocument {
     fn get_hover_for_position(&self, position: Position) -> Option<HoverInfo> {
-        let position = [position.line, position.character];
-        let mut i = 0;
-        while i < self.module.statements.len() {
-            let statement = &self.module.statements[i];
-            if statement.span().contains(position) {
-                match statement {
-                    Statement::TestDeclaration => todo!(),
-                    Statement::UseDeclaration => todo!(),
-                    Statement::VariableDeclaration => todo!(),
-                    Statement::ConstantDeclaration => todo!(),
-                    Statement::ClassDeclaration => todo!(),
-                    Statement::FunctionDeclaration(f) => {
-                        // Hovering over the function name.
-                        if f.signature.lock().unwrap().name.span.contains(position) {
-                            return Some(HoverInfo {
-                                contents: HoverContents::Array(vec![]),
-                            });
-                        }
-                        return None;
-                    }
-                    Statement::RecordDeclaration => todo!(),
-                    Statement::TraitDeclaration => todo!(),
-                    Statement::EnumDeclaration => todo!(),
-                    Statement::TypeDeclaration => todo!(),
-                    Statement::PublicDeclaration(_) => todo!(),
-                    Statement::WhileStatement => todo!(),
-                    Statement::ForStatement => todo!(),
-                    Statement::ExpressionStatement => todo!(),
-                }
+        let position = [position.line + 1, position.character];
+        let hover_finder = HoverFinder {};
+        for statement in &self.module.statements {
+            let hover_info = hover_finder.visit_statement(statement, &position);
+            if hover_info.is_some() {
+                return hover_info;
             }
         }
         return None;

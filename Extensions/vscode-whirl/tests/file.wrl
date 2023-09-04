@@ -1,1 +1,9 @@
-function SayHello() {}
+/// This is a function that allows you to greet.
+function SayHello() {
+    /// # Hello!
+    /// This is an inner function.
+    /// Hi
+    function SayHelloAgain() {
+        
+    }
+}

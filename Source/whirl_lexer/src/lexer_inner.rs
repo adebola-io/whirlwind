@@ -221,7 +221,7 @@ pub trait LexerInner {
     }
 
     /// Lexes a string.
-    fn string(&mut self, quote_type: char) -> Token {
+    fn string(&mut self, _quote_type: char) -> Token {
         todo!()
     }
 

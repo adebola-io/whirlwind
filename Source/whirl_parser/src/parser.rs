@@ -2,12 +2,12 @@ use std::cell::RefCell;
 use std::sync::{Arc, Mutex};
 
 use crate::errors::{self, ParseError};
-use crate::scope::{ScopeManager, ScopeType};
+
 use whirl_ast::{
     Block, FunctionDeclaration, FunctionSignature, GenericParameter, Identifier, Parameter,
-    ParserType, Span, Statement,
+    ParserType, ScopeManager, ScopeType, Span, Statement,
 };
-use whirl_lexer::{Bracket::*, Keyword, Lexer, Operator::*, Token, TokenType};
+use whirl_lexer::{Bracket::*, Comment, Keyword, Lexer, Operator::*, Token, TokenType};
 
 pub struct Parser<L: Lexer> {
     pub lexer: RefCell<L>,
@@ -15,6 +15,7 @@ pub struct Parser<L: Lexer> {
     present: RefCell<Option<Token>>,
     past: RefCell<Option<Token>>,
     future: RefCell<Option<Token>>,
+    doc_comments: RefCell<Vec<String>>,
 }
 
 type Fallible<T> = Result<T, ParseError>;
@@ -42,6 +43,7 @@ impl<L: Lexer> Parser<L> {
             present: RefCell::new(None),
             past: RefCell::new(None),
             future: RefCell::new(None),
+            doc_comments: RefCell::new(vec![]),
         }
     }
 
@@ -52,11 +54,25 @@ impl<L: Lexer> Parser<L> {
     /// Advance to the next token.
     fn advance(&self) {
         self.past.replace(self.present.take());
-        self.present.replace(
-            self.future
-                .take()
-                .or(self.lexer.borrow_mut().next_useful_token()),
-        );
+        self.present
+            .replace(self.future.take().or(self.next_useful_token()));
+    }
+    /// Keep track of documentation comments and returns the next syntactically useful token.
+    fn next_useful_token(&self) -> Option<Token> {
+        loop {
+            match self.lexer.borrow_mut().next() {
+                Some(token) => match token._type {
+                    TokenType::Comment(comment) => {
+                        if let Comment::DocComment(text) = comment {
+                            self.doc_comments.borrow_mut().push(text)
+                        }
+                    }
+                    TokenType::Invalid(_) => {}
+                    _ => return Some(token),
+                },
+                None => return None,
+            }
+        }
     }
     /// Rewinds to the last token.
     fn _back(&self) {
@@ -94,6 +110,16 @@ impl<L: Lexer> Parser<L> {
             None => Err(error),
         }
     }
+
+    /// Returns the documentation comments before a position.
+    fn get_doc_comment(&self) -> Option<Vec<String>> {
+        let doc_comments = std::mem::take(unsafe { &mut *self.doc_comments.as_ptr() });
+        if doc_comments.len() > 0 {
+            Some(doc_comments)
+        } else {
+            None
+        }
+    }
 }
 
 impl<L: Lexer> Parser<L> {
@@ -105,7 +131,10 @@ impl<L: Lexer> Parser<L> {
 
         match self.token().unwrap()._type {
             TokenType::Keyword(Keyword::Function) => self.function(false),
-            _ => unreachable!(),
+            ref tokentype => {
+                println!("{:?} not implemented yet!", tokentype);
+                unimplemented!()
+            }
         }
     }
 
@@ -121,6 +150,7 @@ impl<L: Lexer> Parser<L> {
         let signature = Arc::new(Mutex::new(FunctionSignature {
             name,
             is_async,
+            info: self.get_doc_comment(),
             params,
             generic_params,
             return_type,
@@ -243,178 +273,3 @@ impl<L: Lexer> Iterator for Parser<L> {
         Some(statement_or_error)
     }
 }
-
-// impl<Lexer: whirl_lexer::Lexer> Parser<Lexer> {
-//     /// Parses the next statement in a stream.
-//     pub fn parse_top_level_statement(&mut self) -> Option<Fallible<Statement>> {
-//         let token = self.next_token()?;
-//         Some(self.statement(token))
-//     }
-
-//     fn next_token(&mut self) -> Option<Token> {
-//         self.lexer.skip_comments_to_next_token().map(|token| {
-//             self.last_span = token.span;
-//             token
-//         })
-//     }
-
-//     /// Parse a public declaration.
-//     pub fn public_declaration(&mut self, token: Token) -> Fallible<Statement> {
-//         match self.next_token() {
-//             Some(token) => match token.token_type {
-//                 TokenType::Keyword(
-//                     Keyword::Function
-//                     | Keyword::Class
-//                     | Keyword::Type
-//                     | Keyword::Use
-//                     | Keyword::Trait
-//                     | Keyword::Record
-//                     | Keyword::Const
-//                     | Keyword::Var,
-//                 ) => {
-//                     let statement = self.declaration()?;
-//                     Ok(Statement::PublicDeclaration(PublicDeclaration {
-//                         span: Span::from([token.span.start, statement.span().end]),
-//                         declaration: Box::new(statement),
-//                     }))
-//                 }
-//                 // Parse shorthand variable declarations but mark them as syntax errors.
-//                 TokenType::Ident(_) => {
-//                     let statement = self.expression_statement(token)?;
-//                     if statement.is_variable_declaration() {
-//                         Err(errors::public_shorthand_var(statement.span()))
-//                     } else {
-//                         Err(errors::declaration_expected(statement.span()))
-//                     }
-//                 }
-//                 _ => todo!(),
-//             },
-//             None => Err(errors::declaration_or_statement_expected(token.span)),
-//         }
-//     }
-
-//     pub fn statement(&mut self, token: Token) -> Fallible<Statement> {
-//         match token.token_type {
-//             TokenType::Comment(_) => todo!(),
-//             TokenType::Keyword(Keyword::Public) => self.public_declaration(token),
-//             TokenType::Keyword(Keyword::Function) => self.function(token.span, false),
-//             TokenType::Keyword(Keyword::Async) => self.async_function(),
-//             _ => self.statement(token),
-//         }
-//     }
-
-//     fn expression_statement(&self, token: Token) -> Fallible<Statement> {
-//         todo!()
-//     }
-
-//     fn declaration(&mut self) -> Fallible<Statement> {
-//         todo!()
-//     }
-
-//     /// Parse an identifier.
-//     fn identifier(&mut self) -> Fallible<Identifier> {
-//         let previous_span = self.last_span;
-//         match self.next_token() {
-//             Some(token) => match token.token_type {
-//                 TokenType::Ident(name) => Ok(Identifier {
-//                     name,
-//                     span: token.span,
-//                 }),
-//                 _ => Err(errors::identifier_expected(token.span)),
-//             },
-//             None => Err(errors::identifier_expected(previous_span)),
-//         }
-//     }
-
-//     /// Parse a function.
-//     fn function(&mut self, start: Span, is_async: bool) -> Fallible<Statement> {
-//         let name = self.identifier()?;
-//         let generic_params = self.maybe_generic_parameters()?;
-
-//         self.expect(TokenType::lparen())?;
-
-//         let params = self.parameterlist()?;
-//         let return_type = self.maybe_type_label()?;
-//         let body = self.block()?;
-
-//         let signature = Rc::new(RefCell::new(FunctionSignature {
-//             name,
-//             is_async,
-//             params,
-//             generic_params,
-//             return_type,
-//             full_span: Span::from([start.start, body.span.end]),
-//         }));
-
-//         Ok(Statement::FunctionDeclaration(FunctionDeclaration {
-//             signature,
-//             body,
-//         }))
-//     }
-
-//     /// Parse an async function.
-//     fn async_function(&mut self) -> Result<Statement, ParserError> {
-//         let start = self.last_span;
-//         match self.next_token() {
-//             Some(Token { token_type, span })
-//                 if token_type == TokenType::Keyword(Keyword::Function) =>
-//             {
-//                 self.function(span, true)
-//             }
-//             Some(Token { span, .. }) => Err(errors::expected(
-//                 TokenType::Keyword(Keyword::Function),
-//                 span,
-//             )),
-//             None => Err(errors::expected_after(
-//                 TokenType::Keyword(Keyword::Function),
-//                 start,
-//             )),
-//         }
-//     }
-
-//     #[inline(always)]
-//     /// Unconditionally expect a token.
-//     fn expect(&mut self, token_type: TokenType) -> Fallible<()> {
-//         match self.next_token() {
-//             Some(token) => match token.token_type {
-//                 tok if tok == token_type => Ok(()),
-//                 _ => return Err(errors::expected(token_type, token.span)),
-//             },
-//             None => return Err(errors::expected_after(token_type, self.last_span)),
-//         }
-//     }
-
-//     fn block(&self) -> Fallible<Block> {
-//         todo!()
-//     }
-
-//     /// Optionally parses generic parameters of a function or class.
-//     fn maybe_generic_parameters(&mut self) -> Fallible<Option<Vec<GenericParameter>>> {
-//         Ok(None)
-//     }
-
-//     /// Parse a parameter list. It takes in the span of the first `(`.
-//     fn parameterlist(&mut self) -> Fallible<Vec<Parameter>> {
-//         let mut parameters = vec![];
-//         loop {
-//             match self.next_token().map(|token| token.token_type) {
-//                 Some(token_type) => match token_type {
-//                     TokenType::Bracket(RParens) => break,
-//                     TokenType::Ident(name) => match self.next_token().map(|token| token.token_type) {
-//                         Some(token) => {
-
-//                         },
-//                         None => return Err(errors::expected(TokenType::rparens(), token_type.span)),
-//                     },
-//                     _ => return Err(errors::expected(TokenType::rparens(), token_type.span)),
-//                 },
-//                 None => return Err(errors::expected_after(TokenType::rparens(), self.last_span)),
-//             }
-//         }
-//         Ok(parameters)
-//     }
-
-//     fn maybe_type_label(&self) -> Fallible<Option<Type>> {
-//         todo!()
-//     }
-// }
