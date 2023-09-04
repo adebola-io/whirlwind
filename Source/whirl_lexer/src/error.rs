@@ -9,7 +9,7 @@ pub struct LexError {
 #[derive(Debug)]
 /// The point to mark in an error.
 pub enum LexErrorPos {
-    Point([usize; 2]),
+    Point([u32; 2]),
     Span(Span),
 }
 

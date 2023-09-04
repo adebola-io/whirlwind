@@ -20,6 +20,7 @@ pub enum ParserErrorType {
     IdentifierExpected,
     DeclarationExpected,
     Expected(TokenType),
+    PublicAccessTypeOnTest,
 }
 
 pub(crate) fn public_shorthand_var(span: Span) -> ParseError {
@@ -57,12 +58,9 @@ pub(crate) fn expected(token_type: TokenType, span: Span) -> ParseError {
     }
 }
 
-pub(crate) fn expected_after(token_type: TokenType, span: Span) -> ParseError {
+pub(crate) fn public_test(span: Span) -> ParseError {
     ParseError {
-        error_type: ParserErrorType::Expected(token_type),
-        span: Span {
-            start: span.end,
-            end: span.end,
-        },
+        error_type: ParserErrorType::PublicAccessTypeOnTest,
+        span,
     }
 }

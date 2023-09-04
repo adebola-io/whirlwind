@@ -5,7 +5,7 @@ use whirl_ast::{
     Block, FunctionDeclaration, FunctionSignature, GenericParameter, Identifier, Parameter,
     ParserType, ScopeAddress, ScopeManager, ScopeType, SemanticType, Span, Statement,
 };
-use whirl_lexer::{Bracket::*, Comment, Keyword, Lexer, Operator::*, Token, TokenType};
+use whirl_lexer::{Bracket::*, Comment, Keyword::*, Lexer, Operator::*, Token, TokenType};
 
 /// A recursive descent parser that reads tokens lazily and returns statements.
 /// It keeps tracks of three tokens to allow for limited backtracking.
@@ -20,7 +20,10 @@ pub struct Parser<L: Lexer> {
 
 type Fallible<T> = Result<T, ParseError>;
 
-/// Shorthand for current token confirmation.
+/// Shorthand for unconditional current token confirmation.<br>
+///
+/// Basically generates the rule:<br>
+/// If the current token is none, or it has a token type not equal to X, return an expectation error.
 macro_rules! expect {
     ($expected:expr, $s:expr) => {{
         match $s.token() {
@@ -109,7 +112,7 @@ impl<L: Lexer> Parser<L> {
         }
     }
 
-    /// Returns the documentation comments before a position.
+    /// Pulls out the current counting documentation comments.
     fn get_doc_comment(&self) -> Option<Vec<String>> {
         let doc_comments = std::mem::take(unsafe { &mut *self.doc_comments.as_ptr() });
         if doc_comments.len() > 0 {
@@ -127,18 +130,43 @@ impl<L: Lexer> Parser<L> {
             self.last_token_end(),
         ))?;
 
-        match self.token().unwrap()._type {
-            TokenType::Keyword(Keyword::Function) => self
-                .function(false)
-                .map(|function| Statement::FunctionDeclaration(function)),
+        let token = match self.token().unwrap()._type {
+            // function...
+            TokenType::Keyword(Function) => self
+                .function(false, false)
+                .map(|f| Statement::FunctionDeclaration(f)),
+            // public...
+            TokenType::Keyword(Public) => self.public_declaration(),
+            // async...
+            TokenType::Keyword(Async) => self
+                .async_function(false)
+                .map(|f| Statement::FunctionDeclaration(f)),
             ref tokentype => {
                 println!("{:?} not implemented yet!", tokentype);
                 unimplemented!()
             }
+        };
+
+        // If an error is encountered, skip all the next (likely corrupted) tokens until after a right delimeter or boundary.
+        // Then resume normal parsing.
+        if token.is_ok() {
+            return token;
         }
+        loop {
+            match self.token() {
+                Some(token) => match token._type {
+                    TokenType::Bracket(RCurly | RParens | RSquare)
+                    | TokenType::Operator(SemiColon | GreaterThan | RightShift) => break,
+                    _ => self.advance(),
+                },
+                None => break,
+            }
+        }
+        token
     }
-    /// Parses a function. It assumes that `function` is the current token.
-    fn function(&self, is_async: bool) -> Fallible<FunctionDeclaration> {
+
+    /// Parses a function. It assumes that `function` is the current token, and has already been checked.
+    fn function(&self, is_async: bool, is_public: bool) -> Fallible<FunctionDeclaration> {
         let start = self.token().unwrap().span.start;
 
         let info = self.get_doc_comment();
@@ -157,6 +185,7 @@ impl<L: Lexer> Parser<L> {
             params,
             generic_params,
             return_type,
+            is_public,
             references: vec![],
         };
 
@@ -172,6 +201,56 @@ impl<L: Lexer> Parser<L> {
         };
 
         Ok(function)
+    }
+
+    /// Parses an async function. Assumes that `async` is the current token (and has already been checked).
+    fn async_function(&self, is_public: bool) -> Fallible<FunctionDeclaration> {
+        let start = self.token().unwrap().span.start;
+        self.advance(); // Move past async.
+
+        expect!(TokenType::Keyword(Function), self);
+
+        let mut function = self.function(true, is_public)?;
+        function.span.start = start;
+
+        Ok(function)
+    }
+
+    /// Parses a public declaration. Assumes that `public` is the current token.
+    fn public_declaration(&self) -> Fallible<Statement> {
+        let start = self.token().unwrap().span.start;
+
+        self.advance(); // Move past public.
+
+        self.ended(errors::declaration_expected(self.last_token_span()))?;
+
+        let token = self.token().unwrap();
+
+        let mut statement = match token._type {
+            // Repeated.
+            TokenType::Keyword(Public) => return Err(errors::declaration_expected(token.span)),
+
+            TokenType::Keyword(Function) => {
+                Statement::FunctionDeclaration(self.function(false, true)?)
+            }
+            TokenType::Keyword(Test) => return Err(errors::public_test(token.span)),
+            TokenType::Keyword(Async) => Statement::FunctionDeclaration(self.async_function(true)?),
+
+            // Parse public shorthand variable declaration as syntax error.
+            TokenType::Ident(_) => {
+                let statement = self.statement()?;
+                return if statement.is_variable_declaration() {
+                    Err(errors::public_shorthand_var(statement.span()))
+                } else {
+                    Err(errors::declaration_expected(Span::from([start, start])))
+                };
+            }
+            _ => return Err(errors::declaration_expected(token.span)),
+        };
+
+        statement.set_start(start);
+
+        Ok(statement)
     }
 
     /// Parses an identifier and advances. It assumes that the identifier is the current token.

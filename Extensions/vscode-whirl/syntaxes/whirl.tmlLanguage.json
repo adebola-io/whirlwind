@@ -259,9 +259,10 @@
                "contentName": "support.function entity.name.function",
                "end": "(?=[^\\w])"
             },
-            { "include": "#generic_params" }
+            { "include": "#generic_params" },
+            { "include": "$self" }
          ],
-         "end": "(?=\\()"
+         "end": "(?=\\))"
       },
 
       "inferred_class": {
@@ -270,12 +271,9 @@
       },
       "inferred_function": {
          "name": "entity.name.function support.function",
-         "match": "\\w+(?=\\s*(\\<.*\\>)?\\s*\\()|(\\w+)(?=\\s*(\\:\\s*fn))",
+         "match": "\\w+(?=\\s*(\\<.*\\>)?\\s*\\()",
          "captures": {
-            "2": {
-               "name": "entity.name.class support.class"
-            },
-            "4": {
+            "1": {
                "patterns": [{ "include": "#generic_args" }]
             }
          }
@@ -305,7 +303,7 @@
             { "include": "#function_type" },
             { "include": "#type_expression" }
          ],
-         "end": "(?=[^\\s|^\\w|\\_|\\.|\\<|\\,])"
+         "end": "(?=[^\\s|^\\w|\\_|\\.|\\<|\\>|,])|(,(?=\\s*(\\w|_)+\\s*\\??\\s*(\\:|\\))))"
       },
       "type_name": {
          "name": "support.type entity.name.type",

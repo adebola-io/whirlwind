@@ -11,9 +11,9 @@ use whirl_ast::Span;
 /// A lexer for tokenizing Whirl text.
 pub struct TextLexer<'input> {
     chars: std::str::Chars<'input>,
-    position: usize,
-    line: usize,
-    span_start: [usize; 2],
+    position: u32,
+    line: u32,
+    span_start: [u32; 2],
     errors: Vec<LexError>,
     stash: Option<char>,
 }
@@ -63,7 +63,7 @@ impl LexerInner for TextLexer<'_> {
         }
     }
 
-    fn current_pos(&self) -> [usize; 2] {
+    fn current_pos(&self) -> [u32; 2] {
         [self.line, self.position]
     }
 

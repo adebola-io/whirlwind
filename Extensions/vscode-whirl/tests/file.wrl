@@ -1,9 +1,9 @@
 /// This is a function that allows you to greet.
-function SayHello() {
+public async function SayHello(name) {
     /// # Hello!
     /// This is an inner function.
     /// Hi
-    function SayHelloAgain() {
+    async function SayHelloAgain(firstName, lastName?) {
         
     }
 }

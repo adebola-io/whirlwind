@@ -147,7 +147,7 @@ pub trait LexerInner {
     /// Marks the start of a new token
     fn start_span(&mut self);
     /// Returns the current position of the cursor.
-    fn current_pos(&self) -> [usize; 2];
+    fn current_pos(&self) -> [u32; 2];
     /// Returns the span of the current token.
     fn report_span(&self) -> Span;
 

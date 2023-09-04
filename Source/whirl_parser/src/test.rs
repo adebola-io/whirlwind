@@ -5,6 +5,22 @@ use whirl_ast::{Block, FunctionDeclaration, ScopeAddress, Span, Statement};
 use crate::parse_text;
 
 #[test]
+fn parsing_public_functions() {
+    let mut parser = parse_text("public function CalculateCost() {}");
+
+    let statement = parser.next().unwrap().unwrap();
+
+    assert_eq!(
+        statement,
+        Statement::FunctionDeclaration(FunctionDeclaration {
+            address: [0, 0].into(),
+            body: Block::empty([1, 33, 1, 35].into()),
+            span: [1, 1, 1, 35].into()
+        })
+    )
+}
+
+#[test]
 fn parsing_functions() {
     // Empty function.
     let mut parser = parse_text("function SayHello(){}");
@@ -69,6 +85,31 @@ fn parsing_functions() {
                 span: Span::from([1, 30, 1, 32])
             },
             span: Span::from([1, 1, 1, 32])
+        })
+    );
+}
+
+#[test]
+fn parsing_async_functions() {
+    // Async function
+    let mut parser = parse_text("async function GreetUser(name, id?){}");
+
+    let statement = parser.next().unwrap().unwrap();
+    let scope_manager = parser.scope_manager();
+
+    assert!(scope_manager.lookaround("GreetUser").is_some_and(
+        |search| matches!(search.entry, whirl_ast::ScopeEntry::Function(f) if f.is_async)
+    ));
+
+    assert_eq!(
+        statement,
+        Statement::FunctionDeclaration(FunctionDeclaration {
+            address: ScopeAddress::from([0, 0]),
+            body: Block {
+                statements: vec![],
+                span: Span::from([1, 36, 1, 38])
+            },
+            span: Span::from([1, 1, 1, 38])
         })
     );
 }

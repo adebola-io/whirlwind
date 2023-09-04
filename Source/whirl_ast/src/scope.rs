@@ -159,9 +159,9 @@ impl ScopeManager {
         self.current_scope = new_scope_index;
     }
     /// Search within the current scope for an entry.
-    pub fn lookaround(&self, name: &str) -> Option<&ScopeEntry> {
+    pub fn lookaround(&self, name: &str) -> Option<ScopeSearch> {
         let scope = &self.scopes[self.current_scope];
-        scope.find(name)
+        scope.find(name).map(|entry| ScopeSearch { entry, scope })
     }
     /// Search for an entry within the current scope, or within any of its ancestors.
     pub fn lookup(&self, name: &str) -> Option<ScopeSearch> {

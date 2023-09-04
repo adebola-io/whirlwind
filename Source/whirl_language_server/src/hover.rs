@@ -21,6 +21,10 @@ impl From<&FunctionSignature> for HoverInfo {
         // Construct function signature.
         let mut string = String::new();
 
+        if value.is_public {
+            string.push_str("public ");
+        }
+
         if value.is_async {
             string.push_str("async ");
         }
@@ -29,7 +33,12 @@ impl From<&FunctionSignature> for HoverInfo {
         string.push('(');
 
         for (index, parameter) in value.params.iter().enumerate() {
-            string.push_str(&parameter.to_string());
+            string.push_str(&parameter.name.name);
+            if parameter.is_optional {
+                string.push('?')
+            }
+            string.push_str(": ");
+            string.push_str(&parameter.inferred_type.to_string());
             if index < value.params.len() - 1 {
                 string.push_str(", ");
             }

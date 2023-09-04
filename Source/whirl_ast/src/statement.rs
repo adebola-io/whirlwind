@@ -13,18 +13,11 @@ pub enum Statement {
     TraitDeclaration,
     EnumDeclaration,
     TypeDeclaration,
-    PublicDeclaration(PublicDeclaration),
     // Control Statements.
     WhileStatement,
     ForStatement,
 
     ExpressionStatement,
-}
-
-#[derive(Debug, PartialEq)]
-pub struct PublicDeclaration {
-    pub declaration: Box<Statement>,
-    pub span: Span,
 }
 
 /// A node for a function declaration in the AST.
@@ -43,6 +36,8 @@ pub struct FunctionSignature {
     pub name: Identifier,
     /// Whether or not the function is denoted by `async`.
     pub is_async: bool,
+    /// Whether or not the function is denoted by `public`.
+    pub is_public: bool,
     /// The parameters of the function, if any.
     pub params: Vec<Parameter>,
     /// Doc comments annotating the function, if any.
@@ -84,7 +79,7 @@ pub struct SemanticType {}
 
 impl std::fmt::Display for SemanticType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{{unknown}}")
+        write!(f, "unknown")
     }
 }
 
@@ -100,11 +95,6 @@ pub struct Parameter {
     pub type_label: Option<ParserType>,
     pub inferred_type: SemanticType,
     pub is_optional: bool,
-}
-impl std::fmt::Display for Parameter {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {}", self.name.name, self.inferred_type)
-    }
 }
 
 #[derive(Debug)]
@@ -127,7 +117,26 @@ impl Statement {
             Statement::TraitDeclaration => todo!(),
             Statement::EnumDeclaration => todo!(),
             Statement::TypeDeclaration => todo!(),
-            Statement::PublicDeclaration(_) => todo!(),
+            Statement::WhileStatement => todo!(),
+            Statement::ForStatement => todo!(),
+            Statement::ExpressionStatement => todo!(),
+        }
+    }
+    /// Dynamically change the starting point of the statement.
+    pub fn set_start(&mut self, start: [u32; 2]) {
+        match self {
+            Statement::TestDeclaration => todo!(),
+            Statement::UseDeclaration => todo!(),
+            Statement::VariableDeclaration => todo!(),
+            Statement::ConstantDeclaration => todo!(),
+            Statement::ClassDeclaration => todo!(),
+            Statement::FunctionDeclaration(f) => {
+                f.span.start = start;
+            }
+            Statement::RecordDeclaration => todo!(),
+            Statement::TraitDeclaration => todo!(),
+            Statement::EnumDeclaration => todo!(),
+            Statement::TypeDeclaration => todo!(),
             Statement::WhileStatement => todo!(),
             Statement::ForStatement => todo!(),
             Statement::ExpressionStatement => todo!(),

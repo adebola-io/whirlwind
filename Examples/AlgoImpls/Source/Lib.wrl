@@ -73,7 +73,7 @@ public trait Rangeable {
 public trait PartialOrdering {
     Max(other: This): This; 
 }
-public trait IndexWith<T, U> {
+public trait IndexWith<T, U> implements Name<sjhd, shdie> {
     Access(accessor: T): U;
 }
 public trait Addition {
