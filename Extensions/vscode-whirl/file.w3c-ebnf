@@ -40,7 +40,7 @@ ConstantDeclaration ::= "const " (Identifier | DestructurePattern) VariableIniti
 
 ClassDeclaration ::= "class " Identifier GenericParameterList? ExtendsLabel? ImplementsLabel? ClassBody
 
-FunctionDeclaration ::= "async "? "function " Identifier GenericParameterList? TypedParameterList TypeLabel? Block
+FunctionDeclaration ::= "async "? "function " Identifier GenericParameterList? ParameterList TypeLabel? Block
 
 RecordDeclaration ::= "record " Identifier "{" RecordMapList? "}"
 
@@ -94,8 +94,6 @@ ExtendsLabel ::= "extends " ClassList
 ImplementsLabel ::= "implements " ClassList
 
 ClassBody ::= "{" ClassProperty* "}"
-
-TypedParameterList ::= "(" TypedParameters? ")"
 
 RecordMapList ::= RecordMap ("," RecordMapList?)?
 
@@ -161,8 +159,6 @@ GenericArgumentList ::= "<" GenericArguments ">"
 
 ClassProperty ::= Method | Property | TraitImplementation
 
-TypedParameters ::= TypedIdentifier ("," TypedParameters?)?
-
 RecordMap ::= Literal '=' Literal
 
 TraitProperties ::= TypedIdentifier ("," TraitProperties?)?
@@ -227,7 +223,7 @@ TypedIdentifier ::= Identifier TypeLabel
 
 SwitchBlock ::= "{" SwitchCase* ElseCase? SwitchCase* "}"
 
-Parameters ::= Identifier TypeLabel? ("," Parameters?)?
+Parameters ::= Identifier "?"? TypeLabel? ("," Parameters?)?
 
 DefaultGenericArgument ::= "=" TypeExpression
 

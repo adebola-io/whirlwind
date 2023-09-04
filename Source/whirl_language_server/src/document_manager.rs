@@ -55,7 +55,7 @@ pub struct WhirlDocument {
 impl WhirlDocument {
     fn get_hover_for_position(&self, position: Position) -> Option<HoverInfo> {
         let position = [position.line + 1, position.character];
-        let hover_finder = HoverFinder {};
+        let hover_finder = HoverFinder::with_scope_manager(&self.module.scope_manager);
         for statement in &self.module.statements {
             let hover_info = hover_finder.visit_statement(statement, &position);
             if hover_info.is_some() {

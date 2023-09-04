@@ -1,8 +1,6 @@
-use std::sync::{Arc, Mutex};
+use crate::{Identifier, ScopeAddress, Span};
 
-use crate::{Identifier, Span};
-
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Statement {
     // Declarations.
     TestDeclaration,
@@ -23,17 +21,19 @@ pub enum Statement {
     ExpressionStatement,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct PublicDeclaration {
     pub declaration: Box<Statement>,
     pub span: Span,
 }
 
 /// A node for a function declaration in the AST.
-#[derive(Debug)]
+/// For efficiency most of its details are stored in the scope manager.
+#[derive(Debug, PartialEq)]
 pub struct FunctionDeclaration {
-    pub signature: Arc<Mutex<FunctionSignature>>,
+    pub address: ScopeAddress,
     pub body: Block,
+    pub span: Span,
 }
 
 /// An entry to mark a function.
@@ -51,13 +51,11 @@ pub struct FunctionSignature {
     pub generic_params: Option<Vec<GenericParameter>>,
     /// Optional return type.
     pub return_type: Option<ParserType>,
-    /// The full range of the function text.
-    pub full_span: Span,
     /// Modules where this function is used or referenced.
     pub references: Vec<Location>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Location {
     pub module: String,
     pub instances: Vec<Span>,
@@ -66,10 +64,19 @@ pub struct Location {
 #[derive(Debug)]
 pub struct GenericParameter {}
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Block {
     pub statements: Vec<Statement>,
     pub span: Span,
+}
+
+impl Block {
+    pub fn empty(span: Span) -> Self {
+        Block {
+            statements: vec![],
+            span,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -115,7 +122,7 @@ impl Statement {
             Statement::VariableDeclaration => todo!(),
             Statement::ConstantDeclaration => todo!(),
             Statement::ClassDeclaration => todo!(),
-            Statement::FunctionDeclaration(f) => f.signature.lock().unwrap().full_span,
+            Statement::FunctionDeclaration(f) => f.span,
             Statement::RecordDeclaration => todo!(),
             Statement::TraitDeclaration => todo!(),
             Statement::EnumDeclaration => todo!(),

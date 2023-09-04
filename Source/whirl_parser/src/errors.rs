@@ -1,7 +1,7 @@
 use whirl_ast::Span;
 use whirl_lexer::{LexError, TokenType};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct ParseError {
     error_type: ParserErrorType,
     span: Span,
@@ -13,7 +13,7 @@ pub enum ProgramError {
     LexerError(LexError),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ParserErrorType {
     DeclarationOrStatementExpected,
     PublicShorthandVariable,

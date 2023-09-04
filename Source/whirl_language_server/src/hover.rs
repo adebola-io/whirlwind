@@ -1,7 +1,5 @@
-use std::sync::MutexGuard;
-
 use tower_lsp::lsp_types::{Hover, HoverContents, LanguageString, MarkedString};
-use whirl_ast::{ASTVisitor, FunctionSignature};
+use whirl_ast::{ASTVisitor, FunctionSignature, ScopeManager};
 
 /// Information shown during hovering.
 pub struct HoverInfo {
@@ -16,8 +14,8 @@ impl From<&str> for HoverInfo {
     }
 }
 
-impl From<MutexGuard<'_, FunctionSignature>> for HoverInfo {
-    fn from(value: MutexGuard<'_, FunctionSignature>) -> Self {
+impl From<&FunctionSignature> for HoverInfo {
+    fn from(value: &FunctionSignature) -> Self {
         let mut info = vec![];
 
         // Construct function signature.
@@ -70,15 +68,24 @@ impl From<HoverInfo> for Hover {
     }
 }
 
-pub struct HoverFinder;
+pub struct HoverFinder<'a> {
+    scope_manager: &'a ScopeManager,
+}
 
-impl ASTVisitor<[u32; 2], Option<HoverInfo>> for HoverFinder {
+impl<'a> HoverFinder<'a> {
+    pub fn with_scope_manager(scope_manager: &'a ScopeManager) -> Self {
+        Self { scope_manager }
+    }
+}
+
+impl<'a> ASTVisitor<[u32; 2], Option<HoverInfo>> for HoverFinder<'a> {
     fn visit_function(
         &self,
         function: &whirl_ast::FunctionDeclaration,
         args: &[u32; 2],
     ) -> Option<HoverInfo> {
-        let signature = function.signature.lock().unwrap();
+        let scope = self.scope_manager.get_scope(function.address.scope)?;
+        let signature = scope.get_function(function.address.entry_no)?;
         let body = &function.body;
 
         // Hovering over the function name.

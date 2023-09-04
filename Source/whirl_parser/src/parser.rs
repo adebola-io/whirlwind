@@ -1,17 +1,17 @@
 use std::cell::RefCell;
-use std::sync::{Arc, Mutex};
 
 use crate::errors::{self, ParseError};
-
 use whirl_ast::{
     Block, FunctionDeclaration, FunctionSignature, GenericParameter, Identifier, Parameter,
-    ParserType, ScopeManager, ScopeType, Span, Statement,
+    ParserType, ScopeAddress, ScopeManager, ScopeType, SemanticType, Span, Statement,
 };
 use whirl_lexer::{Bracket::*, Comment, Keyword, Lexer, Operator::*, Token, TokenType};
 
+/// A recursive descent parser that reads tokens lazily and returns statements.
+/// It keeps tracks of three tokens to allow for limited backtracking.
 pub struct Parser<L: Lexer> {
     pub lexer: RefCell<L>,
-    _scope_manager: RefCell<ScopeManager>,
+    scope_manager: RefCell<ScopeManager>,
     present: RefCell<Option<Token>>,
     past: RefCell<Option<Token>>,
     future: RefCell<Option<Token>>,
@@ -39,7 +39,7 @@ impl<L: Lexer> Parser<L> {
     pub fn from_lexer(lexer: L) -> Self {
         Self {
             lexer: RefCell::new(lexer),
-            _scope_manager: RefCell::new(ScopeManager::new()),
+            scope_manager: RefCell::new(ScopeManager::new()),
             present: RefCell::new(None),
             past: RefCell::new(None),
             future: RefCell::new(None),
@@ -60,17 +60,15 @@ impl<L: Lexer> Parser<L> {
     /// Keep track of documentation comments and returns the next syntactically useful token.
     fn next_useful_token(&self) -> Option<Token> {
         loop {
-            match self.lexer.borrow_mut().next() {
-                Some(token) => match token._type {
-                    TokenType::Comment(comment) => {
-                        if let Comment::DocComment(text) = comment {
-                            self.doc_comments.borrow_mut().push(text)
-                        }
+            let token = self.lexer.borrow_mut().next()?;
+            match token._type {
+                TokenType::Comment(comment) => {
+                    if let Comment::DocComment(text) = comment {
+                        self.doc_comments.borrow_mut().push(text)
                     }
-                    TokenType::Invalid(_) => {}
-                    _ => return Some(token),
-                },
-                None => return None,
+                }
+                TokenType::Invalid(_) => {}
+                _ => return Some(token),
             }
         }
     }
@@ -82,7 +80,7 @@ impl<L: Lexer> Parser<L> {
 
     /// Returns a reference to the scope manager.
     pub fn scope_manager(&self) -> &mut ScopeManager {
-        unsafe { &mut *self._scope_manager.as_ptr() }
+        unsafe { &mut *self.scope_manager.as_ptr() }
     }
 
     /// Returns the span of the token before.
@@ -130,16 +128,21 @@ impl<L: Lexer> Parser<L> {
         ))?;
 
         match self.token().unwrap()._type {
-            TokenType::Keyword(Keyword::Function) => self.function(false),
+            TokenType::Keyword(Keyword::Function) => self
+                .function(false)
+                .map(|function| Statement::FunctionDeclaration(function)),
             ref tokentype => {
                 println!("{:?} not implemented yet!", tokentype);
                 unimplemented!()
             }
         }
     }
-
-    fn function(&self, is_async: bool) -> Result<Statement, ParseError> {
+    /// Parses a function. It assumes that `function` is the current token.
+    fn function(&self, is_async: bool) -> Fallible<FunctionDeclaration> {
         let start = self.token().unwrap().span.start;
+
+        let info = self.get_doc_comment();
+        self.advance(); // Move past function.
 
         let name = self.identifier()?;
         let generic_params = self.maybe_generic_params()?;
@@ -147,46 +150,49 @@ impl<L: Lexer> Parser<L> {
         let return_type = self.maybe_return_type()?;
         let body = self.block(ScopeType::Functional)?;
 
-        let signature = Arc::new(Mutex::new(FunctionSignature {
+        let signature = FunctionSignature {
             name,
             is_async,
-            info: self.get_doc_comment(),
+            info,
             params,
             generic_params,
             return_type,
-            full_span: Span::from([start, body.span.end]),
             references: vec![],
-        }));
+        };
 
-        self.scope_manager().register_function(signature.clone());
+        let entry_no = self.scope_manager().register_function(signature);
 
-        Ok(Statement::FunctionDeclaration(FunctionDeclaration {
-            signature,
+        let function = FunctionDeclaration {
+            address: ScopeAddress {
+                scope: self.scope_manager().current(),
+                entry_no,
+            },
+            span: Span::from([start, body.span.end]),
             body,
-        }))
+        };
+
+        Ok(function)
     }
 
-    /// Parses an identifier and advances. It assumes that the identifier is curreently the next token.
+    /// Parses an identifier and advances. It assumes that the identifier is the current token.
     fn identifier(&self) -> Fallible<Identifier> {
-        self.advance();
         self.ended(errors::identifier_expected(self.last_token_end()))?;
 
         let token = self.token().unwrap();
 
-        match token._type {
-            TokenType::Ident(ref mut name) => {
-                let identifier = Identifier {
-                    name: std::mem::take(name),
-                    span: token.span,
-                };
-                self.advance();
-                Ok(identifier)
-            }
-            _ => Err(errors::identifier_expected(self.last_token_span())),
+        if let TokenType::Ident(ref mut name) = token._type {
+            let identifier = Identifier {
+                name: std::mem::take(name),
+                span: token.span,
+            };
+            self.advance();
+            Ok(identifier)
+        } else {
+            Err(errors::identifier_expected(token.span))
         }
     }
 
-    /// Parses a class' or function's generic parameters. Assumes that `<` (or `<<`) is maybe the current token.
+    /// Parses a class' or function's generic parameters. Assumes that `<` is maybe the current token.
     fn maybe_generic_params(&self) -> Fallible<Option<Vec<GenericParameter>>> {
         if !self
             .token()
@@ -227,6 +233,10 @@ impl<L: Lexer> Parser<L> {
         todo!()
     }
 
+    fn type_label(&self) -> Fallible<ParserType> {
+        todo!()
+    }
+
     /// Parses a block of statements. It assumes that `{` is the current token.
     fn block(&self, scope_type: ScopeType) -> Fallible<Block> {
         expect!(TokenType::Bracket(LCurly), self);
@@ -258,8 +268,58 @@ impl<L: Lexer> Parser<L> {
         Ok(block)
     }
 
+    /// Parses a parameter. Assumes that the parameter name is the current token.
     fn parameter(&self) -> Fallible<Parameter> {
-        todo!()
+        let name = self.identifier()?;
+        let mut type_label = None;
+        let mut is_optional = false;
+
+        // Handle scenario where the next token is a ?, a comma, a colon for a type label or a ).
+        let mut is_expecting_comma = false;
+        loop {
+            match self.token() {
+                None => {
+                    return Err(errors::expected(
+                        TokenType::Bracket(RParens),
+                        self.last_token_span(),
+                    ))
+                }
+                Some(token) => match token._type {
+                    TokenType::Operator(Colon) => {
+                        type_label = Some(self.type_label()?);
+                        is_expecting_comma = true;
+                    }
+                    TokenType::Operator(QuestionMark) => {
+                        if is_expecting_comma {
+                            return Err(errors::expected(TokenType::Bracket(RParens), token.span));
+                        }
+                        is_optional = true;
+                    }
+                    TokenType::Operator(Comma) => {
+                        break;
+                    }
+                    TokenType::Bracket(RParens) => {
+                        break;
+                    }
+                    _ => return Err(errors::expected(TokenType::Bracket(RParens), token.span)),
+                },
+            }
+            self.advance();
+        }
+
+        if self.token().unwrap()._type == TokenType::Operator(Comma) {
+            self.advance();
+        } else {
+        }
+
+        let parameter = Parameter {
+            name,
+            type_label,
+            is_optional,
+            inferred_type: SemanticType::default(),
+        };
+
+        Ok(parameter)
     }
 }
 
