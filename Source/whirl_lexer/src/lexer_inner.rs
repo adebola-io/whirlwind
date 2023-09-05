@@ -150,6 +150,9 @@ pub trait LexerInner {
     fn current_pos(&self) -> [u32; 2];
     /// Returns the span of the current token.
     fn report_span(&self) -> Span;
+    /// Returns the length of each line that has been completed so far.
+    /// For convenience, it is one-based rather than zero, i.e. the length of line 1 is `self.line_lengths[1]`.
+    fn line_lengths(&self) -> &[u32];
 
     /// Removes the stashed character.
     fn remove_stashed(&mut self) -> Option<char>;
@@ -229,11 +232,15 @@ pub trait LexerInner {
     fn ident_or_keyword(&mut self, first_char: char) -> Token {
         let mut ident_text = String::from(first_char);
         let mut is_ended = false;
+        let mut encounted_newline = false;
 
         loop {
             match self.next_char() {
                 Some(ch) if is_valid_identifier(ch) => ident_text.push(ch),
                 Some(ch) => {
+                    if ch == '\n' {
+                        encounted_newline = true
+                    }
                     self.stash(ch);
                     break;
                 }
@@ -280,7 +287,15 @@ pub trait LexerInner {
                 span: self.report_span(),
             },
         };
-        token.span.end[1] -= if is_ended { 1 } else { 2 };
+        // Offset correction.
+        if encounted_newline {
+            token.span.end = [
+                token.span.end[0] - 1,
+                self.line_lengths()[(token.span.end[0] - 1) as usize],
+            ];
+        } else {
+            token.span.end[1] -= if is_ended { 1 } else { 2 };
+        }
         token
     }
 }

@@ -21,7 +21,7 @@
    },
    "Public Function Definition": {
       "prefix": "public func",
-      "body": ["/// $2", "public function ${1:name}() {", "\t$0", "}"],
+      "body": ["/// $2", "public function ${1:Name}() {", "\t$0", "}"],
       "description": "Public Function Definition"
    },
    "Use Statement": {
@@ -61,7 +61,7 @@
    "Function Statement": {
       "prefix": "func",
       "body": [
-         "function ${1:name}(${2:params}:${3:type}) {",
+         "function ${1:Name}(${2:params}:${3:type}) {",
          "\t$TM_SELECTED_TEXT$0",
          "}"
       ],

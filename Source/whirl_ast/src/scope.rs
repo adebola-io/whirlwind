@@ -25,7 +25,7 @@ pub enum ScopeType {
 #[derive(Debug, PartialEq)]
 pub struct ScopeAddress {
     /// The entry in which it is declared.
-    pub scope: usize,
+    pub scope_id: usize,
     /// The entry number.
     pub entry_no: usize,
 }
@@ -50,7 +50,7 @@ pub struct ScopeSearch<'a> {
 impl From<[usize; 2]> for ScopeAddress {
     fn from(value: [usize; 2]) -> Self {
         ScopeAddress {
-            scope: value[0],
+            scope_id: value[0],
             entry_no: value[1],
         }
     }

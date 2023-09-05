@@ -16,6 +16,7 @@ pub struct TextLexer<'input> {
     span_start: [u32; 2],
     errors: Vec<LexError>,
     stash: Option<char>,
+    line_lengths: Vec<u32>,
 }
 
 pub trait Lexer: LexerInner + Iterator<Item = Token> {
@@ -43,6 +44,8 @@ impl LexerInner for TextLexer<'_> {
     fn next_char(&mut self) -> Option<char> {
         self.chars.next().map(|char| {
             if char == '\n' {
+                // Store line length and move to next.
+                self.line_lengths.push(self.position);
                 self.position = 1;
                 self.line += 1;
             } else {
@@ -78,6 +81,10 @@ impl LexerInner for TextLexer<'_> {
     fn stash(&mut self, ch: char) {
         self.stash = Some(ch)
     }
+
+    fn line_lengths(&self) -> &[u32] {
+        &self.line_lengths
+    }
 }
 
 impl Lexer for TextLexer<'_> {
@@ -102,5 +109,6 @@ pub fn lex_text(input: &str) -> TextLexer {
         span_start: [1, 1],
         errors: vec![],
         stash: None,
+        line_lengths: vec![0],
     }
 }

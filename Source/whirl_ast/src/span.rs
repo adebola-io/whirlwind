@@ -1,5 +1,5 @@
 /// Represents a range in the input text.
-#[derive(PartialEq, Debug, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy)]
 pub struct Span {
     pub start: [u32; 2],
     pub end: [u32; 2],
@@ -18,6 +18,12 @@ impl Span {
             return false;
         }
         return true;
+    }
+}
+
+impl std::fmt::Debug for Span {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{ {:?}, {:?} }}", self.start, self.end)
     }
 }
 

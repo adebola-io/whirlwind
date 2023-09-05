@@ -20,7 +20,10 @@ pub enum ParserErrorType {
     IdentifierExpected,
     DeclarationExpected,
     Expected(TokenType),
+    AsyncType,
     PublicAccessTypeOnTest,
+    GenericArgsInNamespace,
+    UnexpectedToken,
 }
 
 pub(crate) fn public_shorthand_var(span: Span) -> ParseError {
@@ -61,6 +64,27 @@ pub(crate) fn expected(token_type: TokenType, span: Span) -> ParseError {
 pub(crate) fn public_test(span: Span) -> ParseError {
     ParseError {
         error_type: ParserErrorType::PublicAccessTypeOnTest,
+        span,
+    }
+}
+
+pub(crate) fn generic_args_in_namespace(span: Span) -> ParseError {
+    ParseError {
+        error_type: ParserErrorType::GenericArgsInNamespace,
+        span,
+    }
+}
+
+pub(crate) fn unexpected(span: Span) -> ParseError {
+    ParseError {
+        error_type: ParserErrorType::UnexpectedToken,
+        span,
+    }
+}
+
+pub(crate) fn async_type(span: Span) -> ParseError {
+    ParseError {
+        error_type: ParserErrorType::AsyncType,
         span,
     }
 }

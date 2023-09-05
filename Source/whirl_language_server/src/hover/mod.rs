@@ -1,5 +1,5 @@
 use tower_lsp::lsp_types::{Hover, HoverContents, LanguageString, MarkedString};
-use whirl_ast::{ASTVisitor, FunctionSignature, ScopeManager};
+use whirl_ast::{ASTVisitor, FunctionSignature, HoverFormatter, Parameter, ScopeManager};
 
 /// Information shown during hovering.
 pub struct HoverInfo {
@@ -13,42 +13,23 @@ impl From<&str> for HoverInfo {
         }
     }
 }
+impl From<&Parameter> for HoverInfo {
+    fn from(value: &Parameter) -> Self {
+        HoverInfo {
+            contents: HoverContents::Scalar(MarkedString::LanguageString(LanguageString {
+                language: format!("wrl"),
+                value: value.to_formatted(),
+            })),
+        }
+    }
+}
 
 impl From<&FunctionSignature> for HoverInfo {
     fn from(value: &FunctionSignature) -> Self {
         let mut info = vec![];
-
-        // Construct function signature.
-        let mut string = String::new();
-
-        if value.is_public {
-            string.push_str("public ");
-        }
-
-        if value.is_async {
-            string.push_str("async ");
-        }
-        string.push_str("function ");
-        string.push_str(&value.name.name);
-        string.push('(');
-
-        for (index, parameter) in value.params.iter().enumerate() {
-            string.push_str(&parameter.name.name);
-            if parameter.is_optional {
-                string.push('?')
-            }
-            string.push_str(": ");
-            string.push_str(&parameter.inferred_type.to_string());
-            if index < value.params.len() - 1 {
-                string.push_str(", ");
-            }
-        }
-
-        string.push(')');
-
         info.push(MarkedString::LanguageString(LanguageString {
             language: String::from("wrl"),
-            value: string,
+            value: value.to_formatted(),
         }));
 
         // Documentation?
@@ -93,13 +74,20 @@ impl<'a> ASTVisitor<[u32; 2], Option<HoverInfo>> for HoverFinder<'a> {
         function: &whirl_ast::FunctionDeclaration,
         args: &[u32; 2],
     ) -> Option<HoverInfo> {
-        let scope = self.scope_manager.get_scope(function.address.scope)?;
+        let scope = self.scope_manager.get_scope(function.address.scope_id)?;
         let signature = scope.get_function(function.address.entry_no)?;
         let body = &function.body;
 
         // Hovering over the function name.
         if signature.name.span.contains(*args) {
             return Some(HoverInfo::from(signature));
+        }
+        // Hovering over a parameter.
+        for parameter in &signature.params {
+            // Hovering over parameter name.
+            if parameter.name.span.contains(*args) {
+                return Some(HoverInfo::from(parameter));
+            }
         }
         // Hovering over something in the function's body.
         if !body.span.contains(*args) {

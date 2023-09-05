@@ -181,7 +181,7 @@ MemberType ::= Identifier "." (DiscreteType | MemberType)
 
 FunctionType ::= "fn " TypedParameterList TypeLabel
 
-UnionType ::= TypeExpression (("or "|"|") TypeExpression)+
+UnionType ::= TypeExpression ("|" TypeExpression)+
 
 Letter ::= [A-Z] | [a-z]
 

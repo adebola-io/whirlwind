@@ -1,6 +1,6 @@
 use crate::{FunctionDeclaration, Identifier, Statement};
 
-/// A trait for traversing the Abstract Syntax Tree.
+/// A trait for immutably traversing the Abstract Syntax Tree.
 pub trait ASTVisitor<Arguments = (), Output: Default = ()> {
     /// Visit a statement node.
     fn visit_statement(&self, statement: &Statement, args: &Arguments) -> Output {

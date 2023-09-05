@@ -2,8 +2,9 @@ use std::cell::RefCell;
 
 use crate::errors::{self, ParseError};
 use whirl_ast::{
-    Block, FunctionDeclaration, FunctionSignature, GenericParameter, Identifier, Parameter,
-    ParserType, ScopeAddress, ScopeManager, ScopeType, SemanticType, Span, Statement,
+    Block, DiscreteType, ExpressionPrecedence, FunctionDeclaration, FunctionSignature,
+    FunctionalType, GenericParameter, Identifier, MemberType, Parameter, ScopeAddress,
+    ScopeManager, ScopeType, Span, Statement, Type, TypeExpression, UnionType,
 };
 use whirl_lexer::{Bracket::*, Comment, Keyword::*, Lexer, Operator::*, Token, TokenType};
 
@@ -16,6 +17,9 @@ pub struct Parser<L: Lexer> {
     past: RefCell<Option<Token>>,
     future: RefCell<Option<Token>>,
     doc_comments: RefCell<Vec<String>>,
+    precedence_stack: RefCell<Vec<ExpressionPrecedence>>,
+    /// Handles ambiguity caused by nested generic arguments conflicting with bit right shift.
+    waiting_for_second_angular_bracket: RefCell<bool>,
 }
 
 type Fallible<T> = Result<T, ParseError>;
@@ -47,6 +51,8 @@ impl<L: Lexer> Parser<L> {
             past: RefCell::new(None),
             future: RefCell::new(None),
             doc_comments: RefCell::new(vec![]),
+            precedence_stack: RefCell::new(vec![]),
+            waiting_for_second_angular_bracket: RefCell::new(false),
         }
     }
 
@@ -79,6 +85,11 @@ impl<L: Lexer> Parser<L> {
     fn _back(&self) {
         self.future.replace(self.present.take());
         self.present.replace(self.past.take());
+    }
+
+    /// Push a precedence to the stack.
+    fn push_precedence(&self, precedence: ExpressionPrecedence) {
+        self.precedence_stack.borrow_mut().push(precedence);
     }
 
     /// Returns a reference to the scope manager.
@@ -121,8 +132,17 @@ impl<L: Lexer> Parser<L> {
             None
         }
     }
+
+    /// Check an expression against the precedence chart.
+    fn is_lower_or_equal_precedence(&self, precedence: ExpressionPrecedence) -> bool {
+        match self.precedence_stack.borrow().last() {
+            Some(p) => *p <= precedence,
+            None => false,
+        }
+    }
 }
 
+// Statements
 impl<L: Lexer> Parser<L> {
     /// Parses a statement.
     fn statement(&self) -> Result<Statement, ParseError> {
@@ -186,14 +206,13 @@ impl<L: Lexer> Parser<L> {
             generic_params,
             return_type,
             is_public,
-            references: vec![],
         };
 
         let entry_no = self.scope_manager().register_function(signature);
 
         let function = FunctionDeclaration {
             address: ScopeAddress {
-                scope: self.scope_manager().current(),
+                scope_id: self.scope_manager().current(),
                 entry_no,
             },
             span: Span::from([start, body.span.end]),
@@ -293,6 +312,11 @@ impl<L: Lexer> Parser<L> {
             .is_some_and(|t| t._type != TokenType::Bracket(RParens))
         {
             parameters.push(self.parameter()?);
+            if self.token().unwrap()._type == TokenType::Operator(Comma) {
+                self.advance();
+                continue;
+            }
+            break;
         }
 
         expect!(TokenType::Bracket(RParens), self);
@@ -302,18 +326,14 @@ impl<L: Lexer> Parser<L> {
     }
 
     /// Parses a function's return type. It assumes that `:` is maybe the current token.
-    fn maybe_return_type(&self) -> Fallible<Option<ParserType>> {
+    fn maybe_return_type(&self) -> Fallible<Type> {
         if !self
             .token()
             .is_some_and(|t| t._type == TokenType::Operator(Colon))
         {
-            return Ok(None);
+            return Ok(whirl_ast::Type::empty());
         }
-        todo!()
-    }
-
-    fn type_label(&self) -> Fallible<ParserType> {
-        todo!()
+        self.type_label()
     }
 
     /// Parses a block of statements. It assumes that `{` is the current token.
@@ -350,55 +370,221 @@ impl<L: Lexer> Parser<L> {
     /// Parses a parameter. Assumes that the parameter name is the current token.
     fn parameter(&self) -> Fallible<Parameter> {
         let name = self.identifier()?;
-        let mut type_label = None;
-        let mut is_optional = false;
 
-        // Handle scenario where the next token is a ?, a comma, a colon for a type label or a ).
-        let mut is_expecting_comma = false;
-        loop {
-            match self.token() {
-                None => {
-                    return Err(errors::expected(
-                        TokenType::Bracket(RParens),
-                        self.last_token_span(),
-                    ))
-                }
-                Some(token) => match token._type {
-                    TokenType::Operator(Colon) => {
-                        type_label = Some(self.type_label()?);
-                        is_expecting_comma = true;
-                    }
-                    TokenType::Operator(QuestionMark) => {
-                        if is_expecting_comma {
-                            return Err(errors::expected(TokenType::Bracket(RParens), token.span));
-                        }
-                        is_optional = true;
-                    }
-                    TokenType::Operator(Comma) => {
-                        break;
-                    }
-                    TokenType::Bracket(RParens) => {
-                        break;
-                    }
-                    _ => return Err(errors::expected(TokenType::Bracket(RParens), token.span)),
-                },
-            }
+        let is_optional = if self
+            .token()
+            .is_some_and(|t| t._type == TokenType::Operator(QuestionMark))
+        {
             self.advance();
-        }
-
-        if self.token().unwrap()._type == TokenType::Operator(Comma) {
-            self.advance();
+            true
         } else {
-        }
+            false
+        };
+
+        let type_label = if self
+            .token()
+            .is_some_and(|t| t._type == TokenType::Operator(Colon))
+        {
+            self.type_label()?
+        } else {
+            Type::empty()
+        };
 
         let parameter = Parameter {
             name,
             type_label,
             is_optional,
-            inferred_type: SemanticType::default(),
         };
 
         Ok(parameter)
+    }
+}
+
+// TYPES.
+impl<L: Lexer> Parser<L> {
+    /// Parses a type label. Assumes that `:` is unconditionally the current token.
+    fn type_label(&self) -> Fallible<whirl_ast::Type> {
+        expect!(TokenType::Operator(Colon), self);
+        self.advance(); // Move past :
+        let expression = self.type_expression()?;
+        Ok(Type::from_expression(expression))
+    }
+
+    /// Parses a type expression. Assumes that the first identifier or the function keyword is the current token.
+    fn type_expression(&self) -> Fallible<TypeExpression> {
+        self.ended(errors::identifier_expected(self.last_token_span()))?;
+
+        let token = self.token().unwrap();
+
+        let type_expr = match token._type {
+            TokenType::Keyword(Fn) => self.functional_type()?,
+            TokenType::Keyword(Async) => return Err(errors::async_type(token.span)),
+            TokenType::Ident(_) => self.regular_type_or_union()?,
+            _ => return Err(errors::identifier_expected(token.span)),
+        };
+
+        Ok(self.type_reparse(type_expr)?)
+    }
+
+    /// Parses a functional type. Assumes that `fn` is the current token.
+    fn functional_type(&self) -> Fallible<TypeExpression> {
+        let start = self.token().unwrap().span.start;
+        self.advance(); // Move past fn.
+        let generic_params = self.maybe_generic_params()?;
+        let params = self.parameters()?;
+        let return_type = self.maybe_return_type()?.declared.map(|exp| Box::new(exp));
+        let span = Span::from([start, self.last_token_span().end]);
+
+        let functype = TypeExpression::Functional(FunctionalType {
+            params,
+            generic_params,
+            return_type,
+            span,
+        });
+
+        Ok(self.type_reparse(functype)?)
+    }
+
+    /// Parses a discrete, member or union type. Assumes that identifier is the current token.
+    fn regular_type_or_union(&self) -> Fallible<TypeExpression> {
+        let name = self.identifier()?;
+        let generic_args = self.maybe_generic_args()?;
+        let span = name.span;
+
+        let discrete = TypeExpression::Discrete(DiscreteType {
+            name,
+            generic_args,
+            span,
+        });
+
+        Ok(self.type_reparse(discrete)?)
+    }
+
+    /// Looks ahead to determing how to parse type precedence.
+    fn type_reparse(&self, node: TypeExpression) -> Fallible<TypeExpression> {
+        match self.token() {
+            Some(t) if t._type == TokenType::Operator(Dot) => self.member_type(node),
+            Some(t) if t._type == TokenType::Operator(BitOr) => self.union_type(node),
+            _ => return Ok(node),
+        }
+    }
+
+    /// Parse a member type.
+    fn member_type(&self, namespace: TypeExpression) -> Fallible<TypeExpression> {
+        if self.is_lower_or_equal_precedence(ExpressionPrecedence::Access) {
+            return Ok(namespace);
+        }
+        //Move past .
+        self.advance();
+        // Namespaces should not have generic arguments.
+        if let TypeExpression::Discrete(ref d) = namespace {
+            if d.generic_args.is_some() {
+                return Err(errors::generic_args_in_namespace(d.span));
+            }
+        }
+        // Functional types cant serve as namespaces.
+        if let TypeExpression::Functional(_) = namespace {
+            return Err(errors::unexpected(self.last_token_span()));
+        }
+        self.push_precedence(ExpressionPrecedence::Access);
+        let property = Box::new(self.regular_type_or_union()?);
+        let span = Span::from([namespace.span().start, property.span().end]);
+        let member_type = MemberType {
+            namespace: Box::new(namespace),
+            property,
+            span,
+        };
+        self.precedence_stack.borrow_mut().pop();
+        Ok(self.type_reparse(TypeExpression::Member(member_type))?)
+    }
+
+    /// Parses union type.
+    fn union_type(&self, first_type: TypeExpression) -> Fallible<TypeExpression> {
+        if self.is_lower_or_equal_precedence(ExpressionPrecedence::Access) {
+            return Ok(first_type);
+        }
+        self.advance(); // Move past |
+        self.push_precedence(ExpressionPrecedence::TypeUnion);
+        let start = first_type.span().start;
+        let mut types = vec![];
+        types.push(first_type);
+        let mut second_type = self.type_expression()?;
+
+        // Concatenate union types as one union type.
+        if let TypeExpression::Union(ref mut u) = second_type {
+            types.append(&mut u.types)
+        } else {
+            types.push(second_type)
+        }
+
+        let span = Span {
+            start,
+            end: types.last().unwrap().span().end,
+        };
+        let node = TypeExpression::Union(UnionType { types, span });
+
+        Ok(self.type_reparse(node)?)
+    }
+
+    /// Parses generic arguments if they exist.
+    fn maybe_generic_args(&self) -> Fallible<Option<Vec<TypeExpression>>> {
+        if !self
+            .token()
+            .is_some_and(|t| t._type == TokenType::Operator(LesserThan))
+        {
+            return Ok(None);
+        }
+        Ok(Some(self.generic_args()?))
+    }
+
+    /// Parser generic arguments. Assumes that `<` is the current token.
+    fn generic_args(&self) -> Fallible<Vec<TypeExpression>> {
+        self.advance(); // Move past <
+        let mut arguments = vec![];
+        while self.token().is_some_and(|t| {
+            ![
+                TokenType::Operator(GreaterThan),
+                TokenType::Operator(RightShift),
+            ]
+            .contains(&t._type)
+        }) {
+            let argument = self.type_expression()?;
+            arguments.push(argument);
+            if self
+                .token()
+                .is_some_and(|t| t._type == TokenType::Operator(Comma))
+            {
+                self.advance(); // move past ,
+            } else {
+                break; // Unexpected or empty token.
+            }
+        }
+        if self.token().is_none() {
+            return Err(errors::expected(
+                TokenType::Operator(GreaterThan),
+                self.last_token_span(),
+            ));
+        }
+        let token = self.token().unwrap();
+        match token._type {
+            TokenType::Operator(GreaterThan) => self.advance(), // Move past >
+            TokenType::Operator(RightShift) => {
+                // Wait and advance the second time.
+                if self.waiting_for_second_angular_bracket.take() {
+                    self.advance(); // Move past >>
+                } else {
+                    *self.waiting_for_second_angular_bracket.borrow_mut() = true;
+                }
+            }
+            // Unexpected token.
+            _ => {
+                return Err(errors::expected(
+                    TokenType::Operator(GreaterThan),
+                    token.span,
+                ))
+            }
+        }
+        Ok(arguments)
     }
 }
 

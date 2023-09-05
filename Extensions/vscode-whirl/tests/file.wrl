@@ -1,9 +1,4 @@
-/// This is a function that allows you to greet.
-public async function SayHello(name) {
-    /// # Hello!
-    /// This is an inner function.
-    /// Hi
-    async function SayHelloAgain(firstName, lastName?) {
-        
-    }
+/// Returns an iterable parser for text input.
+public function parse_text(input: String | Path, parserOptions?: ParserOptions): Parser<TextLexer> {
+    // Parser::from_lexer(lex_text(input))
 }
