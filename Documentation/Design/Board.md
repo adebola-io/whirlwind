@@ -4,22 +4,22 @@
 -  Implicit Return
 -  Reference Comparison with `is`.
 -  Atoms can be re-exported using public use syntax.
--  Variables should be declared using `:=` syntax.
+-  Variables should be declared using `:=` syntax or with `var`.
 -  Optional parameters, that become `Maybe`s in the function code.
--  Rest parameters that become Arrays in function code.
+-  Optional Parameters should only come after required parameters.
 -  Extendable Classes
 -  Records: immutable key-value stores.
+-  Traits
 
 # Ideas for Semantics
 
--  Test statements should only be allowed at the top level of the module.
--  Getters and Setters for object properties.
+-  Test statements, public declarations and use imports should only be allowed at the top level of the module.
 -  Only function expressions can have type-inferred parameters.
 -  Prevent instantiation of classes without a constructor.
 -  Subclasses must call the `super()` method for each class in their constructor.
--  Constructors are functions with the `new` identifier.
--  Variables cannot be used until they are deterministically assigned. A caveat is variables that implement `Core.Internal.Default`.
--  Generate error if class properties are not definitely assigned in the constructor.
+-  Constructors are methods with the `new` identifier.
+-  Variables cannot be used until they are deterministically assigned. A caveat is variables that implement `Default`.
+-  Generate error if all class properties are not definitely assigned in the constructor.
 -  Polymorphism: Multiple generic traits can be implemented. e.g.
 
    ```wrl
@@ -35,7 +35,7 @@
    ```
 
 -  `_` represents special catchall/undefined type.
--  All blocks return either an expression or the `_` type.
+-  All blocks return either an expression or, implicitly, the `_` type.
 -  Types can be automatically upcasted to superclasses and union types.
 -  Types can be downcasted using the `as` keyword to an inclusive set of supertypes. Downcasting should cause panic if it is incorrect at runtime.
 -  `_` cannot be assigned to a variable, only used in wrappers like `Outcome` and `Maybe`.
@@ -64,4 +64,7 @@
 -  A `Maybe` object and an `Outcome` class.
 -  An `EventEmitter` class in `Core.Utils`.
 -  A `Record.ToMap()` method that turns a record to a mutable map.
--  `Core.Net.Request` to make HTTP requests.
+-  `Core.Http` to make HTTP requests.
+- `ArrayOf<T>.SelectRandom(number: UnsignedInteger): ArrayOf<T>`
+- `ArrayOf<T>.Shuffle(): ArrayOf<T>` 
+ 
