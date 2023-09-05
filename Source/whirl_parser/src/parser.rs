@@ -4,7 +4,8 @@ use crate::errors::{self, ParseError};
 use whirl_ast::{
     Block, DiscreteType, ExpressionPrecedence, FunctionDeclaration, FunctionSignature,
     FunctionalType, GenericParameter, Identifier, MemberType, Parameter, ScopeAddress,
-    ScopeManager, ScopeType, Span, Statement, Type, TypeExpression, UnionType,
+    ScopeManager, ScopeType, Span, Statement, Type, TypeDeclaration, TypeExpression, TypeSignature,
+    UnionType,
 };
 use whirl_lexer::{Bracket::*, Comment, Keyword::*, Lexer, Operator::*, Token, TokenType};
 
@@ -161,17 +162,25 @@ impl<L: Lexer> Parser<L> {
             TokenType::Keyword(Async) => self
                 .async_function(false)
                 .map(|f| Statement::FunctionDeclaration(f)),
-            ref tokentype => {
-                println!("{:?} not implemented yet!", tokentype);
-                unimplemented!()
+            // type...
+            TokenType::Keyword(whirl_lexer::Keyword::Type) => self
+                .type_declaration(false)
+                .map(|t| Statement::TypeDeclaration(t)),
+            _ => {
+                unimplemented!(
+                    "{:?} not implemented yet!. The last token was {:?}",
+                    self.token().unwrap(),
+                    self.past.borrow_mut()
+                )
             }
         };
 
-        // If an error is encountered, skip all the next (likely corrupted) tokens until after a right delimeter or boundary.
+        // If an error is encountered, clear the precedence stack and skip all the next (likely corrupted) tokens until after a right delimeter or boundary.
         // Then resume normal parsing.
         if token.is_ok() {
             return token;
         }
+        self.precedence_stack.borrow_mut().clear();
         loop {
             match self.token() {
                 Some(token) => match token._type {
@@ -187,6 +196,7 @@ impl<L: Lexer> Parser<L> {
 
     /// Parses a function. It assumes that `function` is the current token, and has already been checked.
     fn function(&self, is_async: bool, is_public: bool) -> Fallible<FunctionDeclaration> {
+        expect!(TokenType::Keyword(Function), self);
         let start = self.token().unwrap().span.start;
 
         let info = self.get_doc_comment();
@@ -224,6 +234,7 @@ impl<L: Lexer> Parser<L> {
 
     /// Parses an async function. Assumes that `async` is the current token (and has already been checked).
     fn async_function(&self, is_public: bool) -> Fallible<FunctionDeclaration> {
+        expect!(TokenType::Keyword(Async), self);
         let start = self.token().unwrap().span.start;
         self.advance(); // Move past async.
 
@@ -237,6 +248,8 @@ impl<L: Lexer> Parser<L> {
 
     /// Parses a public declaration. Assumes that `public` is the current token.
     fn public_declaration(&self) -> Fallible<Statement> {
+        expect!(TokenType::Keyword(Public), self);
+
         let start = self.token().unwrap().span.start;
 
         self.advance(); // Move past public.
@@ -254,7 +267,9 @@ impl<L: Lexer> Parser<L> {
             }
             TokenType::Keyword(Test) => return Err(errors::public_test(token.span)),
             TokenType::Keyword(Async) => Statement::FunctionDeclaration(self.async_function(true)?),
-
+            TokenType::Keyword(whirl_lexer::Keyword::Type) => {
+                Statement::TypeDeclaration(self.type_declaration(true)?)
+            }
             // Parse public shorthand variable declaration as syntax error.
             TokenType::Ident(_) => {
                 let statement = self.statement()?;
@@ -270,6 +285,49 @@ impl<L: Lexer> Parser<L> {
         statement.set_start(start);
 
         Ok(statement)
+    }
+
+    /// Parses a type declaration. Assumes that `type` is the current token.
+    fn type_declaration(&self, is_public: bool) -> Fallible<TypeDeclaration> {
+        expect!(TokenType::Keyword(Type), self);
+        let start = self.token().unwrap().span.start;
+
+        let info = self.get_doc_comment();
+        self.advance(); // move past type.
+
+        let name = self.identifier()?;
+        let generic_params = self.maybe_generic_params()?;
+        expect!(TokenType::Operator(Assign), self);
+        self.advance(); // Move past =
+
+        let value = self.type_expression()?;
+
+        expect!(TokenType::Operator(SemiColon), self);
+        let end = value.span().end;
+
+        self.advance(); // Move past ;
+
+        let span = Span::from([start, end]);
+
+        let signature = TypeSignature {
+            name,
+            info,
+            is_public,
+            generic_params,
+            value,
+        };
+
+        let entry_no = self.scope_manager().register_type(signature);
+
+        let type_ = TypeDeclaration {
+            address: ScopeAddress {
+                scope_id: self.scope_manager().current(),
+                entry_no,
+            },
+            span,
+        };
+
+        Ok(type_)
     }
 
     /// Parses an identifier and advances. It assumes that the identifier is the current token.
@@ -419,6 +477,17 @@ impl<L: Lexer> Parser<L> {
         let type_expr = match token._type {
             TokenType::Keyword(Fn) => self.functional_type()?,
             TokenType::Keyword(Async) => return Err(errors::async_type(token.span)),
+            // `This` type.
+            TokenType::Keyword(This) => self.this_type()?,
+            // Support alternate syntax for union, where | is preceeding.
+            TokenType::Operator(BitOr) => {
+                self.push_precedence(ExpressionPrecedence::TypeUnion);
+                self.advance(); // Move past |
+                let first_exp = self.type_expression()?;
+                self.precedence_stack.borrow_mut().pop();
+                let union = self.union_type(first_exp)?;
+                union
+            }
             TokenType::Ident(_) => self.regular_type_or_union()?,
             _ => return Err(errors::identifier_expected(token.span)),
         };
@@ -499,18 +568,26 @@ impl<L: Lexer> Parser<L> {
     }
 
     /// Parses union type.
-    fn union_type(&self, first_type: TypeExpression) -> Fallible<TypeExpression> {
-        if self.is_lower_or_equal_precedence(ExpressionPrecedence::Access) {
+    fn union_type(&self, mut first_type: TypeExpression) -> Fallible<TypeExpression> {
+        if self.is_lower_or_equal_precedence(ExpressionPrecedence::TypeUnion) {
             return Ok(first_type);
         }
         self.advance(); // Move past |
         self.push_precedence(ExpressionPrecedence::TypeUnion);
         let start = first_type.span().start;
         let mut types = vec![];
-        types.push(first_type);
-        let mut second_type = self.type_expression()?;
 
-        // Concatenate union types as one union type.
+        // Concatenate incoming union types as one union type.
+        if let TypeExpression::Union(ref mut u) = first_type {
+            types.append(&mut u.types)
+        } else {
+            types.push(first_type);
+        }
+
+        let mut second_type = self.type_expression()?;
+        self.precedence_stack.borrow_mut().pop();
+
+        // Concatenate parsed union types as one union type.
         if let TypeExpression::Union(ref mut u) = second_type {
             types.append(&mut u.types)
         } else {
@@ -526,6 +603,14 @@ impl<L: Lexer> Parser<L> {
         Ok(self.type_reparse(node)?)
     }
 
+    /// Parses `This` type. Assumes that the current token is `This`.
+    fn this_type(&self) -> Fallible<TypeExpression> {
+        expect!(TokenType::Keyword(This), self);
+        let span = self.token().unwrap().span;
+        self.advance(); // Move past This.
+        return Ok(self.type_reparse(TypeExpression::This { span })?);
+    }
+
     /// Parses generic arguments if they exist.
     fn maybe_generic_args(&self) -> Fallible<Option<Vec<TypeExpression>>> {
         if !self
@@ -539,6 +624,7 @@ impl<L: Lexer> Parser<L> {
 
     /// Parser generic arguments. Assumes that `<` is the current token.
     fn generic_args(&self) -> Fallible<Vec<TypeExpression>> {
+        expect!(TokenType::Operator(LesserThan), self);
         self.advance(); // Move past <
         let mut arguments = vec![];
         while self.token().is_some_and(|t| {
@@ -592,7 +678,10 @@ impl<L: Lexer> Iterator for Parser<L> {
     type Item = Fallible<Statement>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.advance();
+        // Kickstart the parsing with the first token.
+        if self.past.borrow().is_none() {
+            self.advance();
+        }
         self.token()?;
         let statement_or_error = self.statement();
         Some(statement_or_error)

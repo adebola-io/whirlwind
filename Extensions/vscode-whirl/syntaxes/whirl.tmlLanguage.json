@@ -123,7 +123,11 @@
             }
          },
          "patterns": [
-            { "include": "#type_name" },
+            {
+               "begin": "(?<=type\\s+)",
+               "contentName": "meta.class class entity.name.class",
+               "end": "(?=[^\\w])"
+            },
             { "include": "#generic_params" },
             {
                "match": "\\s*\\=\\s*"
@@ -299,11 +303,14 @@
       },
       "type_label": {
          "begin": "\\:\\s*",
-         "patterns": [
-            { "include": "#function_type" },
-            { "include": "#type_expression" }
-         ],
+         "patterns": [{ "include": "#type_expression" }],
          "end": "(?=[^\\s|^\\w|\\_|\\.|\\<|\\>|,])|(,(?=\\s*(\\w|_)+\\s*\\??\\s*(\\:|\\))))"
+      },
+      "discrete_type": {
+         "patterns": [
+            { "include": "#type_name" },
+            { "include": "#generic_args" }
+         ]
       },
       "type_name": {
          "name": "support.type entity.name.type",
@@ -313,16 +320,22 @@
          "patterns": [
             {
                "name": "constant.language",
-               "match": "\\bThis\\b"
+               "match": "\\s*This\\s*"
             },
-            { "include": "#type_name" },
-            { "match": "." },
-            { "include": "#type_name" },
-            { "include": "#generic_args" }
+            { "include": "#function_type" },
+            {
+               "patterns": [{ "include": "#discrete_type" }, { "match": "\\." }]
+            }
          ]
       },
       "function_type": {
-         "patterns": [{ "include": "#keyword" }]
+         "begin": "(\\bfn\\b)",
+         "beginCaptures": {
+            "1": {
+               "name": "keyword.control"
+            }
+         },
+         "patterns": [{ "include": "#generic_params" }, { "include": "$self" }]
       },
       "generic_args": {
          "begin": "(?<=\\<\\s*)",

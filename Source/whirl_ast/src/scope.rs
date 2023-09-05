@@ -1,4 +1,4 @@
-use crate::FunctionSignature;
+use crate::{FunctionSignature, TypeSignature};
 
 /// A hierarchical data structure that stores info in related "depths".
 /// It provides functions for creating and managing the lifecycle of nested scopes.
@@ -12,6 +12,7 @@ pub struct ScopeManager {
 #[derive(Debug)]
 pub enum ScopeEntry {
     Function(FunctionSignature),
+    Type(TypeSignature),
 }
 
 #[derive(Debug)]
@@ -61,6 +62,7 @@ impl ScopeEntry {
     fn name(&self) -> &str {
         match self {
             ScopeEntry::Function(function) => &function.name.name,
+            ScopeEntry::Type(_type) => &_type.name.name,
         }
     }
 }
@@ -100,9 +102,23 @@ impl Scope {
     }
     /// Get a function entry by its index.
     pub fn get_function(&self, entry_no: usize) -> Option<&FunctionSignature> {
-        self.entries.get(entry_no).map(|entry| match entry {
-            ScopeEntry::Function(f) => f,
-        })
+        self.entries
+            .get(entry_no)
+            .map(|entry| match entry {
+                ScopeEntry::Function(f) => Some(f),
+                _ => None,
+            })
+            .flatten()
+    }
+    /// Get a type entry by its index.
+    pub fn get_type(&self, entry_no: usize) -> Option<&TypeSignature> {
+        self.entries
+            .get(entry_no)
+            .map(|entry| match entry {
+                ScopeEntry::Type(t) => Some(t),
+                _ => None,
+            })
+            .flatten()
     }
 }
 
@@ -200,6 +216,10 @@ impl ScopeManager {
     /// Register a function as being present within a scope.
     pub fn register_function(&mut self, signature: FunctionSignature) -> usize {
         self.scopes[self.current_scope].add(ScopeEntry::Function(signature))
+    }
+    /// Register a type as being present within a scope.
+    pub fn register_type(&mut self, signature: TypeSignature) -> usize {
+        self.scopes[self.current_scope].add(ScopeEntry::Type(signature))
     }
     /// Leaves the current scope and return to its parent.
     /// # Panics

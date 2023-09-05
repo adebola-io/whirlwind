@@ -1,4 +1,4 @@
-use crate::{GenericParameter, HoverFormatter, Identifier, ScopeAddress, Span, Type};
+use crate::{GenericParameter, Identifier, ScopeAddress, Span, Type, TypeExpression};
 
 #[derive(Debug, PartialEq)]
 pub enum Statement {
@@ -12,7 +12,7 @@ pub enum Statement {
     RecordDeclaration,
     TraitDeclaration,
     EnumDeclaration,
-    TypeDeclaration,
+    TypeDeclaration(TypeDeclaration),
     // Control Statements.
     WhileStatement,
     ForStatement,
@@ -48,42 +48,6 @@ pub struct FunctionSignature {
     pub return_type: Type,
 }
 
-impl HoverFormatter for FunctionSignature {
-    fn to_formatted(&self) -> String {
-        // Construct function signature.
-        let mut string = String::new();
-
-        if self.is_public {
-            string.push_str("public ");
-        }
-
-        if self.is_async {
-            string.push_str("async ");
-        }
-        string.push_str("function ");
-        string.push_str(&self.name.name);
-
-        // TODO: Generic Parameters.
-
-        string.push('(');
-
-        for (index, parameter) in self.params.iter().enumerate() {
-            string.push_str(&parameter.to_formatted());
-            if index < self.params.len() - 1 {
-                string.push_str(", ");
-            }
-        }
-        string.push(')');
-
-        if let Some(ref rettype) = self.return_type.declared {
-            string.push_str(": ");
-            string.push_str(&rettype.to_formatted())
-        }
-
-        string
-    }
-}
-
 #[derive(Debug, PartialEq)]
 pub struct Location {
     pub module: String,
@@ -96,13 +60,26 @@ pub struct Block {
     pub span: Span,
 }
 
-impl Block {
-    pub fn empty(span: Span) -> Self {
-        Block {
-            statements: vec![],
-            span,
-        }
-    }
+/// A node for a type declaration.
+/// As wih functions, most of its info is in the scope manager.
+#[derive(Debug, PartialEq)]
+pub struct TypeDeclaration {
+    pub address: ScopeAddress,
+    pub span: Span,
+}
+
+/// Entry to mark a type.
+#[derive(Debug)]
+pub struct TypeSignature {
+    /// Type name.
+    pub name: Identifier,
+    /// Doc comments annotating the type, if any.
+    pub info: Option<Vec<String>>,
+    /// Whether or not the function is denoted by `public`.
+    pub is_public: bool,
+    /// Generic Parameters of the function, if any.
+    pub generic_params: Option<Vec<GenericParameter>>,
+    pub value: TypeExpression,
 }
 
 #[derive(Debug)]
@@ -112,28 +89,12 @@ pub struct Parameter {
     pub is_optional: bool,
 }
 
-impl HoverFormatter for Parameter {
-    fn to_formatted(&self) -> String {
-        let mut string = String::new();
-        string.push_str(&self.name.name);
-        string.push_str(": ");
-
-        // Display given or inferred type.
-        if self.is_optional {
-            string.push_str("Maybe<")
+impl Block {
+    pub fn empty(span: Span) -> Self {
+        Block {
+            statements: vec![],
+            span,
         }
-        let param_type_str = match self.type_label.declared {
-            Some(ref declared) => declared.to_formatted(),
-            None => match self.type_label.inferred {
-                Some(_) => todo!(),
-                None => format!("unknown"),
-            },
-        };
-        string.push_str(&param_type_str);
-        if self.is_optional {
-            string.push_str(">")
-        }
-        string
     }
 }
 
@@ -153,7 +114,7 @@ impl Statement {
             Statement::RecordDeclaration => todo!(),
             Statement::TraitDeclaration => todo!(),
             Statement::EnumDeclaration => todo!(),
-            Statement::TypeDeclaration => todo!(),
+            Statement::TypeDeclaration(t) => t.span,
             Statement::WhileStatement => todo!(),
             Statement::ForStatement => todo!(),
             Statement::ExpressionStatement => todo!(),
@@ -167,13 +128,11 @@ impl Statement {
             Statement::VariableDeclaration => todo!(),
             Statement::ConstantDeclaration => todo!(),
             Statement::ClassDeclaration => todo!(),
-            Statement::FunctionDeclaration(f) => {
-                f.span.start = start;
-            }
+            Statement::FunctionDeclaration(f) => f.span.start = start,
             Statement::RecordDeclaration => todo!(),
             Statement::TraitDeclaration => todo!(),
             Statement::EnumDeclaration => todo!(),
-            Statement::TypeDeclaration => todo!(),
+            Statement::TypeDeclaration(t) => t.span.start = start,
             Statement::WhileStatement => todo!(),
             Statement::ForStatement => todo!(),
             Statement::ExpressionStatement => todo!(),

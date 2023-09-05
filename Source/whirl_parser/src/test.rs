@@ -1,7 +1,8 @@
 #![cfg(test)]
 
 use whirl_ast::{
-    Block, FunctionDeclaration, ScopeAddress, ScopeEntry, Span, Statement, TypeExpression,
+    Block, FunctionDeclaration, ScopeAddress, ScopeEntry, Span, Statement, TypeDeclaration,
+    TypeExpression,
 };
 
 use crate::parse_text;
@@ -313,6 +314,101 @@ fn parsing_async_functions() {
                 span: Span::from([1, 36, 1, 38])
             },
             span: Span::from([1, 1, 1, 38])
+        })
+    );
+}
+
+#[test]
+fn parsing_type_declarations() {
+    let mut parser = parse_text("public type Number = SignedInteger | UnsignedInteger | Float;");
+
+    let statement = parser.next().unwrap().unwrap();
+    let scope_manager = parser.scope_manager();
+
+    assert!(scope_manager.lookaround("Number").is_some_and(
+        |search| matches!(search.entry, whirl_ast::ScopeEntry::Type(t) if t.is_public)
+    ));
+
+    assert_eq!(
+        statement,
+        Statement::TypeDeclaration(TypeDeclaration {
+            address: ScopeAddress::from([0, 0]),
+            span: Span::from([1, 1, 1, 60])
+        })
+    );
+}
+
+#[test]
+fn parsing_multiple_statements() {
+    let mut parser = parse_text(
+        "
+        /// Returns an iterable parser for text input.
+public function parse_text(input: String | Path, parserOptions?: ParserOptions): Parser<TextLexer> {
+    // Parser::from_lexer(lex_text(input))
+}
+
+/// Animals are multicellular eukaryotic organisms in the biological kingdom Animalia.
+public type Animal = Cat | Dog | Sheep | Goat;
+
+/// Any statement representation.
+type Statement =
+  | ExpressionStatement
+  | IfStatement
+  | WhileStatement
+  | DoWhileStatement
+  | SwitchStatement
+  | EmptyStatement
+  | ForStatement
+  | ForInStatement
+  | BlockStatement
+  | ReturnStatement
+  | TryStatement
+  | LabeledStatement
+  | ThrowStatement;
+
+type Predicate = fn(value?: ArrayOf<String>): Boolean;
+    ",
+    );
+
+    let mut statements = vec![];
+    for statement in &mut parser {
+        statements.push(statement);
+    }
+    let scope_manager = parser.scope_manager();
+
+    assert!(scope_manager
+        .lookaround("Statement")
+        .is_some_and(|search| matches!(
+            search.entry,
+            ScopeEntry::Type(t) if matches!(
+                &t.value,
+                TypeExpression::Union(u) if u.types.len() == 13
+            )
+        )));
+    assert_eq!(statements.len(), 4)
+}
+
+#[test]
+fn parsing_this_type() {
+    let mut parser = parse_text("type Self = This;");
+
+    let statement = parser.next().unwrap().unwrap();
+    let scope_manager = parser.scope_manager();
+
+    assert!(scope_manager
+        .lookaround("Self")
+        .is_some_and(|search| matches!(
+            search.entry, whirl_ast::ScopeEntry::Type(t) if matches!(
+                t.value,
+                TypeExpression::This { .. }
+            )
+        )));
+
+    assert_eq!(
+        statement,
+        Statement::TypeDeclaration(TypeDeclaration {
+            address: ScopeAddress::from([0, 0]),
+            span: Span::from([1, 1, 1, 16])
         })
     );
 }

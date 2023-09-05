@@ -1,5 +1,5 @@
 use tower_lsp::lsp_types::{Hover, HoverContents, LanguageString, MarkedString};
-use whirl_ast::{ASTVisitor, FunctionSignature, HoverFormatter, Parameter, ScopeManager};
+use whirl_ast::{ASTVisitor, HoverFormatter, Parameter, ScopeManager, SignatureFormatter};
 
 /// Information shown during hovering.
 pub struct HoverInfo {
@@ -13,19 +13,9 @@ impl From<&str> for HoverInfo {
         }
     }
 }
-impl From<&Parameter> for HoverInfo {
-    fn from(value: &Parameter) -> Self {
-        HoverInfo {
-            contents: HoverContents::Scalar(MarkedString::LanguageString(LanguageString {
-                language: format!("wrl"),
-                value: value.to_formatted(),
-            })),
-        }
-    }
-}
 
-impl From<&FunctionSignature> for HoverInfo {
-    fn from(value: &FunctionSignature) -> Self {
+impl<T: SignatureFormatter> From<&T> for HoverInfo {
+    fn from(value: &T) -> Self {
         let mut info = vec![];
         info.push(MarkedString::LanguageString(LanguageString {
             language: String::from("wrl"),
@@ -34,9 +24,9 @@ impl From<&FunctionSignature> for HoverInfo {
 
         // Documentation?
 
-        if let Some(ref docs) = value.info {
+        if let Some(ref docs) = value.info() {
             let mut documentation = String::new();
-            for line in docs {
+            for line in docs.iter() {
                 documentation.push_str(line);
                 documentation.push('\n')
             }
@@ -80,13 +70,13 @@ impl<'a> ASTVisitor<[u32; 2], Option<HoverInfo>> for HoverFinder<'a> {
 
         // Hovering over the function name.
         if signature.name.span.contains(*args) {
-            return Some(HoverInfo::from(signature));
+            return Some(signature.into());
         }
         // Hovering over a parameter.
         for parameter in &signature.params {
-            // Hovering over parameter name.
-            if parameter.name.span.contains(*args) {
-                return Some(HoverInfo::from(parameter));
+            let visit = self.visit_parameter(parameter, args);
+            if visit.is_some() {
+                return visit;
             }
         }
         // Hovering over something in the function's body.
@@ -98,6 +88,35 @@ impl<'a> ASTVisitor<[u32; 2], Option<HoverInfo>> for HoverFinder<'a> {
             if hover_info.is_some() {
                 return hover_info;
             }
+        }
+        return None;
+    }
+
+    fn visit_parameter(&self, parameter: &Parameter, args: &[u32; 2]) -> Option<HoverInfo> {
+        // Hovering over parameter name.
+        if parameter.name.span.contains(*args) {
+            return Some(HoverInfo {
+                contents: HoverContents::Scalar(MarkedString::LanguageString(LanguageString {
+                    language: format!("wrl"),
+                    value: parameter.to_formatted(),
+                })),
+            });
+        }
+        // todo: Hovering over the parameter type.
+        return None;
+    }
+
+    fn visit_type_declaration(
+        &self,
+        type_decl: &whirl_ast::TypeDeclaration,
+        args: &[u32; 2],
+    ) -> Option<HoverInfo> {
+        let scope = self.scope_manager.get_scope(type_decl.address.scope_id)?;
+        let signature = scope.get_type(type_decl.address.entry_no)?;
+        // Hovering over the function name.
+
+        if signature.name.span.contains(*args) {
+            return Some(signature.into());
         }
         return None;
     }

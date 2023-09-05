@@ -1,4 +1,4 @@
-use crate::{HoverFormatter, Identifier, Parameter, ScopeAddress, Span};
+use crate::{Identifier, Parameter, ScopeAddress, Span};
 
 /// Stores the address of a symbol in relation to an entire workspace.
 #[derive(Debug)]
@@ -124,76 +124,6 @@ impl std::fmt::Debug for TypeExpression {
                 .field("span", &arg0.span)
                 .finish(),
             Self::This { span } => f.debug_struct("ThisType").field("span", span).finish(),
-        }
-    }
-}
-
-impl HoverFormatter for TypeExpression {
-    fn to_formatted(&self) -> String {
-        match self {
-            TypeExpression::Union(union) => {
-                let types = &union.types;
-
-                let mut string = String::new();
-
-                for (index, typeexp) in types.iter().enumerate() {
-                    string.push_str(&typeexp.to_formatted());
-                    if index + 1 < types.len() {
-                        string.push_str(" | ");
-                    }
-                    // Show at most 5 types + the last one.
-                    if index == 4 && types.len() > 6 {
-                        let len = types.len();
-                        string.push_str("... ");
-                        string.push_str(&(len - 6).to_string());
-                        string.push_str(" more ... | ");
-                        string.push_str(&types.last().unwrap().to_formatted())
-                    }
-                }
-
-                string
-            }
-            TypeExpression::Functional(function) => {
-                let mut string = String::from("fn(");
-
-                for (i, param) in function.params.iter().enumerate() {
-                    string.push_str(&param.to_formatted());
-                    if i + 1 < function.params.len() {
-                        string.push_str(", ")
-                    }
-                }
-
-                string.push(')');
-
-                if let Some(ref rettype) = function.return_type {
-                    string.push_str(": ");
-                    string.push_str(&rettype.to_formatted())
-                }
-
-                string
-            }
-            TypeExpression::Member(member) => {
-                let mut string = member.namespace.to_formatted();
-                string.push_str(&member.property.to_formatted());
-                string
-            }
-            TypeExpression::Discrete(discrete) => {
-                let mut string = discrete.name.name.to_owned();
-
-                if let Some(ref generic_args) = discrete.generic_args {
-                    string.push('<');
-                    for (index, genarg) in generic_args.iter().enumerate() {
-                        string.push_str(&genarg.to_formatted());
-                        if index + 1 < generic_args.len() {
-                            string.push_str(", ")
-                        }
-                    }
-                    string.push('>');
-                }
-
-                string
-            }
-            TypeExpression::This { .. } => format!("This"),
         }
     }
 }

@@ -277,6 +277,7 @@ pub trait LexerInner {
             "static" => token!(Keyword::Static, self),
             "switch" => token!(Keyword::Switch, self),
             "test" => token!(Keyword::Test, self),
+            "This" => token!(Keyword::This, self),
             "trait" => token!(Keyword::Trait, self),
             "type" => token!(Keyword::Type, self),
             "use" => token!(Keyword::Use, self),

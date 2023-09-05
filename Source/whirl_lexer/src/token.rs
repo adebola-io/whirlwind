@@ -118,6 +118,7 @@ pub enum Keyword {
     Static,
     Switch,
     Test,
+    This,
     Trait,
     Type,
     Use,

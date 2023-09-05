@@ -2,3 +2,27 @@
 public function parse_text(input: String | Path, parserOptions?: ParserOptions): Parser<TextLexer> {
     // Parser::from_lexer(lex_text(input))
 }
+
+/// Animals are multicellular eukaryotic organisms in the biological kingdom Animalia.
+public type Animal = Cat | Dog | Sheep | Goat;
+
+/// Any statement representation in ECMAScript.
+type Statement =
+  | ExpressionStatement
+  | IfStatement
+  | WhileStatement
+  | DoWhileStatement
+  | SwitchStatement
+  | EmptyStatement
+  | ForStatement
+  | ForInStatement
+  | BlockStatement
+  | ReturnStatement
+  | TryStatement
+  | LabeledStatement
+  | ThrowStatement;
+
+type Predicate = fn(value?: ArrayOf<String>): Boolean;
+
+/// Self referential type.
+type Self = This;
