@@ -1,5 +1,21 @@
 use crate::Span;
 
+pub enum Expression {
+    Identifier(Identifier),
+    Literal(Literal),
+}
+
+#[derive(Debug)]
+pub enum Literal {
+    String(WhirlString),
+}
+
+#[derive(Debug)]
+pub struct WhirlString {
+    pub value: String,
+    pub span: Span,
+}
+
 #[derive(Debug)]
 pub struct Identifier {
     pub name: String,
@@ -19,4 +35,10 @@ pub enum ExpressionPrecedence {
     Logic = 8,            // a || b, a && b
     Equality = 9,         // a == b, a != b
     TypeUnion = 10,
+}
+
+impl Expression {
+    pub fn span(&self) -> Span {
+        todo!()
+    }
 }

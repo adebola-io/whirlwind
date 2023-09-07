@@ -225,7 +225,76 @@ pub trait LexerInner {
 
     /// Lexes a string.
     fn string(&mut self, _quote_type: char) -> Token {
-        todo!()
+        let mut value = String::new();
+        let mut is_ended = false;
+
+        loop {
+            match self.next_char() {
+                Some('\\') => value.push(self.escape()),
+                Some(ch) => {
+                    // End of string.
+                    if ch == _quote_type {
+                        break;
+                    }
+                    value.push(ch)
+                }
+                None => {
+                    is_ended = true;
+                }
+            }
+        }
+        // Unterminated string.
+        if is_ended {
+            self.add_error(LexError::unterminated_string(LexErrorPos::Point(
+                self.report_span().end,
+            )));
+        }
+        let span = self.report_span();
+        Token {
+            _type: TokenType::String(value),
+            span,
+        }
+    }
+
+    /// Parses an escaped sequence. It assumes the last char was a backslash.
+    fn escape(&mut self) -> char {
+        // Get the next character from the input string
+        if let Some(c) = self.next_char() {
+            match c {
+                'n' => '\n',
+                'r' => '\r',
+                't' => '\t',
+                '\\' => '\\',
+                '\'' => '\'',
+                '\"' => '\"',
+                _ => {
+                    // Handle hexadecimal escape sequences like '\xHH'
+                    if c == 'x' {
+                        let mut hex_chars = String::new();
+                        for _ in 0..2 {
+                            if let Some(hex_char) = self.next_char() {
+                                hex_chars.push(hex_char);
+                            } else {
+                                // Handle incomplete hexadecimal escape sequence
+                                return '\0';
+                            }
+                        }
+                        if let Ok(escaped_char) = u8::from_str_radix(&hex_chars, 16) {
+                            return char::from(escaped_char);
+                        } else {
+                            // Handle invalid hexadecimal escape sequence
+                            return '\0';
+                        }
+                    } else {
+                        // Handle other escape sequences or invalid escapes
+                        return '\0';
+                    }
+                }
+            }
+        } else {
+            // Handle the case where there are no more characters to parse
+            return '\0';
+        }
     }
 
     /// Lexes an identifier or a keyword. It also lexes word operators like `is`, `and`, `or` and `not`.

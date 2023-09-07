@@ -2,7 +2,7 @@ use std::cell::RefCell;
 
 use crate::errors::{self, ParseError};
 use whirl_ast::{
-    Block, DiscreteType, ExpressionPrecedence, FunctionDeclaration, FunctionSignature,
+    Block, DiscreteType, Expression, ExpressionPrecedence, FunctionDeclaration, FunctionSignature,
     FunctionalType, GenericParameter, Identifier, MemberType, Parameter, ScopeAddress,
     ScopeManager, ScopeType, Span, Statement, Type, TypeDeclaration, TypeExpression, TypeSignature,
     UnionType,
@@ -140,6 +140,13 @@ impl<L: Lexer> Parser<L> {
             Some(p) => *p <= precedence,
             None => false,
         }
+    }
+}
+
+impl<L: Lexer> Parser<L> {
+    /// Parses an expression.
+    fn expression(&self) -> Fallible<Expression> {
+        todo!()
     }
 }
 

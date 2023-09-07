@@ -164,3 +164,36 @@ fn lex_brackets() {
     let lexer = lex_text("()[]{}");
     assert_eq!(lexer.count(), 6)
 }
+
+#[test]
+fn lex_strings() {
+    // Simple double quoted string.
+    let mut lexer = lex_text("\"Hello, world!\"");
+    assert_eq!(
+        lexer.next().unwrap(),
+        Token {
+            _type: TokenType::String(format!("Hello, world!")),
+            span: Span::from([1, 1, 1, 16])
+        }
+    );
+
+    // Simple single quoted string.
+    lexer = lex_text("'Hello, world!'");
+    assert_eq!(
+        lexer.next().unwrap(),
+        Token {
+            _type: TokenType::String(format!("Hello, world!")),
+            span: Span::from([1, 1, 1, 16])
+        }
+    );
+
+    // String with escapes.
+    lexer = lex_text("\"He said, \\\"Hello, how do you do?\\\"\"");
+    assert_eq!(
+        lexer.next().unwrap(),
+        Token {
+            _type: TokenType::String(format!("He said, \"Hello, how do you do?\"")),
+            span: Span::from([1, 1, 1, 37])
+        }
+    );
+}

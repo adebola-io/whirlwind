@@ -5,6 +5,14 @@ pub struct LexError {
     pub error_type: LexErrorType,
     pub position: LexErrorPos,
 }
+impl LexError {
+    pub(crate) fn unterminated_string(position: LexErrorPos) -> LexError {
+        LexError {
+            error_type: LexErrorType::UnterminatedString,
+            position,
+        }
+    }
+}
 
 #[derive(Debug)]
 /// The point to mark in an error.

@@ -1,10 +1,16 @@
 use std::sync::RwLock;
 
-use tower_lsp::lsp_types::{DidOpenTextDocumentParams, HoverParams, Position, Url};
-use whirl_ast::ASTVisitor;
+use tower_lsp::lsp_types::{
+    DidChangeTextDocumentParams, DidOpenTextDocumentParams, HoverParams, Position,
+    TextDocumentContentChangeEvent, Url,
+};
+use whirl_ast::{ASTVisitor, Span};
 use whirl_parser::Module;
 
-use crate::hover::{HoverFinder, HoverInfo};
+use crate::{
+    did_change::ChangeHandler,
+    hover::{HoverFinder, HoverInfo},
+};
 
 #[derive(Debug)]
 pub struct DocumentManager {
@@ -20,6 +26,7 @@ impl DocumentManager {
     /// Add a new document to be tracked.
     pub fn add_document(&self, params: DidOpenTextDocumentParams) {
         let file = WhirlDocument {
+            version: 0,
             uri: params.text_document.uri,
             module: Module::from(params.text_document.text.as_str()),
         };
@@ -44,11 +51,24 @@ impl DocumentManager {
         }
         false
     }
+    /// Handles didChange event
+    pub fn handle_change(&self, params: DidChangeTextDocumentParams) {
+        let mut documents = self.documents.write().unwrap();
+        let document = documents
+            .iter_mut()
+            .find(|d| d.uri == params.text_document.uri);
+        if document.is_none() {
+            return;
+        }
+        let document = document.unwrap();
+        document.refresh(params.text_document.version, params.content_changes);
+    }
 }
 
 #[derive(Debug)]
 pub struct WhirlDocument {
     uri: Url,
+    version: usize,
     module: Module,
 }
 
@@ -63,5 +83,11 @@ impl WhirlDocument {
             }
         }
         return None;
+    }
+    fn refresh(&mut self, version: i32, changes: Vec<TextDocumentContentChangeEvent>) {
+        self.version = version as usize;
+
+        let handler = ChangeHandler::from_module(&mut self.module);
+        handler.update(changes);
     }
 }

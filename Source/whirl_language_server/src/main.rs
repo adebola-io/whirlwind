@@ -1,3 +1,4 @@
+mod did_change;
 mod document_manager;
 mod hover;
 
@@ -32,6 +33,10 @@ impl LanguageServer for Backend {
         if !self.doc_manager.has(&uri) {
             self.doc_manager.add_document(params);
         }
+    }
+
+    async fn did_change(&self, params: DidChangeTextDocumentParams) {
+        self.doc_manager.handle_change(params);
     }
 
     async fn initialized(&self, _: InitializedParams) {
