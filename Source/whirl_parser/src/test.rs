@@ -1,8 +1,8 @@
 #![cfg(test)]
 
 use whirl_ast::{
-    Block, FunctionDeclaration, ScopeAddress, ScopeEntry, Span, Statement, TypeDeclaration,
-    TypeExpression,
+    Block, FunctionDeclaration, ScopeAddress, ScopeEntry, Span, Statement, TestDeclaration,
+    TypeDeclaration, TypeExpression,
 };
 
 use crate::parse_text;
@@ -409,6 +409,23 @@ fn parsing_this_type() {
         Statement::TypeDeclaration(TypeDeclaration {
             address: ScopeAddress::from([0, 0]),
             span: Span::from([1, 1, 1, 16])
+        })
+    );
+}
+
+#[test]
+fn test_testing_block() {
+    let mut parser = parse_text("test 'test stuff' {}");
+
+    let statement = parser.next().unwrap().unwrap();
+
+    assert_eq!(
+        statement,
+        Statement::TestDeclaration(TestDeclaration {
+            name: format!("test stuff"),
+            name_span: [1, 6, 1, 18].into(),
+            body: Block::empty([1, 19, 1, 21].into()),
+            span: [1, 1, 1, 21].into()
         })
     );
 }

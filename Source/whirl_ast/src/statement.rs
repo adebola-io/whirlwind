@@ -3,7 +3,7 @@ use crate::{GenericParameter, Identifier, ScopeAddress, Span, Type, TypeExpressi
 #[derive(Debug, PartialEq)]
 pub enum Statement {
     // Declarations.
-    TestDeclaration,
+    TestDeclaration(TestDeclaration),
     UseDeclaration,
     VariableDeclaration,
     ConstantDeclaration,
@@ -18,6 +18,15 @@ pub enum Statement {
     ForStatement,
 
     ExpressionStatement,
+}
+
+/// A node for a test block.
+#[derive(Debug, PartialEq)]
+pub struct TestDeclaration {
+    pub name: String,
+    pub name_span: Span,
+    pub body: Block,
+    pub span: Span,
 }
 
 /// A node for a function declaration in the AST.
@@ -105,7 +114,7 @@ impl Statement {
 
     pub fn span(&self) -> Span {
         match self {
-            Statement::TestDeclaration => todo!(),
+            Statement::TestDeclaration(t) => t.span,
             Statement::UseDeclaration => todo!(),
             Statement::VariableDeclaration => todo!(),
             Statement::ConstantDeclaration => todo!(),
@@ -123,7 +132,7 @@ impl Statement {
     /// Dynamically change the starting point of the statement.
     pub fn set_start(&mut self, start: [u32; 2]) {
         match self {
-            Statement::TestDeclaration => todo!(),
+            Statement::TestDeclaration(t) => t.span.start = start,
             Statement::UseDeclaration => todo!(),
             Statement::VariableDeclaration => todo!(),
             Statement::ConstantDeclaration => todo!(),

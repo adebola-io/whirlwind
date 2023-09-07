@@ -20,6 +20,7 @@ pub enum ScopeType {
     Global,
     Functional,
     Local,
+    Test,
 }
 
 /// The scope address stores the address of a symbol in the scope manager.

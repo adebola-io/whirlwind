@@ -4,8 +4,8 @@ use crate::errors::{self, ParseError};
 use whirl_ast::{
     Block, DiscreteType, Expression, ExpressionPrecedence, FunctionDeclaration, FunctionSignature,
     FunctionalType, GenericParameter, Identifier, MemberType, Parameter, ScopeAddress,
-    ScopeManager, ScopeType, Span, Statement, Type, TypeDeclaration, TypeExpression, TypeSignature,
-    UnionType,
+    ScopeManager, ScopeType, Span, Statement, TestDeclaration, Type, TypeDeclaration,
+    TypeExpression, TypeSignature, UnionType,
 };
 use whirl_lexer::{Bracket::*, Comment, Keyword::*, Lexer, Operator::*, Token, TokenType};
 
@@ -174,6 +174,10 @@ impl<L: Lexer> Parser<L> {
             TokenType::Keyword(whirl_lexer::Keyword::Type) => self
                 .type_declaration(false)
                 .map(|t| Statement::TypeDeclaration(t)),
+            // test...
+            TokenType::Keyword(Test) => self
+                .test_declaration()
+                .map(|t| Statement::TestDeclaration(t)),
             _ => {
                 unimplemented!(
                     "{:?} not implemented yet!. The last token was {:?}",
@@ -336,6 +340,36 @@ impl<L: Lexer> Parser<L> {
         };
 
         Ok(type_)
+    }
+
+    /// Parses a test declaration. Assumes that `test` is the current token.
+    fn test_declaration(&self) -> Fallible<TestDeclaration> {
+        expect!(TokenType::Keyword(Test), self);
+        let start = self.token().unwrap().span.start;
+        self.advance(); // Move past test.
+
+        self.ended(errors::string_expected(self.last_token_end()))?;
+        let token = self.token().unwrap();
+
+        match token._type {
+            TokenType::String(ref mut name) => {
+                let name_span = token.span;
+                let name = std::mem::take(name);
+
+                self.advance(); // Move past string.
+
+                let body = self.block(ScopeType::Test)?;
+                let span = Span::from([start, body.span.end]);
+                let test_decl = TestDeclaration {
+                    name,
+                    name_span,
+                    body,
+                    span,
+                };
+                Ok(test_decl)
+            }
+            _ => Err(errors::string_expected(token.span)),
+        }
     }
 
     /// Parses an identifier and advances. It assumes that the identifier is the current token.
