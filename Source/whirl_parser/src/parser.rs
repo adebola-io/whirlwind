@@ -2,10 +2,10 @@ use std::cell::RefCell;
 
 use crate::errors::{self, ParseError};
 use whirl_ast::{
-    Block, DiscreteType, Expression, ExpressionPrecedence, FunctionDeclaration, FunctionSignature,
-    FunctionalType, GenericParameter, Identifier, MemberType, Parameter, ScopeAddress,
-    ScopeManager, ScopeType, Span, Statement, TestDeclaration, Type, TypeDeclaration,
-    TypeExpression, TypeSignature, UnionType,
+    Block, DiscreteType, EnumDeclaration, EnumSignature, EnumVariant, Expression,
+    ExpressionPrecedence, FunctionDeclaration, FunctionSignature, FunctionalType, GenericParameter,
+    Identifier, MemberType, Parameter, ScopeAddress, ScopeEntry, ScopeManager, ScopeType, Span,
+    Statement, TestDeclaration, Type, TypeDeclaration, TypeExpression, TypeSignature, UnionType,
 };
 use whirl_lexer::{Bracket::*, Comment, Keyword::*, Lexer, Operator::*, Token, TokenType};
 
@@ -178,6 +178,10 @@ impl<L: Lexer> Parser<L> {
             TokenType::Keyword(Test) => self
                 .test_declaration()
                 .map(|t| Statement::TestDeclaration(t)),
+            // enum...
+            TokenType::Keyword(Enum) => self
+                .enum_declaration(false)
+                .map(|e| Statement::EnumDeclaration(e)),
             _ => {
                 unimplemented!(
                     "{:?} not implemented yet!. The last token was {:?}",
@@ -230,7 +234,9 @@ impl<L: Lexer> Parser<L> {
             is_public,
         };
 
-        let entry_no = self.scope_manager().register_function(signature);
+        let entry_no = self
+            .scope_manager()
+            .register(ScopeEntry::Function(signature));
 
         let function = FunctionDeclaration {
             address: ScopeAddress {
@@ -282,6 +288,7 @@ impl<L: Lexer> Parser<L> {
             TokenType::Keyword(whirl_lexer::Keyword::Type) => {
                 Statement::TypeDeclaration(self.type_declaration(true)?)
             }
+            TokenType::Keyword(Enum) => Statement::EnumDeclaration(self.enum_declaration(true)?),
             // Parse public shorthand variable declaration as syntax error.
             TokenType::Ident(_) => {
                 let statement = self.statement()?;
@@ -329,7 +336,7 @@ impl<L: Lexer> Parser<L> {
             value,
         };
 
-        let entry_no = self.scope_manager().register_type(signature);
+        let entry_no = self.scope_manager().register(ScopeEntry::Type(signature));
 
         let type_ = TypeDeclaration {
             address: ScopeAddress {
@@ -370,6 +377,97 @@ impl<L: Lexer> Parser<L> {
             }
             _ => Err(errors::string_expected(token.span)),
         }
+    }
+
+    /// Parses an enum declaration. Assumes that `enum` is the current token.
+    fn enum_declaration(&self, is_public: bool) -> Fallible<EnumDeclaration> {
+        expect!(TokenType::Keyword(Enum), self);
+        let start = self.token().unwrap().span.start;
+
+        let info = self.get_doc_comment();
+        self.advance(); // Move past enum.
+
+        let name = self.identifier()?;
+        let generic_params = self.maybe_generic_params()?;
+        let (variants, end) = self.enum_variants()?;
+
+        let signature = EnumSignature {
+            name,
+            info,
+            is_public,
+            generic_params,
+            variants,
+        };
+
+        let entry_no = self.scope_manager().register(ScopeEntry::Enum(signature));
+
+        let address = ScopeAddress {
+            scope_id: self.scope_manager().current(),
+            entry_no,
+        };
+        let span = Span::from([start, end]);
+
+        let enum_ = EnumDeclaration { address, span };
+
+        Ok(enum_)
+    }
+
+    /// Parses an enum variant.
+    fn enum_variants(&self) -> Fallible<(Vec<EnumVariant>, [u32; 2])> {
+        expect!(TokenType::Bracket(LCurly), self);
+        self.advance(); // Move past {
+
+        let mut variants = vec![];
+        while self
+            .token()
+            .is_some_and(|t| t._type != TokenType::Bracket(LCurly))
+        {
+            variants.push(self.enum_variant()?);
+            if self.token().unwrap()._type == TokenType::Operator(Comma) {
+                self.advance();
+                continue;
+            }
+            break;
+        }
+
+        expect!(TokenType::Bracket(RCurly), self);
+        let end = self.token().unwrap().span.end;
+        self.advance(); // Close }
+
+        Ok((variants, end))
+    }
+
+    /// Parses an enum variant. Assumes that the name is the current token.
+    fn enum_variant(&self) -> Fallible<EnumVariant> {
+        let info = self.get_doc_comment();
+        let name = self.identifier()?;
+        let start = name.span.start;
+        let end;
+        let mut tagged_type = None;
+        // Parsing a tagged type.
+        if self
+            .token()
+            .is_some_and(|token| token._type == TokenType::Bracket(LParens))
+        {
+            self.advance(); // Move past (
+            tagged_type = Some(self.type_expression()?);
+            expect!(TokenType::Bracket(RParens), self);
+            end = self.token().unwrap().span.end;
+            self.advance(); // Move past )
+        } else {
+            end = name.span.end;
+        }
+
+        let span = Span::from([start, end]);
+
+        let variant = EnumVariant {
+            name,
+            info,
+            tagged_type,
+            span,
+        };
+
+        Ok(variant)
     }
 
     /// Parses an identifier and advances. It assumes that the identifier is the current token.

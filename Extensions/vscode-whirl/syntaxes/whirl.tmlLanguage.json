@@ -9,6 +9,7 @@
       { "include": "#trait_header" },
       { "include": "#use_declaration" },
       { "include": "#enum_declaration" },
+      { "include": "#enum_variant_hover" },
       { "include": "#function" },
       { "include": "#boolean_literal" },
       { "include": "#keyword" },
@@ -238,18 +239,42 @@
          ],
          "end": "\\s*\\}"
       },
+      "enum_variant_hover": {
+         "begin": "(\\(variant\\))\\s+",
+         "beginCaptures": {
+            "1": {
+               "name": "identifier meta.identifier variable.identifier"
+            }
+         },
+         "patterns": [
+            { "include": "#inferred_function" },
+            { "include": "#type_expression" }
+         ],
+         "end": "\\s*\\}"
+      },
       "enum_block": {
          "begin": "\\{\\s*",
          "patterns": [
-            {
-               "name": "meta.definition.variable variable.other.constant",
-               "match": "\\b\\w+\\b\\s*"
-            },
-            { "match": "\\," }
+            { "include": "#enum_variant_simple" },
+            { "match": "\\," },
+            { "include": "#enum_variant_tagged" }
          ],
          "end": "(?=\\s*\\})"
       },
-
+      "enum_variant_simple": {
+         "name": "meta.definition.variable variable.other.constant",
+         "match": "\\b\\w+\\b\\s*"
+      },
+      "enum_variant_tagged": {
+         "begin": "(\\s*\\w+\\s*)(?=\\()",
+         "beginCaptures": {
+            "1": {
+               "name": "meta.definition.variable variable.other.constant"
+            }
+         },
+         "patterns": [{ "include": "#type_expression" }],
+         "end": "(?=\\s*\\))"
+      },
       "function": {
          "begin": "(\\bfunction\\s+)",
          "beginCaptures": {

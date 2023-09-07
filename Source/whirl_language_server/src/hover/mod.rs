@@ -113,10 +113,31 @@ impl<'a> ASTVisitor<[u32; 2], Option<HoverInfo>> for HoverFinder<'a> {
     ) -> Option<HoverInfo> {
         let scope = self.scope_manager.get_scope(type_decl.address.scope_id)?;
         let signature = scope.get_type(type_decl.address.entry_no)?;
-        // Hovering over the function name.
+        // Hovering over the type name.
 
         if signature.name.span.contains(*args) {
             return Some(signature.into());
+        }
+        return None;
+    }
+
+    fn visit_enum_declaration(
+        &self,
+        enum_decl: &whirl_ast::EnumDeclaration,
+        args: &[u32; 2],
+    ) -> Option<HoverInfo> {
+        let scope = self.scope_manager.get_scope(enum_decl.address.scope_id)?;
+        let signature = scope.get_enum(enum_decl.address.entry_no)?;
+
+        // Hovering over enum name.
+        if signature.name.span.contains(*args) {
+            return Some(signature.into());
+        }
+
+        for variant in &signature.variants {
+            if variant.span.contains(*args) {
+                return Some(HoverInfo::from(&(&signature.name, variant)));
+            }
         }
         return None;
     }

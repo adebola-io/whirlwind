@@ -1,4 +1,7 @@
-use crate::{FunctionSignature, Parameter, TypeExpression, TypeSignature};
+use crate::{
+    EnumSignature, EnumVariant, FunctionSignature, Identifier, Parameter, TypeExpression,
+    TypeSignature,
+};
 
 /// Generator trait for how symbols are illustrated in a hover card.
 pub trait HoverFormatter {
@@ -74,6 +77,29 @@ impl HoverFormatter for TypeSignature {
 }
 
 impl SignatureFormatter for TypeSignature {
+    fn info(&self) -> Option<&Vec<String>> {
+        self.info.as_ref()
+    }
+}
+
+impl HoverFormatter for EnumSignature {
+    fn to_formatted(&self) -> String {
+        let mut string = String::new();
+
+        if self.is_public {
+            string.push_str("public ");
+        }
+
+        string.push_str("enum ");
+
+        string.push_str(&self.name.name);
+
+        // Todo: Generic params.
+        string
+    }
+}
+
+impl SignatureFormatter for EnumSignature {
     fn info(&self) -> Option<&Vec<String>> {
         self.info.as_ref()
     }
@@ -226,5 +252,30 @@ impl HoverFormatter for TypeExpression {
             }
             TypeExpression::This { .. } => format!("This"),
         }
+    }
+}
+
+impl HoverFormatter for (&Identifier, &EnumVariant) {
+    fn to_formatted(&self) -> String {
+        let mut string = String::new();
+
+        string.push_str("(variant) ");
+
+        string.push_str(&self.0.name);
+        string.push('.');
+        string.push_str(&self.1.name.name);
+
+        if let Some(ref s) = self.1.tagged_type {
+            string.push('(');
+            string.push_str(&s.to_formatted());
+            string.push(')');
+        }
+
+        string
+    }
+}
+impl SignatureFormatter for (&Identifier, &EnumVariant) {
+    fn info(&self) -> Option<&Vec<String>> {
+        self.1.info.as_ref()
     }
 }

@@ -1,4 +1,4 @@
-use crate::{FunctionSignature, TypeSignature};
+use crate::{EnumSignature, FunctionSignature, TypeSignature};
 
 /// A hierarchical data structure that stores info in related "depths".
 /// It provides functions for creating and managing the lifecycle of nested scopes.
@@ -13,6 +13,7 @@ pub struct ScopeManager {
 pub enum ScopeEntry {
     Function(FunctionSignature),
     Type(TypeSignature),
+    Enum(EnumSignature),
 }
 
 #[derive(Debug)]
@@ -62,8 +63,9 @@ impl ScopeEntry {
     /// Returns the name of an entry.
     fn name(&self) -> &str {
         match self {
-            ScopeEntry::Function(function) => &function.name.name,
-            ScopeEntry::Type(_type) => &_type.name.name,
+            ScopeEntry::Function(FunctionSignature { name, .. })
+            | ScopeEntry::Type(TypeSignature { name, .. })
+            | ScopeEntry::Enum(EnumSignature { name, .. }) => &name.name,
         }
     }
 }
@@ -117,6 +119,16 @@ impl Scope {
             .get(entry_no)
             .map(|entry| match entry {
                 ScopeEntry::Type(t) => Some(t),
+                _ => None,
+            })
+            .flatten()
+    }
+    /// Get a enum entry by its index.
+    pub fn get_enum(&self, entry_no: usize) -> Option<&EnumSignature> {
+        self.entries
+            .get(entry_no)
+            .map(|entry| match entry {
+                ScopeEntry::Enum(e) => Some(e),
                 _ => None,
             })
             .flatten()
@@ -214,13 +226,9 @@ impl ScopeManager {
         };
         None
     }
-    /// Register a function as being present within a scope.
-    pub fn register_function(&mut self, signature: FunctionSignature) -> usize {
-        self.scopes[self.current_scope].add(ScopeEntry::Function(signature))
-    }
-    /// Register a type as being present within a scope.
-    pub fn register_type(&mut self, signature: TypeSignature) -> usize {
-        self.scopes[self.current_scope].add(ScopeEntry::Type(signature))
+    /// Register a declaration as being present within a scope.
+    pub fn register(&mut self, entry: ScopeEntry) -> usize {
+        self.scopes[self.current_scope].add(entry)
     }
     /// Leaves the current scope and return to its parent.
     /// # Panics

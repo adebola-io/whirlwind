@@ -46,7 +46,7 @@ RecordDeclaration ::= "record " Identifier "{" RecordMapList? "}"
 
 TraitDeclaration ::= "trait " Identifier ImplementsLabel? (TraitList | ";")
 
-EnumDeclaration ::= "enum " Identifier EnumBlock
+EnumDeclaration ::= "enum " Identifier GenericParameterList? EnumBlock
 
 TypeDeclaration ::= "type " Identifier GenericParameterList? "=" TypeExpression
 
@@ -151,7 +151,7 @@ OptionalExpression ::= Expression "?"
 
 GenericParameters ::= GenericParameter ("," GenericParameters?)?
 
-EnumVariants ::= Identifier ("," EnumVariants?)?
+EnumVariants ::= Identifier ("(" TypeExpression ")")? ("," EnumVariants?)?
 
 ClassList ::= (DiscreteType | MemberType) ("," ClassList?)?
 

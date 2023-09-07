@@ -11,7 +11,7 @@ pub enum Statement {
     FunctionDeclaration(FunctionDeclaration),
     RecordDeclaration,
     TraitDeclaration,
-    EnumDeclaration,
+    EnumDeclaration(EnumDeclaration),
     TypeDeclaration(TypeDeclaration),
     // Control Statements.
     WhileStatement,
@@ -98,6 +98,39 @@ pub struct Parameter {
     pub is_optional: bool,
 }
 
+/// Node for an enumerated type.
+#[derive(Debug, PartialEq)]
+pub struct EnumDeclaration {
+    pub address: ScopeAddress,
+    pub span: Span,
+}
+
+/// Entry to mark an enum.
+#[derive(Debug)]
+pub struct EnumSignature {
+    /// enum name.
+    pub name: Identifier,
+    /// Doc comments annotating the enum, if any.
+    pub info: Option<Vec<String>>,
+    /// Whether or not the function is denoted by `public`.
+    pub is_public: bool,
+    /// Generic Parameters of the function, if any.
+    pub generic_params: Option<Vec<GenericParameter>>,
+    /// The enum variants.
+    pub variants: Vec<EnumVariant>,
+}
+
+/// Entry to mark an enum variant.
+#[derive(Debug)]
+pub struct EnumVariant {
+    /// variant name.
+    pub name: Identifier,
+    /// Doc comments annotating the variant, if any.
+    pub info: Option<Vec<String>>,
+    pub tagged_type: Option<TypeExpression>,
+    pub span: Span,
+}
+
 impl Block {
     pub fn empty(span: Span) -> Self {
         Block {
@@ -122,7 +155,7 @@ impl Statement {
             Statement::FunctionDeclaration(f) => f.span,
             Statement::RecordDeclaration => todo!(),
             Statement::TraitDeclaration => todo!(),
-            Statement::EnumDeclaration => todo!(),
+            Statement::EnumDeclaration(e) => e.span,
             Statement::TypeDeclaration(t) => t.span,
             Statement::WhileStatement => todo!(),
             Statement::ForStatement => todo!(),
@@ -140,7 +173,7 @@ impl Statement {
             Statement::FunctionDeclaration(f) => f.span.start = start,
             Statement::RecordDeclaration => todo!(),
             Statement::TraitDeclaration => todo!(),
-            Statement::EnumDeclaration => todo!(),
+            Statement::EnumDeclaration(e) => e.span.start = start,
             Statement::TypeDeclaration(t) => t.span.start = start,
             Statement::WhileStatement => todo!(),
             Statement::ForStatement => todo!(),

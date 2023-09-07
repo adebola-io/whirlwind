@@ -1,8 +1,8 @@
 #![cfg(test)]
 
 use whirl_ast::{
-    Block, FunctionDeclaration, ScopeAddress, ScopeEntry, Span, Statement, TestDeclaration,
-    TypeDeclaration, TypeExpression,
+    Block, EnumDeclaration, FunctionDeclaration, ScopeAddress, ScopeEntry, Span, Statement,
+    TestDeclaration, TypeDeclaration, TypeExpression,
 };
 
 use crate::parse_text;
@@ -426,6 +426,69 @@ fn test_testing_block() {
             name_span: [1, 6, 1, 18].into(),
             body: Block::empty([1, 19, 1, 21].into()),
             span: [1, 1, 1, 21].into()
+        })
+    );
+}
+
+#[test]
+fn parsing_enum_variant() {
+    // Normal Enums.
+    let mut parser = parse_text(
+        "
+     enum Scope {
+        Private,
+        Public
+    }",
+    );
+
+    let mut statement = parser.next().unwrap().unwrap();
+
+    let mut scope_manager = parser.scope_manager();
+
+    assert!(scope_manager
+        .lookaround("Scope")
+        .is_some_and(|search| matches!(
+            search.entry, whirl_ast::ScopeEntry::Enum(e) if matches!(
+                e.variants[1].name.name.as_str(),
+                "Public"
+            )
+        )));
+
+    assert_eq!(
+        statement,
+        Statement::EnumDeclaration(EnumDeclaration {
+            address: [0, 0].into(),
+            span: Span::from([2, 6, 5, 6])
+        })
+    );
+
+    // Tagged Enums.
+    parser = parse_text(
+        "
+     enum Node {
+        Root,
+        Child(Node)
+    }",
+    );
+
+    statement = parser.next().unwrap().unwrap();
+
+    scope_manager = parser.scope_manager();
+
+    assert!(scope_manager
+        .lookaround("Node")
+        .is_some_and(|search| matches!(
+            search.entry, whirl_ast::ScopeEntry::Enum(e) if matches!(
+                e.variants[1].name.name.as_str(),
+                "Child"
+            ) && e.variants[1].tagged_type.is_some()
+        )));
+
+    assert_eq!(
+        statement,
+        Statement::EnumDeclaration(EnumDeclaration {
+            address: [0, 0].into(),
+            span: Span::from([2, 6, 5, 6])
         })
     );
 }

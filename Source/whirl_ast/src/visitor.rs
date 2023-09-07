@@ -1,4 +1,6 @@
-use crate::{FunctionDeclaration, Identifier, Parameter, Statement, TypeDeclaration};
+use crate::{
+    EnumDeclaration, FunctionDeclaration, Identifier, Parameter, Statement, TypeDeclaration,
+};
 
 #[allow(unused_variables)]
 /// A very skeletal trait for immutably traversing the Abstract Syntax Tree.
@@ -8,6 +10,7 @@ pub trait ASTVisitor<Arguments = (), Output: Default = ()> {
         match statement {
             Statement::FunctionDeclaration(f) => self.visit_function(f, args),
             Statement::TypeDeclaration(t) => self.visit_type_declaration(t, args),
+            Statement::EnumDeclaration(e) => self.visit_enum_declaration(e, args),
             _ => Output::default(),
         }
     }
@@ -26,6 +29,10 @@ pub trait ASTVisitor<Arguments = (), Output: Default = ()> {
     /// Visit a parameter node.
     fn visit_parameter(&self, parameter: &Parameter, args: &Arguments) -> Output {
         self.visit_identifier(&parameter.name, args)
+    }
+    /// Visit an enum node.
+    fn visit_enum_declaration(&self, enum_decl: &EnumDeclaration, args: &Arguments) -> Output {
+        Output::default()
     }
     /// Visit an identifier node.
     fn visit_identifier(&self, ident: &Identifier, args: &Arguments) -> Output {

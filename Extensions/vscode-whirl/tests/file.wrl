@@ -26,3 +26,17 @@ type Predicate = fn(value?: ArrayOf<String>): Boolean;
 
 /// Self referential type.
 type Self = This;
+
+enum Gender {
+  Male,
+  Female, 
+  Other
+}
+
+/// Stuff about this enum.
+public enum NotificationType {
+  Success,
+  Error(ErrorType),
+  Warning,
+  Info
+}
