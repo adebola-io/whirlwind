@@ -143,9 +143,10 @@ impl<L: Lexer> Parser<L> {
     }
 }
 
+// Expressions
 impl<L: Lexer> Parser<L> {
     /// Parses an expression.
-    fn expression(&self) -> Fallible<Expression> {
+    fn _expression(&self) -> Fallible<Expression> {
         todo!()
     }
 }

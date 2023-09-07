@@ -4,7 +4,7 @@ use tower_lsp::lsp_types::{
     DidChangeTextDocumentParams, DidOpenTextDocumentParams, HoverParams, Position,
     TextDocumentContentChangeEvent, Url,
 };
-use whirl_ast::{ASTVisitor, Span};
+use whirl_ast::ASTVisitor;
 use whirl_parser::Module;
 
 use crate::{

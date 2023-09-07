@@ -28,5 +28,5 @@ impl<'a> ChangeHandler<'a> {
     }
 
     /// Change characteristics based on text update.
-    pub fn run_update(&self, span: Span, text: String) {}
+    pub fn run_update(&self, _span: Span, _text: String) {}
 }

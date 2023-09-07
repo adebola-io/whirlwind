@@ -12,6 +12,13 @@ impl LexError {
             position,
         }
     }
+
+    pub(crate) fn no_value_after_exponent(position: LexErrorPos) -> LexError {
+        LexError {
+            error_type: LexErrorType::NoValAfterExponent,
+            position,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -26,4 +33,6 @@ pub enum LexErrorType {
     UnexpectedEndOfInput,
     UnterminatedString,
     InvalidCharacter(char),
+    NoValAfterExponent,
+    ExponentforInvalidBase,
 }

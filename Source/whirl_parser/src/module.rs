@@ -1,5 +1,5 @@
 use crate::{errors, parse_text};
-use whirl_ast::{ScopeManager, Span, Statement};
+use whirl_ast::{ScopeManager, Statement};
 use whirl_lexer::Lexer;
 
 use errors::ProgramError;

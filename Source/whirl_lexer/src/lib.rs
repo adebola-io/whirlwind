@@ -17,6 +17,7 @@ pub struct TextLexer<'input> {
     errors: Vec<LexError>,
     stash: Option<char>,
     line_lengths: Vec<u32>,
+    saved: Option<Token>,
 }
 
 pub trait Lexer: LexerInner + Iterator<Item = Token> {
@@ -85,6 +86,14 @@ impl LexerInner for TextLexer<'_> {
     fn line_lengths(&self) -> &[u32] {
         &self.line_lengths
     }
+
+    fn save_token(&mut self, token: Token) {
+        self.saved = Some(token)
+    }
+
+    fn remove_saved(&mut self) -> Option<Token> {
+        self.saved.take()
+    }
 }
 
 impl Lexer for TextLexer<'_> {
@@ -110,5 +119,6 @@ pub fn lex_text(input: &str) -> TextLexer {
         errors: vec![],
         stash: None,
         line_lengths: vec![0],
+        saved: None,
     }
 }

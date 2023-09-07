@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use whirl_ast::Span;
+use whirl_ast::{Number, Span};
 
 use crate::lex_text;
 use crate::token::{Token, TokenType};
@@ -194,6 +194,114 @@ fn lex_strings() {
         Token {
             _type: TokenType::String(format!("He said, \"Hello, how do you do?\"")),
             span: Span::from([1, 1, 1, 37])
+        }
+    );
+}
+
+#[test]
+fn lex_numbers() {
+    // Decimal numbers.
+    let mut lexer = lex_text("23456");
+    assert_eq!(
+        lexer.next().unwrap(),
+        Token {
+            _type: TokenType::Number(Number::Decimal(format!("23456"))),
+            span: Span::from([1, 1, 1, 5])
+        }
+    );
+    // Binary numbers.
+    lexer = lex_text("0b101010");
+    assert_eq!(
+        lexer.next().unwrap(),
+        Token {
+            _type: TokenType::Number(Number::Binary(format!("101010"))),
+            span: Span::from([1, 1, 1, 8])
+        }
+    );
+    // Octal numbers.
+    lexer = lex_text("0o163524");
+    assert_eq!(
+        lexer.next().unwrap(),
+        Token {
+            _type: TokenType::Number(Number::Octal(format!("163524"))),
+            span: Span::from([1, 1, 1, 8])
+        }
+    );
+    // Hexadecimal numbers.
+    lexer = lex_text("0x1283A83");
+    assert_eq!(
+        lexer.next().unwrap(),
+        Token {
+            _type: TokenType::Number(Number::Hexadecimal(format!("1283A83"))),
+            span: Span::from([1, 1, 1, 9])
+        }
+    );
+
+    // Immediately before range.
+    lexer = lex_text("1..3 + 4.5..4");
+    assert_eq!(
+        (lexer.nth(0).unwrap(), lexer.nth(2).unwrap()),
+        (
+            Token {
+                _type: TokenType::Number(Number::Decimal(format!("1"))),
+                span: Span::from([1, 1, 1, 2])
+            },
+            Token {
+                _type: TokenType::Number(Number::Decimal(format!("4.5"))),
+                span: Span::from([1, 8, 1, 10])
+            }
+        )
+    );
+}
+
+#[test]
+fn lex_numbers_with_decimals() {
+    let mut lexer = lex_text("123.456");
+    assert_eq!(
+        lexer.next().unwrap(),
+        Token {
+            _type: TokenType::Number(Number::Decimal(format!("123.456"))),
+            span: Span::from([1, 1, 1, 7])
+        }
+    );
+}
+
+#[test]
+fn lex_numbers_with_exponent() {
+    // With exponents
+    let mut lexer = lex_text("2e45");
+    assert_eq!(
+        lexer.next().unwrap(),
+        Token {
+            _type: TokenType::Number(Number::Decimal(format!("2e45"))),
+            span: Span::from([1, 1, 1, 4])
+        }
+    );
+    // With decimals
+    lexer = lex_text("20.5e45");
+    assert_eq!(
+        lexer.next().unwrap(),
+        Token {
+            _type: TokenType::Number(Number::Decimal(format!("20.5e45"))),
+            span: Span::from([1, 1, 1, 7])
+        }
+    );
+    // With positive sign
+    lexer = lex_text("429e+45");
+    assert_eq!(
+        lexer.next().unwrap(),
+        Token {
+            _type: TokenType::Number(Number::Decimal(format!("429e+45"))),
+            span: Span::from([1, 1, 1, 7])
+        }
+    );
+    // With negative sign
+    lexer = lex_text("902e-9");
+    assert_eq!(
+        lexer.next().unwrap(),
+        Token {
+            _type: TokenType::Number(Number::Decimal(format!("902e-9"))),
+            span: Span::from([1, 1, 1, 6])
         }
     );
 }

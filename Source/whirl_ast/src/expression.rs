@@ -8,6 +8,7 @@ pub enum Expression {
 #[derive(Debug)]
 pub enum Literal {
     String(WhirlString),
+    Number(Number),
 }
 
 #[derive(Debug)]
@@ -20,6 +21,14 @@ pub struct WhirlString {
 pub struct Identifier {
     pub name: String,
     pub span: Span,
+}
+
+#[derive(PartialEq, Debug)]
+pub enum Number {
+    Binary(String),
+    Octal(String),
+    Hexadecimal(String),
+    Decimal(String),
 }
 
 /// Chart for expression precedence in Whirl.

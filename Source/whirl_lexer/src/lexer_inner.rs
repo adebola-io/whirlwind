@@ -1,4 +1,4 @@
-use whirl_ast::Span;
+use whirl_ast::{Number, Span};
 
 use crate::{
     error::{LexError, LexErrorPos, LexErrorType},
@@ -54,15 +54,18 @@ macro_rules! token {
 }
 
 fn is_valid_identifier(ch: char) -> bool {
+    matches!(ch, '0'..='9' | 'A'..='Z' | 'a'..='z' | '_')
+}
+fn is_valid_identifier_start(ch: char) -> bool {
     matches!(ch, 'A'..='Z' | 'a'..='z' | '_')
 }
 
 pub trait LexerInner {
     fn next_token_inner(&mut self) -> Option<Token> {
-        match self.remove_stashed() {
+        self.remove_saved().or(match self.remove_stashed() {
             Some(ch) => self.token(ch),
             None => self.next_char().map(|ch| self.token(ch)).flatten(),
-        }
+        })
     }
 
     /// Scans a token.
@@ -127,7 +130,8 @@ pub trait LexerInner {
                     None => return None,
                 }
             },
-            ch if is_valid_identifier(ch) => Some(self.ident_or_keyword(ch)),
+            ch if ch.is_numeric() => Some(self.number(ch)),
+            ch if is_valid_identifier_start(ch) => Some(self.ident_or_keyword(ch)),
             // Invalid characters.
             ch => {
                 self.add_error(LexError {
@@ -141,6 +145,11 @@ pub trait LexerInner {
             }
         }
     }
+
+    /// Store a token that was predictively parsed to be delivered on the next iteration.
+    fn save_token(&mut self, token: Token);
+    /// Remove the saved token.
+    fn remove_saved(&mut self) -> Option<Token>;
 
     /// Gets the next character from the text while advancing the cursor.
     fn next_char(&mut self) -> Option<char>;
@@ -297,6 +306,145 @@ pub trait LexerInner {
         }
     }
 
+    /// Lexes a number.
+    fn number(&mut self, first_char: char) -> Token {
+        let mut value = String::new();
+
+        let mut is_ended = false;
+        let mut encountered_newline = false;
+        let mut encountered_decimal = false;
+
+        let mut stored_char = None;
+        // Check for binary, octal of hexadecimal numbers.
+        let radix: u32 = if first_char == '0' {
+            match self.next_char() {
+                Some('x') => 16,
+                Some('o') => 8,
+                Some('b') => 2,
+                Some(ch) => {
+                    stored_char = Some(ch);
+                    10
+                }
+                None => 10,
+            }
+        } else {
+            10
+        };
+
+        if radix == 10 {
+            value.push(first_char);
+        }
+
+        loop {
+            match stored_char.or(self.next_char()) {
+                Some(ch) if ch.is_digit(radix) => value.push(ch),
+                Some(ch) if ch == 'e' => {
+                    // Only decimal numbers should have exponent.
+                    if radix != 10 {
+                        self.add_error(LexError {
+                            error_type: LexErrorType::ExponentforInvalidBase,
+                            position: LexErrorPos::Point(self.report_span().end),
+                        })
+                    }
+                    let tuple = self.exponent();
+                    value.push_str(&tuple.0);
+                    match tuple.1 {
+                        Some('\n') => encountered_newline = true,
+                        None => is_ended = true,
+                        _ => {}
+                    }
+                    break;
+                }
+                Some(ch) if ch == '.' => {
+                    if encountered_decimal {
+                        // parse a range instead.
+                        if value.ends_with('.') {
+                            value.remove(value.len() - 1);
+                            self.save_token(token!(Operator::Range, self).unwrap());
+                        } else {
+                            self.stash(ch);
+                        }
+                        break;
+                    }
+                    value.push(ch);
+                    encountered_decimal = true;
+                }
+                Some(ch) => {
+                    if ch == '\n' {
+                        encountered_newline = true;
+                    }
+                    self.stash(ch);
+                    break;
+                }
+                None => {
+                    is_ended = true;
+                    break;
+                }
+            }
+        }
+
+        let mut token = Token {
+            _type: TokenType::Number(match radix {
+                2 => Number::Binary(value),
+                8 => Number::Octal(value),
+                10 => Number::Decimal(value),
+                16 => Number::Hexadecimal(value),
+                _ => unreachable!(),
+            }),
+            span: self.report_span(),
+        };
+
+        // Offset correction.
+        if encountered_newline {
+            token.span.end = [
+                token.span.end[0] - 1,
+                self.line_lengths()[(token.span.end[0] - 1) as usize],
+            ];
+        } else {
+            token.span.end[1] -= if is_ended { 1 } else { 2 };
+        }
+        token
+    }
+
+    /// Parses an exponent.
+    fn exponent(&mut self) -> (String, Option<char>) {
+        let mut exponent_value = String::from('e');
+        let mut last_ch = None;
+
+        loop {
+            match self.next_char() {
+                Some('+') if exponent_value == "e" => exponent_value.push('+'),
+                Some('-') if exponent_value == "e" => exponent_value.push('-'),
+                Some(ch) if ch.is_digit(10) => exponent_value.push(ch),
+                Some(ch) => {
+                    if exponent_value.is_empty() {
+                        self.add_error(LexError::no_value_after_exponent(LexErrorPos::Point(
+                            self.report_span().end,
+                        )))
+                    }
+                    self.stash(ch);
+                    last_ch = Some(ch);
+                    break;
+                }
+                None => {
+                    if exponent_value.is_empty() {
+                        self.add_error(LexError::no_value_after_exponent(LexErrorPos::Point(
+                            self.report_span().end,
+                        )))
+                    }
+                    break;
+                }
+            }
+        }
+        return (
+            if exponent_value.is_empty() {
+                format!("1")
+            } else {
+                exponent_value
+            },
+            last_ch,
+        );
+    }
     /// Lexes an identifier or a keyword. It also lexes word operators like `is`, `and`, `or` and `not`.
     fn ident_or_keyword(&mut self, first_char: char) -> Token {
         let mut ident_text = String::from(first_char);

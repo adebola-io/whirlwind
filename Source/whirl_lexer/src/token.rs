@@ -1,4 +1,4 @@
-use whirl_ast::Span;
+use whirl_ast::{Number, Span};
 
 /// A token is the smallest lexical unit of a Whirl program.
 #[derive(PartialEq, Debug)]
@@ -15,7 +15,7 @@ pub enum TokenType {
     Ident(String),
     String(String),
     TemplateStringFragment(String),
-    Number(f64),
+    Number(Number),
     Bracket(Bracket),
     Invalid(char),
 }
