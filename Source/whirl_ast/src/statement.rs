@@ -4,7 +4,7 @@ use crate::{GenericParameter, Identifier, ScopeAddress, Span, Type, TypeExpressi
 pub enum Statement {
     // Declarations.
     TestDeclaration(TestDeclaration),
-    UseDeclaration,
+    UseDeclaration(UseDeclaration),
     VariableDeclaration,
     ConstantDeclaration,
     ClassDeclaration,
@@ -16,8 +16,42 @@ pub enum Statement {
     // Control Statements.
     WhileStatement,
     ForStatement,
-
+    // Expression statements.
     ExpressionStatement,
+}
+
+/// A node for a use declaration in the AST.
+#[derive(Debug, PartialEq)]
+pub struct UseDeclaration {
+    pub target: UseTarget,
+    pub is_public: bool,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum UsePath {
+    /// Importing the module as a namespace. e.g. `use ExternalModule;`
+    Me,
+    /// Importing a single item. e.g. `use ExternalModule.Item;`
+    Item(Box<UseTarget>),
+    /// Importing a list of items. e.g. `use ExternalModule.{Item1, Item2};`
+    List(Vec<UseTarget>),
+}
+
+#[derive(Debug, PartialEq)]
+pub struct UseTarget {
+    /// Name of the module imported.
+    pub name: Identifier,
+    /// Items imported.
+    pub path: UsePath,
+}
+
+/// Entry for a use import target.
+pub struct UseTargetSignature {
+    /// Name of the import target.
+    pub name: Identifier,
+    /// Whether or not the import is reexported.
+    pub is_public: bool,
 }
 
 /// A node for a test block.
@@ -148,7 +182,7 @@ impl Statement {
     pub fn span(&self) -> Span {
         match self {
             Statement::TestDeclaration(t) => t.span,
-            Statement::UseDeclaration => todo!(),
+            Statement::UseDeclaration(u) => u.span,
             Statement::VariableDeclaration => todo!(),
             Statement::ConstantDeclaration => todo!(),
             Statement::ClassDeclaration => todo!(),
@@ -166,7 +200,7 @@ impl Statement {
     pub fn set_start(&mut self, start: [u32; 2]) {
         match self {
             Statement::TestDeclaration(t) => t.span.start = start,
-            Statement::UseDeclaration => todo!(),
+            Statement::UseDeclaration(u) => u.span.start = start,
             Statement::VariableDeclaration => todo!(),
             Statement::ConstantDeclaration => todo!(),
             Statement::ClassDeclaration => todo!(),

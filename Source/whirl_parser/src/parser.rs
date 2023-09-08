@@ -6,6 +6,7 @@ use whirl_ast::{
     ExpressionPrecedence, FunctionDeclaration, FunctionSignature, FunctionalType, GenericParameter,
     Identifier, MemberType, Parameter, ScopeAddress, ScopeEntry, ScopeManager, ScopeType, Span,
     Statement, TestDeclaration, Type, TypeDeclaration, TypeExpression, TypeSignature, UnionType,
+    UseDeclaration, UsePath, UseTarget,
 };
 use whirl_lexer::{Bracket::*, Comment, Keyword::*, Lexer, Operator::*, Token, TokenType};
 
@@ -178,6 +179,10 @@ impl<L: Lexer> Parser<L> {
             TokenType::Keyword(Test) => self
                 .test_declaration()
                 .map(|t| Statement::TestDeclaration(t)),
+            // use...
+            TokenType::Keyword(Use) => self
+                .use_declaration(false)
+                .map(|u| Statement::UseDeclaration(u)),
             // enum...
             TokenType::Keyword(Enum) => self
                 .enum_declaration(false)
@@ -284,6 +289,7 @@ impl<L: Lexer> Parser<L> {
                 Statement::FunctionDeclaration(self.function(false, true)?)
             }
             TokenType::Keyword(Test) => return Err(errors::public_test(token.span)),
+            TokenType::Keyword(Use) => Statement::UseDeclaration(self.use_declaration(true)?),
             TokenType::Keyword(Async) => Statement::FunctionDeclaration(self.async_function(true)?),
             TokenType::Keyword(whirl_lexer::Keyword::Type) => {
                 Statement::TypeDeclaration(self.type_declaration(true)?)
@@ -377,6 +383,93 @@ impl<L: Lexer> Parser<L> {
             }
             _ => Err(errors::string_expected(token.span)),
         }
+    }
+
+    /// Parses a use import. Assumes that `use` is the current token.
+    fn use_declaration(&self, is_public: bool) -> Fallible<UseDeclaration> {
+        expect!(TokenType::Keyword(Use), self);
+
+        let start = self.token().unwrap().span.start;
+        self.advance(); // Move past use.
+
+        let name = self.identifier()?;
+
+        let path = self.use_path()?;
+
+        expect!(TokenType::Operator(SemiColon), self);
+        let end = self.token().unwrap().span.end;
+        self.advance(); // Move past ;
+
+        let span = Span::from([start, end]);
+
+        let target = UseTarget { name, path };
+
+        let use_decl = UseDeclaration {
+            target,
+            is_public,
+            span,
+        };
+
+        Ok(use_decl)
+    }
+
+    /// Parses a use path.
+    fn use_path(&self) -> Fallible<UsePath> {
+        self.ended(errors::expected(
+            TokenType::Operator(SemiColon),
+            self.last_token_span(),
+        ))?;
+
+        let token = self.token().unwrap();
+        match token._type {
+            TokenType::Operator(Dot) => {
+                self.advance(); // Move past .
+                self.ended(errors::identifier_expected(self.last_token_span()))?;
+                let token = self.token().unwrap();
+                match token._type {
+                    // Importing a single item.
+                    TokenType::Ident(_) => Ok(UsePath::Item(Box::new(UseTarget {
+                        name: self.identifier()?,
+                        path: self.use_path()?,
+                    }))),
+                    // Importing a list of items.
+                    TokenType::Bracket(LCurly) => {
+                        self.advance(); // Move past {
+                        let use_path = self.use_path_list()?;
+                        expect!(TokenType::Bracket(RCurly), self);
+                        self.advance(); // Move past }
+                        Ok(use_path)
+                    }
+                    _ => return Err(errors::identifier_expected(token.span)),
+                }
+            }
+            // Importing self.
+            _ => Ok(UsePath::Me),
+        }
+    }
+
+    /// Parses a use path list. Assumes that the first target is the current token.
+    fn use_path_list(&self) -> Fallible<UsePath> {
+        let mut items = vec![];
+        while self
+            .token()
+            .is_some_and(|token| token._type != TokenType::Bracket(RCurly))
+        {
+            let target = UseTarget {
+                name: self.identifier()?,
+                path: self.use_path()?,
+            };
+            items.push(target);
+            if self
+                .token()
+                .is_some_and(|token| token._type == TokenType::Operator(Comma))
+            {
+                self.advance(); // Move past ,
+                continue;
+            }
+            break;
+        }
+        Ok(UsePath::List(items))
     }
 
     /// Parses an enum declaration. Assumes that `enum` is the current token.

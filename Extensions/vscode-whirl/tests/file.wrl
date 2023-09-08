@@ -1,5 +1,5 @@
 /// Returns an iterable parser for text input.
-public function parse_text(input: String | Path, parserOptions?: ParserOptions): Parser<TextLexer> {
+public function ParseText(input: String | Path, parserOptions?: ParserOptions): Parser<TextLexer> {
     // Parser::from_lexer(lex_text(input))
 }
 
@@ -36,7 +36,14 @@ enum Gender {
 /// Stuff about this enum.
 public enum NotificationType {
   Success,
+  /// Stuff about this variant.
   Error(ErrorType),
   Warning,
   Info
 }
+
+
+use Core.{
+  Io.Print,
+  File.Write
+};

@@ -124,6 +124,7 @@
             }
          },
          "patterns": [
+            { "include": "#comment" },
             {
                "begin": "(?<=type\\s+)",
                "contentName": "meta.class class entity.name.class",
@@ -148,6 +149,7 @@
             }
          },
          "patterns": [
+            { "include": "#comment" },
             {
                "begin": "(?<=class\\s+)",
                "contentName": "meta.class class entity.name.class",
@@ -167,6 +169,7 @@
             }
          },
          "patterns": [
+            { "include": "#comment" },
             { "include": "#type_expression" },
             { "include": "#punctuation_comma" }
          ],
@@ -180,6 +183,7 @@
             }
          },
          "patterns": [
+            { "include": "#comment" },
             { "include": "#type_expression" },
             { "include": "#punctuation_comma" }
          ],
@@ -193,6 +197,7 @@
             }
          },
          "patterns": [
+            { "include": "#comment" },
             {
                "begin": "(?<=trait\\s+)",
                "contentName": "meta.class class entity.name.class",
@@ -255,6 +260,7 @@
       "enum_block": {
          "begin": "\\{\\s*",
          "patterns": [
+            { "include": "#comment" },
             { "include": "#enum_variant_simple" },
             { "match": "\\," },
             { "include": "#enum_variant_tagged" }
@@ -272,7 +278,10 @@
                "name": "meta.definition.variable variable.other.constant"
             }
          },
-         "patterns": [{ "include": "#type_expression" }],
+         "patterns": [
+            { "include": "#comment" },
+            { "include": "#type_expression" }
+         ],
          "end": "(?=\\s*\\))"
       },
       "function": {

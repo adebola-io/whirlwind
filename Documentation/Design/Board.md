@@ -65,6 +65,7 @@
 -  An `EventEmitter` class in `Core.Utils`.
 -  A `Record.ToMap()` method that turns a record to a mutable map.
 -  `Core.Http` to make HTTP requests.
-- `ArrayOf<T>.SelectRandom(number: UnsignedInteger): ArrayOf<T>`
-- `ArrayOf<T>.Shuffle(): ArrayOf<T>` 
- 
+-  `ArrayOf<T>.SelectRandom(number: UnsignedInteger): ArrayOf<T>`
+-  `ArrayOf<T>.Shuffle(): ArrayOf<T>`
+
+-  Modules are declared in the Modules.json file.

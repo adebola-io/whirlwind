@@ -17,7 +17,7 @@ pub struct WhirlString {
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Identifier {
     pub name: String,
     pub span: Span,

@@ -1,8 +1,9 @@
 #![cfg(test)]
 
 use whirl_ast::{
-    Block, EnumDeclaration, FunctionDeclaration, ScopeAddress, ScopeEntry, Span, Statement,
-    TestDeclaration, TypeDeclaration, TypeExpression,
+    Block, EnumDeclaration, FunctionDeclaration, Identifier, ScopeAddress, ScopeEntry, Span,
+    Statement, TestDeclaration, TypeDeclaration, TypeExpression, UseDeclaration, UsePath,
+    UseTarget,
 };
 
 use crate::parse_text;
@@ -491,4 +492,143 @@ fn parsing_enum_variant() {
             span: Span::from([2, 6, 5, 6])
         })
     );
+}
+
+#[test]
+fn parses_use_import() {
+    // Simple.
+    let mut parser = parse_text("use OtherModule;");
+
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::UseDeclaration(UseDeclaration {
+            target: UseTarget {
+                name: Identifier {
+                    name: format!("OtherModule"),
+                    span: [1, 5, 1, 15].into()
+                },
+                path: UsePath::Me
+            },
+            is_public: false,
+            span: [1, 1, 1, 17].into()
+        })
+    );
+
+    // Public.
+    parser = parse_text("public use OtherModule;");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::UseDeclaration(UseDeclaration {
+            target: UseTarget {
+                name: Identifier {
+                    name: format!("OtherModule"),
+                    span: [1, 12, 1, 22].into()
+                },
+                path: UsePath::Me
+            },
+            is_public: true,
+            span: [1, 1, 1, 24].into()
+        })
+    );
+
+    // One item.
+    parser = parse_text("use Core.Math;");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::UseDeclaration(UseDeclaration {
+            target: UseTarget {
+                name: Identifier {
+                    name: format!("Core"),
+                    span: [1, 5, 1, 8].into()
+                },
+                path: UsePath::Item(Box::new(UseTarget {
+                    name: Identifier {
+                        name: format!("Math"),
+                        span: [1, 10, 1, 13].into()
+                    },
+                    path: UsePath::Me
+                }))
+            },
+            is_public: false,
+            span: [1, 1, 1, 15].into()
+        })
+    );
+}
+
+#[test]
+fn parse_nested_use_item() {
+    let mut parser = parse_text("use Components.UI.Buttons.ErrorButton;");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::UseDeclaration(UseDeclaration {
+            target: UseTarget {
+                name: Identifier {
+                    name: format!("Components"),
+                    span: [1, 5, 1, 14].into()
+                },
+                path: UsePath::Item(Box::new(UseTarget {
+                    name: Identifier {
+                        name: format!("UI"),
+                        span: [1, 16, 1, 17].into()
+                    },
+                    path: UsePath::Item(Box::new(UseTarget {
+                        name: Identifier {
+                            name: format!("Buttons"),
+                            span: [1, 19, 1, 25].into()
+                        },
+                        path: UsePath::Item(Box::new(UseTarget {
+                            name: Identifier {
+                                name: format!("ErrorButton"),
+                                span: [1, 27, 1, 37].into()
+                            },
+                            path: UsePath::Me
+                        }))
+                    }))
+                }))
+            },
+            is_public: false,
+            span: [1, 1, 1, 39].into()
+        })
+    )
+}
+
+#[test]
+fn parse_group_use_import() {
+    // Nested One item.
+    let mut parser = parse_text("use Components.UI.{Button, Alert};");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::UseDeclaration(UseDeclaration {
+            target: UseTarget {
+                name: Identifier {
+                    name: format!("Components"),
+                    span: [1, 5, 1, 14].into()
+                },
+                path: UsePath::Item(Box::new(UseTarget {
+                    name: Identifier {
+                        name: format!("UI"),
+                        span: [1, 16, 1, 17].into()
+                    },
+                    path: UsePath::List(vec![
+                        UseTarget {
+                            name: Identifier {
+                                name: format!("Button"),
+                                span: [1, 20, 1, 25].into()
+                            },
+                            path: UsePath::Me
+                        },
+                        UseTarget {
+                            name: Identifier {
+                                name: format!("Alert"),
+                                span: [1, 28, 1, 32].into()
+                            },
+                            path: UsePath::Me
+                        }
+                    ])
+                }))
+            },
+            is_public: false,
+            span: [1, 1, 1, 35].into()
+        })
+    )
 }
