@@ -25,6 +25,7 @@ pub enum ParserErrorType {
     GenericArgsInNamespace,
     UnexpectedToken,
     StringExpected,
+    ExpressionExpected,
 }
 
 pub(crate) fn public_shorthand_var(span: Span) -> ParseError {
@@ -93,6 +94,13 @@ pub(crate) fn async_type(span: Span) -> ParseError {
 pub(crate) fn string_expected(span: Span) -> ParseError {
     ParseError {
         error_type: ParserErrorType::StringExpected,
+        span,
+    }
+}
+
+pub(crate) fn expression_expected(span: Span) -> ParseError {
+    ParseError {
+        error_type: ParserErrorType::ExpressionExpected,
         span,
     }
 }

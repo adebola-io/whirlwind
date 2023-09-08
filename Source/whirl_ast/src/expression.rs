@@ -1,19 +1,21 @@
 use crate::Span;
 
+#[derive(Debug, PartialEq)]
 pub enum Expression {
     Identifier(Identifier),
-    Literal(Literal),
+    StringLiteral(WhirlString),
+    NumberLiteral(WhirlNumber),
 }
 
-#[derive(Debug)]
-pub enum Literal {
-    String(WhirlString),
-    Number(Number),
-}
-
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct WhirlString {
     pub value: String,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct WhirlNumber {
+    pub value: Number,
     pub span: Span,
 }
 
@@ -49,5 +51,13 @@ pub enum ExpressionPrecedence {
 impl Expression {
     pub fn span(&self) -> Span {
         todo!()
+    }
+
+    pub(crate) fn set_start(&mut self, start: [u32; 2]) {
+        match self {
+            Expression::Identifier(i) => i.span.start = start,
+            Expression::StringLiteral(s) => s.span.start = start,
+            Expression::NumberLiteral(n) => n.span.start = start,
+        }
     }
 }

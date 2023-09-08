@@ -83,11 +83,11 @@ impl<L: Lexer> Parser<L> {
             }
         }
     }
-    /// Rewinds to the last token.
-    fn _back(&self) {
-        self.future.replace(self.present.take());
-        self.present.replace(self.past.take());
-    }
+    // / Rewinds to the last token.
+    // fn _back(&self) {
+    //     self.future.replace(self.present.take());
+    //     self.present.replace(self.past.take());
+    // }
 
     /// Push a precedence to the stack.
     fn push_precedence(&self, precedence: ExpressionPrecedence) {
@@ -146,9 +146,68 @@ impl<L: Lexer> Parser<L> {
 
 // Expressions
 impl<L: Lexer> Parser<L> {
+    /// Parses an expression to return either an expression statement or a free expression.
+    fn expression_start(&self) -> Fallible<Statement> {
+        let expression = self.expression()?;
+        self.ended(errors::expected(
+            TokenType::Operator(SemiColon),
+            self.last_token_end(),
+        ))?;
+        let token = self.token().unwrap();
+        match token._type {
+            TokenType::Operator(SemiColon) => Ok(Statement::ExpressionStatement(expression)),
+            _ => todo!(),
+        }
+    }
     /// Parses an expression.
-    fn _expression(&self) -> Fallible<Expression> {
+    fn expression(&self) -> Fallible<Expression> {
+        self.ended(errors::expression_expected(self.last_token_end()))?;
+
+        let token = self.token().unwrap();
+
+        let expression = match token._type {
+            TokenType::Keyword(Fn) => self.function_expression()?,
+            TokenType::Operator(_) => todo!(),
+            TokenType::Ident(_) => todo!(),
+            TokenType::String(_) => self.reparse(self.string_literal()?)?,
+            TokenType::TemplateStringFragment(_) => todo!(),
+            TokenType::Number(_) => self.reparse(self.number_literal()?)?,
+            TokenType::Bracket(_) => todo!(),
+            _ => return Err(errors::expected(TokenType::Operator(SemiColon), token.span)),
+        };
+        Ok(expression)
+    }
+
+    /// Parses a string literal.
+    fn string_literal(&self) -> Fallible<Expression> {
         todo!()
+    }
+
+    /// Parses a number literal.
+    fn number_literal(&self) -> Fallible<Expression> {
+        todo!()
+    }
+
+    /// Parses a function expression.
+    fn function_expression(&self) -> Fallible<Expression> {
+        todo!()
+    }
+
+    /// Reparses an expression to calculate associativity and precedence.
+    fn reparse(&self, exp: Expression) -> Fallible<Expression> {
+        match self.token() {
+            Some(token) => match token._type {
+                TokenType::Keyword(_) => todo!(),
+                TokenType::Operator(_) => todo!(),
+                TokenType::Ident(_) => todo!(),
+                TokenType::String(_) => todo!(),
+                TokenType::Number(_) => todo!(),
+                TokenType::Bracket(_) => todo!(),
+                TokenType::Invalid(_) => todo!(),
+                _ => Ok(exp),
+            },
+            None => Ok(exp),
+        }
     }
 }
 
@@ -187,13 +246,12 @@ impl<L: Lexer> Parser<L> {
             TokenType::Keyword(Enum) => self
                 .enum_declaration(false)
                 .map(|e| Statement::EnumDeclaration(e)),
-            _ => {
-                unimplemented!(
-                    "{:?} not implemented yet!. The last token was {:?}",
-                    self.token().unwrap(),
-                    self.past.borrow_mut()
-                )
-            }
+            // unimplemented!(
+            //     "{:?} not implemented yet!. The last token was {:?}",
+            //     self.token().unwrap(),
+            //     self.past.borrow_mut()
+            // )
+            _ => self.expression_start(),
         };
 
         // If an error is encountered, clear the precedence stack and skip all the next (likely corrupted) tokens until after a right delimeter or boundary.
