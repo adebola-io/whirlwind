@@ -1,4 +1,4 @@
-use crate::{GenericParameter, Identifier, ScopeAddress, Span, Type, TypeExpression};
+use crate::{Expression, GenericParameter, Identifier, ScopeAddress, Span, Type, TypeExpression};
 
 #[derive(Debug, PartialEq)]
 pub enum Statement {
@@ -17,7 +17,9 @@ pub enum Statement {
     WhileStatement,
     ForStatement,
     // Expression statements.
-    ExpressionStatement,
+    ExpressionStatement(Expression),
+    /// An expression without the semicolon.
+    FreeExpression(Expression),
 }
 
 /// A node for a use declaration in the AST.
@@ -193,7 +195,7 @@ impl Statement {
             Statement::TypeDeclaration(t) => t.span,
             Statement::WhileStatement => todo!(),
             Statement::ForStatement => todo!(),
-            Statement::ExpressionStatement => todo!(),
+            Statement::ExpressionStatement(e) | Statement::FreeExpression(e) => e.span(),
         }
     }
     /// Dynamically change the starting point of the statement.
@@ -211,7 +213,7 @@ impl Statement {
             Statement::TypeDeclaration(t) => t.span.start = start,
             Statement::WhileStatement => todo!(),
             Statement::ForStatement => todo!(),
-            Statement::ExpressionStatement => todo!(),
+            Statement::ExpressionStatement(e) | Statement::FreeExpression(e) => e.set_start(start),
         }
     }
 }

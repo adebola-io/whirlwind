@@ -146,8 +146,21 @@ impl<L: Lexer> Parser<L> {
 
 // Expressions
 impl<L: Lexer> Parser<L> {
-    /// Parses an expression.
-    fn _expression(&self) -> Fallible<Expression> {
+    /// Parses an expression to return either an expression statement or a free expression.
+    fn expression_start(&self) -> Fallible<Statement> {
+        let expression = self.expression()?;
+        self.ended(errors::expected(
+            TokenType::Operator(SemiColon),
+            self.last_token_end(),
+        ))?;
+        let token = self.token().unwrap();
+        match token._type {
+            TokenType::Operator(SemiColon) => Ok(Statement::ExpressionStatement(expression)),
+            _ => todo!(),
+        }
+    }
+    // Parses an expression.
+    fn expression(&self) -> Fallible<Expression> {
         todo!()
     }
 }
@@ -187,13 +200,12 @@ impl<L: Lexer> Parser<L> {
             TokenType::Keyword(Enum) => self
                 .enum_declaration(false)
                 .map(|e| Statement::EnumDeclaration(e)),
-            _ => {
-                unimplemented!(
-                    "{:?} not implemented yet!. The last token was {:?}",
-                    self.token().unwrap(),
-                    self.past.borrow_mut()
-                )
-            }
+            // unimplemented!(
+            //     "{:?} not implemented yet!. The last token was {:?}",
+            //     self.token().unwrap(),
+            //     self.past.borrow_mut()
+            // )
+            _ => self.expression_start(),
         };
 
         // If an error is encountered, clear the precedence stack and skip all the next (likely corrupted) tokens until after a right delimeter or boundary.

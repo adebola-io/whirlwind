@@ -1,3 +1,5 @@
+use Core.Fs;
+
 /// Returns an iterable parser for text input.
 public function ParseText(input: String | Path, parserOptions?: ParserOptions): Parser<TextLexer> {
     // Parser::from_lexer(lex_text(input))
@@ -42,8 +44,3 @@ public enum NotificationType {
   Info
 }
 
-
-use Core.{
-  Io.Print,
-  File.Write
-};
