@@ -5,6 +5,7 @@ pub enum Expression {
     Identifier(Identifier),
     StringLiteral(WhirlString),
     NumberLiteral(WhirlNumber),
+    CallExpression(Box<CallExpression>),
 }
 
 #[derive(Debug, PartialEq)]
@@ -33,6 +34,13 @@ pub enum Number {
     Decimal(String),
 }
 
+#[derive(PartialEq, Debug)]
+pub struct CallExpression {
+    pub caller: Expression,
+    pub arguments: Vec<Expression>,
+    pub span: Span,
+}
+
 /// Chart for expression precedence in Whirl.
 #[derive(Clone, Copy, PartialEq, PartialOrd)]
 pub enum ExpressionPrecedence {
@@ -45,12 +53,18 @@ pub enum ExpressionPrecedence {
     BitLogic = 7,         // a | b, a & b
     Logic = 8,            // a || b, a && b
     Equality = 9,         // a == b, a != b
-    TypeUnion = 10,
+    TypeUnion = 10,       // A | B
+    Pseudo = 99,          // placeholder operator.
 }
 
 impl Expression {
     pub fn span(&self) -> Span {
-        todo!()
+        match self {
+            Expression::Identifier(i) => i.span,
+            Expression::StringLiteral(s) => s.span,
+            Expression::NumberLiteral(n) => n.span,
+            Expression::CallExpression(c) => c.span,
+        }
     }
 
     pub(crate) fn set_start(&mut self, start: [u32; 2]) {
@@ -58,6 +72,7 @@ impl Expression {
             Expression::Identifier(i) => i.span.start = start,
             Expression::StringLiteral(s) => s.span.start = start,
             Expression::NumberLiteral(n) => n.span.start = start,
+            Expression::CallExpression(c) => c.span.start = start,
         }
     }
 }

@@ -1,9 +1,9 @@
 #![cfg(test)]
 
 use whirl_ast::{
-    Block, EnumDeclaration, FunctionDeclaration, Identifier, ScopeAddress, ScopeEntry, Span,
-    Statement, TestDeclaration, TypeDeclaration, TypeExpression, UseDeclaration, UsePath,
-    UseTarget,
+    Block, CallExpression, EnumDeclaration, Expression, FunctionDeclaration, Identifier,
+    ScopeAddress, ScopeEntry, Span, Statement, TestDeclaration, TypeDeclaration, TypeExpression,
+    UseDeclaration, UsePath, UseTarget,
 };
 
 use crate::parse_text;
@@ -631,4 +631,98 @@ fn parse_group_use_import() {
             span: [1, 1, 1, 35].into()
         })
     )
+}
+
+#[test]
+fn parse_call_expressions() {
+    // One argument
+    let mut parser = parse_text("Calculate(A)");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::FreeExpression(Expression::CallExpression(Box::new(CallExpression {
+            caller: Expression::Identifier(Identifier {
+                name: format!("Calculate"),
+                span: [1, 1, 1, 9].into()
+            }),
+            arguments: vec![Expression::Identifier(Identifier {
+                name: format!("A"),
+                span: [1, 11, 1, 11].into()
+            })],
+            span: [1, 1, 1, 13].into()
+        })))
+    );
+
+    // Many arguments
+    parser = parse_text("Calculate(A, B, C, D)");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::FreeExpression(Expression::CallExpression(Box::new(CallExpression {
+            caller: Expression::Identifier(Identifier {
+                name: format!("Calculate"),
+                span: [1, 1, 1, 9].into()
+            }),
+            arguments: vec![
+                Expression::Identifier(Identifier {
+                    name: format!("A"),
+                    span: [1, 11, 1, 11].into()
+                }),
+                Expression::Identifier(Identifier {
+                    name: format!("B"),
+                    span: [1, 14, 1, 14].into()
+                }),
+                Expression::Identifier(Identifier {
+                    name: format!("C"),
+                    span: [1, 17, 1, 17].into()
+                }),
+                Expression::Identifier(Identifier {
+                    name: format!("D"),
+                    span: [1, 20, 1, 20].into()
+                })
+            ],
+            span: [1, 1, 1, 22].into()
+        })))
+    );
+
+    // Nested
+    parser = parse_text("Calculate(Calculate(Calculate(A)))");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::FreeExpression(Expression::CallExpression(Box::new(CallExpression {
+            caller: Expression::Identifier(Identifier {
+                name: format!("Calculate"),
+                span: [1, 1, 1, 9].into()
+            }),
+            arguments: vec![Expression::CallExpression(Box::new(CallExpression {
+                caller: Expression::Identifier(Identifier {
+                    name: format!("Calculate"),
+                    span: [1, 11, 1, 19].into()
+                }),
+                arguments: vec![Expression::CallExpression(Box::new(CallExpression {
+                    caller: Expression::Identifier(Identifier {
+                        name: format!("Calculate"),
+                        span: [1, 21, 1, 29].into()
+                    }),
+                    arguments: vec![Expression::Identifier(Identifier {
+                        name: format!("A"),
+                        span: [1, 31, 1, 31].into()
+                    }),],
+                    span: [1, 21, 1, 33].into()
+                }))],
+                span: [1, 11, 1, 34].into()
+            }))],
+            span: [1, 1, 1, 35].into()
+        })))
+    ); 
+}
+
+#[test]
+fn parse_string_literal() {
+    let mut parser = parse_text("\"Hello, world!\"");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::FreeExpression(Expression::StringLiteral(whirl_ast::WhirlString {
+            value: format!("Hello, world!"),
+            span: [1, 1, 1, 16].into()
+        }))
+    );
 }

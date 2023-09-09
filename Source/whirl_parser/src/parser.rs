@@ -2,11 +2,11 @@ use std::cell::RefCell;
 
 use crate::errors::{self, ParseError};
 use whirl_ast::{
-    Block, DiscreteType, EnumDeclaration, EnumSignature, EnumVariant, Expression,
+    Block, CallExpression, DiscreteType, EnumDeclaration, EnumSignature, EnumVariant, Expression,
     ExpressionPrecedence, FunctionDeclaration, FunctionSignature, FunctionalType, GenericParameter,
     Identifier, MemberType, Parameter, ScopeAddress, ScopeEntry, ScopeManager, ScopeType, Span,
     Statement, TestDeclaration, Type, TypeDeclaration, TypeExpression, TypeSignature, UnionType,
-    UseDeclaration, UsePath, UseTarget,
+    UseDeclaration, UsePath, UseTarget, WhirlString,
 };
 use whirl_lexer::{Bracket::*, Comment, Keyword::*, Lexer, Operator::*, Token, TokenType};
 
@@ -149,14 +149,13 @@ impl<L: Lexer> Parser<L> {
     /// Parses an expression to return either an expression statement or a free expression.
     fn expression_start(&self) -> Fallible<Statement> {
         let expression = self.expression()?;
-        self.ended(errors::expected(
-            TokenType::Operator(SemiColon),
-            self.last_token_end(),
-        ))?;
-        let token = self.token().unwrap();
-        match token._type {
-            TokenType::Operator(SemiColon) => Ok(Statement::ExpressionStatement(expression)),
-            _ => todo!(),
+
+        match self.token() {
+            Some(t) => match t._type {
+                TokenType::Operator(SemiColon) => Ok(Statement::ExpressionStatement(expression)),
+                _ => Ok(Statement::FreeExpression(expression)),
+            },
+            None => Ok(Statement::FreeExpression(expression)),
         }
     }
     /// Parses an expression.
@@ -168,7 +167,7 @@ impl<L: Lexer> Parser<L> {
         let expression = match token._type {
             TokenType::Keyword(Fn) => self.function_expression()?,
             TokenType::Operator(_) => todo!(),
-            TokenType::Ident(_) => todo!(),
+            TokenType::Ident(_) => self.reparse(Expression::Identifier(self.identifier()?))?,
             TokenType::String(_) => self.reparse(self.string_literal()?)?,
             TokenType::TemplateStringFragment(_) => todo!(),
             TokenType::Number(_) => self.reparse(self.number_literal()?)?,
@@ -180,7 +179,14 @@ impl<L: Lexer> Parser<L> {
 
     /// Parses a string literal.
     fn string_literal(&self) -> Fallible<Expression> {
-        todo!()
+        let token = self.token().unwrap();
+        let value = match &mut token._type {
+            TokenType::String(ref mut s) => std::mem::take(s),
+            _ => unreachable!(),
+        };
+        let span = token.span;
+        let string = WhirlString { value, span };
+        Ok(Expression::StringLiteral(string))
     }
 
     /// Parses a number literal.
@@ -197,17 +203,54 @@ impl<L: Lexer> Parser<L> {
     fn reparse(&self, exp: Expression) -> Fallible<Expression> {
         match self.token() {
             Some(token) => match token._type {
-                TokenType::Keyword(_) => todo!(),
-                TokenType::Operator(_) => todo!(),
-                TokenType::Ident(_) => todo!(),
-                TokenType::String(_) => todo!(),
-                TokenType::Number(_) => todo!(),
-                TokenType::Bracket(_) => todo!(),
-                TokenType::Invalid(_) => todo!(),
+                TokenType::Bracket(LParens) => self.call_expression(exp),
                 _ => Ok(exp),
             },
             None => Ok(exp),
         }
+    }
+
+    fn call_expression(&self, caller: Expression) -> Fallible<Expression> {
+        if self.is_lower_or_equal_precedence(ExpressionPrecedence::Call) {
+            return Ok(caller);
+        }
+        expect!(TokenType::Bracket(LParens), self);
+        self.advance(); // Move past (
+        let start = caller.span().start;
+        self.push_precedence(ExpressionPrecedence::Pseudo);
+
+        let mut arguments = vec![];
+
+        while self
+            .token()
+            .is_some_and(|t| t._type != TokenType::Bracket(RParens))
+        {
+            let argument = self.expression()?;
+            arguments.push(argument);
+            if self
+                .token()
+                .is_some_and(|t| t._type == TokenType::Operator(Comma))
+            {
+                self.advance(); // Move past ,
+                continue;
+            }
+            break;
+        }
+
+        expect!(TokenType::Bracket(RParens), self);
+        let end = self.token().unwrap().span.end;
+        self.advance(); // Move past )
+
+        self.precedence_stack.borrow_mut().pop();
+
+        let span = Span::from([start, end]);
+        let call_expression = CallExpression {
+            caller,
+            arguments,
+            span,
+        };
+        let exp = Expression::CallExpression(Box::new(call_expression));
+        Ok(self.reparse(exp)?)
     }
 }
 
