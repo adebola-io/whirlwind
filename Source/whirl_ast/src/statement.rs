@@ -127,7 +127,7 @@ pub struct TypeSignature {
     pub value: TypeExpression,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Parameter {
     pub name: Identifier,
     pub type_label: Type,

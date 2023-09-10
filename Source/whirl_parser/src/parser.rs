@@ -3,10 +3,11 @@ use std::cell::RefCell;
 use crate::errors::{self, ParseError};
 use whirl_ast::{
     Block, CallExpression, DiscreteType, EnumDeclaration, EnumSignature, EnumVariant, Expression,
-    ExpressionPrecedence, FunctionDeclaration, FunctionSignature, FunctionalType, GenericParameter,
-    Identifier, MemberType, Parameter, ScopeAddress, ScopeEntry, ScopeManager, ScopeType, Span,
-    Statement, TestDeclaration, Type, TypeDeclaration, TypeExpression, TypeSignature, UnionType,
-    UseDeclaration, UsePath, UseTarget, WhirlString,
+    ExpressionPrecedence, FunctionDeclaration, FunctionExpression, FunctionSignature,
+    FunctionalType, GenericParameter, Identifier, MemberType, Parameter, ScopeAddress, ScopeEntry,
+    ScopeManager, ScopeType, Span, Statement, TestDeclaration, Type, TypeDeclaration,
+    TypeExpression, TypeSignature, UnionType, UseDeclaration, UsePath, UseTarget, WhirlNumber,
+    WhirlString,
 };
 use whirl_lexer::{Bracket::*, Comment, Keyword::*, Lexer, Operator::*, Token, TokenType};
 
@@ -171,7 +172,7 @@ impl<L: Lexer> Parser<L> {
             TokenType::String(_) => self.reparse(self.string_literal()?)?,
             TokenType::TemplateStringFragment(_) => todo!(),
             TokenType::Number(_) => self.reparse(self.number_literal()?)?,
-            TokenType::Bracket(_) => todo!(),
+            TokenType::Bracket(LParens) => self.reparse(self.grouped_expression()?)?,
             _ => return Err(errors::expected(TokenType::Operator(SemiColon), token.span)),
         };
         Ok(expression)
@@ -191,11 +192,54 @@ impl<L: Lexer> Parser<L> {
 
     /// Parses a number literal.
     fn number_literal(&self) -> Fallible<Expression> {
-        todo!()
+        let token = self.token().unwrap();
+        let value = match &mut token._type {
+            TokenType::Number(ref mut n) => std::mem::take(n),
+            _ => unreachable!(),
+        };
+        let span = token.span;
+        let number = WhirlNumber { value, span };
+        Ok(Expression::NumberLiteral(number))
     }
 
     /// Parses a function expression.
     fn function_expression(&self) -> Fallible<Expression> {
+        expect!(TokenType::Keyword(Fn), self);
+        let start = self.token().unwrap().span.start;
+
+        self.advance(); // Move past fn.
+        let generic_params = self.maybe_generic_params()?;
+        let params = self.parameters()?;
+        let return_type = self.maybe_return_type()?;
+
+        self.ended(errors::expected(
+            TokenType::Bracket(LCurly),
+            self.last_token_span(),
+        ))?;
+
+        let token = self.token().unwrap();
+        let body = match token._type {
+            // Parse block.
+            TokenType::Bracket(LCurly) => Expression::Block(self.block(ScopeType::Functional)?),
+            _ => self.expression()?,
+        };
+
+        let end = body.span().end;
+        let span = Span::from([start, end]);
+
+        let function = FunctionExpression {
+            generic_params,
+            params,
+            return_type,
+            body,
+            span,
+        };
+        let exp = Expression::FunctionExpression(Box::new(function));
+        Ok(self.reparse(exp)?)
+    }
+
+    /// Parses a grouped expression.
+    fn grouped_expression(&self) -> Fallible<Expression> {
         todo!()
     }
 

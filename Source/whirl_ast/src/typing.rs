@@ -1,14 +1,14 @@
 use crate::{Identifier, Parameter, ScopeAddress, Span};
 
 /// Stores the address of a symbol in relation to an entire workspace.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct ModuleAddress {
     pub module_id: usize,
     pub scope_address: ScopeAddress,
 }
 
 /// The first representation of a type.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Type {
     pub declared: Option<TypeExpression>,
     pub inferred: Option<ModuleAddress>,
@@ -30,6 +30,7 @@ impl Type {
     }
 }
 
+#[derive(PartialEq)]
 pub enum TypeExpression {
     Union(UnionType),
     Functional(FunctionalType),
@@ -39,14 +40,14 @@ pub enum TypeExpression {
 }
 
 /// A complex union type e.g. `type Animal = Cat | Dog | Parrot; `
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct UnionType {
     pub types: Vec<TypeExpression>,
     pub span: Span,
 }
 
 /// A function type e.g. `type Predicate<T> = fn(value: T): Boolean;`
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct FunctionalType {
     pub params: Vec<Parameter>,
     pub generic_params: Option<Vec<GenericParameter>>,
@@ -55,7 +56,7 @@ pub struct FunctionalType {
 }
 
 /// A type that is part of an member expression. e.g. `type Error = Core.Io.Error`;
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct MemberType {
     pub namespace: Box<TypeExpression>,
     pub property: Box<TypeExpression>,
@@ -63,7 +64,7 @@ pub struct MemberType {
 }
 
 /// A simple type. e.g. `type SignalValue = Number;`
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct DiscreteType {
     pub name: Identifier,
     pub generic_args: Option<Vec<TypeExpression>>,
@@ -77,7 +78,7 @@ impl std::fmt::Display for TypeExpression {
 }
 
 /// A type parameter on a function, class or type.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct GenericParameter {
     pub name: Identifier,
     pub traits: Vec<TypeExpression>,

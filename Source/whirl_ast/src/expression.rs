@@ -1,4 +1,4 @@
-use crate::Span;
+use crate::{Block, GenericParameter, Parameter, Span, Type};
 
 #[derive(Debug, PartialEq)]
 pub enum Expression {
@@ -6,6 +6,8 @@ pub enum Expression {
     StringLiteral(WhirlString),
     NumberLiteral(WhirlNumber),
     CallExpression(Box<CallExpression>),
+    FunctionExpression(Box<FunctionExpression>),
+    Block(Block),
 }
 
 #[derive(Debug, PartialEq)]
@@ -26,18 +28,29 @@ pub struct Identifier {
     pub span: Span,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Default)]
 pub enum Number {
     Binary(String),
     Octal(String),
     Hexadecimal(String),
     Decimal(String),
+    #[default]
+    None,
 }
 
 #[derive(PartialEq, Debug)]
 pub struct CallExpression {
     pub caller: Expression,
     pub arguments: Vec<Expression>,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct FunctionExpression {
+    pub generic_params: Option<Vec<GenericParameter>>,
+    pub params: Vec<Parameter>,
+    pub return_type: Type,
+    pub body: Expression,
     pub span: Span,
 }
 
@@ -64,6 +77,8 @@ impl Expression {
             Expression::StringLiteral(s) => s.span,
             Expression::NumberLiteral(n) => n.span,
             Expression::CallExpression(c) => c.span,
+            Expression::FunctionExpression(f) => f.span,
+            Expression::Block(b) => b.span,
         }
     }
 
@@ -73,6 +88,8 @@ impl Expression {
             Expression::StringLiteral(s) => s.span.start = start,
             Expression::NumberLiteral(n) => n.span.start = start,
             Expression::CallExpression(c) => c.span.start = start,
+            Expression::FunctionExpression(f) => f.span.start = start,
+            Expression::Block(b) => b.span.start = start,
         }
     }
 }

@@ -1,9 +1,9 @@
 #![cfg(test)]
 
 use whirl_ast::{
-    Block, CallExpression, EnumDeclaration, Expression, FunctionDeclaration, Identifier,
-    ScopeAddress, ScopeEntry, Span, Statement, TestDeclaration, TypeDeclaration, TypeExpression,
-    UseDeclaration, UsePath, UseTarget,
+    Block, CallExpression, DiscreteType, EnumDeclaration, Expression, FunctionDeclaration,
+    FunctionExpression, Identifier, Parameter, ScopeAddress, ScopeEntry, Span, Statement,
+    TestDeclaration, Type, TypeDeclaration, TypeExpression, UseDeclaration, UsePath, UseTarget,
 };
 
 use crate::parse_text;
@@ -712,7 +712,7 @@ fn parse_call_expressions() {
             }))],
             span: [1, 1, 1, 35].into()
         })))
-    ); 
+    );
 }
 
 #[test]
@@ -724,5 +724,52 @@ fn parse_string_literal() {
             value: format!("Hello, world!"),
             span: [1, 1, 1, 16].into()
         }))
+    );
+}
+
+#[test]
+fn parse_fn_expressions() {
+    let mut parser = parse_text("fn (a: Number): Number a");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::FreeExpression(Expression::FunctionExpression(Box::new(
+            FunctionExpression {
+                generic_params: None,
+                params: vec![Parameter {
+                    name: Identifier {
+                        name: format!("a"),
+                        span: [1, 5, 1, 5].into()
+                    },
+                    type_label: Type {
+                        declared: Some(TypeExpression::Discrete(DiscreteType {
+                            name: Identifier {
+                                name: format!("Number"),
+                                span: [1, 8, 1, 13].into()
+                            },
+                            generic_args: None,
+                            span: [1, 8, 1, 13].into()
+                        })),
+                        inferred: None
+                    },
+                    is_optional: false
+                }],
+                return_type: Type {
+                    declared: Some(TypeExpression::Discrete(DiscreteType {
+                        name: Identifier {
+                            name: format!("Number"),
+                            span: [1, 17, 1, 22].into()
+                        },
+                        generic_args: None,
+                        span: [1, 17, 1, 22].into()
+                    })),
+                    inferred: None
+                },
+                body: Expression::Identifier(Identifier {
+                    name: format!("a"),
+                    span: [1, 24, 1, 24].into()
+                }),
+                span: [1, 1, 1, 24].into()
+            }
+        )))
     );
 }
