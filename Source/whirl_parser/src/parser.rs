@@ -4,10 +4,10 @@ use crate::errors::{self, ParseError};
 use whirl_ast::{
     Block, CallExpression, DiscreteType, EnumDeclaration, EnumSignature, EnumVariant, Expression,
     ExpressionPrecedence, FunctionDeclaration, FunctionExpression, FunctionSignature,
-    FunctionalType, GenericParameter, Identifier, MemberType, Parameter, ScopeAddress, ScopeEntry,
-    ScopeManager, ScopeType, Span, Statement, TestDeclaration, Type, TypeDeclaration,
-    TypeExpression, TypeSignature, UnionType, UseDeclaration, UsePath, UseTarget, WhirlNumber,
-    WhirlString,
+    FunctionalType, GenericParameter, Identifier, IfExpression, MemberType, Parameter,
+    ScopeAddress, ScopeEntry, ScopeManager, ScopeType, Span, Statement, TestDeclaration, Type,
+    TypeDeclaration, TypeExpression, TypeSignature, UnionType, UseDeclaration, UsePath, UseTarget,
+    WhirlNumber, WhirlString,
 };
 use whirl_lexer::{Bracket::*, Comment, Keyword::*, Lexer, Operator::*, Token, TokenType};
 
@@ -167,6 +167,7 @@ impl<L: Lexer> Parser<L> {
 
         let expression = match token._type {
             TokenType::Keyword(Fn) => self.function_expression()?,
+            TokenType::Keyword(If) => self.if_expression()?,
             TokenType::Operator(_) => todo!(),
             TokenType::Ident(_) => self.reparse(Expression::Identifier(self.identifier()?))?,
             TokenType::String(_) => self.reparse(self.string_literal()?)?,
@@ -187,6 +188,7 @@ impl<L: Lexer> Parser<L> {
         };
         let span = token.span;
         let string = WhirlString { value, span };
+        self.advance(); // Move past string.
         Ok(Expression::StringLiteral(string))
     }
 
@@ -199,6 +201,7 @@ impl<L: Lexer> Parser<L> {
         };
         let span = token.span;
         let number = WhirlNumber { value, span };
+        self.advance(); // Move past num.
         Ok(Expression::NumberLiteral(number))
     }
 
@@ -236,6 +239,55 @@ impl<L: Lexer> Parser<L> {
         };
         let exp = Expression::FunctionExpression(Box::new(function));
         Ok(self.reparse(exp)?)
+    }
+
+    /// Parses an if expression.
+    fn if_expression(&self) -> Fallible<Expression> {
+        expect!(TokenType::Keyword(If), self);
+
+        let start = self.token().unwrap().span.start;
+        self.advance(); // Move past if.
+
+        let condition = self.expression()?;
+
+        let consequent = self.block(ScopeType::Local)?;
+
+        let mut end = consequent.span.end;
+
+        // Parses an else alternate.
+        let alternate = if let Some(token) = self.token() {
+            match token._type {
+                TokenType::Keyword(Else) => {
+                    let start = self.token().unwrap().span.start;
+                    self.advance(); // Move past else.
+
+                    let expression = self.expression()?;
+                    let else_end = expression.span().end;
+                    end = else_end;
+                    let else_exp = whirl_ast::Else {
+                        expression,
+                        span: Span::from([start, else_end]),
+                    };
+                    Some(else_exp)
+                }
+                _ => None,
+            }
+        } else {
+            None
+        };
+
+        let span = Span::from([start, end]);
+
+        let if_expr = IfExpression {
+            condition,
+            consequent,
+            alternate,
+            span,
+        };
+
+        let expr = Expression::IfExpression(Box::new(if_expr));
+
+        Ok(self.reparse(expr)?)
     }
 
     /// Parses a grouped expression.
@@ -786,7 +838,8 @@ impl<L: Lexer> Parser<L> {
             .token()
             .is_some_and(|t| t._type != TokenType::Bracket(RCurly))
         {
-            statements.push(self.statement()?)
+            let statement = self.statement()?;
+            statements.push(statement);
         }
 
         expect!(TokenType::Bracket(RCurly), self);

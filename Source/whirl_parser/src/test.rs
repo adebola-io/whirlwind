@@ -2,8 +2,9 @@
 
 use whirl_ast::{
     Block, CallExpression, DiscreteType, EnumDeclaration, Expression, FunctionDeclaration,
-    FunctionExpression, Identifier, Parameter, ScopeAddress, ScopeEntry, Span, Statement,
-    TestDeclaration, Type, TypeDeclaration, TypeExpression, UseDeclaration, UsePath, UseTarget,
+    FunctionExpression, Identifier, IfExpression, Parameter, ScopeAddress, ScopeEntry, Span,
+    Statement, TestDeclaration, Type, TypeDeclaration, TypeExpression, UseDeclaration, UsePath,
+    UseTarget, WhirlString,
 };
 
 use crate::parse_text;
@@ -771,5 +772,35 @@ fn parse_fn_expressions() {
                 span: [1, 1, 1, 24].into()
             }
         )))
+    );
+}
+
+#[test]
+fn parse_if_expressions() {
+    // Without else.
+    let mut parser = parse_text("if IsLegal() { \"Come on in\" }");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::FreeExpression(Expression::IfExpression(Box::new(IfExpression {
+            condition: Expression::CallExpression(Box::new(CallExpression {
+                caller: Expression::Identifier(Identifier {
+                    name: format!("IsLegal"),
+                    span: [1, 4, 1, 10].into()
+                }),
+                arguments: vec![],
+                span: [1, 4, 1, 13].into()
+            })),
+            consequent: Block {
+                statements: vec![Statement::FreeExpression(Expression::StringLiteral(
+                    WhirlString {
+                        value: format!("Come on in"),
+                        span: [1, 16, 1, 28].into()
+                    }
+                ))],
+                span: [1, 14, 1, 30].into()
+            },
+            alternate: None,
+            span: [1, 1, 1, 30].into()
+        })))
     );
 }

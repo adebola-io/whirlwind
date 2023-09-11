@@ -1,46 +1,24 @@
-use Core.Fs;
+use Core.{
+  Math.Random,
+  Fmt
+};
 
-/// Returns an iterable parser for text input.
-public function ParseText(input: String | Path, parserOptions?: ParserOptions): Parser<TextLexer> {
-    // Parser::from_lexer(lex_text(input))
+/// Say hello to a user.
+public function SayHello(name: String): Outcome<String, String> {
+    if name.IsEmpty() {
+      Error("empty name")
+    } else {
+      message := Fmt.Sprintf(RandomFormat(), name);
+      Ok(message)
+    }
 }
 
-/// Animals are multicellular eukaryotic organisms in the biological kingdom Animalia.
-public type Animal = Cat | Dog | Sheep | Goat;
+function RandomFormat(): String {
+    formats := [
+      "Hello %v! How do you do?",
+      "Great to see you, %v",
+      "Hail %v! Well met!"
+    ];
 
-/// Any statement representation in ECMAScript.
-type Statement =
-  | ExpressionStatement
-  | IfStatement
-  | WhileStatement
-  | DoWhileStatement
-  | SwitchStatement
-  | EmptyStatement
-  | ForStatement
-  | ForInStatement
-  | BlockStatement
-  | ReturnStatement
-  | TryStatement
-  | LabeledStatement
-  | ThrowStatement;
-
-type Predicate = fn(value?: ArrayOf<String>): Boolean;
-
-/// Self referential type.
-type Self = This;
-
-enum Gender {
-  Male,
-  Female, 
-  Other
+    formats[Random.From(0..formats.Length())]   
 }
-
-/// Stuff about this enum.
-public enum NotificationType {
-  Success,
-  /// Stuff about this variant.
-  Error(ErrorType),
-  Warning,
-  Info
-}
-

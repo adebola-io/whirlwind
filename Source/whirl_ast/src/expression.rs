@@ -7,6 +7,7 @@ pub enum Expression {
     NumberLiteral(WhirlNumber),
     CallExpression(Box<CallExpression>),
     FunctionExpression(Box<FunctionExpression>),
+    IfExpression(Box<IfExpression>),
     Block(Block),
 }
 
@@ -54,6 +55,20 @@ pub struct FunctionExpression {
     pub span: Span,
 }
 
+#[derive(Debug, PartialEq)]
+pub struct IfExpression {
+    pub condition: Expression,
+    pub consequent: Block,
+    pub alternate: Option<Else>,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Else {
+    pub expression: Expression,
+    pub span: Span,
+}
+
 /// Chart for expression precedence in Whirl.
 #[derive(Clone, Copy, PartialEq, PartialOrd)]
 pub enum ExpressionPrecedence {
@@ -79,6 +94,7 @@ impl Expression {
             Expression::CallExpression(c) => c.span,
             Expression::FunctionExpression(f) => f.span,
             Expression::Block(b) => b.span,
+            Expression::IfExpression(i) => i.span,
         }
     }
 
@@ -90,6 +106,7 @@ impl Expression {
             Expression::CallExpression(c) => c.span.start = start,
             Expression::FunctionExpression(f) => f.span.start = start,
             Expression::Block(b) => b.span.start = start,
+            Expression::IfExpression(i) => i.span.start = start,
         }
     }
 }
