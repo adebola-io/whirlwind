@@ -5,7 +5,7 @@ use Core.{
 
 /// Say hello to a user.
 public function SayHello(name: String): Outcome<String, String> {
-    if name.IsEmpty() {
+    if name == "" {
       Error("empty name")
     } else {
       message := Fmt.Sprintf(RandomFormat(), name);

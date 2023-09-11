@@ -1,7 +1,7 @@
 #![cfg(test)]
 
 use whirl_ast::{
-    Block, CallExpression, DiscreteType, EnumDeclaration, Expression, FunctionDeclaration,
+    Block, CallExpression, DiscreteType, Else, EnumDeclaration, Expression, FunctionDeclaration,
     FunctionExpression, Identifier, IfExpression, Parameter, ScopeAddress, ScopeEntry, Span,
     Statement, TestDeclaration, Type, TypeDeclaration, TypeExpression, UseDeclaration, UsePath,
     UseTarget, WhirlString,
@@ -803,4 +803,70 @@ fn parse_if_expressions() {
             span: [1, 1, 1, 30].into()
         })))
     );
+
+    // With else.
+    parser = parse_text("if IsLegal() { \"Come on in\" } else { \"You are not eligible.\" }");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::FreeExpression(Expression::IfExpression(Box::new(IfExpression {
+            condition: Expression::CallExpression(Box::new(CallExpression {
+                caller: Expression::Identifier(Identifier {
+                    name: format!("IsLegal"),
+                    span: [1, 4, 1, 10].into()
+                }),
+                arguments: vec![],
+                span: [1, 4, 1, 13].into()
+            })),
+            consequent: Block {
+                statements: vec![Statement::FreeExpression(Expression::StringLiteral(
+                    WhirlString {
+                        value: format!("Come on in"),
+                        span: [1, 16, 1, 28].into()
+                    }
+                ))],
+                span: [1, 14, 1, 30].into()
+            },
+            alternate: Some(Else {
+                expression: Expression::Block(Block {
+                    statements: vec![Statement::FreeExpression(Expression::StringLiteral(
+                        WhirlString {
+                            value: format!("You are not eligible."),
+                            span: [1, 38, 1, 61].into()
+                        }
+                    ))],
+                    span: [1, 36, 1, 63].into()
+                }),
+                span: [1, 31, 1, 63].into()
+            }),
+            span: [1, 1, 1, 63].into()
+        })))
+    );
+}
+
+#[test]
+fn parse_shorthand_variables() {
+    // Simple.
+    let mut parser = parse_text("message := GetMessage();");
+
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::ShorthandVariableDeclaration(whirl_ast::ShorthandVariableDeclaration {
+            address: [0, 0].into(),
+            value: Expression::CallExpression(Box::new(CallExpression {
+                caller: Expression::Identifier(Identifier {
+                    name: format!("GetMessage"),
+                    span: [1, 12, 1, 21].into()
+                }),
+                arguments: vec![],
+                span: [1, 12, 1, 24].into()
+            })),
+            span: [1, 1, 1, 24].into()
+        })
+    );
+
+    let scope_manager = parser.scope_manager();
+
+    assert!(matches!(
+        scope_manager.lookaround("message").unwrap().entry,
+        ScopeEntry::Variable(whirl_ast::VariableSignature {name,..}) if name.name == format!("message")));
 }

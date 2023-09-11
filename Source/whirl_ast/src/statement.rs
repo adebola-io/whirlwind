@@ -6,6 +6,7 @@ pub enum Statement {
     TestDeclaration(TestDeclaration),
     UseDeclaration(UseDeclaration),
     VariableDeclaration,
+    ShorthandVariableDeclaration(ShorthandVariableDeclaration),
     ConstantDeclaration,
     ClassDeclaration,
     FunctionDeclaration(FunctionDeclaration),
@@ -54,6 +55,27 @@ pub struct UseTargetSignature {
     pub name: Identifier,
     /// Whether or not the import is reexported.
     pub is_public: bool,
+}
+
+/// A node in the AST for a shorthand `:=` variable declaration.
+#[derive(Debug, PartialEq)]
+pub struct ShorthandVariableDeclaration {
+    pub address: ScopeAddress,
+    pub value: Expression,
+    pub span: Span,
+}
+
+/// Entry to mark a variable.
+#[derive(Debug)]
+pub struct VariableSignature {
+    /// Name of the variable.
+    pub name: Identifier,
+    /// Whether it was declared with shorthand syntax or not.
+    pub is_shorthand: bool,
+    /// Whether or not the variable is denoted by `public`.
+    pub is_public: bool,
+    /// The variable's assigned type.
+    pub assigned_type: Type,
 }
 
 /// A node for a test block.
@@ -196,6 +218,7 @@ impl Statement {
             Statement::WhileStatement => todo!(),
             Statement::ForStatement => todo!(),
             Statement::ExpressionStatement(e) | Statement::FreeExpression(e) => e.span(),
+            Statement::ShorthandVariableDeclaration(v) => v.span,
         }
     }
     /// Dynamically change the starting point of the statement.
@@ -214,6 +237,7 @@ impl Statement {
             Statement::WhileStatement => todo!(),
             Statement::ForStatement => todo!(),
             Statement::ExpressionStatement(e) | Statement::FreeExpression(e) => e.set_start(start),
+            Statement::ShorthandVariableDeclaration(v) => v.span.start = start,
         }
     }
 }

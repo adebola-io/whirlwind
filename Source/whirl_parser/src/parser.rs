@@ -5,9 +5,9 @@ use whirl_ast::{
     Block, CallExpression, DiscreteType, EnumDeclaration, EnumSignature, EnumVariant, Expression,
     ExpressionPrecedence, FunctionDeclaration, FunctionExpression, FunctionSignature,
     FunctionalType, GenericParameter, Identifier, IfExpression, MemberType, Parameter,
-    ScopeAddress, ScopeEntry, ScopeManager, ScopeType, Span, Statement, TestDeclaration, Type,
-    TypeDeclaration, TypeExpression, TypeSignature, UnionType, UseDeclaration, UsePath, UseTarget,
-    WhirlNumber, WhirlString,
+    ScopeAddress, ScopeEntry, ScopeManager, ScopeType, ShorthandVariableDeclaration, Span,
+    Statement, TestDeclaration, Type, TypeDeclaration, TypeExpression, TypeSignature, UnionType,
+    UseDeclaration, UsePath, UseTarget, VariableSignature, WhirlNumber, WhirlString,
 };
 use whirl_lexer::{Bracket::*, Comment, Keyword::*, Lexer, Operator::*, Token, TokenType};
 
@@ -84,8 +84,8 @@ impl<L: Lexer> Parser<L> {
             }
         }
     }
-    // / Rewinds to the last token.
-    // fn _back(&self) {
+    // // / Rewinds to the last token.
+    // fn back(&self) {
     //     self.future.replace(self.present.take());
     //     self.present.replace(self.past.take());
     // }
@@ -149,7 +149,29 @@ impl<L: Lexer> Parser<L> {
 impl<L: Lexer> Parser<L> {
     /// Parses an expression to return either an expression statement or a free expression.
     fn expression_start(&self) -> Fallible<Statement> {
-        let expression = self.expression()?;
+        // Parse a variable declaration instead if:
+        // - the current token is an identifier, and
+        // - the next token is a colon or a colon-assign.
+        let expression = if let Some(token) = self.token() {
+            if matches!(token._type, TokenType::Ident(_)) {
+                let name = self.identifier()?;
+                match self.token() {
+                    Some(token)
+                        if matches!(
+                            token._type,
+                            TokenType::Operator(Colon) | TokenType::Operator(ColonAssign),
+                        ) =>
+                    {
+                        return self.shorthand_variable_declaration(name);
+                    }
+                    _ => self.reparse(Expression::Identifier(name))?,
+                }
+            } else {
+                self.expression()?
+            }
+        } else {
+            self.expression()?
+        };
 
         match self.token() {
             Some(t) => match t._type {
@@ -174,6 +196,9 @@ impl<L: Lexer> Parser<L> {
             TokenType::TemplateStringFragment(_) => todo!(),
             TokenType::Number(_) => self.reparse(self.number_literal()?)?,
             TokenType::Bracket(LParens) => self.reparse(self.grouped_expression()?)?,
+            TokenType::Bracket(LCurly) => {
+                self.reparse(Expression::Block(self.block(ScopeType::Local)?))?
+            }
             _ => return Err(errors::expected(TokenType::Operator(SemiColon), token.span)),
         };
         Ok(expression)
@@ -213,7 +238,7 @@ impl<L: Lexer> Parser<L> {
         self.advance(); // Move past fn.
         let generic_params = self.maybe_generic_params()?;
         let params = self.parameters()?;
-        let return_type = self.maybe_return_type()?;
+        let return_type = self.maybe_type_label()?;
 
         self.ended(errors::expected(
             TokenType::Bracket(LCurly),
@@ -423,7 +448,7 @@ impl<L: Lexer> Parser<L> {
         let name = self.identifier()?;
         let generic_params = self.maybe_generic_params()?;
         let params = self.parameters()?;
-        let return_type = self.maybe_return_type()?;
+        let return_type = self.maybe_type_label()?;
         let body = self.block(ScopeType::Functional)?;
 
         let signature = FunctionSignature {
@@ -813,8 +838,8 @@ impl<L: Lexer> Parser<L> {
         Ok(parameters)
     }
 
-    /// Parses a function's return type. It assumes that `:` is maybe the current token.
-    fn maybe_return_type(&self) -> Fallible<Type> {
+    /// Parses a type label. It assumes that `:` is maybe the current token.
+    fn maybe_type_label(&self) -> Fallible<Type> {
         if !self
             .token()
             .is_some_and(|t| t._type == TokenType::Operator(Colon))
@@ -887,6 +912,44 @@ impl<L: Lexer> Parser<L> {
 
         Ok(parameter)
     }
+
+    /// Parses a shorthand variable declaration. Assumes that the name is the current token.
+    fn shorthand_variable_declaration(&self, name: Identifier) -> Fallible<Statement> {
+        let start = name.span.start;
+        let assigned_type = self.maybe_type_label()?;
+        let is_shorthand = true;
+
+        expect!(TokenType::Operator(ColonAssign), self);
+
+        self.advance(); // Move past :=
+
+        let value = self.expression()?;
+
+        let end = value.span().end;
+
+        let signature = VariableSignature {
+            name,
+            is_shorthand,
+            // Shorthand variable cannot be public.
+            is_public: false,
+            assigned_type,
+        };
+
+        let entry_no = self
+            .scope_manager()
+            .register(ScopeEntry::Variable(signature));
+
+        let statement = Statement::ShorthandVariableDeclaration(ShorthandVariableDeclaration {
+            address: [self.scope_manager().current(), entry_no].into(),
+            value,
+            span: Span::from([start, end]),
+        });
+
+        expect!(TokenType::Operator(SemiColon), self);
+        self.advance(); // Move past ;
+
+        Ok(statement)
+    }
 }
 
 // TYPES.
@@ -932,7 +995,7 @@ impl<L: Lexer> Parser<L> {
         self.advance(); // Move past fn.
         let generic_params = self.maybe_generic_params()?;
         let params = self.parameters()?;
-        let return_type = self.maybe_return_type()?.declared.map(|exp| Box::new(exp));
+        let return_type = self.maybe_type_label()?.declared.map(|exp| Box::new(exp));
         let span = Span::from([start, self.last_token_span().end]);
 
         let functype = TypeExpression::Functional(FunctionalType {

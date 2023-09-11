@@ -1,4 +1,4 @@
-use crate::{EnumSignature, FunctionSignature, TypeSignature};
+use crate::{EnumSignature, FunctionSignature, TypeSignature, VariableSignature};
 
 /// A hierarchical data structure that stores info in related "depths".
 /// It provides functions for creating and managing the lifecycle of nested scopes.
@@ -14,6 +14,7 @@ pub enum ScopeEntry {
     Function(FunctionSignature),
     Type(TypeSignature),
     Enum(EnumSignature),
+    Variable(VariableSignature),
 }
 
 #[derive(Debug)]
@@ -65,7 +66,8 @@ impl ScopeEntry {
         match self {
             ScopeEntry::Function(FunctionSignature { name, .. })
             | ScopeEntry::Type(TypeSignature { name, .. })
-            | ScopeEntry::Enum(EnumSignature { name, .. }) => &name.name,
+            | ScopeEntry::Enum(EnumSignature { name, .. })
+            | ScopeEntry::Variable(VariableSignature { name, .. }) => &name.name,
         }
     }
 }
@@ -129,6 +131,16 @@ impl Scope {
             .get(entry_no)
             .map(|entry| match entry {
                 ScopeEntry::Enum(e) => Some(e),
+                _ => None,
+            })
+            .flatten()
+    }
+    /// Get a variable entry by its index.
+    pub fn get_variable(&self, entry_no: usize) -> Option<&VariableSignature> {
+        self.entries
+            .get(entry_no)
+            .map(|entry| match entry {
+                ScopeEntry::Variable(v) => Some(v),
                 _ => None,
             })
             .flatten()
