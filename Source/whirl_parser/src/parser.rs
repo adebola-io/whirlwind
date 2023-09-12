@@ -2,11 +2,12 @@ use std::cell::RefCell;
 
 use crate::errors::{self, ParseError};
 use whirl_ast::{
-    Block, CallExpression, DiscreteType, EnumDeclaration, EnumSignature, EnumVariant, Expression,
-    ExpressionPrecedence, FunctionDeclaration, FunctionExpression, FunctionSignature,
-    FunctionalType, GenericParameter, Identifier, IfExpression, MemberType, Parameter,
-    ScopeAddress, ScopeEntry, ScopeManager, ScopeType, ShorthandVariableDeclaration, Span,
-    Statement, TestDeclaration, Type, TypeDeclaration, TypeExpression, TypeSignature, UnionType,
+    AccessExpr, ArrayExpr, AssignmentExpr, BinaryExpr, Block, CallExpr, DiscreteType,
+    EnumDeclaration, EnumSignature, EnumVariant, Expression, ExpressionPrecedence,
+    FunctionDeclaration, FunctionExpr, FunctionSignature, FunctionalType, GenericParameter,
+    Identifier, IfExpression, IndexExpr, LogicExpr, MemberType, Parameter, ScopeAddress,
+    ScopeEntry, ScopeManager, ScopeType, ShorthandVariableDeclaration, Span, Statement,
+    TestDeclaration, Type, TypeDeclaration, TypeExpression, TypeSignature, UnaryExpr, UnionType,
     UseDeclaration, UsePath, UseTarget, VariableSignature, WhirlNumber, WhirlString,
 };
 use whirl_lexer::{Bracket::*, Comment, Keyword::*, Lexer, Operator::*, Token, TokenType};
@@ -138,9 +139,13 @@ impl<L: Lexer> Parser<L> {
 
     /// Check an expression against the precedence chart.
     fn is_lower_or_equal_precedence(&self, precedence: ExpressionPrecedence) -> bool {
-        match self.precedence_stack.borrow().last() {
-            Some(p) => *p <= precedence,
-            None => false,
+        match (self.precedence_stack.borrow().last(), precedence) {
+            // Right associativity for exponential.
+            (Some(ExpressionPrecedence::PowerOf), ExpressionPrecedence::PowerOf) => false,
+            // Right associativity for assignment.
+            (Some(ExpressionPrecedence::Assignment), ExpressionPrecedence::Assignment) => false,
+            (Some(p), precedence) => *p <= precedence,
+            _ => false,
         }
     }
 }
@@ -181,6 +186,7 @@ impl<L: Lexer> Parser<L> {
             None => Ok(Statement::FreeExpression(expression)),
         }
     }
+
     /// Parses an expression.
     fn expression(&self) -> Fallible<Expression> {
         self.ended(errors::expression_expected(self.last_token_end()))?;
@@ -190,14 +196,17 @@ impl<L: Lexer> Parser<L> {
         let expression = match token._type {
             TokenType::Keyword(Fn) => self.function_expression()?,
             TokenType::Keyword(If) => self.if_expression()?,
-            TokenType::Operator(_) => todo!(),
+            TokenType::Operator(op @ (Negator | Not | Plus | Minus)) => {
+                self.unary_expression(op)?
+            }
             TokenType::Ident(_) => self.reparse(Expression::Identifier(self.identifier()?))?,
             TokenType::String(_) => self.reparse(self.string_literal()?)?,
             TokenType::TemplateStringFragment(_) => todo!(),
             TokenType::Number(_) => self.reparse(self.number_literal()?)?,
             TokenType::Bracket(LParens) => self.reparse(self.grouped_expression()?)?,
+            TokenType::Bracket(LSquare) => self.array_expression()?,
             TokenType::Bracket(LCurly) => {
-                self.reparse(Expression::Block(self.block(ScopeType::Local)?))?
+                self.reparse(Expression::BlockExpr(self.block(ScopeType::Local)?))?
             }
             _ => return Err(errors::expected(TokenType::Operator(SemiColon), token.span)),
         };
@@ -248,21 +257,21 @@ impl<L: Lexer> Parser<L> {
         let token = self.token().unwrap();
         let body = match token._type {
             // Parse block.
-            TokenType::Bracket(LCurly) => Expression::Block(self.block(ScopeType::Functional)?),
+            TokenType::Bracket(LCurly) => Expression::BlockExpr(self.block(ScopeType::Functional)?),
             _ => self.expression()?,
         };
 
         let end = body.span().end;
         let span = Span::from([start, end]);
 
-        let function = FunctionExpression {
+        let function = FunctionExpr {
             generic_params,
             params,
             return_type,
             body,
             span,
         };
-        let exp = Expression::FunctionExpression(Box::new(function));
+        let exp = Expression::FnExpr(Box::new(function));
         Ok(self.reparse(exp)?)
     }
 
@@ -310,14 +319,50 @@ impl<L: Lexer> Parser<L> {
             span,
         };
 
-        let expr = Expression::IfExpression(Box::new(if_expr));
+        let expr = Expression::IfExpr(Box::new(if_expr));
 
         Ok(self.reparse(expr)?)
     }
 
     /// Parses a grouped expression.
     fn grouped_expression(&self) -> Fallible<Expression> {
-        todo!()
+        expect!(TokenType::Bracket(LParens), self);
+        self.advance(); // move past (
+        let expression = self.expression()?;
+        expect!(TokenType::Bracket(RParens), self);
+        self.advance(); // Move past )
+        Ok(self.reparse(expression)?)
+    }
+
+    /// Parses an array expression.
+    fn array_expression(&self) -> Fallible<Expression> {
+        expect!(TokenType::Bracket(LSquare), self);
+        let start = self.token().unwrap().span.start;
+        self.advance(); // Move past [
+
+        let mut elements = vec![];
+
+        while self
+            .token()
+            .is_some_and(|token| token._type != TokenType::Bracket(RSquare))
+        {
+            let expression = self.expression()?;
+            elements.push(expression);
+            if self
+                .token()
+                .is_some_and(|t| t._type == TokenType::Operator(Comma))
+            {
+                self.advance(); // Move past ,
+                continue;
+            }
+            break;
+        }
+        expect!(TokenType::Bracket(RSquare), self);
+        let end = self.token().unwrap().span.end;
+        let span = Span::from([start, end]);
+
+        let array = ArrayExpr { elements, span };
+        Ok(self.reparse(Expression::ArrayExpr(array))?)
     }
 
     /// Reparses an expression to calculate associativity and precedence.
@@ -325,12 +370,25 @@ impl<L: Lexer> Parser<L> {
         match self.token() {
             Some(token) => match token._type {
                 TokenType::Bracket(LParens) => self.call_expression(exp),
+                TokenType::Bracket(LSquare) => self.index_expression(exp),
+                TokenType::Operator(Dot) => self.access_expression(exp),
+                TokenType::Operator(
+                    op @ (Multiply | Divide | Carat | Ampersand | BitOr | Is | Equal | NotEqual
+                    | Percent | Plus | Minus | Range),
+                ) => self.binary_expression(exp, op),
+                TokenType::Operator(op @ (And | Or | LogicalAnd | LogicalOr)) => {
+                    self.logical_expression(exp, op)
+                }
+                TokenType::Operator(op @ (Assign | PlusAssign | MinusAssign)) => {
+                    self.assignment_expression(exp, op)
+                }
                 _ => Ok(exp),
             },
             None => Ok(exp),
         }
     }
 
+    /// Parses a call expression.
     fn call_expression(&self, caller: Expression) -> Fallible<Expression> {
         if self.is_lower_or_equal_precedence(ExpressionPrecedence::Call) {
             return Ok(caller);
@@ -365,13 +423,162 @@ impl<L: Lexer> Parser<L> {
         self.precedence_stack.borrow_mut().pop();
 
         let span = Span::from([start, end]);
-        let call_expression = CallExpression {
+        let call_expression = CallExpr {
             caller,
             arguments,
             span,
         };
-        let exp = Expression::CallExpression(Box::new(call_expression));
+        let exp = Expression::CallExpr(Box::new(call_expression));
         Ok(self.reparse(exp)?)
+    }
+
+    /// Parses an index expression.
+    fn index_expression(&self, object: Expression) -> Fallible<Expression> {
+        if self.is_lower_or_equal_precedence(ExpressionPrecedence::Index) {
+            return Ok(object);
+        }
+
+        expect!(TokenType::Bracket(LSquare), self);
+        self.advance(); // Move past [
+        let start = object.span().start;
+        self.push_precedence(ExpressionPrecedence::Pseudo);
+        let index = self.expression()?;
+        self.precedence_stack.borrow_mut().pop();
+        expect!(TokenType::Bracket(RSquare), self);
+        let end = self.token().unwrap().span.end;
+        self.advance(); // Move past ]
+
+        let index_exp = IndexExpr {
+            object,
+            index,
+            span: Span::from([start, end]),
+        };
+
+        Ok(self.reparse(Expression::IndexExpr(Box::new(index_exp)))?)
+    }
+
+    /// Parses an access expression.
+    fn access_expression(&self, object: Expression) -> Fallible<Expression> {
+        if self.is_lower_or_equal_precedence(ExpressionPrecedence::Access) {
+            return Ok(object);
+        }
+        let start = object.span().start;
+        self.advance(); // Move past .
+        self.push_precedence(ExpressionPrecedence::Access);
+        let property = self.expression()?;
+
+        // Only allow identifiers.
+        if let Expression::Identifier(_) = property {
+        } else {
+            return Err(errors::identifier_expected(property.span()));
+        }
+
+        self.precedence_stack.borrow_mut().pop();
+        let end = property.span().end;
+        let span = Span::from([start, end]);
+        let access_exp = AccessExpr {
+            object,
+            property,
+            span,
+        };
+        Ok(self.reparse(Expression::AccessExpr(Box::new(access_exp)))?)
+    }
+
+    /// Parses a binary expression.
+    fn binary_expression(
+        &self,
+        left: Expression,
+        op: whirl_lexer::Operator,
+    ) -> Fallible<Expression> {
+        let precedence = op.into();
+        if self.is_lower_or_equal_precedence(precedence) {
+            return Ok(left);
+        }
+        let start = left.span().start;
+        self.advance(); // Move past operator.
+        self.push_precedence(precedence);
+        let right = self.expression()?;
+        self.precedence_stack.borrow_mut().pop();
+        let end = right.span().end;
+        let span = Span::from([start, end]);
+        let bin_exp = BinaryExpr {
+            left,
+            operator: op.into(),
+            right,
+            span,
+        };
+        Ok(self.reparse(Expression::BinaryExpr(Box::new(bin_exp)))?)
+    }
+
+    /// Parses a logical expression.
+    fn logical_expression(
+        &self,
+        left: Expression,
+        op: whirl_lexer::Operator,
+    ) -> Fallible<Expression> {
+        let precedence = op.into();
+        if self.is_lower_or_equal_precedence(precedence) {
+            return Ok(left);
+        }
+        let start = left.span().start;
+        self.advance(); // Move past operator.
+        self.push_precedence(precedence);
+        let right = self.expression()?;
+        self.precedence_stack.borrow_mut().pop();
+        let end = right.span().end;
+        let span = Span::from([start, end]);
+        let log_exp = LogicExpr {
+            left,
+            operator: op.into(),
+            right,
+            span,
+        };
+        Ok(self.reparse(Expression::LogicExpr(Box::new(log_exp)))?)
+    }
+
+    /// Parses an assignment expression.
+    fn assignment_expression(
+        &self,
+        left: Expression,
+        op: whirl_lexer::Operator,
+    ) -> Fallible<Expression> {
+        let precedence = op.into();
+        if self.is_lower_or_equal_precedence(precedence) {
+            return Ok(left);
+        }
+        let start = left.span().start;
+        self.advance(); // Move past operator.
+        self.push_precedence(precedence);
+        let right = self.expression()?;
+        self.precedence_stack.borrow_mut().pop();
+        let end = right.span().end;
+        let span = Span::from([start, end]);
+        let ass_exp = AssignmentExpr {
+            left,
+            operator: op.into(),
+            right,
+            span,
+        };
+        Ok(self.reparse(Expression::AssignmentExpr(Box::new(ass_exp)))?)
+    }
+
+    /// Parses a unary expression.
+    fn unary_expression(&self, operator: whirl_lexer::Operator) -> Fallible<Expression> {
+        let precedence = operator.into();
+        expect!(TokenType::Operator(operator), self);
+        let start = self.token().unwrap().span.start;
+        self.advance(); // Move past operator.
+        self.push_precedence(precedence);
+        let operand = self.expression()?;
+        self.precedence_stack.borrow_mut().pop();
+        let end = operand.span().end;
+        let span = Span::from([start, end]);
+        let un_exp = UnaryExpr {
+            operator: operator.into(),
+            operand,
+            span,
+        };
+        Ok(self.reparse(Expression::UnaryExpr(Box::new(un_exp)))?)
     }
 }
 
@@ -925,8 +1132,6 @@ impl<L: Lexer> Parser<L> {
 
         let value = self.expression()?;
 
-        let end = value.span().end;
-
         let signature = VariableSignature {
             name,
             is_shorthand,
@@ -939,14 +1144,15 @@ impl<L: Lexer> Parser<L> {
             .scope_manager()
             .register(ScopeEntry::Variable(signature));
 
+        expect!(TokenType::Operator(SemiColon), self);
+        let end = self.token().unwrap().span.end;
+        self.advance(); // Move past ;
+
         let statement = Statement::ShorthandVariableDeclaration(ShorthandVariableDeclaration {
             address: [self.scope_manager().current(), entry_no].into(),
             value,
             span: Span::from([start, end]),
         });
-
-        expect!(TokenType::Operator(SemiColon), self);
-        self.advance(); // Move past ;
 
         Ok(statement)
     }

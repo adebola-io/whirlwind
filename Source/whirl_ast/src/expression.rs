@@ -5,10 +5,17 @@ pub enum Expression {
     Identifier(Identifier),
     StringLiteral(WhirlString),
     NumberLiteral(WhirlNumber),
-    CallExpression(Box<CallExpression>),
-    FunctionExpression(Box<FunctionExpression>),
-    IfExpression(Box<IfExpression>),
-    Block(Block),
+    CallExpr(Box<CallExpr>),
+    FnExpr(Box<FunctionExpr>),
+    IfExpr(Box<IfExpression>),
+    ArrayExpr(ArrayExpr),
+    AccessExpr(Box<AccessExpr>),
+    IndexExpr(Box<IndexExpr>),
+    BinaryExpr(Box<BinaryExpr>),
+    AssignmentExpr(Box<AssignmentExpr>),
+    UnaryExpr(Box<UnaryExpr>),
+    LogicExpr(Box<LogicExpr>),
+    BlockExpr(Block),
 }
 
 #[derive(Debug, PartialEq)]
@@ -40,14 +47,14 @@ pub enum Number {
 }
 
 #[derive(PartialEq, Debug)]
-pub struct CallExpression {
+pub struct CallExpr {
     pub caller: Expression,
     pub arguments: Vec<Expression>,
     pub span: Span,
 }
 
 #[derive(Debug, PartialEq)]
-pub struct FunctionExpression {
+pub struct FunctionExpr {
     pub generic_params: Option<Vec<GenericParameter>>,
     pub params: Vec<Parameter>,
     pub return_type: Type,
@@ -69,20 +76,118 @@ pub struct Else {
     pub span: Span,
 }
 
+#[derive(Debug, PartialEq)]
+pub struct ArrayExpr {
+    pub elements: Vec<Expression>,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct AccessExpr {
+    pub object: Expression,
+    pub property: Expression,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct IndexExpr {
+    pub object: Expression,
+    pub index: Expression,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct BinaryExpr {
+    pub left: Expression,
+    pub operator: BinOperator,
+    pub right: Expression,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct AssignmentExpr {
+    pub left: Expression,
+    pub operator: AssignOperator,
+    pub right: Expression,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct UnaryExpr {
+    pub operator: UnaryOperator,
+    pub operand: Expression,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct LogicExpr {
+    pub left: Expression,
+    pub operator: LogicOperator,
+    pub right: Expression,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum BinOperator {
+    Multiply,  // a * b
+    Divide,    // a / b
+    PowerOf,   // a ^ b
+    BitAnd,    // a & b
+    BitOr,     // a | b
+    Is,        // a is b
+    Equals,    // a == b
+    NotEquals, // a != b
+    Remainder, // a % b
+    Add,       // a + b
+    Subtract,  // a - b
+    Range,     // a..b
+}
+
+#[derive(Debug, PartialEq)]
+pub enum UnaryOperator {
+    Negation,        // !a
+    NegationLiteral, // not a
+    Plus,            // +a
+    Minus,           // -a
+}
+
+#[derive(Debug, PartialEq)]
+pub enum LogicOperator {
+    And,        // a && b
+    AndLiteral, // a and b
+    Or,         // a || b
+    OrLiteral,  // a or b
+}
+
+#[derive(Debug, PartialEq)]
+pub enum AssignOperator {
+    Assign,      // a = b
+    PlusAssign,  // a += b
+    MinusAssign, // a -= b
+}
+
 /// Chart for expression precedence in Whirl.
 #[derive(Clone, Copy, PartialEq, PartialOrd)]
 pub enum ExpressionPrecedence {
-    Access = 1,           // a.b
-    Call = 2,             // a(b)
-    New = 3,              // new a
-    PowerOf = 4,          // a ^ b
-    MultiplyOrDivide = 5, // a * b, a / b
-    AddOrSubtract = 6,    // a + b, a - b
-    BitLogic = 7,         // a | b, a & b
-    Logic = 8,            // a || b, a && b
-    Equality = 9,         // a == b, a != b
-    TypeUnion = 10,       // A | B
-    Pseudo = 99,          // placeholder operator.
+    Access = 1,                    // a.b
+    Index = 2,                     // a[b]
+    Call = 3,                      // a(b)
+    New = 4,                       // new a
+    Negation = 5,                  // !a, not a
+    UnaryPlusOrMinus = 6,          // +a, -a
+    Range = 7,                     // a..b
+    PowerOf = 8,                   // a ^ b
+    MultiplyDivideOrRemainder = 9, // a * b, a / b, a % b
+    AddOrSubtract = 10,            // a + b, a - b
+    BitShift = 11,                 // a << b, a >> b
+    Ordering = 12,                 // a > b, a < b, a >= b, a <= b
+    Equality = 13,                 // a == b, a != b,
+    ReferentialEquality = 14,      // a is b
+    BitLogic = 15,                 // a | b, a & b
+    Logic = 16,                    // a || b, a && b, a and b, a or b
+    Assignment = 17,               // a = b, a += b, a -= b,
+    TypeUnion = 18,                // A | B
+    Pseudo = 99,                   // placeholder operator.
 }
 
 impl Expression {
@@ -91,10 +196,17 @@ impl Expression {
             Expression::Identifier(i) => i.span,
             Expression::StringLiteral(s) => s.span,
             Expression::NumberLiteral(n) => n.span,
-            Expression::CallExpression(c) => c.span,
-            Expression::FunctionExpression(f) => f.span,
-            Expression::Block(b) => b.span,
-            Expression::IfExpression(i) => i.span,
+            Expression::CallExpr(c) => c.span,
+            Expression::FnExpr(f) => f.span,
+            Expression::BlockExpr(b) => b.span,
+            Expression::IfExpr(i) => i.span,
+            Expression::ArrayExpr(a) => a.span,
+            Expression::IndexExpr(i) => i.span,
+            Expression::BinaryExpr(b) => b.span,
+            Expression::AssignmentExpr(a) => a.span,
+            Expression::UnaryExpr(u) => u.span,
+            Expression::LogicExpr(l) => l.span,
+            Expression::AccessExpr(a) => a.span,
         }
     }
 
@@ -103,10 +215,17 @@ impl Expression {
             Expression::Identifier(i) => i.span.start = start,
             Expression::StringLiteral(s) => s.span.start = start,
             Expression::NumberLiteral(n) => n.span.start = start,
-            Expression::CallExpression(c) => c.span.start = start,
-            Expression::FunctionExpression(f) => f.span.start = start,
-            Expression::Block(b) => b.span.start = start,
-            Expression::IfExpression(i) => i.span.start = start,
+            Expression::CallExpr(c) => c.span.start = start,
+            Expression::FnExpr(f) => f.span.start = start,
+            Expression::BlockExpr(b) => b.span.start = start,
+            Expression::IfExpr(i) => i.span.start = start,
+            Expression::ArrayExpr(a) => a.span.start = start,
+            Expression::IndexExpr(i) => i.span.start = start,
+            Expression::BinaryExpr(b) => b.span.start = start,
+            Expression::AssignmentExpr(a) => a.span.start = start,
+            Expression::UnaryExpr(u) => u.span.start = start,
+            Expression::LogicExpr(l) => l.span.start = start,
+            Expression::AccessExpr(a) => a.span.start = start,
         }
     }
 }

@@ -1,10 +1,11 @@
 #![cfg(test)]
 
 use whirl_ast::{
-    Block, CallExpression, DiscreteType, Else, EnumDeclaration, Expression, FunctionDeclaration,
-    FunctionExpression, Identifier, IfExpression, Parameter, ScopeAddress, ScopeEntry, Span,
-    Statement, TestDeclaration, Type, TypeDeclaration, TypeExpression, UseDeclaration, UsePath,
-    UseTarget, WhirlString,
+    AccessExpr, ArrayExpr, AssignmentExpr, BinaryExpr, Block, CallExpr, DiscreteType, Else,
+    EnumDeclaration, Expression, FunctionDeclaration, FunctionExpr, Identifier, IfExpression,
+    IndexExpr, LogicExpr, Parameter, ScopeAddress, ScopeEntry, Span, Statement, TestDeclaration,
+    Type, TypeDeclaration, TypeExpression, UnaryExpr, UseDeclaration, UsePath, UseTarget,
+    WhirlNumber, WhirlString,
 };
 
 use crate::parse_text;
@@ -640,7 +641,7 @@ fn parse_call_expressions() {
     let mut parser = parse_text("Calculate(A)");
     assert_eq!(
         parser.next().unwrap().unwrap(),
-        Statement::FreeExpression(Expression::CallExpression(Box::new(CallExpression {
+        Statement::FreeExpression(Expression::CallExpr(Box::new(CallExpr {
             caller: Expression::Identifier(Identifier {
                 name: format!("Calculate"),
                 span: [1, 1, 1, 9].into()
@@ -657,7 +658,7 @@ fn parse_call_expressions() {
     parser = parse_text("Calculate(A, B, C, D)");
     assert_eq!(
         parser.next().unwrap().unwrap(),
-        Statement::FreeExpression(Expression::CallExpression(Box::new(CallExpression {
+        Statement::FreeExpression(Expression::CallExpr(Box::new(CallExpr {
             caller: Expression::Identifier(Identifier {
                 name: format!("Calculate"),
                 span: [1, 1, 1, 9].into()
@@ -688,17 +689,17 @@ fn parse_call_expressions() {
     parser = parse_text("Calculate(Calculate(Calculate(A)))");
     assert_eq!(
         parser.next().unwrap().unwrap(),
-        Statement::FreeExpression(Expression::CallExpression(Box::new(CallExpression {
+        Statement::FreeExpression(Expression::CallExpr(Box::new(CallExpr {
             caller: Expression::Identifier(Identifier {
                 name: format!("Calculate"),
                 span: [1, 1, 1, 9].into()
             }),
-            arguments: vec![Expression::CallExpression(Box::new(CallExpression {
+            arguments: vec![Expression::CallExpr(Box::new(CallExpr {
                 caller: Expression::Identifier(Identifier {
                     name: format!("Calculate"),
                     span: [1, 11, 1, 19].into()
                 }),
-                arguments: vec![Expression::CallExpression(Box::new(CallExpression {
+                arguments: vec![Expression::CallExpr(Box::new(CallExpr {
                     caller: Expression::Identifier(Identifier {
                         name: format!("Calculate"),
                         span: [1, 21, 1, 29].into()
@@ -733,45 +734,43 @@ fn parse_fn_expressions() {
     let mut parser = parse_text("fn (a: Number): Number a");
     assert_eq!(
         parser.next().unwrap().unwrap(),
-        Statement::FreeExpression(Expression::FunctionExpression(Box::new(
-            FunctionExpression {
-                generic_params: None,
-                params: vec![Parameter {
-                    name: Identifier {
-                        name: format!("a"),
-                        span: [1, 5, 1, 5].into()
-                    },
-                    type_label: Type {
-                        declared: Some(TypeExpression::Discrete(DiscreteType {
-                            name: Identifier {
-                                name: format!("Number"),
-                                span: [1, 8, 1, 13].into()
-                            },
-                            generic_args: None,
-                            span: [1, 8, 1, 13].into()
-                        })),
-                        inferred: None
-                    },
-                    is_optional: false
-                }],
-                return_type: Type {
+        Statement::FreeExpression(Expression::FnExpr(Box::new(FunctionExpr {
+            generic_params: None,
+            params: vec![Parameter {
+                name: Identifier {
+                    name: format!("a"),
+                    span: [1, 5, 1, 5].into()
+                },
+                type_label: Type {
                     declared: Some(TypeExpression::Discrete(DiscreteType {
                         name: Identifier {
                             name: format!("Number"),
-                            span: [1, 17, 1, 22].into()
+                            span: [1, 8, 1, 13].into()
                         },
                         generic_args: None,
-                        span: [1, 17, 1, 22].into()
+                        span: [1, 8, 1, 13].into()
                     })),
                     inferred: None
                 },
-                body: Expression::Identifier(Identifier {
-                    name: format!("a"),
-                    span: [1, 24, 1, 24].into()
-                }),
-                span: [1, 1, 1, 24].into()
-            }
-        )))
+                is_optional: false
+            }],
+            return_type: Type {
+                declared: Some(TypeExpression::Discrete(DiscreteType {
+                    name: Identifier {
+                        name: format!("Number"),
+                        span: [1, 17, 1, 22].into()
+                    },
+                    generic_args: None,
+                    span: [1, 17, 1, 22].into()
+                })),
+                inferred: None
+            },
+            body: Expression::Identifier(Identifier {
+                name: format!("a"),
+                span: [1, 24, 1, 24].into()
+            }),
+            span: [1, 1, 1, 24].into()
+        })))
     );
 }
 
@@ -781,8 +780,8 @@ fn parse_if_expressions() {
     let mut parser = parse_text("if IsLegal() { \"Come on in\" }");
     assert_eq!(
         parser.next().unwrap().unwrap(),
-        Statement::FreeExpression(Expression::IfExpression(Box::new(IfExpression {
-            condition: Expression::CallExpression(Box::new(CallExpression {
+        Statement::FreeExpression(Expression::IfExpr(Box::new(IfExpression {
+            condition: Expression::CallExpr(Box::new(CallExpr {
                 caller: Expression::Identifier(Identifier {
                     name: format!("IsLegal"),
                     span: [1, 4, 1, 10].into()
@@ -808,8 +807,8 @@ fn parse_if_expressions() {
     parser = parse_text("if IsLegal() { \"Come on in\" } else { \"You are not eligible.\" }");
     assert_eq!(
         parser.next().unwrap().unwrap(),
-        Statement::FreeExpression(Expression::IfExpression(Box::new(IfExpression {
-            condition: Expression::CallExpression(Box::new(CallExpression {
+        Statement::FreeExpression(Expression::IfExpr(Box::new(IfExpression {
+            condition: Expression::CallExpr(Box::new(CallExpr {
                 caller: Expression::Identifier(Identifier {
                     name: format!("IsLegal"),
                     span: [1, 4, 1, 10].into()
@@ -827,7 +826,7 @@ fn parse_if_expressions() {
                 span: [1, 14, 1, 30].into()
             },
             alternate: Some(Else {
-                expression: Expression::Block(Block {
+                expression: Expression::BlockExpr(Block {
                     statements: vec![Statement::FreeExpression(Expression::StringLiteral(
                         WhirlString {
                             value: format!("You are not eligible."),
@@ -852,7 +851,7 @@ fn parse_shorthand_variables() {
         parser.next().unwrap().unwrap(),
         Statement::ShorthandVariableDeclaration(whirl_ast::ShorthandVariableDeclaration {
             address: [0, 0].into(),
-            value: Expression::CallExpression(Box::new(CallExpression {
+            value: Expression::CallExpr(Box::new(CallExpr {
                 caller: Expression::Identifier(Identifier {
                     name: format!("GetMessage"),
                     span: [1, 12, 1, 21].into()
@@ -860,7 +859,7 @@ fn parse_shorthand_variables() {
                 arguments: vec![],
                 span: [1, 12, 1, 24].into()
             })),
-            span: [1, 1, 1, 24].into()
+            span: [1, 1, 1, 25].into()
         })
     );
 
@@ -869,4 +868,309 @@ fn parse_shorthand_variables() {
     assert!(matches!(
         scope_manager.lookaround("message").unwrap().entry,
         ScopeEntry::Variable(whirl_ast::VariableSignature {name,..}) if name.name == format!("message")));
+
+    // With type
+    parser = parse_text("array: ArrayOf<String> := MakeArray();");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::ShorthandVariableDeclaration(whirl_ast::ShorthandVariableDeclaration {
+            address: [0, 0].into(),
+            value: Expression::CallExpr(Box::new(CallExpr {
+                caller: Expression::Identifier(Identifier {
+                    name: format!("MakeArray"),
+                    span: [1, 27, 1, 35].into()
+                }),
+                arguments: vec![],
+                span: [1, 27, 1, 38].into()
+            })),
+            span: [1, 1, 1, 39].into()
+        })
+    );
+}
+
+#[test]
+fn parse_arrays() {
+    let mut parser = parse_text("[a, b, c, d]");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::FreeExpression(Expression::ArrayExpr(ArrayExpr {
+            elements: vec![
+                Expression::Identifier(Identifier {
+                    name: format!("a"),
+                    span: [1, 2, 1, 2].into()
+                }),
+                Expression::Identifier(Identifier {
+                    name: format!("b"),
+                    span: [1, 5, 1, 5].into()
+                }),
+                Expression::Identifier(Identifier {
+                    name: format!("c"),
+                    span: [1, 8, 1, 8].into()
+                }),
+                Expression::Identifier(Identifier {
+                    name: format!("d"),
+                    span: [1, 11, 1, 11].into()
+                })
+            ],
+            span: [1, 1, 1, 13].into()
+        }))
+    )
+}
+
+#[test]
+fn parse_index_expression() {
+    let mut parser = parse_text("a[b]");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::FreeExpression(Expression::IndexExpr(Box::new(IndexExpr {
+            object: Expression::Identifier(Identifier {
+                name: format!("a"),
+                span: [1, 1, 1, 1].into()
+            }),
+            index: Expression::Identifier(Identifier {
+                name: format!("b"),
+                span: [1, 3, 1, 3].into()
+            }),
+            span: [1, 1, 1, 5].into()
+        })))
+    )
+}
+
+#[test]
+fn parse_binary_expression() {
+    // Same operator.
+    let mut parser = parse_text("2 + 2 + 2");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::FreeExpression(Expression::BinaryExpr(Box::new(BinaryExpr {
+            left: Expression::BinaryExpr(Box::new(BinaryExpr {
+                left: Expression::NumberLiteral(WhirlNumber {
+                    value: whirl_ast::Number::Decimal(format!("2")),
+                    span: [1, 1, 1, 1].into()
+                }),
+                operator: whirl_ast::BinOperator::Add,
+                right: Expression::NumberLiteral(WhirlNumber {
+                    value: whirl_ast::Number::Decimal(format!("2")),
+                    span: [1, 5, 1, 5].into()
+                }),
+                span: [1, 1, 1, 5].into()
+            })),
+            operator: whirl_ast::BinOperator::Add,
+            right: Expression::NumberLiteral(WhirlNumber {
+                value: whirl_ast::Number::Decimal(format!("2")),
+                span: [1, 9, 1, 9].into()
+            }),
+            span: [1, 1, 1, 9].into()
+        })))
+    );
+
+    // Different operators.
+    parser = parse_text("2 + 3 * 4");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::FreeExpression(Expression::BinaryExpr(Box::new(BinaryExpr {
+            left: Expression::NumberLiteral(WhirlNumber {
+                value: whirl_ast::Number::Decimal(format!("2")),
+                span: [1, 1, 1, 1].into()
+            }),
+            operator: whirl_ast::BinOperator::Add,
+            right: Expression::BinaryExpr(Box::new(BinaryExpr {
+                left: Expression::NumberLiteral(WhirlNumber {
+                    value: whirl_ast::Number::Decimal(format!("3")),
+                    span: [1, 5, 1, 5].into()
+                }),
+                operator: whirl_ast::BinOperator::Multiply,
+                right: Expression::NumberLiteral(WhirlNumber {
+                    value: whirl_ast::Number::Decimal(format!("4")),
+                    span: [1, 9, 1, 9].into()
+                }),
+                span: [1, 5, 1, 9].into()
+            })),
+            span: [1, 1, 1, 9].into()
+        })))
+    );
+
+    // Raised to operator.
+    parser = parse_text("2 ^ 3 ^ 4");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::FreeExpression(Expression::BinaryExpr(Box::new(BinaryExpr {
+            left: Expression::NumberLiteral(WhirlNumber {
+                value: whirl_ast::Number::Decimal(format!("2")),
+                span: [1, 1, 1, 1].into()
+            }),
+            operator: whirl_ast::BinOperator::PowerOf,
+            right: Expression::BinaryExpr(Box::new(BinaryExpr {
+                left: Expression::NumberLiteral(WhirlNumber {
+                    value: whirl_ast::Number::Decimal(format!("3")),
+                    span: [1, 5, 1, 5].into()
+                }),
+                operator: whirl_ast::BinOperator::PowerOf,
+                right: Expression::NumberLiteral(WhirlNumber {
+                    value: whirl_ast::Number::Decimal(format!("4")),
+                    span: [1, 9, 1, 9].into()
+                }),
+                span: [1, 5, 1, 9].into()
+            })),
+            span: [1, 1, 1, 9].into()
+        })))
+    )
+}
+
+#[test]
+fn parse_logical_expression() {
+    // Logical
+    let mut parser = parse_text("isTrue || isFalse");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::FreeExpression(Expression::LogicExpr(Box::new(LogicExpr {
+            left: Expression::Identifier(Identifier {
+                name: format!("isTrue"),
+                span: [1, 1, 1, 6].into()
+            }),
+            operator: whirl_ast::LogicOperator::Or,
+            right: Expression::Identifier(Identifier {
+                name: format!("isFalse"),
+                span: [1, 11, 1, 17].into()
+            }),
+            span: [1, 1, 1, 17].into()
+        })))
+    );
+
+    // literal and multiple.
+    parser = parse_text("isTrue || isFalse and isTrue");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::FreeExpression(Expression::LogicExpr(Box::new(LogicExpr {
+            left: Expression::LogicExpr(Box::new(LogicExpr {
+                left: Expression::Identifier(Identifier {
+                    name: format!("isTrue"),
+                    span: [1, 1, 1, 6].into()
+                }),
+                operator: whirl_ast::LogicOperator::Or,
+                right: Expression::Identifier(Identifier {
+                    name: format!("isFalse"),
+                    span: [1, 11, 1, 17].into()
+                }),
+                span: [1, 1, 1, 17].into()
+            })),
+            operator: whirl_ast::LogicOperator::AndLiteral,
+            right: Expression::Identifier(Identifier {
+                name: format!("isTrue"),
+                span: [1, 23, 1, 28].into()
+            }),
+            span: [1, 1, 1, 28].into()
+        })))
+    );
+}
+
+#[test]
+fn parse_dot_expression() {
+    // Simple
+    let mut parser = parse_text("Core.Fmt");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::FreeExpression(Expression::AccessExpr(Box::new(AccessExpr {
+            object: Expression::Identifier(Identifier {
+                name: format!("Core"),
+                span: [1, 1, 1, 4].into()
+            }),
+            property: Expression::Identifier(Identifier {
+                name: format!("Fmt"),
+                span: [1, 6, 1, 8].into()
+            }),
+            span: [1, 1, 1, 8].into()
+        })))
+    );
+
+    // nested
+    parser = parse_text("Core.Fmt.Println()");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::FreeExpression(Expression::CallExpr(Box::new(CallExpr {
+            caller: Expression::AccessExpr(Box::new(AccessExpr {
+                object: Expression::AccessExpr(Box::new(AccessExpr {
+                    object: Expression::Identifier(Identifier {
+                        name: format!("Core"),
+                        span: [1, 1, 1, 4].into()
+                    }),
+                    property: Expression::Identifier(Identifier {
+                        name: format!("Fmt"),
+                        span: [1, 6, 1, 8].into()
+                    }),
+                    span: [1, 1, 1, 8].into()
+                })),
+                property: Expression::Identifier(Identifier {
+                    name: format!("Println"),
+                    span: [1, 10, 1, 16].into()
+                }),
+                span: [1, 1, 1, 16].into()
+            })),
+            arguments: vec![],
+            span: [1, 1, 1, 19].into()
+        })))
+    );
+}
+
+#[test]
+fn parse_assignment_expression() {
+    // simple.
+    let mut parser = parse_text("a = b");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::FreeExpression(Expression::AssignmentExpr(Box::new(AssignmentExpr {
+            left: Expression::Identifier(Identifier {
+                name: format!("a"),
+                span: [1, 1, 1, 1].into()
+            }),
+            operator: whirl_ast::AssignOperator::Assign,
+            right: Expression::Identifier(Identifier {
+                name: format!("b"),
+                span: [1, 5, 1, 5].into()
+            }),
+            span: [1, 1, 1, 5].into()
+        })))
+    );
+
+    // nested.
+    let mut parser = parse_text("a = b = c");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::FreeExpression(Expression::AssignmentExpr(Box::new(AssignmentExpr {
+            left: Expression::Identifier(Identifier {
+                name: format!("a"),
+                span: [1, 1, 1, 1].into()
+            }),
+            operator: whirl_ast::AssignOperator::Assign,
+            right: Expression::AssignmentExpr(Box::new(AssignmentExpr {
+                left: Expression::Identifier(Identifier {
+                    name: format!("b"),
+                    span: [1, 5, 1, 5].into()
+                }),
+                operator: whirl_ast::AssignOperator::Assign,
+                right: Expression::Identifier(Identifier {
+                    name: format!("c"),
+                    span: [1, 9, 1, 9].into()
+                }),
+                span: [1, 5, 1, 9].into()
+            })),
+            span: [1, 1, 1, 9].into()
+        })))
+    );
+}
+
+#[test]
+fn parse_unary_expression() {
+    let mut parser = parse_text("!a");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::FreeExpression(Expression::UnaryExpr(Box::new(UnaryExpr {
+            operator: whirl_ast::UnaryOperator::Negation,
+            operand: Expression::Identifier(Identifier {
+                name: format!("a"),
+                span: [1, 2, 1, 2].into()
+            }),
+            span: [1, 1, 1, 2].into()
+        })))
+    );
 }

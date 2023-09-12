@@ -13,6 +13,7 @@ public function SayHello(name: String): Outcome<String, String> {
     }
 }
 
+/// Generate a random format.
 function RandomFormat(): String {
     formats := [
       "Hello %v! How do you do?",
