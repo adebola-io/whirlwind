@@ -104,7 +104,7 @@ fn lex_identifiers_and_keywords() {
         lexer.next(),
         Some(Token {
             _type: TokenType::Ident(format!("name")),
-            span: Span::from([1, 1, 1, 4])
+            span: Span::from([1, 1, 1, 5])
         })
     );
 
@@ -115,15 +115,15 @@ fn lex_identifiers_and_keywords() {
         vec![
             Token {
                 _type: TokenType::Keyword(crate::token::Keyword::Public),
-                span: Span::from([1, 1, 1, 6])
+                span: Span::from([1, 1, 1, 7])
             },
             Token {
                 _type: TokenType::Keyword(crate::token::Keyword::Function),
-                span: Span::from([1, 8, 1, 15])
+                span: Span::from([1, 8, 1, 16])
             },
             Token {
                 _type: TokenType::Ident(format!("Add")),
-                span: Span::from([1, 17, 1, 19])
+                span: Span::from([1, 17, 1, 20])
             }
         ],
     );
@@ -134,7 +134,7 @@ fn lex_identifiers_and_keywords() {
         lexer.next(),
         Some(Token {
             _type: TokenType::Ident(format!("publicised_forerunner")),
-            span: Span::from([1, 1, 1, 21])
+            span: Span::from([1, 1, 1, 22])
         })
     );
 
@@ -145,7 +145,7 @@ fn lex_identifiers_and_keywords() {
         vec![
             Token {
                 _type: TokenType::Ident(format!("name")),
-                span: Span::from([1, 1, 1, 4])
+                span: Span::from([1, 1, 1, 5])
             },
             Token {
                 _type: TokenType::Operator(crate::token::Operator::Plus),
@@ -153,7 +153,7 @@ fn lex_identifiers_and_keywords() {
             },
             Token {
                 _type: TokenType::Ident(format!("name")),
-                span: Span::from([1, 8, 1, 11])
+                span: Span::from([1, 8, 1, 12])
             }
         ],
     )
@@ -206,7 +206,7 @@ fn lex_numbers() {
         lexer.next().unwrap(),
         Token {
             _type: TokenType::Number(Number::Decimal(format!("23456"))),
-            span: Span::from([1, 1, 1, 5])
+            span: Span::from([1, 1, 1, 6])
         }
     );
     // Binary numbers.
@@ -215,7 +215,7 @@ fn lex_numbers() {
         lexer.next().unwrap(),
         Token {
             _type: TokenType::Number(Number::Binary(format!("101010"))),
-            span: Span::from([1, 1, 1, 8])
+            span: Span::from([1, 1, 1, 9])
         }
     );
     // Octal numbers.
@@ -224,7 +224,7 @@ fn lex_numbers() {
         lexer.next().unwrap(),
         Token {
             _type: TokenType::Number(Number::Octal(format!("163524"))),
-            span: Span::from([1, 1, 1, 8])
+            span: Span::from([1, 1, 1, 9])
         }
     );
     // Hexadecimal numbers.
@@ -233,14 +233,14 @@ fn lex_numbers() {
         lexer.next().unwrap(),
         Token {
             _type: TokenType::Number(Number::Hexadecimal(format!("1283A83"))),
-            span: Span::from([1, 1, 1, 9])
+            span: Span::from([1, 1, 1, 10])
         }
     );
 
     // Immediately before range.
     lexer = lex_text("1..3 + 4.5..4");
     assert_eq!(
-        (lexer.nth(0).unwrap(), lexer.nth(2).unwrap()),
+        (lexer.nth(0).unwrap(), lexer.nth(3).unwrap()),
         (
             Token {
                 _type: TokenType::Number(Number::Decimal(format!("1"))),
@@ -248,7 +248,7 @@ fn lex_numbers() {
             },
             Token {
                 _type: TokenType::Number(Number::Decimal(format!("4.5"))),
-                span: Span::from([1, 8, 1, 10])
+                span: Span::from([1, 8, 1, 11])
             }
         )
     );
@@ -261,7 +261,7 @@ fn lex_numbers_with_decimals() {
         lexer.next().unwrap(),
         Token {
             _type: TokenType::Number(Number::Decimal(format!("123.456"))),
-            span: Span::from([1, 1, 1, 7])
+            span: Span::from([1, 1, 1, 8])
         }
     );
 }
@@ -274,7 +274,7 @@ fn lex_numbers_with_exponent() {
         lexer.next().unwrap(),
         Token {
             _type: TokenType::Number(Number::Decimal(format!("2e45"))),
-            span: Span::from([1, 1, 1, 4])
+            span: Span::from([1, 1, 1, 5])
         }
     );
     // With decimals
@@ -283,7 +283,7 @@ fn lex_numbers_with_exponent() {
         lexer.next().unwrap(),
         Token {
             _type: TokenType::Number(Number::Decimal(format!("20.5e45"))),
-            span: Span::from([1, 1, 1, 7])
+            span: Span::from([1, 1, 1, 8])
         }
     );
     // With positive sign
@@ -292,7 +292,7 @@ fn lex_numbers_with_exponent() {
         lexer.next().unwrap(),
         Token {
             _type: TokenType::Number(Number::Decimal(format!("429e+45"))),
-            span: Span::from([1, 1, 1, 7])
+            span: Span::from([1, 1, 1, 8])
         }
     );
     // With negative sign
@@ -301,7 +301,7 @@ fn lex_numbers_with_exponent() {
         lexer.next().unwrap(),
         Token {
             _type: TokenType::Number(Number::Decimal(format!("902e-9"))),
-            span: Span::from([1, 1, 1, 6])
+            span: Span::from([1, 1, 1, 7])
         }
     );
 }

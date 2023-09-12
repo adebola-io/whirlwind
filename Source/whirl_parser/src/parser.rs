@@ -68,7 +68,7 @@ impl<L: Lexer> Parser<L> {
     fn advance(&self) {
         self.past.replace(self.present.take());
         self.present
-            .replace(self.future.take().or(self.next_useful_token()));
+            .replace(self.future.take().or_else(|| self.next_useful_token()));
     }
     /// Keep track of documentation comments and returns the next syntactically useful token.
     fn next_useful_token(&self) -> Option<Token> {
@@ -181,6 +181,10 @@ impl<L: Lexer> Parser<L> {
         match self.token() {
             Some(t) => match t._type {
                 TokenType::Operator(SemiColon) => Ok(Statement::ExpressionStatement(expression)),
+                // No derivation produces <ident> <ident>.
+                TokenType::Ident(_) => {
+                    Err(errors::expected(TokenType::Operator(SemiColon), t.span))
+                }
                 _ => Ok(Statement::FreeExpression(expression)),
             },
             None => Ok(Statement::FreeExpression(expression)),
@@ -359,6 +363,7 @@ impl<L: Lexer> Parser<L> {
         }
         expect!(TokenType::Bracket(RSquare), self);
         let end = self.token().unwrap().span.end;
+        self.advance(); // Move past ];
         let span = Span::from([start, end]);
 
         let array = ArrayExpr { elements, span };
@@ -631,6 +636,7 @@ impl<L: Lexer> Parser<L> {
             return token;
         }
         self.precedence_stack.borrow_mut().clear();
+        self.advance();
         loop {
             match self.token() {
                 Some(token) => match token._type {

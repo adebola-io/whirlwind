@@ -336,7 +336,7 @@ fn parsing_type_declarations() {
         statement,
         Statement::TypeDeclaration(TypeDeclaration {
             address: ScopeAddress::from([0, 0]),
-            span: Span::from([1, 1, 1, 60])
+            span: Span::from([1, 1, 1, 61])
         })
     );
 }
@@ -411,7 +411,7 @@ fn parsing_this_type() {
         statement,
         Statement::TypeDeclaration(TypeDeclaration {
             address: ScopeAddress::from([0, 0]),
-            span: Span::from([1, 1, 1, 16])
+            span: Span::from([1, 1, 1, 17])
         })
     );
 }
@@ -507,7 +507,7 @@ fn parses_use_import() {
             target: UseTarget {
                 name: Identifier {
                     name: format!("OtherModule"),
-                    span: [1, 5, 1, 15].into()
+                    span: [1, 5, 1, 16].into()
                 },
                 path: UsePath::Me
             },
@@ -524,7 +524,7 @@ fn parses_use_import() {
             target: UseTarget {
                 name: Identifier {
                     name: format!("OtherModule"),
-                    span: [1, 12, 1, 22].into()
+                    span: [1, 12, 1, 23].into()
                 },
                 path: UsePath::Me
             },
@@ -541,12 +541,12 @@ fn parses_use_import() {
             target: UseTarget {
                 name: Identifier {
                     name: format!("Core"),
-                    span: [1, 5, 1, 8].into()
+                    span: [1, 5, 1, 9].into()
                 },
                 path: UsePath::Item(Box::new(UseTarget {
                     name: Identifier {
                         name: format!("Math"),
-                        span: [1, 10, 1, 13].into()
+                        span: [1, 10, 1, 14].into()
                     },
                     path: UsePath::Me
                 }))
@@ -566,22 +566,22 @@ fn parse_nested_use_item() {
             target: UseTarget {
                 name: Identifier {
                     name: format!("Components"),
-                    span: [1, 5, 1, 14].into()
+                    span: [1, 5, 1, 15].into()
                 },
                 path: UsePath::Item(Box::new(UseTarget {
                     name: Identifier {
                         name: format!("UI"),
-                        span: [1, 16, 1, 17].into()
+                        span: [1, 16, 1, 18].into()
                     },
                     path: UsePath::Item(Box::new(UseTarget {
                         name: Identifier {
                             name: format!("Buttons"),
-                            span: [1, 19, 1, 25].into()
+                            span: [1, 19, 1, 26].into()
                         },
                         path: UsePath::Item(Box::new(UseTarget {
                             name: Identifier {
                                 name: format!("ErrorButton"),
-                                span: [1, 27, 1, 37].into()
+                                span: [1, 27, 1, 38].into()
                             },
                             path: UsePath::Me
                         }))
@@ -604,25 +604,25 @@ fn parse_group_use_import() {
             target: UseTarget {
                 name: Identifier {
                     name: format!("Components"),
-                    span: [1, 5, 1, 14].into()
+                    span: [1, 5, 1, 15].into()
                 },
                 path: UsePath::Item(Box::new(UseTarget {
                     name: Identifier {
                         name: format!("UI"),
-                        span: [1, 16, 1, 17].into()
+                        span: [1, 16, 1, 18].into()
                     },
                     path: UsePath::List(vec![
                         UseTarget {
                             name: Identifier {
                                 name: format!("Button"),
-                                span: [1, 20, 1, 25].into()
+                                span: [1, 20, 1, 26].into()
                             },
                             path: UsePath::Me
                         },
                         UseTarget {
                             name: Identifier {
                                 name: format!("Alert"),
-                                span: [1, 28, 1, 32].into()
+                                span: [1, 28, 1, 33].into()
                             },
                             path: UsePath::Me
                         }
@@ -644,11 +644,11 @@ fn parse_call_expressions() {
         Statement::FreeExpression(Expression::CallExpr(Box::new(CallExpr {
             caller: Expression::Identifier(Identifier {
                 name: format!("Calculate"),
-                span: [1, 1, 1, 9].into()
+                span: [1, 1, 1, 10].into()
             }),
             arguments: vec![Expression::Identifier(Identifier {
                 name: format!("A"),
-                span: [1, 11, 1, 11].into()
+                span: [1, 11, 1, 12].into()
             })],
             span: [1, 1, 1, 13].into()
         })))
@@ -661,24 +661,24 @@ fn parse_call_expressions() {
         Statement::FreeExpression(Expression::CallExpr(Box::new(CallExpr {
             caller: Expression::Identifier(Identifier {
                 name: format!("Calculate"),
-                span: [1, 1, 1, 9].into()
+                span: [1, 1, 1, 10].into()
             }),
             arguments: vec![
                 Expression::Identifier(Identifier {
                     name: format!("A"),
-                    span: [1, 11, 1, 11].into()
+                    span: [1, 11, 1, 12].into()
                 }),
                 Expression::Identifier(Identifier {
                     name: format!("B"),
-                    span: [1, 14, 1, 14].into()
+                    span: [1, 14, 1, 15].into()
                 }),
                 Expression::Identifier(Identifier {
                     name: format!("C"),
-                    span: [1, 17, 1, 17].into()
+                    span: [1, 17, 1, 18].into()
                 }),
                 Expression::Identifier(Identifier {
                     name: format!("D"),
-                    span: [1, 20, 1, 20].into()
+                    span: [1, 20, 1, 21].into()
                 })
             ],
             span: [1, 1, 1, 22].into()
@@ -692,21 +692,21 @@ fn parse_call_expressions() {
         Statement::FreeExpression(Expression::CallExpr(Box::new(CallExpr {
             caller: Expression::Identifier(Identifier {
                 name: format!("Calculate"),
-                span: [1, 1, 1, 9].into()
+                span: [1, 1, 1, 10].into()
             }),
             arguments: vec![Expression::CallExpr(Box::new(CallExpr {
                 caller: Expression::Identifier(Identifier {
                     name: format!("Calculate"),
-                    span: [1, 11, 1, 19].into()
+                    span: [1, 11, 1, 20].into()
                 }),
                 arguments: vec![Expression::CallExpr(Box::new(CallExpr {
                     caller: Expression::Identifier(Identifier {
                         name: format!("Calculate"),
-                        span: [1, 21, 1, 29].into()
+                        span: [1, 21, 1, 30].into()
                     }),
                     arguments: vec![Expression::Identifier(Identifier {
                         name: format!("A"),
-                        span: [1, 31, 1, 31].into()
+                        span: [1, 31, 1, 32].into()
                     }),],
                     span: [1, 21, 1, 33].into()
                 }))],
@@ -739,16 +739,16 @@ fn parse_fn_expressions() {
             params: vec![Parameter {
                 name: Identifier {
                     name: format!("a"),
-                    span: [1, 5, 1, 5].into()
+                    span: [1, 5, 1, 6].into()
                 },
                 type_label: Type {
                     declared: Some(TypeExpression::Discrete(DiscreteType {
                         name: Identifier {
                             name: format!("Number"),
-                            span: [1, 8, 1, 13].into()
+                            span: [1, 8, 1, 14].into()
                         },
                         generic_args: None,
-                        span: [1, 8, 1, 13].into()
+                        span: [1, 8, 1, 14].into()
                     })),
                     inferred: None
                 },
@@ -758,18 +758,18 @@ fn parse_fn_expressions() {
                 declared: Some(TypeExpression::Discrete(DiscreteType {
                     name: Identifier {
                         name: format!("Number"),
-                        span: [1, 17, 1, 22].into()
+                        span: [1, 17, 1, 23].into()
                     },
                     generic_args: None,
-                    span: [1, 17, 1, 22].into()
+                    span: [1, 17, 1, 23].into()
                 })),
                 inferred: None
             },
             body: Expression::Identifier(Identifier {
                 name: format!("a"),
-                span: [1, 24, 1, 24].into()
+                span: [1, 24, 1, 25].into()
             }),
-            span: [1, 1, 1, 24].into()
+            span: [1, 1, 1, 25].into()
         })))
     );
 }
@@ -784,7 +784,7 @@ fn parse_if_expressions() {
             condition: Expression::CallExpr(Box::new(CallExpr {
                 caller: Expression::Identifier(Identifier {
                     name: format!("IsLegal"),
-                    span: [1, 4, 1, 10].into()
+                    span: [1, 4, 1, 11].into()
                 }),
                 arguments: vec![],
                 span: [1, 4, 1, 13].into()
@@ -811,7 +811,7 @@ fn parse_if_expressions() {
             condition: Expression::CallExpr(Box::new(CallExpr {
                 caller: Expression::Identifier(Identifier {
                     name: format!("IsLegal"),
-                    span: [1, 4, 1, 10].into()
+                    span: [1, 4, 1, 11].into()
                 }),
                 arguments: vec![],
                 span: [1, 4, 1, 13].into()
@@ -854,7 +854,7 @@ fn parse_shorthand_variables() {
             value: Expression::CallExpr(Box::new(CallExpr {
                 caller: Expression::Identifier(Identifier {
                     name: format!("GetMessage"),
-                    span: [1, 12, 1, 21].into()
+                    span: [1, 12, 1, 22].into()
                 }),
                 arguments: vec![],
                 span: [1, 12, 1, 24].into()
@@ -878,7 +878,7 @@ fn parse_shorthand_variables() {
             value: Expression::CallExpr(Box::new(CallExpr {
                 caller: Expression::Identifier(Identifier {
                     name: format!("MakeArray"),
-                    span: [1, 27, 1, 35].into()
+                    span: [1, 27, 1, 36].into()
                 }),
                 arguments: vec![],
                 span: [1, 27, 1, 38].into()
@@ -897,19 +897,19 @@ fn parse_arrays() {
             elements: vec![
                 Expression::Identifier(Identifier {
                     name: format!("a"),
-                    span: [1, 2, 1, 2].into()
+                    span: [1, 2, 1, 3].into()
                 }),
                 Expression::Identifier(Identifier {
                     name: format!("b"),
-                    span: [1, 5, 1, 5].into()
+                    span: [1, 5, 1, 6].into()
                 }),
                 Expression::Identifier(Identifier {
                     name: format!("c"),
-                    span: [1, 8, 1, 8].into()
+                    span: [1, 8, 1, 9].into()
                 }),
                 Expression::Identifier(Identifier {
                     name: format!("d"),
-                    span: [1, 11, 1, 11].into()
+                    span: [1, 11, 1, 12].into()
                 })
             ],
             span: [1, 1, 1, 13].into()
@@ -925,11 +925,11 @@ fn parse_index_expression() {
         Statement::FreeExpression(Expression::IndexExpr(Box::new(IndexExpr {
             object: Expression::Identifier(Identifier {
                 name: format!("a"),
-                span: [1, 1, 1, 1].into()
+                span: [1, 1, 1, 2].into()
             }),
             index: Expression::Identifier(Identifier {
                 name: format!("b"),
-                span: [1, 3, 1, 3].into()
+                span: [1, 3, 1, 4].into()
             }),
             span: [1, 1, 1, 5].into()
         })))
@@ -946,21 +946,21 @@ fn parse_binary_expression() {
             left: Expression::BinaryExpr(Box::new(BinaryExpr {
                 left: Expression::NumberLiteral(WhirlNumber {
                     value: whirl_ast::Number::Decimal(format!("2")),
-                    span: [1, 1, 1, 1].into()
+                    span: [1, 1, 1, 2].into()
                 }),
                 operator: whirl_ast::BinOperator::Add,
                 right: Expression::NumberLiteral(WhirlNumber {
                     value: whirl_ast::Number::Decimal(format!("2")),
-                    span: [1, 5, 1, 5].into()
+                    span: [1, 5, 1, 6].into()
                 }),
-                span: [1, 1, 1, 5].into()
+                span: [1, 1, 1, 6].into()
             })),
             operator: whirl_ast::BinOperator::Add,
             right: Expression::NumberLiteral(WhirlNumber {
                 value: whirl_ast::Number::Decimal(format!("2")),
-                span: [1, 9, 1, 9].into()
+                span: [1, 9, 1, 10].into()
             }),
-            span: [1, 1, 1, 9].into()
+            span: [1, 1, 1, 10].into()
         })))
     );
 
@@ -971,22 +971,22 @@ fn parse_binary_expression() {
         Statement::FreeExpression(Expression::BinaryExpr(Box::new(BinaryExpr {
             left: Expression::NumberLiteral(WhirlNumber {
                 value: whirl_ast::Number::Decimal(format!("2")),
-                span: [1, 1, 1, 1].into()
+                span: [1, 1, 1, 2].into()
             }),
             operator: whirl_ast::BinOperator::Add,
             right: Expression::BinaryExpr(Box::new(BinaryExpr {
                 left: Expression::NumberLiteral(WhirlNumber {
                     value: whirl_ast::Number::Decimal(format!("3")),
-                    span: [1, 5, 1, 5].into()
+                    span: [1, 5, 1, 6].into()
                 }),
                 operator: whirl_ast::BinOperator::Multiply,
                 right: Expression::NumberLiteral(WhirlNumber {
                     value: whirl_ast::Number::Decimal(format!("4")),
-                    span: [1, 9, 1, 9].into()
+                    span: [1, 9, 1, 10].into()
                 }),
-                span: [1, 5, 1, 9].into()
+                span: [1, 5, 1, 10].into()
             })),
-            span: [1, 1, 1, 9].into()
+            span: [1, 1, 1, 10].into()
         })))
     );
 
@@ -997,22 +997,22 @@ fn parse_binary_expression() {
         Statement::FreeExpression(Expression::BinaryExpr(Box::new(BinaryExpr {
             left: Expression::NumberLiteral(WhirlNumber {
                 value: whirl_ast::Number::Decimal(format!("2")),
-                span: [1, 1, 1, 1].into()
+                span: [1, 1, 1, 2].into()
             }),
             operator: whirl_ast::BinOperator::PowerOf,
             right: Expression::BinaryExpr(Box::new(BinaryExpr {
                 left: Expression::NumberLiteral(WhirlNumber {
                     value: whirl_ast::Number::Decimal(format!("3")),
-                    span: [1, 5, 1, 5].into()
+                    span: [1, 5, 1, 6].into()
                 }),
                 operator: whirl_ast::BinOperator::PowerOf,
                 right: Expression::NumberLiteral(WhirlNumber {
                     value: whirl_ast::Number::Decimal(format!("4")),
-                    span: [1, 9, 1, 9].into()
+                    span: [1, 9, 1, 10].into()
                 }),
-                span: [1, 5, 1, 9].into()
+                span: [1, 5, 1, 10].into()
             })),
-            span: [1, 1, 1, 9].into()
+            span: [1, 1, 1, 10].into()
         })))
     )
 }
@@ -1026,14 +1026,14 @@ fn parse_logical_expression() {
         Statement::FreeExpression(Expression::LogicExpr(Box::new(LogicExpr {
             left: Expression::Identifier(Identifier {
                 name: format!("isTrue"),
-                span: [1, 1, 1, 6].into()
+                span: [1, 1, 1, 7].into()
             }),
             operator: whirl_ast::LogicOperator::Or,
             right: Expression::Identifier(Identifier {
                 name: format!("isFalse"),
-                span: [1, 11, 1, 17].into()
+                span: [1, 11, 1, 18].into()
             }),
-            span: [1, 1, 1, 17].into()
+            span: [1, 1, 1, 18].into()
         })))
     );
 
@@ -1045,21 +1045,21 @@ fn parse_logical_expression() {
             left: Expression::LogicExpr(Box::new(LogicExpr {
                 left: Expression::Identifier(Identifier {
                     name: format!("isTrue"),
-                    span: [1, 1, 1, 6].into()
+                    span: [1, 1, 1, 7].into()
                 }),
                 operator: whirl_ast::LogicOperator::Or,
                 right: Expression::Identifier(Identifier {
                     name: format!("isFalse"),
-                    span: [1, 11, 1, 17].into()
+                    span: [1, 11, 1, 18].into()
                 }),
-                span: [1, 1, 1, 17].into()
+                span: [1, 1, 1, 18].into()
             })),
             operator: whirl_ast::LogicOperator::AndLiteral,
             right: Expression::Identifier(Identifier {
                 name: format!("isTrue"),
-                span: [1, 23, 1, 28].into()
+                span: [1, 23, 1, 29].into()
             }),
-            span: [1, 1, 1, 28].into()
+            span: [1, 1, 1, 29].into()
         })))
     );
 }
@@ -1073,13 +1073,13 @@ fn parse_dot_expression() {
         Statement::FreeExpression(Expression::AccessExpr(Box::new(AccessExpr {
             object: Expression::Identifier(Identifier {
                 name: format!("Core"),
-                span: [1, 1, 1, 4].into()
+                span: [1, 1, 1, 5].into()
             }),
             property: Expression::Identifier(Identifier {
                 name: format!("Fmt"),
-                span: [1, 6, 1, 8].into()
+                span: [1, 6, 1, 9].into()
             }),
-            span: [1, 1, 1, 8].into()
+            span: [1, 1, 1, 9].into()
         })))
     );
 
@@ -1092,19 +1092,19 @@ fn parse_dot_expression() {
                 object: Expression::AccessExpr(Box::new(AccessExpr {
                     object: Expression::Identifier(Identifier {
                         name: format!("Core"),
-                        span: [1, 1, 1, 4].into()
+                        span: [1, 1, 1, 5].into()
                     }),
                     property: Expression::Identifier(Identifier {
                         name: format!("Fmt"),
-                        span: [1, 6, 1, 8].into()
+                        span: [1, 6, 1, 9].into()
                     }),
-                    span: [1, 1, 1, 8].into()
+                    span: [1, 1, 1, 9].into()
                 })),
                 property: Expression::Identifier(Identifier {
                     name: format!("Println"),
-                    span: [1, 10, 1, 16].into()
+                    span: [1, 10, 1, 17].into()
                 }),
-                span: [1, 1, 1, 16].into()
+                span: [1, 1, 1, 17].into()
             })),
             arguments: vec![],
             span: [1, 1, 1, 19].into()
@@ -1121,14 +1121,14 @@ fn parse_assignment_expression() {
         Statement::FreeExpression(Expression::AssignmentExpr(Box::new(AssignmentExpr {
             left: Expression::Identifier(Identifier {
                 name: format!("a"),
-                span: [1, 1, 1, 1].into()
+                span: [1, 1, 1, 2].into()
             }),
             operator: whirl_ast::AssignOperator::Assign,
             right: Expression::Identifier(Identifier {
                 name: format!("b"),
-                span: [1, 5, 1, 5].into()
+                span: [1, 5, 1, 6].into()
             }),
-            span: [1, 1, 1, 5].into()
+            span: [1, 1, 1, 6].into()
         })))
     );
 
@@ -1139,22 +1139,22 @@ fn parse_assignment_expression() {
         Statement::FreeExpression(Expression::AssignmentExpr(Box::new(AssignmentExpr {
             left: Expression::Identifier(Identifier {
                 name: format!("a"),
-                span: [1, 1, 1, 1].into()
+                span: [1, 1, 1, 2].into()
             }),
             operator: whirl_ast::AssignOperator::Assign,
             right: Expression::AssignmentExpr(Box::new(AssignmentExpr {
                 left: Expression::Identifier(Identifier {
                     name: format!("b"),
-                    span: [1, 5, 1, 5].into()
+                    span: [1, 5, 1, 6].into()
                 }),
                 operator: whirl_ast::AssignOperator::Assign,
                 right: Expression::Identifier(Identifier {
                     name: format!("c"),
-                    span: [1, 9, 1, 9].into()
+                    span: [1, 9, 1, 10].into()
                 }),
-                span: [1, 5, 1, 9].into()
+                span: [1, 5, 1, 10].into()
             })),
-            span: [1, 1, 1, 9].into()
+            span: [1, 1, 1, 10].into()
         })))
     );
 }
@@ -1168,9 +1168,45 @@ fn parse_unary_expression() {
             operator: whirl_ast::UnaryOperator::Negation,
             operand: Expression::Identifier(Identifier {
                 name: format!("a"),
-                span: [1, 2, 1, 2].into()
+                span: [1, 2, 1, 3].into()
             }),
-            span: [1, 1, 1, 2].into()
+            span: [1, 1, 1, 3].into()
         })))
     );
+}
+
+#[test]
+fn parse_complex_program() {
+    let parser = parse_text(
+        "
+use Core.{
+  Math.Random,
+  Fmt
+};
+
+/// Say hello to a user.
+public function SayHello(name: String): Outcome<String, String> {
+    if name == \"\" {
+      Error(\"empty name\")
+    } else {
+      message := Fmt.Sprintf(RandomFormat(), name);
+      Ok(message)
+    }
+}
+
+/// Generate a random format.
+function RandomFormat(): String {
+    formats := [
+      \"Hello %v! How do you do?\",
+      \"Great to see you, %v\",
+      \"Hail %v! Well met!\"
+    ];
+
+    formats[Random.From(0..formats.Length())]  
+}",
+    );
+
+    for statement in parser {
+        println!("{:#?}", statement);
+    }
 }

@@ -62,7 +62,7 @@ fn is_valid_identifier_start(ch: char) -> bool {
 
 pub trait LexerInner {
     fn next_token_inner(&mut self) -> Option<Token> {
-        self.remove_saved().or(match self.remove_stashed() {
+        self.remove_saved().or_else(|| match self.remove_stashed() {
             Some(ch) => self.token(ch),
             None => self.next_char().map(|ch| self.token(ch)).flatten(),
         })
@@ -249,6 +249,7 @@ pub trait LexerInner {
                 }
                 None => {
                     is_ended = true;
+                    break;
                 }
             }
         }
@@ -310,7 +311,7 @@ pub trait LexerInner {
     fn number(&mut self, first_char: char) -> Token {
         let mut value = String::new();
 
-        let mut is_ended = false;
+        // let mut is_ended = false;
         let mut encountered_newline = false;
         let mut encountered_decimal = false;
 
@@ -336,7 +337,8 @@ pub trait LexerInner {
         }
 
         loop {
-            match stored_char.or(self.next_char()) {
+            let next = stored_char.take().or_else(|| self.next_char());
+            match next {
                 Some(ch) if ch.is_digit(radix) => value.push(ch),
                 Some(ch) if ch == 'e' => {
                     // Only decimal numbers should have exponent.
@@ -350,7 +352,7 @@ pub trait LexerInner {
                     value.push_str(&tuple.0);
                     match tuple.1 {
                         Some('\n') => encountered_newline = true,
-                        None => is_ended = true,
+                        // None => is_ended = true,
                         _ => {}
                     }
                     break;
@@ -360,7 +362,10 @@ pub trait LexerInner {
                         // parse a range instead.
                         if value.ends_with('.') {
                             value.remove(value.len() - 1);
-                            self.save_token(token!(Operator::Range, self).unwrap());
+                            let mut token = token!(Operator::Range, self).unwrap();
+                            // offset correction.
+                            token.span.start[1] = token.span.end[1] - 2;
+                            self.save_token(token);
                         } else {
                             self.stash(ch);
                         }
@@ -377,11 +382,12 @@ pub trait LexerInner {
                     break;
                 }
                 None => {
-                    is_ended = true;
+                    // is_ended = true;
                     break;
                 }
             }
         }
+        let len = value.len();
 
         let mut token = Token {
             _type: TokenType::Number(match radix {
@@ -401,7 +407,7 @@ pub trait LexerInner {
                 self.line_lengths()[(token.span.end[0] - 1) as usize],
             ];
         } else {
-            token.span.end[1] -= if is_ended { 1 } else { 2 };
+            token.span.end[1] = token.span.start[1] + len as u32 + if radix != 10 { 2 } else { 0 };
         }
         token
     }
@@ -448,7 +454,7 @@ pub trait LexerInner {
     /// Lexes an identifier or a keyword. It also lexes word operators like `is`, `and`, `or` and `not`.
     fn ident_or_keyword(&mut self, first_char: char) -> Token {
         let mut ident_text = String::from(first_char);
-        let mut is_ended = false;
+        // let mut is_ended = false;
         let mut encounted_newline = false;
 
         loop {
@@ -462,11 +468,12 @@ pub trait LexerInner {
                     break;
                 }
                 None => {
-                    is_ended = true;
+                    // is_ended = true;
                     break;
                 }
             }
         }
+        let len = ident_text.len();
         let mut token = match ident_text.as_str() {
             "as" => token!(Keyword::As, self),
             "and" => token!(Operator::And, self).unwrap(),
@@ -512,7 +519,8 @@ pub trait LexerInner {
                 self.line_lengths()[(token.span.end[0] - 1) as usize],
             ];
         } else {
-            token.span.end[1] -= if is_ended { 1 } else { 2 };
+            // identifier is on the same line, so simple math can get its span.
+            token.span.end[1] = token.span.start[1] + len as u32;
         }
         token
     }
