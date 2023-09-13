@@ -44,6 +44,7 @@ pub struct ScopeAddress {
 
 #[derive(Debug)]
 pub struct Scope {
+    pub id: usize,
     _type: ScopeType,
     /// The index of the parent scope in the scope manager.
     parent_index: Option<usize>,
@@ -102,6 +103,7 @@ impl Scope {
     /// Creates a global scope.
     pub fn global() -> Self {
         Scope {
+            id: 0,
             _type: ScopeType::Global,
             parent_index: None,
             children_index: vec![],
@@ -109,8 +111,9 @@ impl Scope {
         }
     }
     /// Creates a child of another scope.
-    fn local(_index: usize, parent: usize, _type: ScopeType) -> Self {
+    fn local(id: usize, parent: usize, _type: ScopeType) -> Self {
         Scope {
+            id,
             _type,
             parent_index: Some(parent),
             children_index: vec![],

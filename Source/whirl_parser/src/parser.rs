@@ -1244,8 +1244,9 @@ impl<L: Lexer> Parser<L> {
     fn regular_type_or_union(&self) -> Fallible<TypeExpression> {
         let name = self.identifier()?;
         let generic_args = self.maybe_generic_args()?;
-        let span = name.span;
-
+        let start = name.span.start;
+        let end = self.last_token_span().end;
+        let span = Span::from([start, end]);
         let discrete = TypeExpression::Discrete(DiscreteType {
             name,
             generic_args,

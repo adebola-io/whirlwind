@@ -35,8 +35,8 @@ impl Type {
 pub enum TypeEval {
     /// An address of a scope entry.
     Pointer {
-        scope_address: ScopeAddress,
-        generic_args: Option<Vec<TypeEval>>,
+        address: ScopeAddress,
+        args: Option<Vec<TypeEval>>,
     },
     /// A type error.
     #[default]
@@ -101,7 +101,7 @@ impl std::fmt::Display for TypeExpression {
 pub struct GenericParameter {
     pub name: Identifier,
     pub traits: Vec<TypeExpression>,
-    pub default: TypeExpression,
+    pub default: Option<TypeExpression>,
 }
 
 impl TypeExpression {

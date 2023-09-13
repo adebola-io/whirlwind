@@ -1,5 +1,7 @@
 /// Say hello to a user.
-public function SayHello(name: String): Outcome<String, String> {
+public function Main(name: String): ArrayOf<String>
+{
     /// Variable to denote stuff.
-    isWorking := true;
+    isWorking: Boolean := true;
+    anotherVariable := "It Works!";
 }

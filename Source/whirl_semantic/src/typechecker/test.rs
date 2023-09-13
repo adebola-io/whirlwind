@@ -17,13 +17,13 @@ fn test_adding_string_and_number() {
         vec![TypeError {
             _type: crate::TypeErrorType::InvalidBinary {
                 left: whirl_ast::TypeEval::Pointer {
-                    scope_address: [0, 1].into(),
-                    generic_args: None
+                    address: [0, 1].into(),
+                    args: None
                 },
                 operator: whirl_ast::BinOperator::Add,
                 right: whirl_ast::TypeEval::Pointer {
-                    scope_address: [0, 2].into(),
-                    generic_args: None
+                    address: [0, 2].into(),
+                    args: None
                 }
             },
             spans: vec![[3, 14, 3, 22].into()]

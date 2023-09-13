@@ -9,7 +9,7 @@ pub fn stringify_type_error(scope_manager: &ScopeManager, error: TypeErrorType) 
             operator,
             right,
         } => format!(
-            "Operator {:?} is not defined for '{}' and '{}'.",
+            "Operator '{:?}' is not defined for '{}' and '{}'.",
             operator,
             stringify_type_eval(scope_manager, &left),
             stringify_type_eval(scope_manager, &right)
@@ -21,8 +21,19 @@ pub fn stringify_type_error(scope_manager: &ScopeManager, error: TypeErrorType) 
             format!("Cannot resolve type '{name}'")
         }
         TypeErrorType::ValueAsType { name } => {
-            format!("{name} refers to a value, but it is being used as a type here.")
+            format!("'{name}' refers to a value, but it is being used as a type here.")
         }
+        TypeErrorType::UnexpectedGenericArgs { value } => format!("Type '{value}' is not generic."),
+        TypeErrorType::MismatchedGenericArgs {
+            value,
+            expected,
+            assigned,
+        } => format!("'{value}' expects {expected} generic arguments, but got only {assigned}."),
+        TypeErrorType::MismatchedAssignment { left, right } => format!(
+            "Cannot assign '{}' to '{}'.",
+            stringify_type_eval(scope_manager, &right),
+            stringify_type_eval(scope_manager, &left),
+        ),
     }
 }
 
@@ -30,8 +41,8 @@ pub fn stringify_type_error(scope_manager: &ScopeManager, error: TypeErrorType) 
 pub fn stringify_type_eval(scope_manager: &ScopeManager, eval: &TypeEval) -> String {
     match eval {
         TypeEval::Pointer {
-            scope_address,
-            generic_args,
+            address: scope_address,
+            args: generic_args,
         } => {
             let mut string = String::new();
             let entry = scope_manager

@@ -53,8 +53,7 @@ impl LanguageServer for Backend {
         self.client
             .log_message(MessageType::INFO, "Hovering...")
             .await;
-        let hover = self.doc_manager.get_hover_info(params);
-        Ok(hover.map(|h| h.into()))
+        Ok(self.doc_manager.get_hover_info(params).map(|h| h.into()))
     }
 }
 

@@ -1,7 +1,7 @@
 mod errors;
 use whirl_ast::{
-    EnumSignature, EnumVariant, FunctionSignature, Identifier, Parameter, ScopeManager,
-    TypeExpression, TypeSignature, VariableSignature,
+    ClassSignature, EnumSignature, EnumVariant, FunctionSignature, GenericParameter, Identifier,
+    Parameter, ScopeManager, TypeEval, TypeExpression, TypeSignature, VariableSignature,
 };
 
 pub use errors::*;
@@ -92,6 +92,41 @@ impl SignatureFormatter for EnumSignature {
     }
 }
 
+impl HoverFormatter for ClassSignature {
+    fn to_formatted(&self) -> String {
+        let mut string = String::new();
+        if self.is_public {
+            string.push_str("public ");
+        }
+        string.push_str("class ");
+        string.push_str(&self.name.name);
+        if let Some(ref params) = self.generic_params {
+            string.push('<');
+            for (index, param) in params.iter().enumerate() {
+                string.push_str(&param.to_formatted());
+                if index + 1 != params.len() {
+                    string.push_str(", ");
+                }
+            }
+            string.push('>');
+        }
+        // Todo: Generic params.
+        for _extension in &self.extensions {
+            // todo: extensions.
+        }
+        for _implementation in &self.implementations {
+            // todo: implementations
+        }
+        string
+    }
+}
+
+impl SignatureFormatter for ClassSignature {
+    fn info(&self) -> Option<&Vec<String>> {
+        self.info.as_ref()
+    }
+}
+
 impl HoverFormatter for Parameter {
     fn to_formatted(&self) -> String {
         let mut string = String::new();
@@ -110,6 +145,22 @@ impl HoverFormatter for Parameter {
             },
         };
         string.push_str(&param_type_str);
+        string
+    }
+}
+
+impl HoverFormatter for GenericParameter {
+    fn to_formatted(&self) -> String {
+        let mut string = String::new();
+        string.push_str(&self.name.name);
+        if self.traits.len() > 0 {
+            string.push_str(": ");
+            // TODO: Traits.
+        }
+        if let Some(ref default) = self.default {
+            string.push_str(" = ");
+            string.push_str(&default.to_formatted());
+        }
         string
     }
 }
@@ -205,6 +256,7 @@ impl HoverFormatter for (&Identifier, &EnumVariant) {
         string
     }
 }
+
 impl SignatureFormatter for (&Identifier, &EnumVariant) {
     fn info(&self) -> Option<&Vec<String>> {
         self.1.info.as_ref()
@@ -240,6 +292,33 @@ impl SignatureFormatter for (&ScopeManager, &VariableSignature) {
     }
 }
 
+impl HoverFormatter for (&ScopeManager, TypeEval) {
+    fn to_formatted(&self) -> String {
+        match self.1 {
+            TypeEval::Pointer { address, .. } => match self.0.get_entry_unguarded(address) {
+                whirl_ast::ScopeEntry::Type(typ) => typ.to_formatted(),
+                whirl_ast::ScopeEntry::Enum(e) => e.to_formatted(),
+                whirl_ast::ScopeEntry::Class(c) => c.to_formatted(),
+                _ => String::new(),
+            },
+            TypeEval::Invalid => String::new(),
+        }
+    }
+}
+
+impl SignatureFormatter for (&ScopeManager, TypeEval) {
+    fn info(&self) -> Option<&Vec<String>> {
+        match self.1 {
+            TypeEval::Pointer { address, .. } => match self.0.get_entry_unguarded(address) {
+                whirl_ast::ScopeEntry::Type(typ) => typ.info(),
+                whirl_ast::ScopeEntry::Enum(e) => e.info(),
+                whirl_ast::ScopeEntry::Class(c) => c.info(),
+                _ => None,
+            },
+            TypeEval::Invalid => None,
+        }
+    }
+}
 #[cfg(test)]
 mod tests {
     use whirl_ast::{DiscreteType, FunctionSignature, Identifier, Span, Type, TypeSignature};
