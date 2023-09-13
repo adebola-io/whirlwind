@@ -1,9 +1,7 @@
+use whirl_ast::{Bracket, Comment, Keyword, Operator, Token, TokenType};
 use whirl_ast::{Number, Span};
 
-use crate::{
-    error::{LexError, LexErrorPos, LexErrorType},
-    token::{Bracket, Comment, Keyword, Operator, Token, TokenType},
-};
+use whirl_errors::{LexError, LexErrorPos, LexErrorType};
 
 /// Shorthand to generate tokens, while checking if the next character matches a pattern, for multi-character tokens.
 macro_rules! token {

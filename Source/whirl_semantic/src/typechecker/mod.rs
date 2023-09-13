@@ -1,14 +1,14 @@
-mod errors;
 mod test;
 pub mod type_utils;
 
 use whirl_ast::{MutASTVisitor, ScopeEntry, ScopeManager, Span, Statement, TypeEval};
-use whirl_lexer::{LexError, Lexer};
-use whirl_parser::{parse_text, ParseError};
+use whirl_errors::{LexError, ParseError};
+use whirl_lexer::Lexer;
+use whirl_parser::parse_text;
 
 use crate::primitive::Primitives;
 
-pub use errors::{TypeError, TypeErrorType};
+pub use whirl_errors::{TypeError, TypeErrorType};
 
 pub struct Typechecker<L: Lexer> {
     pub parser: whirl_parser::Parser<L>,
@@ -144,7 +144,7 @@ impl<L: Lexer> MutASTVisitor<TypeEval> for Typechecker<L> {
 
         // TODO: Trait operator overloads.
         if left != right {
-            self.type_errors.push(errors::invalid_binary(
+            self.type_errors.push(whirl_errors::invalid_binary(
                 left,
                 bin_exp.operator,
                 right,
@@ -174,5 +174,5 @@ fn assign_right_to_left(
     if left == right {
         return Ok(left);
     }
-    Err(errors::mismatched_assignment(left, right, span))
+    Err(whirl_errors::mismatched_assignment(left, right, span))
 }

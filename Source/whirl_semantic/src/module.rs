@@ -1,6 +1,7 @@
 use whirl_ast::{ScopeManager, Statement};
+use whirl_errors::ProgramError;
 
-use crate::{type_check_text, ProgramError};
+use crate::type_check_text;
 
 /// A completely parsed program.
 #[derive(Debug)]

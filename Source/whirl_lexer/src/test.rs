@@ -1,9 +1,8 @@
 #![cfg(test)]
 
-use whirl_ast::{Number, Span};
+use whirl_ast::{Keyword, Number, Operator, Span, Token, TokenType};
 
 use crate::lex_text;
-use crate::token::{Token, TokenType};
 
 #[test]
 fn skip_whitespace_while_lexing() {
@@ -114,11 +113,11 @@ fn lex_identifiers_and_keywords() {
         lexer.collect::<Vec<Token>>(),
         vec![
             Token {
-                _type: TokenType::Keyword(crate::token::Keyword::Public),
+                _type: TokenType::Keyword(Keyword::Public),
                 span: Span::from([1, 1, 1, 7])
             },
             Token {
-                _type: TokenType::Keyword(crate::token::Keyword::Function),
+                _type: TokenType::Keyword(Keyword::Function),
                 span: Span::from([1, 8, 1, 16])
             },
             Token {
@@ -148,7 +147,7 @@ fn lex_identifiers_and_keywords() {
                 span: Span::from([1, 1, 1, 5])
             },
             Token {
-                _type: TokenType::Operator(crate::token::Operator::Plus),
+                _type: TokenType::Operator(Operator::Plus),
                 span: Span::from([1, 6, 1, 7])
             },
             Token {
@@ -312,7 +311,7 @@ fn lex_booleans() {
     assert_eq!(
         lexer.next().unwrap(),
         Token {
-            _type: TokenType::Keyword(crate::Keyword::True),
+            _type: TokenType::Keyword(Keyword::True),
             span: Span::from([1, 1, 1, 5])
         }
     );
@@ -320,7 +319,7 @@ fn lex_booleans() {
     assert_eq!(
         lexer.next().unwrap(),
         Token {
-            _type: TokenType::Keyword(crate::Keyword::False),
+            _type: TokenType::Keyword(Keyword::False),
             span: Span::from([1, 6, 1, 11])
         }
     )

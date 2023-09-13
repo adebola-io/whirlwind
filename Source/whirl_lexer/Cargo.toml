@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 whirl_ast = {version = "*", path = "../whirl_ast"}
+whirl_errors = {version="*", path="../whirl_errors"}

@@ -6,14 +6,14 @@ pub struct LexError {
     pub position: LexErrorPos,
 }
 impl LexError {
-    pub(crate) fn unterminated_string(position: LexErrorPos) -> LexError {
+    pub fn unterminated_string(position: LexErrorPos) -> LexError {
         LexError {
             error_type: LexErrorType::UnterminatedString,
             position,
         }
     }
 
-    pub(crate) fn no_value_after_exponent(position: LexErrorPos) -> LexError {
+    pub fn no_value_after_exponent(position: LexErrorPos) -> LexError {
         LexError {
             error_type: LexErrorType::NoValAfterExponent,
             position,

@@ -19,6 +19,13 @@ impl Span {
         }
         return true;
     }
+    /// Create a span at a single point.
+    pub fn at(position: [u32; 2]) -> Self {
+        Self {
+            start: position,
+            end: position,
+        }
+    }
 }
 
 impl std::fmt::Debug for Span {

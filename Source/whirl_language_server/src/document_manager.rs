@@ -1,13 +1,15 @@
 use std::sync::RwLock;
 
 use tower_lsp::lsp_types::{
-    DidChangeTextDocumentParams, DidOpenTextDocumentParams, HoverParams, Position,
-    TextDocumentContentChangeEvent, Url,
+    Diagnostic, DidChangeTextDocumentParams, DidOpenTextDocumentParams, DocumentDiagnosticParams,
+    DocumentDiagnosticReport, FullDocumentDiagnosticReport, HoverParams, Position,
+    RelatedFullDocumentDiagnosticReport, TextDocumentContentChangeEvent, Url,
 };
 use whirl_ast::ASTVisitor;
 use whirl_semantic::Module;
 
 use crate::{
+    diagnostic::to_diagnostic,
     did_change::ChangeHandler,
     hover::{HoverFinder, HoverInfo},
 };
@@ -62,6 +64,30 @@ impl DocumentManager {
         }
         let document = document.unwrap();
         document.refresh(params.text_document.version, params.content_changes);
+    }
+    /// Get diagnostics.
+    pub fn get_diagnostics(
+        &self,
+        params: DocumentDiagnosticParams,
+    ) -> Option<DocumentDiagnosticReport> {
+        let mut documents = self.documents.write().unwrap();
+        let document = documents
+            .iter_mut()
+            .find(|d| d.uri == params.text_document.uri);
+        document.map(|doc| {
+            DocumentDiagnosticReport::Full(RelatedFullDocumentDiagnosticReport {
+                related_documents: None,
+                full_document_diagnostic_report: FullDocumentDiagnosticReport {
+                    result_id: None,
+                    items: doc
+                        .module
+                        .program_errors
+                        .iter()
+                        .map(|p| to_diagnostic(&doc.module.scope_manager, p))
+                        .collect::<Vec<Diagnostic>>(),
+                },
+            })
+        })
     }
 }
 

@@ -1,16 +1,17 @@
 use std::cell::RefCell;
 
-use crate::errors::{self, ParseError};
 use whirl_ast::{
-    AccessExpr, ArrayExpr, AssignmentExpr, BinaryExpr, Block, CallExpr, DiscreteType,
-    EnumDeclaration, EnumSignature, EnumVariant, Expression, ExpressionPrecedence,
+    AccessExpr, ArrayExpr, AssignmentExpr, BinaryExpr, Block, Bracket::*, CallExpr, Comment,
+    DiscreteType, EnumDeclaration, EnumSignature, EnumVariant, Expression, ExpressionPrecedence,
     FunctionDeclaration, FunctionExpr, FunctionSignature, FunctionalType, GenericParameter,
-    Identifier, IfExpression, IndexExpr, LogicExpr, MemberType, Parameter, ScopeAddress,
-    ScopeEntry, ScopeManager, ScopeType, ShorthandVariableDeclaration, Span, Statement,
-    TestDeclaration, Type, TypeDeclaration, TypeExpression, TypeSignature, UnaryExpr, UnionType,
-    UseDeclaration, UsePath, UseTarget, VariableSignature, WhirlBoolean, WhirlNumber, WhirlString,
+    Identifier, IfExpression, IndexExpr, Keyword::*, LogicExpr, MemberType, Operator::*, Parameter,
+    ScopeAddress, ScopeEntry, ScopeManager, ScopeType, ShorthandVariableDeclaration, Span,
+    Statement, TestDeclaration, Token, TokenType, Type, TypeDeclaration, TypeExpression,
+    TypeSignature, UnaryExpr, UnionType, UseDeclaration, UsePath, UseTarget, VariableSignature,
+    WhirlBoolean, WhirlNumber, WhirlString,
 };
-use whirl_lexer::{Bracket::*, Comment, Keyword::*, Lexer, Operator::*, Token, TokenType};
+use whirl_errors::{self as errors, ParseError};
+use whirl_lexer::Lexer;
 
 /// A recursive descent parser that reads tokens lazily and returns statements.
 /// It keeps tracks of three tokens to allow for limited backtracking.
@@ -508,11 +509,7 @@ impl<L: Lexer> Parser<L> {
     }
 
     /// Parses a binary expression.
-    fn binary_expression(
-        &self,
-        left: Expression,
-        op: whirl_lexer::Operator,
-    ) -> Fallible<Expression> {
+    fn binary_expression(&self, left: Expression, op: whirl_ast::Operator) -> Fallible<Expression> {
         let precedence = op.into();
         if self.is_lower_or_equal_precedence(precedence) {
             return Ok(left);
@@ -537,7 +534,7 @@ impl<L: Lexer> Parser<L> {
     fn logical_expression(
         &self,
         left: Expression,
-        op: whirl_lexer::Operator,
+        op: whirl_ast::Operator,
     ) -> Fallible<Expression> {
         let precedence = op.into();
         if self.is_lower_or_equal_precedence(precedence) {
@@ -563,7 +560,7 @@ impl<L: Lexer> Parser<L> {
     fn assignment_expression(
         &self,
         left: Expression,
-        op: whirl_lexer::Operator,
+        op: whirl_ast::Operator,
     ) -> Fallible<Expression> {
         let precedence = op.into();
         if self.is_lower_or_equal_precedence(precedence) {
@@ -586,7 +583,7 @@ impl<L: Lexer> Parser<L> {
     }
 
     /// Parses a unary expression.
-    fn unary_expression(&self, operator: whirl_lexer::Operator) -> Fallible<Expression> {
+    fn unary_expression(&self, operator: whirl_ast::Operator) -> Fallible<Expression> {
         let precedence = operator.into();
         expect!(TokenType::Operator(operator), self);
         let start = self.token().unwrap().span.start;
@@ -625,7 +622,7 @@ impl<L: Lexer> Parser<L> {
                 .async_function(false)
                 .map(|f| Statement::FunctionDeclaration(f)),
             // type...
-            TokenType::Keyword(whirl_lexer::Keyword::Type) => self
+            TokenType::Keyword(whirl_ast::Keyword::Type) => self
                 .type_declaration(false)
                 .map(|t| Statement::TypeDeclaration(t)),
             // test...
@@ -744,7 +741,7 @@ impl<L: Lexer> Parser<L> {
             TokenType::Keyword(Test) => return Err(errors::public_test(token.span)),
             TokenType::Keyword(Use) => Statement::UseDeclaration(self.use_declaration(true)?),
             TokenType::Keyword(Async) => Statement::FunctionDeclaration(self.async_function(true)?),
-            TokenType::Keyword(whirl_lexer::Keyword::Type) => {
+            TokenType::Keyword(whirl_ast::Keyword::Type) => {
                 Statement::TypeDeclaration(self.type_declaration(true)?)
             }
             TokenType::Keyword(Enum) => Statement::EnumDeclaration(self.enum_declaration(true)?),

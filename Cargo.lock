@@ -740,13 +740,20 @@ name = "whirl_ast"
 version = "0.1.0"
 
 [[package]]
+name = "whirl_errors"
+version = "0.1.0"
+dependencies = [
+ "whirl_ast",
+]
+
+[[package]]
 name = "whirl_language_server"
 version = "0.1.0"
 dependencies = [
  "tokio",
  "tower-lsp",
  "whirl_ast",
- "whirl_parser",
+ "whirl_errors",
  "whirl_printer",
  "whirl_semantic",
 ]
@@ -756,6 +763,7 @@ name = "whirl_lexer"
 version = "0.1.0"
 dependencies = [
  "whirl_ast",
+ "whirl_errors",
 ]
 
 [[package]]
@@ -763,6 +771,7 @@ name = "whirl_parser"
 version = "0.1.0"
 dependencies = [
  "whirl_ast",
+ "whirl_errors",
  "whirl_lexer",
  "whirl_utils",
 ]
@@ -772,7 +781,7 @@ name = "whirl_printer"
 version = "0.1.0"
 dependencies = [
  "whirl_ast",
- "whirl_semantic",
+ "whirl_errors",
 ]
 
 [[package]]
@@ -784,6 +793,7 @@ name = "whirl_semantic"
 version = "0.1.0"
 dependencies = [
  "whirl_ast",
+ "whirl_errors",
  "whirl_lexer",
  "whirl_parser",
 ]

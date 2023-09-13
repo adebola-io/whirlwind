@@ -1,7 +1,3 @@
-/// Say hello to a user.
-public function Main(name: String): ArrayOf<String>
-{
-    /// Variable to denote stuff.
-    isWorking: Boolean := true;
-    anotherVariable := "It Works!";
+function Hello() {
+    
 }

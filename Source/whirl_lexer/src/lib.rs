@@ -1,12 +1,11 @@
-mod error;
 mod lexer_inner;
 mod test;
-mod token;
 
-pub use error::LexError;
+
 use lexer_inner::LexerInner;
-pub use token::*;
-use whirl_ast::Span;
+
+use whirl_ast::{Span, Token, TokenType};
+use whirl_errors::LexError;
 
 /// A lexer for tokenizing Whirl text.
 pub struct TextLexer<'input> {

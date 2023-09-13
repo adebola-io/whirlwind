@@ -9,3 +9,4 @@ edition = "2021"
 whirl_lexer = {version = "*", path = "../whirl_lexer"}
 whirl_ast = {version = "*", path = "../whirl_ast"}
 whirl_utils = {version="*", path="../whirl_utils"}
+whirl_errors = {version="*", path="../whirl_errors"}

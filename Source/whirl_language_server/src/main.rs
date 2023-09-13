@@ -1,3 +1,4 @@
+mod diagnostic;
 mod did_change;
 mod document_manager;
 mod hover;
@@ -22,6 +23,16 @@ impl LanguageServer for Backend {
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(
                     TextDocumentSyncKind::INCREMENTAL,
+                )),
+                diagnostic_provider: Some(DiagnosticServerCapabilities::Options(
+                    DiagnosticOptions {
+                        identifier: None,
+                        inter_file_dependencies: true,
+                        workspace_diagnostics: false,
+                        work_done_progress_options: WorkDoneProgressOptions {
+                            work_done_progress: Some(true),
+                        },
+                    },
                 )),
                 ..ServerCapabilities::default()
             },
@@ -54,6 +65,23 @@ impl LanguageServer for Backend {
             .log_message(MessageType::INFO, "Hovering...")
             .await;
         Ok(self.doc_manager.get_hover_info(params).map(|h| h.into()))
+    }
+
+    async fn diagnostic(
+        &self,
+        params: DocumentDiagnosticParams,
+    ) -> Result<DocumentDiagnosticReportResult> {
+        let report = self.doc_manager.get_diagnostics(params);
+        Ok(DocumentDiagnosticReportResult::Report(
+            report.unwrap_or_else(|| {
+                DocumentDiagnosticReport::Unchanged(RelatedUnchangedDocumentDiagnosticReport {
+                    related_documents: None,
+                    unchanged_document_diagnostic_report: UnchangedDocumentDiagnosticReport {
+                        result_id: format!(""),
+                    },
+                })
+            }),
+        ))
     }
 }
 

@@ -4,8 +4,7 @@ use whirl_ast::{
 };
 
 use crate::TypeError;
-
-use super::errors;
+use whirl_errors as errors;
 
 /// Confirms that a type expression is valid in the scope it is defined, and then generate a type evaluation for it.
 pub fn eval_type_expression(

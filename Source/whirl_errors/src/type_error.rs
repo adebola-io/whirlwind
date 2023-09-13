@@ -1,6 +1,4 @@
-use whirl_ast::{BinOperator, Span};
-
-use super::TypeEval;
+use whirl_ast::{BinOperator, Span, TypeEval};
 
 /// A type checking error.
 #[derive(Debug, PartialEq)]
@@ -36,14 +34,14 @@ pub enum TypeErrorType {
     MismatchedAssignment { left: TypeEval, right: TypeEval },
 }
 
-pub(crate) fn assigned_invalid(span: Span) -> TypeError {
+pub fn assigned_invalid(span: Span) -> TypeError {
     TypeError {
         _type: TypeErrorType::AssignedInvalid,
         spans: vec![span],
     }
 }
 
-pub(crate) fn invalid_binary(
+pub fn invalid_binary(
     left: TypeEval,
     operator: BinOperator,
     right: TypeEval,
@@ -59,7 +57,7 @@ pub(crate) fn invalid_binary(
     }
 }
 
-pub(crate) fn unknown_type(name: &str, span: Span) -> TypeError {
+pub fn unknown_type(name: &str, span: Span) -> TypeError {
     TypeError {
         _type: TypeErrorType::UnknownType {
             name: name.to_owned(),
@@ -68,7 +66,7 @@ pub(crate) fn unknown_type(name: &str, span: Span) -> TypeError {
     }
 }
 
-pub(crate) fn value_as_type(name: &str, span: Span) -> TypeError {
+pub fn value_as_type(name: &str, span: Span) -> TypeError {
     TypeError {
         _type: TypeErrorType::ValueAsType {
             name: name.to_owned(),
@@ -77,7 +75,7 @@ pub(crate) fn value_as_type(name: &str, span: Span) -> TypeError {
     }
 }
 
-pub(crate) fn unexpected_generic_args(name: &str, span: Span) -> TypeError {
+pub fn unexpected_generic_args(name: &str, span: Span) -> TypeError {
     TypeError {
         _type: TypeErrorType::UnexpectedGenericArgs {
             value: name.to_owned(),
@@ -86,12 +84,7 @@ pub(crate) fn unexpected_generic_args(name: &str, span: Span) -> TypeError {
     }
 }
 
-pub(crate) fn mismatched_generics(
-    name: &str,
-    expected: usize,
-    assigned: usize,
-    span: Span,
-) -> TypeError {
+pub fn mismatched_generics(name: &str, expected: usize, assigned: usize, span: Span) -> TypeError {
     TypeError {
         _type: TypeErrorType::MismatchedGenericArgs {
             value: name.to_owned(),
@@ -102,7 +95,7 @@ pub(crate) fn mismatched_generics(
     }
 }
 
-pub(crate) fn mismatched_assignment(left: TypeEval, right: TypeEval, span: Span) -> TypeError {
+pub fn mismatched_assignment(left: TypeEval, right: TypeEval, span: Span) -> TypeError {
     TypeError {
         _type: TypeErrorType::MismatchedAssignment { left, right },
         spans: vec![span],

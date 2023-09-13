@@ -1,4 +1,4 @@
-use whirl_ast::{
+use crate::{
     AssignOperator, BinOperator, ExpressionPrecedence, LogicOperator, Number, Span, UnaryOperator,
 };
 
