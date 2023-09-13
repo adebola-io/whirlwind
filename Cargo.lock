@@ -747,6 +747,8 @@ dependencies = [
  "tower-lsp",
  "whirl_ast",
  "whirl_parser",
+ "whirl_printer",
+ "whirl_semantic",
 ]
 
 [[package]]
@@ -766,12 +768,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "whirl_printer"
+version = "0.1.0"
+dependencies = [
+ "whirl_ast",
+ "whirl_semantic",
+]
+
+[[package]]
 name = "whirl_repl"
 version = "0.1.0"
 
 [[package]]
 name = "whirl_semantic"
 version = "0.1.0"
+dependencies = [
+ "whirl_ast",
+ "whirl_lexer",
+ "whirl_parser",
+]
 
 [[package]]
 name = "whirl_utils"

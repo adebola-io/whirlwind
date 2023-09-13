@@ -177,7 +177,7 @@ impl From<Operator> for AssignOperator {
     }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone, Copy)]
 pub enum Keyword {
     As,
     Async,
@@ -189,6 +189,7 @@ pub enum Keyword {
     Else,
     Enum,
     Extends,
+    False,
     For,
     Fn,
     Function,
@@ -204,6 +205,7 @@ pub enum Keyword {
     Test,
     This,
     Trait,
+    True,
     Type,
     Use,
     Var,

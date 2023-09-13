@@ -5,7 +5,7 @@ use tower_lsp::lsp_types::{
     TextDocumentContentChangeEvent, Url,
 };
 use whirl_ast::ASTVisitor;
-use whirl_parser::Module;
+use whirl_semantic::Module;
 
 use crate::{
     did_change::ChangeHandler,

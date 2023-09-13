@@ -1,5 +1,6 @@
 use tower_lsp::lsp_types::{Hover, HoverContents, LanguageString, MarkedString};
-use whirl_ast::{ASTVisitor, HoverFormatter, Parameter, ScopeManager, SignatureFormatter};
+use whirl_ast::{ASTVisitor, Parameter, ScopeManager};
+use whirl_printer::{HoverFormatter, SignatureFormatter};
 
 /// Information shown during hovering.
 pub struct HoverInfo {
@@ -59,6 +60,21 @@ impl<'a> HoverFinder<'a> {
 }
 
 impl<'a> ASTVisitor<[u32; 2], Option<HoverInfo>> for HoverFinder<'a> {
+    fn visit_shorthand_variable_declaration(
+        &self,
+        var_decl: &whirl_ast::ShorthandVariableDeclaration,
+        args: &[u32; 2],
+    ) -> Option<HoverInfo> {
+        let scope = self.scope_manager.get_scope(var_decl.address.scope_id)?;
+        let signature = scope.get_variable(var_decl.address.entry_no)?;
+
+        // Hovering over a variable name.
+        if signature.name.span.contains(*args) {
+            return Some(HoverInfo::from(&(self.scope_manager, signature)));
+        }
+
+        return None;
+    }
     fn visit_function(
         &self,
         function: &whirl_ast::FunctionDeclaration,

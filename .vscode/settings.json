@@ -1,4 +1,5 @@
 {
+   "python.analysis.typeCheckingMode": "strict",
    "editor.tokenColorCustomizations": {
       "[Red]": {
          "textMateRules": [

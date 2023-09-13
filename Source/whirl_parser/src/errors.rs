@@ -1,16 +1,10 @@
 use whirl_ast::Span;
-use whirl_lexer::{LexError, TokenType};
+use whirl_lexer::TokenType;
 
 #[derive(Debug, PartialEq)]
 pub struct ParseError {
     error_type: ParserErrorType,
     span: Span,
-}
-
-#[derive(Debug)]
-pub enum ProgramError {
-    ParserError(ParseError),
-    LexerError(LexError),
 }
 
 #[derive(Debug, PartialEq)]

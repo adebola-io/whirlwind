@@ -10,3 +10,5 @@ tokio = { version = "1", features = ["full"] }
 tower-lsp = {version = "0.20.0"}
 whirl_parser = {version = "*", path="../whirl_parser"}
 whirl_ast = {version = "*", path = "../whirl_ast"}
+whirl_semantic = {version = "*", path = "../whirl_semantic"}
+whirl_printer = {version = "*", path = "../whirl_printer"}

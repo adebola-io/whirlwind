@@ -8,10 +8,10 @@ pub struct ModuleAddress {
 }
 
 /// The first representation of a type.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Default, PartialEq)]
 pub struct Type {
     pub declared: Option<TypeExpression>,
-    pub inferred: Option<ModuleAddress>,
+    pub inferred: Option<TypeEval>,
 }
 
 impl Type {
@@ -30,6 +30,24 @@ impl Type {
     }
 }
 
+/// Result of a type evaluation.
+#[derive(Default, PartialEq, Debug, Clone)]
+pub enum TypeEval {
+    /// An address of a scope entry.
+    Pointer {
+        scope_address: ScopeAddress,
+        generic_args: Option<Vec<TypeEval>>,
+    },
+    /// A type error.
+    #[default]
+    Invalid,
+}
+impl TypeEval {
+    pub fn is_invalid(&self) -> bool {
+        matches!(self, TypeEval::Invalid)
+    }
+}
+
 #[derive(PartialEq)]
 pub enum TypeExpression {
     Union(UnionType),
@@ -37,6 +55,7 @@ pub enum TypeExpression {
     Member(MemberType),
     Discrete(DiscreteType),
     This { span: Span },
+    Invalid,
 }
 
 /// A complex union type e.g. `type Animal = Cat | Dog | Parrot; `
@@ -93,7 +112,12 @@ impl TypeExpression {
             TypeExpression::Member(m) => m.span,
             TypeExpression::Discrete(d) => d.span,
             TypeExpression::This { span } => span.clone(),
+            TypeExpression::Invalid => Span::default(),
         }
+    }
+
+    pub fn as_eval(&self) -> TypeEval {
+        todo!()
     }
 }
 
@@ -125,6 +149,7 @@ impl std::fmt::Debug for TypeExpression {
                 .field("span", &arg0.span)
                 .finish(),
             Self::This { span } => f.debug_struct("ThisType").field("span", span).finish(),
+            Self::Invalid => f.debug_struct("Invalid").finish(),
         }
     }
 }

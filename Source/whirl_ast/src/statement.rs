@@ -8,7 +8,7 @@ pub enum Statement {
     VariableDeclaration,
     ShorthandVariableDeclaration(ShorthandVariableDeclaration),
     ConstantDeclaration,
-    ClassDeclaration,
+    ClassDeclaration(ClassDeclaration),
     FunctionDeclaration(FunctionDeclaration),
     RecordDeclaration,
     TraitDeclaration,
@@ -65,17 +65,56 @@ pub struct ShorthandVariableDeclaration {
     pub span: Span,
 }
 
+#[derive(Debug, PartialEq)]
+/// Node in the AST for a class declaration.
+pub struct ClassDeclaration {
+    pub address: ScopeAddress,
+    pub body: ClassBody,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct ClassBody {
+    pub attributes: Vec<ClassAttribute>,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum ClassAttribute {
+    Property,
+    Method,
+    TraitImpl,
+}
+
+#[derive(Debug)]
+pub struct ClassSignature {
+    /// Name of the class.
+    pub name: Identifier,
+    /// Doc comments annotating the function, if any.
+    pub info: Option<Vec<String>>,
+    /// Whether it was decnoted as public.
+    pub is_public: bool,
+    /// Generic Parameters of the function, if any.
+    pub generic_params: Option<Vec<GenericParameter>>,
+    /// Extended classes.
+    pub extensions: Vec<Type>,
+    /// Implemented Traits.
+    pub implementations: Vec<Type>,
+}
+
 /// Entry to mark a variable.
 #[derive(Debug)]
 pub struct VariableSignature {
     /// Name of the variable.
     pub name: Identifier,
+    /// Documentation about the variable, if any.
+    pub info: Option<Vec<String>>,
     /// Whether it was declared with shorthand syntax or not.
     pub is_shorthand: bool,
     /// Whether or not the variable is denoted by `public`.
     pub is_public: bool,
     /// The variable's assigned type.
-    pub assigned_type: Type,
+    pub var_type: Type,
 }
 
 /// A node for a test block.
@@ -209,7 +248,7 @@ impl Statement {
             Statement::UseDeclaration(u) => u.span,
             Statement::VariableDeclaration => todo!(),
             Statement::ConstantDeclaration => todo!(),
-            Statement::ClassDeclaration => todo!(),
+            Statement::ClassDeclaration(c) => c.span,
             Statement::FunctionDeclaration(f) => f.span,
             Statement::RecordDeclaration => todo!(),
             Statement::TraitDeclaration => todo!(),
@@ -228,7 +267,7 @@ impl Statement {
             Statement::UseDeclaration(u) => u.span.start = start,
             Statement::VariableDeclaration => todo!(),
             Statement::ConstantDeclaration => todo!(),
-            Statement::ClassDeclaration => todo!(),
+            Statement::ClassDeclaration(c) => c.span.start = start,
             Statement::FunctionDeclaration(f) => f.span.start = start,
             Statement::RecordDeclaration => todo!(),
             Statement::TraitDeclaration => todo!(),

@@ -1,4 +1,4 @@
-use crate::{EnumSignature, FunctionSignature, TypeSignature, VariableSignature};
+use crate::{ClassSignature, EnumSignature, FunctionSignature, TypeSignature, VariableSignature};
 
 /// A hierarchical data structure that stores info in related "depths".
 /// It provides functions for creating and managing the lifecycle of nested scopes.
@@ -8,11 +8,19 @@ pub struct ScopeManager {
     current_scope: usize,
 }
 
+/// A shallow copy of the scope manager with a different current scope.
+/// Allows for lookup without leaving the current scope.
+pub struct ScopeManagerShadow<'a> {
+    base: &'a ScopeManager,
+    current_scope: usize,
+}
+
 /// An entry to the symbol table of a scope.
 #[derive(Debug)]
 pub enum ScopeEntry {
     Function(FunctionSignature),
     Type(TypeSignature),
+    Class(ClassSignature),
     Enum(EnumSignature),
     Variable(VariableSignature),
 }
@@ -26,7 +34,7 @@ pub enum ScopeType {
 }
 
 /// The scope address stores the address of a symbol in the scope manager.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Default, PartialEq, Clone, Copy)]
 pub struct ScopeAddress {
     /// The entry in which it is declared.
     pub scope_id: usize,
@@ -47,6 +55,7 @@ pub struct Scope {
 /// The result of a search through the scope manager.
 #[derive(Debug)]
 pub struct ScopeSearch<'a> {
+    pub index: usize,
     pub entry: &'a ScopeEntry,
     pub scope: &'a Scope,
 }
@@ -62,12 +71,29 @@ impl From<[usize; 2]> for ScopeAddress {
 
 impl ScopeEntry {
     /// Returns the name of an entry.
-    fn name(&self) -> &str {
+    pub fn name(&self) -> &str {
         match self {
             ScopeEntry::Function(FunctionSignature { name, .. })
             | ScopeEntry::Type(TypeSignature { name, .. })
+            | ScopeEntry::Class(ClassSignature { name, .. })
             | ScopeEntry::Enum(EnumSignature { name, .. })
             | ScopeEntry::Variable(VariableSignature { name, .. }) => &name.name,
+        }
+    }
+
+    /// Returns an entry as a variable signature. Panics if the entry is not a variable variant.
+    pub fn var(&self) -> &VariableSignature {
+        match self {
+            ScopeEntry::Variable(v) => v,
+            _ => panic!("{} is not a variable!", self.name()),
+        }
+    }
+
+    /// Returns an entry as a mutable variable signature. Panics if the entry is not a variable variant.
+    pub fn var_mut(&mut self) -> &mut VariableSignature {
+        match self {
+            ScopeEntry::Variable(v) => v,
+            _ => panic!("{} is not a variable!", self.name()),
         }
     }
 }
@@ -92,10 +118,10 @@ impl Scope {
         }
     }
     /// Find an item inside the current scope.
-    pub fn find(&self, name: &str) -> Option<&ScopeEntry> {
-        for entry in &self.entries {
+    pub fn find(&self, name: &str) -> Option<(usize, &ScopeEntry)> {
+        for (index, entry) in self.entries.iter().enumerate() {
             if entry.name() == name {
-                return Some(entry);
+                return Some((index, entry));
             }
         }
         None
@@ -104,6 +130,16 @@ impl Scope {
     pub fn add(&mut self, entry: ScopeEntry) -> usize {
         self.entries.push(entry);
         self.entries.len() - 1
+    }
+    /// Get a class entry by its index.
+    pub fn get_class(&self, entry_no: usize) -> Option<&ClassSignature> {
+        self.entries
+            .get(entry_no)
+            .map(|entry| match entry {
+                ScopeEntry::Class(c) => Some(c),
+                _ => None,
+            })
+            .flatten()
     }
     /// Get a function entry by its index.
     pub fn get_function(&self, entry_no: usize) -> Option<&FunctionSignature> {
@@ -145,6 +181,25 @@ impl Scope {
             })
             .flatten()
     }
+    /// Get a variable entry by its index.
+    pub fn get_variable_mut(&mut self, entry_no: usize) -> Option<&mut VariableSignature> {
+        self.entries
+            .get_mut(entry_no)
+            .map(|entry| match entry {
+                ScopeEntry::Variable(v) => Some(v),
+                _ => None,
+            })
+            .flatten()
+    }
+    /// Get a scope entry.
+    pub fn get_entry(&self, entry_no: usize) -> Option<&ScopeEntry> {
+        self.entries.get(entry_no)
+    }
+
+    /// Get a scope entry mutably.
+    fn get_entry_mut(&mut self, entry_no: usize) -> Option<&mut ScopeEntry> {
+        self.entries.get_mut(entry_no)
+    }
 }
 
 impl Default for ScopeManager {
@@ -164,6 +219,12 @@ impl ScopeManager {
     /// Checks if the program is currently in the global scope.
     pub fn is_global(&self) -> bool {
         self.current_scope == 0
+    }
+    pub fn create_shadow(&self, current_scope: usize) -> ScopeManagerShadow {
+        ScopeManagerShadow {
+            base: self,
+            current_scope,
+        }
     }
     /// Returns the number of scopes.
     pub fn len(&self) -> usize {
@@ -202,7 +263,11 @@ impl ScopeManager {
     /// Search within the current scope for an entry.
     pub fn lookaround(&self, name: &str) -> Option<ScopeSearch> {
         let scope = &self.scopes[self.current_scope];
-        scope.find(name).map(|entry| ScopeSearch { entry, scope })
+        scope.find(name).map(|(index, entry)| ScopeSearch {
+            entry,
+            index,
+            scope,
+        })
     }
     /// Search for an entry within the current scope, or within any of its ancestors.
     pub fn lookup(&self, name: &str) -> Option<ScopeSearch> {
@@ -210,7 +275,13 @@ impl ScopeManager {
         loop {
             let scope = &self.scopes[current_scope];
             match scope.find(name) {
-                Some(entry) => return Some(ScopeSearch { entry, scope }),
+                Some((index, entry)) => {
+                    return Some(ScopeSearch {
+                        entry,
+                        index,
+                        scope,
+                    })
+                }
                 None => match scope.parent_index {
                     Some(parent_index) => current_scope = parent_index,
                     None => return None,
@@ -226,7 +297,13 @@ impl ScopeManager {
     fn recursive_search(&self, current_scope: usize, name: &str) -> Option<ScopeSearch> {
         let scope = &self.scopes[current_scope];
         match scope.find(name) {
-            Some(entry) => return Some(ScopeSearch { entry, scope }),
+            Some((index, entry)) => {
+                return Some(ScopeSearch {
+                    entry,
+                    index,
+                    scope,
+                })
+            }
             None => {
                 for child_idx in &scope.children_index {
                     let search = self.recursive_search(*child_idx, name);
@@ -254,6 +331,66 @@ impl ScopeManager {
     /// Returns the scope with the given index.
     pub fn get_scope(&self, index: usize) -> Option<&Scope> {
         self.scopes.get(index)
+    }
+    /// Returns the scope with the given index.
+    pub fn get_scope_mut(&mut self, index: usize) -> Option<&mut Scope> {
+        self.scopes.get_mut(index)
+    }
+
+    /// Returns an entry using a scope address without checks.
+    /// Panics if the scope or entry is not found.
+    pub fn get_entry_unguarded(&self, address: ScopeAddress) -> &ScopeEntry {
+        match self.get_scope(address.scope_id) {
+            Some(scope) => match scope.get_entry(address.entry_no) {
+                Some(entry) => entry,
+                None => panic!("Could not find entry with no {}", address.entry_no),
+            },
+            None => panic!("Could not find scope with id {}", address.scope_id),
+        }
+    }
+
+    /// Returns a **mutable** entry using a scope address without checks.
+    /// Panics if the scope or entry is not found.
+    pub fn get_entry_unguarded_mut(&mut self, address: ScopeAddress) -> &mut ScopeEntry {
+        match self.get_scope_mut(address.scope_id) {
+            Some(scope) => match scope.get_entry_mut(address.entry_no) {
+                Some(entry) => entry,
+                None => panic!("Could not find entry with no {}", address.entry_no),
+            },
+            None => panic!("Could not find scope with id {}", address.scope_id),
+        }
+    }
+}
+
+impl<'a> ScopeManagerShadow<'a> {
+    /// Search for an entry within the current scope, or within any of its ancestors.
+    pub fn lookaround(&self, name: &str) -> Option<ScopeSearch> {
+        let scope = &self.base.scopes[self.current_scope];
+        scope.find(name).map(|(index, entry)| ScopeSearch {
+            entry,
+            index,
+            scope,
+        })
+    }
+    /// Search for an entry within the current scope, or within any of its ancestors.
+    pub fn lookup(&self, name: &str) -> Option<ScopeSearch> {
+        let mut current_scope = self.current_scope;
+        loop {
+            let scope = &self.base.scopes[current_scope];
+            match scope.find(name) {
+                Some((index, entry)) => {
+                    return Some(ScopeSearch {
+                        entry,
+                        index,
+                        scope,
+                    })
+                }
+                None => match scope.parent_index {
+                    Some(parent_index) => current_scope = parent_index,
+                    None => return None,
+                },
+            }
+        }
     }
 }
 

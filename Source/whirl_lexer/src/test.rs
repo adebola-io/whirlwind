@@ -305,3 +305,23 @@ fn lex_numbers_with_exponent() {
         }
     );
 }
+
+#[test]
+fn lex_booleans() {
+    let mut lexer = lex_text("true false");
+    assert_eq!(
+        lexer.next().unwrap(),
+        Token {
+            _type: TokenType::Keyword(crate::Keyword::True),
+            span: Span::from([1, 1, 1, 5])
+        }
+    );
+
+    assert_eq!(
+        lexer.next().unwrap(),
+        Token {
+            _type: TokenType::Keyword(crate::Keyword::False),
+            span: Span::from([1, 6, 1, 11])
+        }
+    )
+}

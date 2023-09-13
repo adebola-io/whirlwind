@@ -1,6 +1,6 @@
 use tower_lsp::lsp_types::TextDocumentContentChangeEvent;
 use whirl_ast::Span;
-use whirl_parser::Module;
+use whirl_semantic::Module;
 
 pub struct ChangeHandler<'a> {
     pub module: &'a mut Module,

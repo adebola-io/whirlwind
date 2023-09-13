@@ -1,25 +1,5 @@
-use Core.{
-  Math.Random,
-  Fmt
-};
-
 /// Say hello to a user.
 public function SayHello(name: String): Outcome<String, String> {
-    if name == "" {
-      Error("empty name")
-    } else {
-      message := Fmt.Sprintf(RandomFormat(), name);
-      Ok(message)
-    }
-}
-
-/// Generate a random format.
-function RandomFormat(): String {
-    formats := [
-      "Hello %v! How do you do?",
-      "Great to see you, %v",
-      "Hail %v! Well met!"
-    ];
-
-    formats[Random.From(0..formats.Length())]   
+    /// Variable to denote stuff.
+    isWorking := true;
 }

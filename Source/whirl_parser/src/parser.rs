@@ -8,7 +8,7 @@ use whirl_ast::{
     Identifier, IfExpression, IndexExpr, LogicExpr, MemberType, Parameter, ScopeAddress,
     ScopeEntry, ScopeManager, ScopeType, ShorthandVariableDeclaration, Span, Statement,
     TestDeclaration, Type, TypeDeclaration, TypeExpression, TypeSignature, UnaryExpr, UnionType,
-    UseDeclaration, UsePath, UseTarget, VariableSignature, WhirlNumber, WhirlString,
+    UseDeclaration, UsePath, UseTarget, VariableSignature, WhirlBoolean, WhirlNumber, WhirlString,
 };
 use whirl_lexer::{Bracket::*, Comment, Keyword::*, Lexer, Operator::*, Token, TokenType};
 
@@ -199,6 +199,7 @@ impl<L: Lexer> Parser<L> {
 
         let expression = match token._type {
             TokenType::Keyword(Fn) => self.function_expression()?,
+            TokenType::Keyword(True | False) => self.reparse(self.boolean_literal()?)?,
             TokenType::Keyword(If) => self.if_expression()?,
             TokenType::Operator(op @ (Negator | Not | Plus | Minus)) => {
                 self.unary_expression(op)?
@@ -215,6 +216,23 @@ impl<L: Lexer> Parser<L> {
             _ => return Err(errors::expected(TokenType::Operator(SemiColon), token.span)),
         };
         Ok(expression)
+    }
+
+    /// Parses a boolean literal.
+    fn boolean_literal(&self) -> Fallible<Expression> {
+        let token = self.token().unwrap();
+        let value = match &mut token._type {
+            TokenType::Keyword(ref mut s) => match s {
+                False => false,
+                True => true,
+                _ => unreachable!(),
+            },
+            _ => unreachable!(),
+        };
+        let span = token.span;
+        let boolean = WhirlBoolean { value, span };
+        self.advance(); // Move past boolean.
+        Ok(Expression::BooleanLiteral(boolean))
     }
 
     /// Parses a string literal.
@@ -1129,6 +1147,7 @@ impl<L: Lexer> Parser<L> {
     /// Parses a shorthand variable declaration. Assumes that the name is the current token.
     fn shorthand_variable_declaration(&self, name: Identifier) -> Fallible<Statement> {
         let start = name.span.start;
+        let info = self.get_doc_comment();
         let assigned_type = self.maybe_type_label()?;
         let is_shorthand = true;
 
@@ -1140,10 +1159,11 @@ impl<L: Lexer> Parser<L> {
 
         let signature = VariableSignature {
             name,
+            info,
             is_shorthand,
             // Shorthand variable cannot be public.
             is_public: false,
-            assigned_type,
+            var_type: assigned_type,
         };
 
         let entry_no = self

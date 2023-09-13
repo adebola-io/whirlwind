@@ -1,7 +1,10 @@
-use crate::{
-    EnumSignature, EnumVariant, FunctionSignature, Identifier, Parameter, TypeExpression,
-    TypeSignature,
+mod errors;
+use whirl_ast::{
+    EnumSignature, EnumVariant, FunctionSignature, Identifier, Parameter, ScopeManager,
+    TypeExpression, TypeSignature, VariableSignature,
 };
+
+pub use errors::*;
 
 /// Generator trait for how symbols are illustrated in a hover card.
 pub trait HoverFormatter {
@@ -18,21 +21,16 @@ impl HoverFormatter for FunctionSignature {
     fn to_formatted(&self) -> String {
         // Construct function signature.
         let mut string = String::new();
-
         if self.is_public {
             string.push_str("public ");
         }
-
         if self.is_async {
             string.push_str("async ");
         }
         string.push_str("function ");
         string.push_str(&self.name.name);
-
         // TODO: Generic Parameters.
-
         string.push('(');
-
         for (index, parameter) in self.params.iter().enumerate() {
             string.push_str(&parameter.to_formatted());
             if index < self.params.len() - 1 {
@@ -40,12 +38,10 @@ impl HoverFormatter for FunctionSignature {
             }
         }
         string.push(')');
-
         if let Some(ref rettype) = self.return_type.declared {
             string.push_str(": ");
             string.push_str(&rettype.to_formatted())
         }
-
         string
     }
 }
@@ -59,17 +55,12 @@ impl SignatureFormatter for FunctionSignature {
 impl HoverFormatter for TypeSignature {
     fn to_formatted(&self) -> String {
         let mut string = String::new();
-
         if self.is_public {
             string.push_str("public ");
         }
-
         string.push_str("type ");
-
         string.push_str(&self.name.name);
-
         // Todo: Generic params.
-
         string.push_str(" = ");
         string.push_str(&self.value.to_formatted());
         string
@@ -85,15 +76,11 @@ impl SignatureFormatter for TypeSignature {
 impl HoverFormatter for EnumSignature {
     fn to_formatted(&self) -> String {
         let mut string = String::new();
-
         if self.is_public {
             string.push_str("public ");
         }
-
         string.push_str("enum ");
-
         string.push_str(&self.name.name);
-
         // Todo: Generic params.
         string
     }
@@ -102,63 +89,6 @@ impl HoverFormatter for EnumSignature {
 impl SignatureFormatter for EnumSignature {
     fn info(&self) -> Option<&Vec<String>> {
         self.info.as_ref()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::{FunctionSignature, HoverFormatter, Identifier, Span, TypeSignature};
-
-    #[test]
-    fn formatting_functions() {
-        let function = FunctionSignature {
-            name: Identifier {
-                name: String::from("DoStuff"),
-                span: Span::default(),
-            },
-            info: Some(vec![]),
-            is_async: true,
-            is_public: true,
-            generic_params: None,
-            params: vec![],
-            return_type: crate::Type {
-                declared: Some(crate::TypeExpression::Discrete(crate::DiscreteType {
-                    name: Identifier {
-                        name: String::from("Deferred"),
-                        span: Span::default(),
-                    },
-                    generic_args: None,
-                    span: Span::default(),
-                })),
-                inferred: None,
-            },
-        };
-        assert_eq!(
-            function.to_formatted(),
-            "public async function DoStuff(): Deferred"
-        );
-    }
-
-    #[test]
-    fn formatting_types() {
-        let type_ = TypeSignature {
-            name: Identifier {
-                name: String::from("DoStuff"),
-                span: Span::default(),
-            },
-            info: Some(vec![]),
-            is_public: true,
-            generic_params: None,
-            value: crate::TypeExpression::Discrete(crate::DiscreteType {
-                name: Identifier {
-                    name: String::from("Deferred"),
-                    span: Span::default(),
-                },
-                generic_args: None,
-                span: Span::default(),
-            }),
-        };
-        assert_eq!(type_.to_formatted(), "public type DoStuff = Deferred");
     }
 }
 
@@ -251,6 +181,7 @@ impl HoverFormatter for TypeExpression {
                 string
             }
             TypeExpression::This { .. } => format!("This"),
+            TypeExpression::Invalid => format!("invalid"),
         }
     }
 }
@@ -277,5 +208,93 @@ impl HoverFormatter for (&Identifier, &EnumVariant) {
 impl SignatureFormatter for (&Identifier, &EnumVariant) {
     fn info(&self) -> Option<&Vec<String>> {
         self.1.info.as_ref()
+    }
+}
+
+impl HoverFormatter for (&ScopeManager, &VariableSignature) {
+    fn to_formatted(&self) -> String {
+        let mut string = String::new();
+        let signature = self.1;
+        let scope_manager = self.0;
+        if signature.is_public {
+            string.push_str("public ");
+        }
+        string.push_str("var ");
+        string.push_str(&signature.name.name);
+        string.push_str(": ");
+        let var_type = match signature.var_type.inferred {
+            Some(ref type_eval) => stringify_type_eval(scope_manager, type_eval),
+            None => match signature.var_type.declared {
+                Some(ref t) => t.to_formatted(),
+                None => format!("unknown"),
+            },
+        };
+        string.push_str(&var_type);
+        string
+    }
+}
+
+impl SignatureFormatter for (&ScopeManager, &VariableSignature) {
+    fn info(&self) -> Option<&Vec<String>> {
+        self.1.info.as_ref()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use whirl_ast::{DiscreteType, FunctionSignature, Identifier, Span, Type, TypeSignature};
+
+    use crate::HoverFormatter;
+
+    #[test]
+    fn formatting_functions() {
+        let function = FunctionSignature {
+            name: Identifier {
+                name: String::from("DoStuff"),
+                span: Span::default(),
+            },
+            info: Some(vec![]),
+            is_async: true,
+            is_public: true,
+            generic_params: None,
+            params: vec![],
+            return_type: Type {
+                declared: Some(crate::TypeExpression::Discrete(DiscreteType {
+                    name: Identifier {
+                        name: String::from("Deferred"),
+                        span: Span::default(),
+                    },
+                    generic_args: None,
+                    span: Span::default(),
+                })),
+                inferred: None,
+            },
+        };
+        assert_eq!(
+            function.to_formatted(),
+            "public async function DoStuff(): Deferred"
+        );
+    }
+
+    #[test]
+    fn formatting_types() {
+        let type_ = TypeSignature {
+            name: Identifier {
+                name: String::from("DoStuff"),
+                span: Span::default(),
+            },
+            info: Some(vec![]),
+            is_public: true,
+            generic_params: None,
+            value: crate::TypeExpression::Discrete(DiscreteType {
+                name: Identifier {
+                    name: String::from("Deferred"),
+                    span: Span::default(),
+                },
+                generic_args: None,
+                span: Span::default(),
+            }),
+        };
+        assert_eq!(type_.to_formatted(), "public type DoStuff = Deferred");
     }
 }
