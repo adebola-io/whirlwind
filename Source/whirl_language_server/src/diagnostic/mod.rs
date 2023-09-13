@@ -39,12 +39,12 @@ pub fn to_diagnostic(scope_manager: &ScopeManager, error: &ProgramError) -> Diag
 pub fn to_range(span: Span) -> Range {
     Range {
         start: Position {
-            line: span.start[0],
-            character: span.start[1],
+            line: span.start[0] - 1,
+            character: span.start[1] - 1,
         },
         end: Position {
-            line: span.end[0],
-            character: span.end[1],
+            line: span.end[0] - 1,
+            character: span.end[1] - 1,
         },
     }
 }
