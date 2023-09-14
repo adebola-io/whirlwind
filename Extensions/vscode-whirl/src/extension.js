@@ -10,28 +10,28 @@ let client;
  * @param {vscode.ExtensionContext} context
  */
 exports.activate = async (context) => {
-   // require("dotenv").config({
-   //    path: context.asAbsolutePath(".env"),
-   // });
+   require("dotenv").config({
+      path: context.asAbsolutePath(".env"),
+   });
 
-   // client = new LanguageClient(
-   //    "Whirl",
-   //    "Whirl Language Server",
-   //    {
-   //       command: context.asAbsolutePath(process.env.WHIRL_LS_PATH),
-   //       debug: {
-   //          command: context.asAbsolutePath(process.env.WHIRL_LS_PATH),
-   //       },
-   //    },
-   //    {
-   //       documentSelector: [{ scheme: "file", language: "wrl" }],
-   //       synchronize: {
-   //          fileEvents:
-   //             vscode.workspace.createFileSystemWatcher("**/.clientrc"),
-   //       },
-   //    }
-   // );
-   // await client.start();
+   client = new LanguageClient(
+      "Whirl",
+      "Whirl Language Server",
+      {
+         command: context.asAbsolutePath(process.env.WHIRL_LS_PATH),
+         debug: {
+            command: context.asAbsolutePath(process.env.WHIRL_LS_PATH),
+         },
+      },
+      {
+         documentSelector: [{ scheme: "file", language: "wrl" }],
+         synchronize: {
+            fileEvents:
+               vscode.workspace.createFileSystemWatcher("**/.clientrc"),
+         },
+      }
+   );
+   await client.start();
 };
 
 exports.deactivate = async () => {

@@ -24,7 +24,7 @@
    ],
    "repository": {
       "keyword": {
-         "name": "keyword.control entity.name.keyword support.keyword",
+         "name": "entity.name.keyword support.keyword keyword.control",
          "match": "\\b(for|function|fn|in|while|break|continue|if|else|as|return|switch|case)\\b"
       },
       "injunction": {

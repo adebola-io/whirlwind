@@ -5,25 +5,26 @@
 Whirl is a simple, interpreted programming language for quickly and easily writing maintenable software.
 
 ## Features
-- Classes and Objects.
-- First Class Functions.
-- Static Typing System.
-- Generics and Polymorphism.
-- Inbuilt Testing capabilities.
-- Support for modules.
+
+-  Objects.
+-  First Class Functions.
+-  Static Typing System.
+-  Generics and Polymorphism.
+-  Inbuilt Testing capabilities.
+-  Support for modules.
 
 ## Getting Started
-
 
 ```
 
 ```
 
 ## Syntax
+
 Whirl is inspired heavily by the syntax of languages like Rust and Typescript. An example of Whirl code would be:
 
 ```csharp
-public function Add(a: Int, b: Int): Int {
+public function Add(a: Integer, b: Integer): Integer {
   a + b
 }
 
@@ -34,5 +35,3 @@ function Main() {
 ```
 
 ## Contributing
-
-
