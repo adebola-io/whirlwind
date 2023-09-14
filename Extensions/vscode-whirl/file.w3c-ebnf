@@ -20,7 +20,7 @@ TestDeclaration ::= "test " StringLiteral Block
 
 Declaration ::= VariableDeclaration
                 | ConstantDeclaration
-                | ClassDeclaration
+                | ModelDeclaration
                 | FunctionDeclaration
                 | RecordDeclaration
                 | TraitDeclaration
@@ -38,7 +38,7 @@ VariableDeclaration ::= (Identifier | DestructurePattern) TypeLabel? ":=" Expres
 
 ConstantDeclaration ::= "const " (Identifier | DestructurePattern) VariableInitializer ";"
 
-ClassDeclaration ::= "class " Identifier GenericParameterList? ExtendsLabel? ImplementsLabel? ClassBody
+ModelDeclaration ::= "model " Identifier GenericParameterList? ImplementsLabel? ModelBody
 
 FunctionDeclaration ::= "async "? "function " Identifier GenericParameterList? ParameterList TypeLabel? Block
 
@@ -90,11 +90,9 @@ GenericParameterList ::= "<" GenericParameters ">"
 
 EnumBlock ::= "{" EnumVariants "}"
 
-ExtendsLabel ::= "extends " ClassList
+ImplementsLabel ::= "implements " TypeList
 
-ImplementsLabel ::= "implements " ClassList
-
-ClassBody ::= "{" ClassProperty* "}"
+ModelBody ::= "{" ModelProperty* "}"
 
 RecordMapList ::= RecordMap ("," RecordMapList?)?
 
@@ -156,11 +154,11 @@ GenericParameters ::= GenericParameter ("," GenericParameters?)?
 
 EnumVariants ::= Identifier ("(" TypeExpression ")")? ("," EnumVariants?)?
 
-ClassList ::= (DiscreteType | MemberType) ("," ClassList?)?
+TypeList ::= (DiscreteType | MemberType) ("," TypeList?)?
 
 GenericArgumentList ::= "<" GenericArguments ">"
 
-ClassProperty ::= Method | Property | TraitImplementation
+ModelProperty ::= Method | Property | TraitImplementation
 
 RecordMap ::= Literal '=' Literal
 
