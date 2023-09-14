@@ -81,6 +81,7 @@ Expression ::= "this"
                | MemberExpression
                | IfExpression
                | SwitchExpression
+               | NullAssertion
                | OptionalExpression
 
 VariableInitializer ::= "=" Expression
@@ -147,6 +148,8 @@ IfExpression ::= "if " Expression Block Else?
 
 SwitchExpression ::=  "switch " Expression SwitchBlock
 
+NullAssertion ::= Expression "!"
+
 OptionalExpression ::= Expression "?"
 
 GenericParameters ::= GenericParameter ("," GenericParameters?)?
@@ -161,7 +164,7 @@ ClassProperty ::= Method | Property | TraitImplementation
 
 RecordMap ::= Literal '=' Literal
 
-TraitProperties ::= TypedIdentifier ("," TraitProperties?)?
+TraitProperties ::= "function " Identifier Generic ParameterList? ParameterList TypeLabel? Block? ("," TraitProperties?)?
 
 ForStatement ::= "for " Identifier " in " Expression Block
 
@@ -213,11 +216,11 @@ GenericParameter ::= Identifier TypeLabel? DefaultGenericArgument?
 
 GenericArguments ::= TypeExpression ("," GenericArguments?)?
 
-Method ::= "public "? "static "? Identifier GenericParameterList? ParameterList TypeLabel? Block
+Method ::= "public "? "static "? "function " Identifier GenericParameterList? ParameterList TypeLabel? Block
 
-Property ::= "public "? Identifier "? "? TypeLabel ";"
+Property ::= "public "? "var " Identifier "?"? TypeLabel ";"
 
-TraitImplementation ::= "[" (Identifier GenericArgumentList? ".")+ Identifier "]" ParameterList TypeLabel? Block
+TraitImplementation ::= "function " "[" (Identifier GenericArgumentList? ".")+ Identifier "]" ParameterList TypeLabel? Block
 
 TypedIdentifier ::= Identifier TypeLabel
 
