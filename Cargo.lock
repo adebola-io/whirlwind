@@ -234,10 +234,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4668fb0ea861c1df094127ac5f1da3409a82116a4ba74fca2e58ef927159bb3"
 
 [[package]]
-name = "library"
-version = "0.1.0"
-
-[[package]]
 name = "lock_api"
 version = "0.4.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -737,6 +733,10 @@ checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
 
 [[package]]
 name = "whirl_ast"
+version = "0.1.0"
+
+[[package]]
+name = "whirl_core"
 version = "0.1.0"
 
 [[package]]
