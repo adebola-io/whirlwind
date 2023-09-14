@@ -1,5 +1,5 @@
 use whirl_ast::{
-    ClassSignature, DiscreteType, EnumSignature, ScopeEntry, ScopeManager, TypeEval,
+    DiscreteType, EnumSignature, ModelSignature, ScopeEntry, ScopeManager, TypeEval,
     TypeExpression, TypeSignature,
 };
 
@@ -18,7 +18,7 @@ pub fn eval_type_expression(
         TypeExpression::Discrete(discrete_type) => {
             eval_discrete_type(scope_manager, discrete_type, scope)
         }
-        // TODO: disallow This type outside class context.
+        // TODO: disallow This type outside model context.
         TypeExpression::This { .. } => todo!(),
         TypeExpression::Invalid => Err(errors::assigned_invalid(expression.span())),
         _ => todo!(),
@@ -48,7 +48,7 @@ pub fn eval_discrete_type(
         // Block using variable names as types.
         ScopeEntry::Variable(_) | ScopeEntry::Function(_) => Err(errors::value_as_type(name, span)),
         ScopeEntry::Type(TypeSignature { generic_params, .. })
-        | ScopeEntry::Class(ClassSignature { generic_params, .. })
+        | ScopeEntry::Model(ModelSignature { generic_params, .. })
         | ScopeEntry::Enum(EnumSignature { generic_params, .. }) => {
             // Evaluate generic arguments.
             let args = if let Some(arguments) = generic_args {

@@ -96,7 +96,7 @@ impl std::fmt::Display for TypeExpression {
     }
 }
 
-/// A type parameter on a function, class or type.
+/// A type parameter on a function, model or type.
 #[derive(Debug, PartialEq)]
 pub struct GenericParameter {
     pub name: Identifier,

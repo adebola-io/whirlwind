@@ -1031,7 +1031,7 @@ impl<L: Lexer> Parser<L> {
         }
     }
 
-    /// Parses a class' or function's generic parameters. Assumes that `<` is maybe the current token.
+    /// Parses a model's or function's generic parameters. Assumes that `<` is maybe the current token.
     fn maybe_generic_params(&self) -> Fallible<Option<Vec<GenericParameter>>> {
         if !self
             .token()

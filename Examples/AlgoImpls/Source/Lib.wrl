@@ -1,7 +1,7 @@
 /// A last-in first-out data structure.
-public class Stack<T> {
-    items: ArrayOf<T>;
-    capacity: Integer;
+public model Stack<T> {
+    var items: ArrayOf<T>;
+    var capacity: Integer;
 
     new(capacity?: Integer) {
         this.items = [];
@@ -10,7 +10,7 @@ public class Stack<T> {
 
     /// Dynamically change the number of items in the stack.
     /// If there are currently more items that the new capacity, then the top items will be removed until it matches the new capacity.
-    public SetCapacity(value: Integer) {
+    public function SetCapacity(value: Integer) {
         while value < this.items.Length() {
             this.items.Pop();
         }
@@ -18,18 +18,18 @@ public class Stack<T> {
     }
 
     /// Returns the top value in the stack without removing it.
-    public Top(): Maybe<T> {
+    public function Top(): Maybe<T> {
         this.items.Last()
     }
 
     /// Removes the last item from the stack and returns it, if it exists.
-    public Pop(): Maybe<T> {
+    public function Pop(): Maybe<T> {
         this.items.Pop()
     }
 
     /// Enter data into the stack.
     /// This method will fail if the size of the stack is already at maximum length.
-    public Push(data: T): Outcome<_, StackError> {
+    public function Push(data: T): Outcome<_, StackError> {
         if this.items.Length() == this.capacity {
             Err(new StackError("The stack is already full."))
         } else {
@@ -39,7 +39,7 @@ public class Stack<T> {
     }
 
     /// Returns the size of the stack.
-    public Size(): Integer {
+    public function Size(): Integer {
         this.items.Length()
     }
 }
@@ -65,36 +65,34 @@ public type Number = SignedInteger | Float | BigInt;
 
 
 public trait PartialEquality {
-    Equals(other: This): Boolean;
+    function Equals(other: This): Boolean;
 }
 public trait Rangeable {
-    To(other: This): RangeOver<This>;
+    function To(other: This): RangeOver<This>;
 }
 public trait PartialOrdering {
-    Max(other: This): This; 
+    function Max(other: This): This; 
 }
-public trait IndexWith<T, U> implements Name<sjhd, shdie> {
-    Access(accessor: T): U;
+public trait IndexWith<T, U> {
+    function Access(accessor: T): U;
 }
 public trait Addition {
-    Add(other: This): This;
+    function Add(other: This): This;
 }
 public trait Subtraction {
-    Subtract(other: This): This;
+    function Subtract(other: This): This;
 }
 public trait Multiplication {
-    Multiply(other: This): This;
+    function Multiply(other: This): This;
 }
 public trait Division {
-    Divide(other: This): This;
+    function Divide(other: This): This;
 }
-
-
 public trait Display {
-    ToString(): String;
+    function ToString(): String;
 }
 /// This allows you to declare variables without initializing them.
 public trait Default {
-    Default(): This;
+    function Default(): This;
 }
 

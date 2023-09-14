@@ -1,4 +1,4 @@
-use crate::{ClassSignature, EnumSignature, FunctionSignature, TypeSignature, VariableSignature};
+use crate::{EnumSignature, FunctionSignature, ModelSignature, TypeSignature, VariableSignature};
 
 /// A hierarchical data structure that stores info in related "depths".
 /// It provides functions for creating and managing the lifecycle of nested scopes.
@@ -20,7 +20,7 @@ pub struct ScopeManagerShadow<'a> {
 pub enum ScopeEntry {
     Function(FunctionSignature),
     Type(TypeSignature),
-    Class(ClassSignature),
+    Model(ModelSignature),
     Enum(EnumSignature),
     Variable(VariableSignature),
 }
@@ -76,7 +76,7 @@ impl ScopeEntry {
         match self {
             ScopeEntry::Function(FunctionSignature { name, .. })
             | ScopeEntry::Type(TypeSignature { name, .. })
-            | ScopeEntry::Class(ClassSignature { name, .. })
+            | ScopeEntry::Model(ModelSignature { name, .. })
             | ScopeEntry::Enum(EnumSignature { name, .. })
             | ScopeEntry::Variable(VariableSignature { name, .. }) => &name.name,
         }
@@ -134,12 +134,12 @@ impl Scope {
         self.entries.push(entry);
         self.entries.len() - 1
     }
-    /// Get a class entry by its index.
-    pub fn get_class(&self, entry_no: usize) -> Option<&ClassSignature> {
+    /// Get a model entry by its index.
+    pub fn get_model(&self, entry_no: usize) -> Option<&ModelSignature> {
         self.entries
             .get(entry_no)
             .map(|entry| match entry {
-                ScopeEntry::Class(c) => Some(c),
+                ScopeEntry::Model(c) => Some(c),
                 _ => None,
             })
             .flatten()

@@ -5,19 +5,19 @@
       { "include": "#comment" },
       { "include": "#string_literal" },
       { "include": "#type_declaration" },
-      { "include": "#class_header" },
+      { "include": "#model_header" },
       { "include": "#trait_header" },
       { "include": "#use_declaration" },
       { "include": "#enum_declaration" },
       { "include": "#enum_variant_hover" },
+      { "include": "#trait_implementation" },
       { "include": "#function" },
       { "include": "#boolean_literal" },
       { "include": "#keyword" },
       { "include": "#number" },
       { "include": "#injunction" },
       { "include": "#this" },
-      { "include": "#inferred_class" },
-      { "include": "#trait_implementation" },
+      { "include": "#inferred_model" },
       { "include": "#inferred_function" },
       { "include": "#type_label" },
       { "include": "#identifier" }
@@ -29,7 +29,7 @@
       },
       "injunction": {
          "name": "meta.injunction keyword.storage.injunction",
-         "match": "\\b(use|enum|public|static|test|var|new|const|class|async|record|trait|type|extends|implements|not|and|or|is)\\b"
+         "match": "\\b(use|enum|public|static|test|var|new|const|model|async|record|trait|type|extends|implements|not|and|or|is)\\b"
       },
       "comment": {
          "patterns": [
@@ -141,8 +141,8 @@
          "end": "(?=;)"
       },
 
-      "class_header": {
-         "begin": "(\\bclass\\s+)",
+      "model_header": {
+         "begin": "(\\bmodel\\s+)",
          "beginCaptures": {
             "1": {
                "name": "keyword"
@@ -151,13 +151,12 @@
          "patterns": [
             { "include": "#comment" },
             {
-               "begin": "(?<=class\\s+)",
+               "begin": "(?<=model\\s+)",
                "contentName": "meta.class class entity.name.class",
                "end": "(?=[^\\w])"
             },
             { "include": "#generic_params" },
-            { "include": "#implements_label" },
-            { "include": "#extends_label" }
+            { "include": "#implements_label" }
          ],
          "end": "(?=\\{)"
       },
@@ -174,20 +173,6 @@
             { "include": "#punctuation_comma" }
          ],
          "end": "(?=[^,\\.\\w\\s\\<\\>]|extends\\s+)"
-      },
-      "extends_label": {
-         "begin": "(\\bextends\\s+)",
-         "beginCaptures": {
-            "1": {
-               "name": "keyword"
-            }
-         },
-         "patterns": [
-            { "include": "#comment" },
-            { "include": "#type_expression" },
-            { "include": "#punctuation_comma" }
-         ],
-         "end": "(?=[^,\\.\\w\\s\\<\\>])"
       },
       "trait_header": {
          "begin": "(\\btrait\\s+)",
@@ -284,6 +269,24 @@
          ],
          "end": "(?=\\s*\\))"
       },
+      "trait_implementation": {
+         "name": "entity.name.function support.function",
+         "match": "\\b(function)\\s+(\\[(\\s*\\w+\\s*(\\<.*\\>)?\\s*\\.)+\\s*)\\w+(?=\\s*\\]\\s*(\\<.*\\>)?\\s*\\()",
+         "captures": {
+            "1": {
+               "patterns": [{ "name": "keyword.control", "match": "\\w+" }]
+            },
+            "2": {
+               "patterns": [
+                  {
+                     "name": "entity.name.class support.class",
+                     "match": "\\w+"
+                  },
+                  { "match": "\\." }
+               ]
+            }
+         }
+      },
       "function": {
          "begin": "(\\bfunction\\s+)",
          "beginCaptures": {
@@ -303,7 +306,7 @@
          "end": "(?=\\))"
       },
 
-      "inferred_class": {
+      "inferred_model": {
          "name": "meta.class class entity.name.class",
          "match": "\\b((?<=\\bnew\\s+(\\w+\\s*\\.)*\\s*)\\w+\\b)"
       },
@@ -313,21 +316,6 @@
          "captures": {
             "1": {
                "patterns": [{ "include": "#generic_args" }]
-            }
-         }
-      },
-      "trait_implementation": {
-         "name": "entity.name.function support.function",
-         "match": "(\\[(\\s*\\w+\\s*(\\<.*\\>)?\\s*\\.)+\\s*)\\w+(?=\\s*\\]\\s*(\\<.*\\>)?\\s*\\()",
-         "captures": {
-            "1": {
-               "patterns": [
-                  {
-                     "name": "entity.name.class support.class",
-                     "match": "\\w+"
-                  },
-                  { "match": "\\." }
-               ]
             }
          }
       },
@@ -369,7 +357,8 @@
                "name": "keyword.control"
             }
          },
-         "patterns": [{ "include": "#generic_params" }, { "include": "$self" }]
+         "patterns": [{ "include": "#generic_params" }, { "include": "$self" }],
+         "end": "(?=\\))"
       },
       "generic_args": {
          "begin": "(?<=\\<\\s*)",
@@ -395,12 +384,7 @@
 
       "this": {
          "name": "constant.language",
-         "match": "\\bthis|super(?=\\s*(\\<\\s*.*\\s*\\>)?\\s*\\()\\b",
-         "captures": {
-            "1": {
-               "patterns": [{ "include": "#generic_args" }]
-            }
-         }
+         "match": "\\bthis\\b"
       },
       "identifier": {
          "patterns": [

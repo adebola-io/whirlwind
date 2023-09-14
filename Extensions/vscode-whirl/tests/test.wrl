@@ -12,24 +12,24 @@ public function Some<T>(value: T): Maybe<T> {
 }
 
 /// A value that may or may not exist.
-public class Maybe<T> {
-    value: T;
+public model Maybe<T> {
+    var value: T;
 
     new(value: T) {
         this.value = value;
     }
 
     /// Returns a boolean indicating if the Maybe contains no value.
-    IsNone(): Boolean {
+    function IsNone(): Boolean {
         IsNull(this.value)
     }
 
     /// Returns a boolean indicating whether there is a value contained or not.
-    IsSome(): Boolean {
+    function IsSome(): Boolean {
         !IsNull(this.value)
     }
 
-    Unwrap(): T {
+    function Unwrap(): T {
         if this.IsNone() {
             Panic(new Error("Called Unwrap on a None Value"))
         } else { 
@@ -37,24 +37,25 @@ public class Maybe<T> {
         }
     }
 
-    UnwrapOr(value: T): T {
+    function UnwrapOr(value: T): T {
         if this.IsNone() { value } else { this.value }
     }
 }
 
 
+
 trait PartialEq<T> {
-    Equals(other: T): Boolean;
+    function Equals(other: T): Boolean;
 }
 
-class EmployeeList implements PartialEq<This> {
-    items: ArrayOf<Employee>;
+model EmployeeList implements PartialEq<This> {
+    var items: ArrayOf<Employee>;
 
     new() {
         this.items = [];
     }
 
-    [PartialEq.Equals](other: This): Boolean {
+    function [PartialEq.Equals](other: This): Boolean {
         this.items == other.items
     }
 }

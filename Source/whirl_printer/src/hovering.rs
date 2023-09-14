@@ -1,5 +1,5 @@
 use whirl_ast::{
-    ClassSignature, EnumSignature, EnumVariant, FunctionSignature, GenericParameter, Identifier,
+    EnumSignature, EnumVariant, FunctionSignature, GenericParameter, Identifier, ModelSignature,
     Parameter, ScopeManager, TypeEval, TypeExpression, TypeSignature, VariableSignature,
 };
 
@@ -91,13 +91,13 @@ impl SignatureFormatter for EnumSignature {
     }
 }
 
-impl HoverFormatter for ClassSignature {
+impl HoverFormatter for ModelSignature {
     fn to_formatted(&self) -> String {
         let mut string = String::new();
         if self.is_public {
             string.push_str("public ");
         }
-        string.push_str("class ");
+        string.push_str("model ");
         string.push_str(&self.name.name);
         if let Some(ref params) = self.generic_params {
             string.push('<');
@@ -110,9 +110,6 @@ impl HoverFormatter for ClassSignature {
             string.push('>');
         }
         // Todo: Generic params.
-        for _extension in &self.extensions {
-            // todo: extensions.
-        }
         for _implementation in &self.implementations {
             // todo: implementations
         }
@@ -120,7 +117,7 @@ impl HoverFormatter for ClassSignature {
     }
 }
 
-impl SignatureFormatter for ClassSignature {
+impl SignatureFormatter for ModelSignature {
     fn info(&self) -> Option<&Vec<String>> {
         self.info.as_ref()
     }
@@ -297,7 +294,7 @@ impl HoverFormatter for (&ScopeManager, TypeEval) {
             TypeEval::Pointer { address, .. } => match self.0.get_entry_unguarded(address) {
                 whirl_ast::ScopeEntry::Type(typ) => typ.to_formatted(),
                 whirl_ast::ScopeEntry::Enum(e) => e.to_formatted(),
-                whirl_ast::ScopeEntry::Class(c) => c.to_formatted(),
+                whirl_ast::ScopeEntry::Model(c) => c.to_formatted(),
                 _ => String::new(),
             },
             TypeEval::Invalid => String::new(),
@@ -311,7 +308,7 @@ impl SignatureFormatter for (&ScopeManager, TypeEval) {
             TypeEval::Pointer { address, .. } => match self.0.get_entry_unguarded(address) {
                 whirl_ast::ScopeEntry::Type(typ) => typ.info(),
                 whirl_ast::ScopeEntry::Enum(e) => e.info(),
-                whirl_ast::ScopeEntry::Class(c) => c.info(),
+                whirl_ast::ScopeEntry::Model(c) => c.info(),
                 _ => None,
             },
             TypeEval::Invalid => None,

@@ -43,8 +43,8 @@ impl<L: Lexer> Typechecker<L> {
         for primitive_type in primitives.types {
             scope_manager.register(ScopeEntry::Type(primitive_type));
         }
-        for primitive_class in primitives.classes {
-            scope_manager.register(ScopeEntry::Class(primitive_class));
+        for primitive_model in primitives.models {
+            scope_manager.register(ScopeEntry::Model(primitive_model));
         }
 
         checker

@@ -8,7 +8,7 @@ pub enum Statement {
     VariableDeclaration,
     ShorthandVariableDeclaration(ShorthandVariableDeclaration),
     ConstantDeclaration,
-    ClassDeclaration(ClassDeclaration),
+    ModelDeclaration(ModelDeclaration),
     FunctionDeclaration(FunctionDeclaration),
     RecordDeclaration,
     TraitDeclaration,
@@ -66,29 +66,29 @@ pub struct ShorthandVariableDeclaration {
 }
 
 #[derive(Debug, PartialEq)]
-/// Node in the AST for a class declaration.
-pub struct ClassDeclaration {
+/// Node in the AST for a model declaration.
+pub struct ModelDeclaration {
     pub address: ScopeAddress,
-    pub body: ClassBody,
+    pub body: ModelBody,
     pub span: Span,
 }
 
 #[derive(Debug, PartialEq)]
-pub struct ClassBody {
-    pub attributes: Vec<ClassAttribute>,
+pub struct ModelBody {
+    pub attributes: Vec<ModelAttribute>,
     pub span: Span,
 }
 
 #[derive(Debug, PartialEq)]
-pub enum ClassAttribute {
+pub enum ModelAttribute {
     Property,
     Method,
     TraitImpl,
 }
 
 #[derive(Debug)]
-pub struct ClassSignature {
-    /// Name of the class.
+pub struct ModelSignature {
+    /// Name of the model.
     pub name: Identifier,
     /// Doc comments annotating the function, if any.
     pub info: Option<Vec<String>>,
@@ -96,10 +96,8 @@ pub struct ClassSignature {
     pub is_public: bool,
     /// Generic Parameters of the function, if any.
     pub generic_params: Option<Vec<GenericParameter>>,
-    /// Extended classes.
-    pub extensions: Vec<Type>,
     /// Implemented Traits.
-    pub implementations: Vec<Type>,
+    pub implementations: Vec<TypeExpression>,
 }
 
 /// Entry to mark a variable.
@@ -248,7 +246,7 @@ impl Statement {
             Statement::UseDeclaration(u) => u.span,
             Statement::VariableDeclaration => todo!(),
             Statement::ConstantDeclaration => todo!(),
-            Statement::ClassDeclaration(c) => c.span,
+            Statement::ModelDeclaration(c) => c.span,
             Statement::FunctionDeclaration(f) => f.span,
             Statement::RecordDeclaration => todo!(),
             Statement::TraitDeclaration => todo!(),
@@ -267,7 +265,7 @@ impl Statement {
             Statement::UseDeclaration(u) => u.span.start = start,
             Statement::VariableDeclaration => todo!(),
             Statement::ConstantDeclaration => todo!(),
-            Statement::ClassDeclaration(c) => c.span.start = start,
+            Statement::ModelDeclaration(c) => c.span.start = start,
             Statement::FunctionDeclaration(f) => f.span.start = start,
             Statement::RecordDeclaration => todo!(),
             Statement::TraitDeclaration => todo!(),

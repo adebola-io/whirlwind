@@ -1,3 +1,4 @@
-function Hello() {
+function Hello() 
+{
     name: ArrayOf<Number> := [];
 }

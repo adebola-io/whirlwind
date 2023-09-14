@@ -478,7 +478,7 @@ pub trait LexerInner {
             "async" => token!(Keyword::Async, self),
             "case" => token!(Keyword::Case, self),
             "const" => token!(Keyword::Const, self),
-            "class" => token!(Keyword::Class, self),
+            "model" => token!(Keyword::Model, self),
             "continue" => token!(Keyword::Continue, self),
             "else" => token!(Keyword::Else, self),
             "enum" => token!(Keyword::Enum, self),
