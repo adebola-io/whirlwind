@@ -747,18 +747,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "whirl_language_server"
-version = "0.1.0"
-dependencies = [
- "tokio",
- "tower-lsp",
- "whirl_ast",
- "whirl_errors",
- "whirl_printer",
- "whirl_semantic",
-]
-
-[[package]]
 name = "whirl_lexer"
 version = "0.1.0"
 dependencies = [
@@ -796,6 +784,18 @@ dependencies = [
  "whirl_errors",
  "whirl_lexer",
  "whirl_parser",
+]
+
+[[package]]
+name = "whirl_server"
+version = "0.1.0"
+dependencies = [
+ "tokio",
+ "tower-lsp",
+ "whirl_ast",
+ "whirl_errors",
+ "whirl_printer",
+ "whirl_semantic",
 ]
 
 [[package]]
