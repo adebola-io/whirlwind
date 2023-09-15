@@ -741,6 +741,7 @@ fn parse_fn_expressions() {
                     name: format!("a"),
                     span: [1, 5, 1, 6].into()
                 },
+                info: None,
                 type_label: Type {
                     declared: Some(TypeExpression::Discrete(DiscreteType {
                         name: Identifier {
@@ -1364,7 +1365,7 @@ fn parse_model_functions() {
     // Simple static function with variable.
     let mut parser = parse_text(
         "
-    model Person {
+    public model Person {
         var name: String;
         static function CreatePerson() {
 
@@ -1375,7 +1376,7 @@ fn parse_model_functions() {
     let statement = parser.next().unwrap().unwrap();
     assert!(matches!(
         parser.scope_manager().lookaround("Person").unwrap().entry,
-        ScopeEntry::Model(m) if m.methods[0].name.name == "CreatePerson" && m.attributes[0].name.name == "name"
+        ScopeEntry::Model(m) if m.is_public && m.methods[0].name.name == "CreatePerson" && m.attributes[0].name.name == "name"
     ));
 
     assert_eq!(
@@ -1401,7 +1402,7 @@ fn parse_model_functions() {
                     }
                 ],
                 constructor: None,
-                span: [2, 18, 7, 6].into(),
+                span: [2, 25, 7, 6].into(),
             },
             span: [2, 5, 7, 6].into(),
         }),

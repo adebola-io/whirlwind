@@ -156,7 +156,8 @@
                "end": "(?=[^\\w])"
             },
             { "include": "#generic_params" },
-            { "include": "#implements_label" }
+            { "include": "#implements_label" },
+            { "include": "$self" }
          ],
          "end": "(?=\\{)"
       },
@@ -189,7 +190,8 @@
                "end": "(?=[^\\w])"
             },
             { "include": "#generic_params" },
-            { "include": "#implements_label" }
+            { "include": "#implements_label" },
+            { "include": "$self" }
          ],
          "end": "(?=\\{)"
       },

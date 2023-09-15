@@ -1,6 +1,7 @@
 use whirl_ast::{
-    EnumSignature, EnumVariant, FunctionSignature, GenericParameter, Identifier, ModelSignature,
-    Parameter, ScopeManager, TypeEval, TypeExpression, TypeSignature, VariableSignature,
+    AttributeSignature, EnumSignature, EnumVariant, FunctionSignature, GenericParameter,
+    Identifier, MethodSignature, ModelSignature, Parameter, ScopeManager, TypeEval, TypeExpression,
+    TypeSignature, VariableSignature,
 };
 
 use crate::stringify_type_eval;
@@ -28,19 +29,9 @@ impl HoverFormatter for FunctionSignature {
         }
         string.push_str("function ");
         string.push_str(&self.name.name);
-        // TODO: Generic Parameters.
-        string.push('(');
-        for (index, parameter) in self.params.iter().enumerate() {
-            string.push_str(&parameter.to_formatted());
-            if index < self.params.len() - 1 {
-                string.push_str(", ");
-            }
-        }
-        string.push(')');
-        if let Some(ref rettype) = self.return_type.declared {
-            string.push_str(": ");
-            string.push_str(&rettype.to_formatted())
-        }
+        maybe_print_generic_params(&mut string, self.generic_params.as_ref());
+        print_parameters(&mut string, &self.params);
+        maybe_print_return_type(&mut string, &self.return_type);
         string
     }
 }
@@ -99,17 +90,7 @@ impl HoverFormatter for ModelSignature {
         }
         string.push_str("model ");
         string.push_str(&self.name.name);
-        if let Some(ref params) = self.generic_params {
-            string.push('<');
-            for (index, param) in params.iter().enumerate() {
-                string.push_str(&param.to_formatted());
-                if index + 1 != params.len() {
-                    string.push_str(", ");
-                }
-            }
-            string.push('>');
-        }
-        // Todo: Generic params.
+        maybe_print_generic_params(&mut string, self.generic_params.as_ref());
         for _implementation in &self.implementations {
             // todo: implementations
         }
@@ -142,6 +123,12 @@ impl HoverFormatter for Parameter {
         };
         string.push_str(&param_type_str);
         string
+    }
+}
+
+impl SignatureFormatter for Parameter {
+    fn info(&self) -> Option<&Vec<String>> {
+        self.info.as_ref()
     }
 }
 
@@ -313,6 +300,110 @@ impl SignatureFormatter for (&ScopeManager, TypeEval) {
             },
             TypeEval::Invalid => None,
         }
+    }
+}
+
+pub struct AttributeHover<'a> {
+    pub scope_manager: &'a ScopeManager,
+    pub model: &'a ModelSignature,
+    pub attribute: &'a AttributeSignature,
+}
+
+impl<'a> HoverFormatter for AttributeHover<'a> {
+    fn to_formatted(&self) -> String {
+        let mut string = self.model.to_formatted();
+        string.push('\n');
+        let signature = self.attribute;
+        if signature.is_public {
+            string.push_str("public ");
+        }
+        string.push_str("var ");
+        string.push_str(&signature.name.name);
+        string.push_str(": ");
+        let var_type = match signature.var_type.inferred {
+            Some(ref type_eval) => stringify_type_eval(self.scope_manager, type_eval),
+            None => match signature.var_type.declared {
+                Some(ref t) => t.to_formatted(),
+                None => format!("unknown"),
+            },
+        };
+        string.push_str(&var_type);
+        string
+    }
+}
+
+impl<'a> SignatureFormatter for AttributeHover<'a> {
+    fn info(&self) -> Option<&Vec<String>> {
+        self.attribute.info.as_ref()
+    }
+}
+
+pub struct MethodHover<'a> {
+    pub scope_manager: &'a ScopeManager,
+    pub model: &'a ModelSignature,
+    pub method: &'a MethodSignature,
+}
+
+impl<'a> HoverFormatter for MethodHover<'a> {
+    fn to_formatted(&self) -> String {
+        let mut string = self.model.to_formatted();
+        string.push('\n');
+        let signature = self.method;
+        if signature.is_public {
+            string.push_str("public ");
+        }
+        if signature.is_static {
+            string.push_str("static ");
+        }
+        if signature.is_async {
+            string.push_str("async ");
+        }
+        string.push_str("function ");
+        string.push_str(&signature.name.name);
+        maybe_print_generic_params(&mut string, signature.generic_params.as_ref());
+        print_parameters(&mut string, &signature.params);
+        maybe_print_return_type(&mut string, &signature.return_type);
+        string
+    }
+}
+
+impl<'a> SignatureFormatter for MethodHover<'a> {
+    fn info(&self) -> Option<&Vec<String>> {
+        self.method.info.as_ref()
+    }
+}
+
+/// Print parameters into a string.
+fn print_parameters(string: &mut String, params: &Vec<Parameter>) {
+    string.push('(');
+    for (index, parameter) in params.iter().enumerate() {
+        string.push_str(&parameter.to_formatted());
+        if index < params.len() - 1 {
+            string.push_str(", ");
+        }
+    }
+    string.push(')');
+}
+
+/// Print a function's return type if it is available.
+fn maybe_print_return_type(string: &mut String, return_type: &whirl_ast::Type) {
+    if let Some(ref rettype) = return_type.declared {
+        string.push_str(": ");
+        string.push_str(&rettype.to_formatted())
+    }
+}
+
+/// Print generic parameters to a string.
+fn maybe_print_generic_params(string: &mut String, generic_params: Option<&Vec<GenericParameter>>) {
+    if let Some(ref params) = generic_params {
+        string.push('<');
+        for (index, param) in params.iter().enumerate() {
+            string.push_str(&param.to_formatted());
+            if index + 1 != params.len() {
+                string.push_str(", ");
+            }
+        }
+        string.push('>');
     }
 }
 #[cfg(test)]

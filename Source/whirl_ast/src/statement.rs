@@ -239,9 +239,14 @@ pub struct TypeSignature {
 
 #[derive(Debug, PartialEq)]
 pub struct Parameter {
+    /// Name of the parameter.
     pub name: Identifier,
+    /// Parameter type label.
     pub type_label: Type,
+    /// Whether or not the parameter is optional.
     pub is_optional: bool,
+    /// Doc comments annotating the parameter, if any.
+    pub info: Option<Vec<String>>,
 }
 
 /// Node for an enumerated type.

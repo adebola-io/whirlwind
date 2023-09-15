@@ -1,7 +1,7 @@
 use crate::{
-    BinaryExpr, EnumDeclaration, Expression, FunctionDeclaration, Identifier, Parameter,
-    ShorthandVariableDeclaration, Statement, TestDeclaration, TypeDeclaration, UseDeclaration,
-    WhirlBoolean, WhirlNumber, WhirlString,
+    BinaryExpr, EnumDeclaration, Expression, FunctionDeclaration, Identifier, ModelDeclaration,
+    Parameter, ShorthandVariableDeclaration, Statement, TestDeclaration, TypeDeclaration,
+    UseDeclaration, WhirlBoolean, WhirlNumber, WhirlString,
 };
 
 #[allow(unused_variables)]
@@ -13,6 +13,7 @@ pub trait ASTVisitor<Arguments = (), Output: Default = ()> {
             Statement::FunctionDeclaration(f) => self.visit_function(f, args),
             Statement::TypeDeclaration(t) => self.visit_type_declaration(t, args),
             Statement::EnumDeclaration(e) => self.visit_enum_declaration(e, args),
+            Statement::ModelDeclaration(m) => self.visit_model_declaration(m, args),
             Statement::ShorthandVariableDeclaration(v) => {
                 self.visit_shorthand_variable_declaration(v, args)
             }
@@ -44,6 +45,10 @@ pub trait ASTVisitor<Arguments = (), Output: Default = ()> {
     }
     /// Visit an enum node.
     fn visit_enum_declaration(&self, enum_decl: &EnumDeclaration, args: &Arguments) -> Output {
+        Output::default()
+    }
+    /// Visit a model node.
+    fn visit_model_declaration(&self, model: &ModelDeclaration, args: &Arguments) -> Output {
         Output::default()
     }
     /// Visit an identifier node.

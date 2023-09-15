@@ -99,8 +99,10 @@ pub struct WhirlDocument {
 }
 
 impl WhirlDocument {
+    /// Traverse through the document and pinpoint the position of the hover.
     fn get_hover_for_position(&self, position: Position) -> Option<HoverInfo> {
-        let position = [position.line + 1, position.character];
+        // Editor ranges are zero-based, for some reason.
+        let position = [position.line + 1, position.character + 1];
         let hover_finder = HoverFinder::with_scope_manager(&self.module.scope_manager);
         for statement in &self.module.statements {
             let hover_info = hover_finder.visit_statement(statement, &position);
@@ -110,9 +112,9 @@ impl WhirlDocument {
         }
         return None;
     }
+    /// Refresh a document with a set of changes to the text.
     fn refresh(&mut self, version: i32, changes: Vec<TextDocumentContentChangeEvent>) {
         self.version = version as usize;
-
         let handler = ChangeHandler::from_module(&mut self.module);
         handler.update(changes);
     }

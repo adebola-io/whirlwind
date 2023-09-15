@@ -1,6 +1,10 @@
-function main () 
-{
-    
+
+model Person {
+    /// The first name and last name of a person.
+    public var name: String;
+
+    static function SayHello(): String {
+        greeting := "Person says hello!";
+        greeting
+    }
 }
-
-

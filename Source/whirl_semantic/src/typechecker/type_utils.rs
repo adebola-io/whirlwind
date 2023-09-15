@@ -16,7 +16,7 @@ pub fn eval_type_expression(
     match expression {
         // Type checking discrete types.
         TypeExpression::Discrete(discrete_type) => {
-            eval_discrete_type(scope_manager, discrete_type, scope)
+            evaluate_discrete_type(scope_manager, discrete_type, scope)
         }
         // TODO: disallow This type outside model context.
         TypeExpression::This { .. } => todo!(),
@@ -26,7 +26,7 @@ pub fn eval_type_expression(
 }
 
 /// Try to convert a discrete type to an evaluation.
-pub fn eval_discrete_type(
+pub fn evaluate_discrete_type(
     scope_manager: &ScopeManager,
     discrete_type: &DiscreteType,
     scope: usize,

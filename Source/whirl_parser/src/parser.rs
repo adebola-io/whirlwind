@@ -184,9 +184,10 @@ impl<L: Lexer> Parser<L> {
             Some(t) => match t._type {
                 TokenType::Operator(SemiColon) => Ok(Statement::ExpressionStatement(expression)),
                 // No derivation produces <ident> <ident>.
-                TokenType::Ident(_) => {
-                    Err(errors::expected(TokenType::Operator(SemiColon), t.span))
-                }
+                TokenType::Ident(_) => Err(errors::expected(
+                    TokenType::Operator(SemiColon),
+                    Span::at(expression.span().end),
+                )),
                 _ => Ok(Statement::FreeExpression(expression)),
             },
             None => Ok(Statement::FreeExpression(expression)),
@@ -1293,9 +1294,9 @@ impl<L: Lexer> Parser<L> {
 
     fn trait_impl_method(
         &self,
-        is_public: bool,
-        is_static: bool,
-        is_async: bool,
+        _is_public: bool,
+        _is_static: bool,
+        _is_async: bool,
     ) -> Fallible<(MethodSignature, ModelPropertyType)> {
         todo!()
     }
@@ -1398,6 +1399,7 @@ impl<L: Lexer> Parser<L> {
 
     /// Parses a parameter. Assumes that the parameter name is the current token.
     fn parameter(&self) -> Fallible<Parameter> {
+        let info = self.get_doc_comment();
         let name = self.identifier()?;
 
         let is_optional = if self
@@ -1421,6 +1423,7 @@ impl<L: Lexer> Parser<L> {
 
         let parameter = Parameter {
             name,
+            info,
             type_label,
             is_optional,
         };

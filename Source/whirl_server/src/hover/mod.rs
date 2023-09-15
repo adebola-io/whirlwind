@@ -1,7 +1,7 @@
 use tower_lsp::lsp_types::{Hover, HoverContents, LanguageString, MarkedString};
-use whirl_ast::{ASTVisitor, ScopeManager, TypeExpression};
-use whirl_printer::{HoverFormatter, SignatureFormatter};
-use whirl_semantic::type_utils::eval_discrete_type;
+use whirl_ast::{ASTVisitor, ModelPropertyType, ScopeManager, TypeExpression};
+use whirl_printer::{AttributeHover, MethodHover, SignatureFormatter};
+use whirl_semantic::type_utils::evaluate_discrete_type;
 
 /// Information shown during hovering.
 pub struct HoverInfo {
@@ -19,13 +19,13 @@ impl From<&str> for HoverInfo {
 impl<T: SignatureFormatter> From<&T> for HoverInfo {
     fn from(value: &T) -> Self {
         let mut info = vec![];
+        let string = value.to_formatted();
         info.push(MarkedString::LanguageString(LanguageString {
             language: String::from("wrl"),
-            value: value.to_formatted(),
+            value: string,
         }));
 
         // Documentation?
-
         if let Some(ref docs) = value.info() {
             let mut documentation = String::new();
             for line in docs.iter() {
@@ -85,6 +85,104 @@ impl<'a> ASTVisitor<[u32; 2], Option<HoverInfo>> for HoverFinder<'a> {
         return None;
     }
 
+    /// Hover over a model.
+    fn visit_model_declaration(
+        &self,
+        model_decl: &whirl_ast::ModelDeclaration,
+        args: &[u32; 2],
+    ) -> Option<HoverInfo> {
+        let scope_manager = self.scope_manager;
+        let scope = scope_manager.get_scope(model_decl.address.scope_id)?;
+        let model = scope.get_model(model_decl.address.entry_no)?;
+        // Hovering over a variable name.
+        if model.name.span.contains(*args) {
+            return Some(model.into());
+        }
+        // Hovering over a trait.
+        for implentation in &model.implementations {
+            // Hovering over parameter type.
+            if let Some(ref expression) = implentation.declared {
+                if let Some(hover) = type_hover(scope_manager, expression, scope.id, args) {
+                    return Some(hover);
+                }
+            }
+        }
+        // Hovering over an attribute, method or implementation.
+        for property in &model_decl.body.properties {
+            if property.span.contains(*args) {
+                match &property._type {
+                    ModelPropertyType::Attribute => {
+                        let attribute = model.attributes.get(property.index)?;
+                        // Hovering over an attribute name.
+                        if attribute.name.span.contains(*args) {
+                            let hover_over_attrib = AttributeHover {
+                                attribute,
+                                model,
+                                scope_manager,
+                            };
+                            return Some((&hover_over_attrib).into());
+                        }
+                        // Hovering over an attribute type.
+                        if let Some(ref expression) = attribute.var_type.declared {
+                            if let Some(hover) =
+                                type_hover(scope_manager, expression, scope.id, args)
+                            {
+                                return Some(hover);
+                            }
+                        }
+                    }
+                    ModelPropertyType::Method { body } => {
+                        let method = model.methods.get(property.index)?;
+                        // Hovering over a method name.
+                        if method.name.span.contains(*args) {
+                            let hover_over_function = MethodHover {
+                                method,
+                                model,
+                                scope_manager,
+                            };
+                            return Some((&hover_over_function).into());
+                        }
+                        // Hovering over a parameter.
+                        for parameter in &method.params {
+                            // Hovering over parameter name.
+                            if parameter.name.span.contains(*args) {
+                                return Some(parameter.into());
+                            }
+                            // Hovering over parameter type.
+                            if let Some(ref expression) = parameter.type_label.declared {
+                                if let Some(hover) =
+                                    type_hover(self.scope_manager, expression, scope.id, args)
+                                {
+                                    return Some(hover);
+                                }
+                            }
+                        }
+                        // Hovering over return type.
+                        if let Some(ref expression) = method.return_type.declared {
+                            if let Some(hover) =
+                                type_hover(self.scope_manager, expression, scope.id, args)
+                            {
+                                return Some(hover);
+                            }
+                        }
+                        // Hovering over something in the function's body.
+                        if !body.span.contains(*args) {
+                            return None;
+                        }
+                        for statement in &body.statements {
+                            let hover_info = self.visit_statement(statement, args);
+                            if hover_info.is_some() {
+                                return hover_info;
+                            }
+                        }
+                    }
+                    ModelPropertyType::TraitImpl { .. } => return None,
+                }
+            }
+        }
+        return None;
+    }
+
     /// Hover over a function.
     fn visit_function(
         &self,
@@ -102,12 +200,7 @@ impl<'a> ASTVisitor<[u32; 2], Option<HoverInfo>> for HoverFinder<'a> {
         for parameter in &signature.params {
             // Hovering over parameter name.
             if parameter.name.span.contains(*args) {
-                return Some(HoverInfo {
-                    contents: HoverContents::Scalar(MarkedString::LanguageString(LanguageString {
-                        language: format!("wrl"),
-                        value: parameter.to_formatted(),
-                    })),
-                });
+                return Some(parameter.into());
             }
             // Hovering over parameter type.
             if let Some(ref expression) = parameter.type_label.declared {
@@ -144,7 +237,6 @@ impl<'a> ASTVisitor<[u32; 2], Option<HoverInfo>> for HoverFinder<'a> {
         let scope = self.scope_manager.get_scope(type_decl.address.scope_id)?;
         let signature = scope.get_type(type_decl.address.entry_no)?;
         // Hovering over the type name.
-
         if signature.name.span.contains(*args) {
             return Some(signature.into());
         }
@@ -186,7 +278,7 @@ fn type_hover(
             TypeExpression::Discrete(discrete_type) => {
                 // Hovering over a discrete type name.
                 if discrete_type.name.span.contains(*args) {
-                    let type_eval = eval_discrete_type(scope_manager, discrete_type, scope);
+                    let type_eval = evaluate_discrete_type(scope_manager, discrete_type, scope);
                     if let Ok(eval) = type_eval {
                         return Some(HoverInfo::from(&(scope_manager, eval)));
                     }
