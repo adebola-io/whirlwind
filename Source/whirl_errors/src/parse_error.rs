@@ -19,6 +19,9 @@ pub enum ParserErrorType {
     UnexpectedToken,
     StringExpected,
     ExpressionExpected,
+    TypeInTraitPosition(whirl_ast::TypeExpression),
+    ExpectedAttribute,
+    PublicAccessTypeOnConstructor,
 }
 
 pub fn public_shorthand_var(span: Span) -> ParseError {
@@ -94,6 +97,27 @@ pub fn string_expected(span: Span) -> ParseError {
 pub fn expression_expected(span: Span) -> ParseError {
     ParseError {
         error_type: ParserErrorType::ExpressionExpected,
+        span,
+    }
+}
+
+pub fn type_in_trait_position(r#trait: whirl_ast::TypeExpression) -> ParseError {
+    ParseError {
+        span: r#trait.span(),
+        error_type: ParserErrorType::TypeInTraitPosition(r#trait),
+    }
+}
+
+pub fn expected_attribute(span: Span) -> ParseError {
+    ParseError {
+        error_type: ParserErrorType::ExpectedAttribute,
+        span,
+    }
+}
+
+pub fn public_on_new(span: Span) -> ParseError {
+    ParseError {
+        error_type: ParserErrorType::PublicAccessTypeOnConstructor,
         span,
     }
 }

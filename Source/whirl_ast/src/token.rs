@@ -187,7 +187,6 @@ pub enum Keyword {
     Continue,
     Else,
     Enum,
-    Extends,
     False,
     For,
     Fn,

@@ -482,7 +482,6 @@ pub trait LexerInner {
             "continue" => token!(Keyword::Continue, self),
             "else" => token!(Keyword::Else, self),
             "enum" => token!(Keyword::Enum, self),
-            "extends" => token!(Keyword::Extends, self),
             "false" => token!(Keyword::False, self),
             "for" => token!(Keyword::For, self),
             "fn" => token!(Keyword::Fn, self),

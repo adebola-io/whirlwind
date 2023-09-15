@@ -58,6 +58,22 @@ pub fn stringify_parse_error(error: &ParserErrorType) -> String {
         ParserErrorType::UnexpectedToken => format!("Unexpected token."),
         ParserErrorType::StringExpected => format!("Expected a string."),
         ParserErrorType::ExpressionExpected => format!("Expression expected."),
+        ParserErrorType::TypeInTraitPosition(t) => format!(
+            "Expected a trait, got a {}",
+            match t {
+                whirl_ast::TypeExpression::Invalid => "invalid type.",
+                whirl_ast::TypeExpression::Functional(_) => "function type.",
+                whirl_ast::TypeExpression::This { .. } => "This type.",
+                whirl_ast::TypeExpression::Union(_) => "union type.",
+                _ => "type",
+            }
+        ),
+        ParserErrorType::ExpectedAttribute => {
+            format!("Expected an attribute starting with var or function.")
+        }
+        ParserErrorType::PublicAccessTypeOnConstructor => {
+            format!("Constructors do not allow public modifiers.")
+        }
     }
 }
 

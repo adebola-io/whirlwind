@@ -31,6 +31,8 @@ pub enum ScopeType {
     Functional,
     Local,
     Test,
+    Constructor,
+    Method,
 }
 
 /// The scope address stores the address of a symbol in the scope manager.

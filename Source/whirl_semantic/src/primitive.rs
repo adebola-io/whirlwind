@@ -1,5 +1,6 @@
 use whirl_ast::{
-    GenericParameter, Identifier, ModelSignature, Span, TypeExpression, TypeSignature,
+    AttributeSignature, GenericParameter, Identifier, MethodSignature, ModelSignature, Parameter,
+    Span, Type, TypeSignature,
 };
 
 /// Inbuilt values in the language.
@@ -18,17 +19,26 @@ impl Primitives {
                     "Model for creating, manipulating and formatting of text sequences.",
                     None,
                     vec![],
+                    vec![],
+                    vec![],
+                    vec![],
                 ),
                 create_model_primitive(
                     "Integer",
                     "Allows for managing of 64-bit whole numbers.",
                     None,
                     vec![],
+                    vec![],
+                    vec![],
+                    vec![],
                 ),
                 create_model_primitive(
                     "Boolean",
                     "An item that can only have `true` or `false` as its values.",
                     None,
+                    vec![],
+                    vec![],
+                    vec![],
                     vec![],
                 ),
                 create_model_primitive(
@@ -43,6 +53,9 @@ impl Primitives {
                         default: None,
                     }]),
                     vec![],
+                    vec![],
+                    vec![],
+                    vec![],
                 ),
             ],
         }
@@ -53,16 +66,22 @@ fn create_model_primitive(
     name: &str,
     info: &str,
     generic_params: Option<Vec<GenericParameter>>,
-    implementations: Vec<TypeExpression>,
+    parameters: Vec<Parameter>,
+    implementations: Vec<Type>,
+    attributes: Vec<AttributeSignature>,
+    methods: Vec<MethodSignature>,
 ) -> ModelSignature {
     ModelSignature {
         name: Identifier {
             name: format!("{}", name),
             span: Span::default(),
         },
+        parameters,
         info: Some(vec![format!("{}", info)]),
         is_public: false,
         generic_params,
         implementations,
+        attributes,
+        methods,
     }
 }

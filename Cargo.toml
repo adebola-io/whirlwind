@@ -1,2 +1,13 @@
 [workspace]
-members = ["Source/*"]
+members = [
+    "Source/whirl_ast", 
+    "Source/whirl_core", 
+    "Source/whirl_errors", 
+    "Source/whirl_lexer", 
+    "Source/whirl_parser",
+    "Source/whirl_printer",
+    "Source/whirl_repl",
+    "Source/whirl_semantic",
+    "Source/whirl_server",
+    "Source/whirl_utils"
+    ]

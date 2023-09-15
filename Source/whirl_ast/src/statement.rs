@@ -75,15 +75,26 @@ pub struct ModelDeclaration {
 
 #[derive(Debug, PartialEq)]
 pub struct ModelBody {
-    pub attributes: Vec<ModelAttribute>,
+    pub properties: Vec<ModelProperty>,
+    pub constructor: Option<Block>,
     pub span: Span,
 }
 
 #[derive(Debug, PartialEq)]
-pub enum ModelAttribute {
-    Property,
-    Method,
-    TraitImpl,
+pub struct ModelProperty {
+    pub index: usize,
+    pub _type: ModelPropertyType,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum ModelPropertyType {
+    /// Node for a property.
+    Attribute,
+    /// Node for a method.
+    Method { body: Block },
+    /// Node for a trait implementation.
+    TraitImpl { owner_trait: Type, body: Block },
 }
 
 #[derive(Debug)]
@@ -92,12 +103,52 @@ pub struct ModelSignature {
     pub name: Identifier,
     /// Doc comments annotating the function, if any.
     pub info: Option<Vec<String>>,
-    /// Whether it was decnoted as public.
+    /// Whether it was denoted as public.
     pub is_public: bool,
     /// Generic Parameters of the function, if any.
     pub generic_params: Option<Vec<GenericParameter>>,
+    /// The constructor parameters.
+    pub parameters: Vec<Parameter>,
     /// Implemented Traits.
-    pub implementations: Vec<TypeExpression>,
+    pub implementations: Vec<Type>,
+    /// The properties of the model.
+    pub attributes: Vec<AttributeSignature>,
+    /// The methods of the model.
+    pub methods: Vec<MethodSignature>,
+}
+
+/// Entry to mark an attribute.
+#[derive(Debug)]
+pub struct AttributeSignature {
+    /// Name of the attribute.
+    pub name: Identifier,
+    /// Documentation about the attribute.
+    pub info: Option<Vec<String>>,
+    /// Whether or not it is denoted by public.
+    pub is_public: bool,
+    /// The variable type.
+    pub var_type: Type,
+}
+
+/// Entry to mark a method.
+#[derive(Debug)]
+pub struct MethodSignature {
+    /// Name of the method.
+    pub name: Identifier,
+    /// Doc comments annotating the method, if any.
+    pub info: Option<Vec<String>>,
+    /// Whether or not the method is declared as static.
+    pub is_static: bool,
+    /// Whether or not the method is denoted by `async`.
+    pub is_async: bool,
+    /// Whether or not the method is denoted by `public`.
+    pub is_public: bool,
+    /// Generic Parameters of the function, if any.
+    pub generic_params: Option<Vec<GenericParameter>>,
+    /// The parameters of the function, if any.
+    pub params: Vec<Parameter>,
+    /// Optional return type.
+    pub return_type: Type,
 }
 
 /// Entry to mark a variable.

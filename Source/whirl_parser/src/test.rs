@@ -3,9 +3,9 @@
 use whirl_ast::{
     AccessExpr, ArrayExpr, AssignmentExpr, BinaryExpr, Block, CallExpr, DiscreteType, Else,
     EnumDeclaration, Expression, FunctionDeclaration, FunctionExpr, Identifier, IfExpression,
-    IndexExpr, LogicExpr, Parameter, ScopeAddress, ScopeEntry, Span, Statement, TestDeclaration,
-    Type, TypeDeclaration, TypeExpression, UnaryExpr, UseDeclaration, UsePath, UseTarget,
-    WhirlNumber, WhirlString,
+    IndexExpr, LogicExpr, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType, Parameter,
+    ScopeAddress, ScopeEntry, Span, Statement, TestDeclaration, Type, TypeDeclaration,
+    TypeExpression, UnaryExpr, UseDeclaration, UsePath, UseTarget, WhirlNumber, WhirlString,
 };
 
 use crate::parse_text;
@@ -1207,6 +1207,203 @@ function RandomFormat(): String {
     );
 
     for statement in parser {
-        println!("{:#?}", statement);
+        assert!(statement.is_ok())
     }
+}
+
+#[test]
+fn parse_models() {
+    // Simple.
+    let mut parser = parse_text("model Person {}");
+    let statement = parser.next().unwrap().unwrap();
+    assert!(matches!(
+        parser.scope_manager().lookaround("Person").unwrap().entry,
+        ScopeEntry::Model(_)
+    ));
+
+    assert_eq!(
+        statement,
+        Statement::ModelDeclaration(ModelDeclaration {
+            address: [0, 0].into(),
+            body: ModelBody {
+                properties: vec![],
+                constructor: None,
+                span: [1, 14, 1, 16].into(),
+            },
+            span: [1, 1, 1, 16].into(),
+        }),
+    );
+
+    // With impl.
+    let mut parser = parse_text("model TextBook implements Book {}");
+    let statement = parser.next().unwrap().unwrap();
+    assert!(matches!(
+        parser.scope_manager().lookaround("TextBook").unwrap().entry,
+        ScopeEntry::Model(m) if m.implementations.len() == 1
+    ));
+
+    assert_eq!(
+        statement,
+        Statement::ModelDeclaration(ModelDeclaration {
+            address: [0, 0].into(),
+            body: ModelBody {
+                properties: vec![],
+                constructor: None,
+                span: [1, 32, 1, 34].into(),
+            },
+            span: [1, 1, 1, 34].into(),
+        }),
+    )
+}
+
+#[test]
+fn parse_model_properties() {
+    // Simple attribute.
+    let mut parser = parse_text(
+        "
+    model Person {
+        var name: String;
+    }
+    ",
+    );
+    let statement = parser.next().unwrap().unwrap();
+    assert!(matches!(
+        parser.scope_manager().lookaround("Person").unwrap().entry,
+        ScopeEntry::Model(m) if m.attributes[0].name.name == "name" // haha.
+    ));
+
+    assert_eq!(
+        statement,
+        Statement::ModelDeclaration(ModelDeclaration {
+            address: [0, 0].into(),
+            body: ModelBody {
+                properties: vec![ModelProperty {
+                    index: 0,
+                    _type: ModelPropertyType::Attribute,
+                    span: [3, 9, 3, 26].into()
+                }],
+                constructor: None,
+                span: [2, 18, 4, 6].into(),
+            },
+            span: [2, 5, 4, 6].into(),
+        }),
+    );
+
+    // Public attribute.
+    let mut parser = parse_text(
+        "
+    model Person {
+       public var name: String;
+    }
+    ",
+    );
+    let statement = parser.next().unwrap().unwrap();
+    assert!(matches!(
+        parser.scope_manager().lookaround("Person").unwrap().entry,
+        ScopeEntry::Model(m) if m.attributes[0].name.name == "name" && m.attributes[0].is_public // haha.
+    ));
+
+    assert_eq!(
+        statement,
+        Statement::ModelDeclaration(ModelDeclaration {
+            address: [0, 0].into(),
+            body: ModelBody {
+                properties: vec![ModelProperty {
+                    index: 0,
+                    _type: ModelPropertyType::Attribute,
+                    span: [3, 8, 3, 32].into()
+                }],
+                constructor: None,
+                span: [2, 18, 4, 6].into(),
+            },
+            span: [2, 5, 4, 6].into(),
+        }),
+    );
+}
+
+#[test]
+fn parse_model_functions() {
+    // Simple function.
+    let mut parser = parse_text(
+        "
+    model Person {
+       function DoSomething() {
+            
+       }
+    }
+    ",
+    );
+    let statement = parser.next().unwrap().unwrap();
+    assert!(matches!(
+        parser.scope_manager().lookaround("Person").unwrap().entry,
+        ScopeEntry::Model(m) if m.methods[0].name.name == "DoSomething"
+    ));
+
+    assert_eq!(
+        statement,
+        Statement::ModelDeclaration(ModelDeclaration {
+            address: [0, 0].into(),
+            body: ModelBody {
+                properties: vec![ModelProperty {
+                    index: 0,
+                    _type: ModelPropertyType::Method {
+                        body: Block {
+                            statements: vec![],
+                            span: [3, 31, 5, 9].into()
+                        }
+                    },
+                    span: [3, 8, 5, 9].into()
+                }],
+                constructor: None,
+                span: [2, 18, 6, 6].into(),
+            },
+            span: [2, 5, 6, 6].into(),
+        }),
+    );
+
+    // Simple static function with variable.
+    let mut parser = parse_text(
+        "
+    model Person {
+        var name: String;
+        static function CreatePerson() {
+
+        }
+    }
+    ",
+    );
+    let statement = parser.next().unwrap().unwrap();
+    assert!(matches!(
+        parser.scope_manager().lookaround("Person").unwrap().entry,
+        ScopeEntry::Model(m) if m.methods[0].name.name == "CreatePerson" && m.attributes[0].name.name == "name"
+    ));
+
+    assert_eq!(
+        statement,
+        Statement::ModelDeclaration(ModelDeclaration {
+            address: [0, 0].into(),
+            body: ModelBody {
+                properties: vec![
+                    ModelProperty {
+                        index: 0,
+                        _type: ModelPropertyType::Attribute,
+                        span: [3, 9, 3, 26].into()
+                    },
+                    ModelProperty {
+                        index: 0,
+                        _type: ModelPropertyType::Method {
+                            body: Block {
+                                statements: vec![],
+                                span: [4, 40, 6, 10].into()
+                            }
+                        },
+                        span: [4, 9, 6, 10].into()
+                    }
+                ],
+                constructor: None,
+                span: [2, 18, 7, 6].into(),
+            },
+            span: [2, 5, 7, 6].into(),
+        }),
+    )
 }
