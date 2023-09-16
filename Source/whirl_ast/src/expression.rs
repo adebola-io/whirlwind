@@ -6,6 +6,7 @@ pub enum Expression {
     StringLiteral(WhirlString),
     NumberLiteral(WhirlNumber),
     BooleanLiteral(WhirlBoolean),
+    ThisExpr(ThisExpr),
     CallExpr(Box<CallExpr>),
     FnExpr(Box<FunctionExpr>),
     IfExpr(Box<IfExpression>),
@@ -133,6 +134,11 @@ pub struct LogicExpr {
     pub span: Span,
 }
 
+#[derive(Debug, PartialEq)]
+pub struct ThisExpr {
+    pub span: Span,
+}
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum BinOperator {
     Multiply,  // a * b
@@ -214,6 +220,7 @@ impl Expression {
             Expression::LogicExpr(l) => l.span,
             Expression::AccessExpr(a) => a.span,
             Expression::BooleanLiteral(b) => b.span,
+            Expression::ThisExpr(t) => t.span,
         }
     }
 
@@ -234,6 +241,7 @@ impl Expression {
             Expression::LogicExpr(l) => l.span.start = start,
             Expression::AccessExpr(a) => a.span.start = start,
             Expression::BooleanLiteral(b) => b.span.start = start,
+            Expression::ThisExpr(t) => t.span.start = start,
         }
     }
 }

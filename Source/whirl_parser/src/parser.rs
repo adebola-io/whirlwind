@@ -7,10 +7,10 @@ use whirl_ast::{
     GenericParameter, Identifier, IfExpression, IndexExpr, Keyword::*, LogicExpr, MemberType,
     MethodSignature, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType, ModelSignature,
     Operator::*, Parameter, ScopeAddress, ScopeEntry, ScopeManager, ScopeType,
-    ShorthandVariableDeclaration, Span, Statement, TestDeclaration, Token, TokenType, TraitBody,
-    TraitDeclaration, TraitProperty, TraitPropertyType, TraitSignature, Type, TypeDeclaration,
-    TypeExpression, TypeSignature, UnaryExpr, UnionType, UseDeclaration, UsePath, UseTarget,
-    VariableSignature, WhirlBoolean, WhirlNumber, WhirlString,
+    ShorthandVariableDeclaration, Span, Statement, TestDeclaration, ThisExpr, Token, TokenType,
+    TraitBody, TraitDeclaration, TraitProperty, TraitPropertyType, TraitSignature, Type,
+    TypeDeclaration, TypeExpression, TypeSignature, UnaryExpr, UnionType, UseDeclaration, UsePath,
+    UseTarget, VariableSignature, WhirlBoolean, WhirlNumber, WhirlString,
 };
 use whirl_errors::{self as errors, ParseError};
 use whirl_lexer::Lexer;
@@ -244,6 +244,7 @@ impl<L: Lexer> Parser<L> {
             TokenType::Keyword(Fn) => self.function_expression(),
             TokenType::Keyword(True | False) => self.spring(Partial::from(self.boolean_literal())),
             TokenType::Keyword(If) => self.if_expression(),
+            TokenType::Keyword(_this) => self.this_expression(),
             TokenType::Operator(op @ (Negator | Not | Plus | Minus)) => self.unary_expression(op),
             TokenType::Ident(_) => {
                 self.spring(Partial::from(self.identifier()).map(|i| Expression::Identifier(i)))
@@ -408,6 +409,14 @@ impl<L: Lexer> Parser<L> {
         let expr = Partial::from_tuple((Some(Expression::IfExpr(Box::new(if_expr))), errors));
 
         self.spring(expr)
+    }
+
+    /// Parses a this expression.
+    fn this_expression(&self) -> Imperfect<Expression> {
+        expect_or_return!(TokenType::Keyword(_this), self);
+        let span = self.token().unwrap().span;
+        self.advance(); // Move past this.
+        self.spring(Partial::from_value(Expression::ThisExpr(ThisExpr { span })))
     }
 
     /// Parses a grouped expression.

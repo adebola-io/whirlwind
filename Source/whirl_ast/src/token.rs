@@ -203,6 +203,8 @@ pub enum Keyword {
     Switch,
     Test,
     This,
+    #[allow(non_camel_case_types)]
+    _this,
     Trait,
     True,
     Type,

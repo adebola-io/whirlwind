@@ -500,6 +500,7 @@ pub trait LexerInner {
             "switch" => token!(Keyword::Switch, self),
             "test" => token!(Keyword::Test, self),
             "This" => token!(Keyword::This, self),
+            "this" => token!(Keyword::_this, self),
             "trait" => token!(Keyword::Trait, self),
             "true" => token!(Keyword::True, self),
             "type" => token!(Keyword::Type, self),

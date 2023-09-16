@@ -4,9 +4,9 @@ use whirl_ast::{
     AccessExpr, ArrayExpr, AssignmentExpr, BinaryExpr, Block, CallExpr, DiscreteType, Else,
     EnumDeclaration, Expression, FunctionDeclaration, FunctionExpr, Identifier, IfExpression,
     IndexExpr, LogicExpr, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType, Parameter,
-    ScopeAddress, ScopeEntry, Span, Statement, TestDeclaration, TraitBody, TraitDeclaration,
-    TraitProperty, Type, TypeDeclaration, TypeExpression, UnaryExpr, UseDeclaration, UsePath,
-    UseTarget, WhirlNumber, WhirlString,
+    ScopeAddress, ScopeEntry, Span, Statement, TestDeclaration, ThisExpr, TraitBody,
+    TraitDeclaration, TraitProperty, Type, TypeDeclaration, TypeExpression, UnaryExpr,
+    UseDeclaration, UsePath, UseTarget, WhirlNumber, WhirlString,
 };
 
 use crate::parse_text;
@@ -935,6 +935,17 @@ fn parse_index_expression() {
             }),
             span: [1, 1, 1, 5].into()
         })))
+    )
+}
+
+#[test]
+fn parse_this_expression() {
+    let mut parser = parse_text("this");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::FreeExpression(Expression::ThisExpr(ThisExpr {
+            span: [1, 1, 1, 5].into()
+        }))
     )
 }
 
