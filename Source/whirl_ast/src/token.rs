@@ -137,6 +137,10 @@ impl From<Operator> for BinOperator {
             Operator::Plus => Self::Add,
             Operator::Minus => Self::Subtract,
             Operator::Range => Self::Range,
+            Operator::LesserThan => Self::LessThan,
+            Operator::GreaterThan => Self::GreaterThan,
+            Operator::LesserThanOrEqual => Self::LessThanOrEquals,
+            Operator::GreaterThanOrEqual => Self::GreaterThanOrEquals,
             _ => panic!("Cannot convert {:?} to binary operator!", value),
         }
     }

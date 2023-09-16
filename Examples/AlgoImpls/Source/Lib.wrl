@@ -9,7 +9,32 @@ public model Stack<T> {
     }
 
     /// Dynamically change the number of items in the stack.
-    /// If there are currently more items that the new capacity, then the top items will be removed until it matches the new capacity.
+    ///
+    /// If there are currently more items that the new capacity, then the stack will be truncated.
+    /// # Examples
+    /// ```wrl
+    /// stack: Stack<Integer> := new Stack();
+    ///
+    /// Assert(stack.Capacity() == 0);
+    /// stack.SetCapacity(1); // Sets the stack to contain only one item.
+    /// 
+    /// stack.Push(10).Unwrap();
+    /// Assert(stack.Push(11).IsErr()); // Cannot push since the stack is full.
+    ///
+    /// // Increasing the capacity.
+    /// stack = new Stack();
+    /// stack.SetCapacity(10);
+    /// for item in 0..9 {
+    ///     stack.Push(item).Unwrap();   
+    /// }
+    /// Assert(stack.Push(99).IsErr())
+    /// stack.SetCapacity(11);
+    /// Assert(stack.Push(99).IsOk());
+    /// 
+    /// // Reducing the capacity
+    /// stack.setCapacity(2); // Shrinks the stack to only two items.
+    /// Assert(stack.Size() == 2);
+    /// ```
     public function SetCapacity(value: Integer) {
         while value < this.items.Length() {
             this.items.Pop();
@@ -28,6 +53,7 @@ public model Stack<T> {
     }
 
     /// Enter data into the stack.
+    ///
     /// This method will fail if the size of the stack is already at maximum length.
     public function Push(data: T): Outcome<_, StackError> {
         if this.items.Length() == this.capacity {
@@ -36,6 +62,11 @@ public model Stack<T> {
             this.items.Push(data);
             Ok(_)
         }
+    }
+
+    /// Returns the capacity of the stack.
+    public function Capacity(): Integer {
+        this.capacity
     }
 
     /// Returns the size of the stack.

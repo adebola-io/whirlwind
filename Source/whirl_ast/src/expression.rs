@@ -6,6 +6,7 @@ pub enum Expression {
     StringLiteral(WhirlString),
     NumberLiteral(WhirlNumber),
     BooleanLiteral(WhirlBoolean),
+    NewExpr(Box<NewExpr>),
     ThisExpr(ThisExpr),
     CallExpr(Box<CallExpr>),
     FnExpr(Box<FunctionExpr>),
@@ -51,6 +52,12 @@ pub enum Number {
     Decimal(String),
     #[default]
     None,
+}
+
+#[derive(PartialEq, Debug)]
+pub struct NewExpr {
+    pub value: Expression,
+    pub span: Span,
 }
 
 #[derive(PartialEq, Debug)]
@@ -141,18 +148,22 @@ pub struct ThisExpr {
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum BinOperator {
-    Multiply,  // a * b
-    Divide,    // a / b
-    PowerOf,   // a ^ b
-    BitAnd,    // a & b
-    BitOr,     // a | b
-    Is,        // a is b
-    Equals,    // a == b
-    NotEquals, // a != b
-    Remainder, // a % b
-    Add,       // a + b
-    Subtract,  // a - b
-    Range,     // a..b
+    Multiply,            // a * b
+    Divide,              // a / b
+    PowerOf,             // a ^ b
+    BitAnd,              // a & b
+    BitOr,               // a | b
+    Is,                  // a is b
+    Equals,              // a == b
+    NotEquals,           // a != b
+    Remainder,           // a % b
+    Add,                 // a + b
+    Subtract,            // a - b
+    Range,               // a..b
+    LessThan,            // a < b
+    GreaterThan,         // a > b
+    LessThanOrEquals,    // a <= b
+    GreaterThanOrEquals, // a >= b
 }
 
 #[derive(Debug, PartialEq)]
@@ -221,6 +232,7 @@ impl Expression {
             Expression::AccessExpr(a) => a.span,
             Expression::BooleanLiteral(b) => b.span,
             Expression::ThisExpr(t) => t.span,
+            Expression::NewExpr(n) => n.span,
         }
     }
 
@@ -242,6 +254,7 @@ impl Expression {
             Expression::AccessExpr(a) => a.span.start = start,
             Expression::BooleanLiteral(b) => b.span.start = start,
             Expression::ThisExpr(t) => t.span.start = start,
+            Expression::NewExpr(n) => n.span.start = start,
         }
     }
 }

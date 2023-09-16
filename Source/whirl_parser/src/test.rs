@@ -3,8 +3,8 @@
 use whirl_ast::{
     AccessExpr, ArrayExpr, AssignmentExpr, BinaryExpr, Block, CallExpr, DiscreteType, Else,
     EnumDeclaration, Expression, FunctionDeclaration, FunctionExpr, Identifier, IfExpression,
-    IndexExpr, LogicExpr, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType, Parameter,
-    ScopeAddress, ScopeEntry, Span, Statement, TestDeclaration, ThisExpr, TraitBody,
+    IndexExpr, LogicExpr, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType, NewExpr,
+    Parameter, ScopeAddress, ScopeEntry, Span, Statement, TestDeclaration, ThisExpr, TraitBody,
     TraitDeclaration, TraitProperty, Type, TypeDeclaration, TypeExpression, UnaryExpr,
     UseDeclaration, UsePath, UseTarget, WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
 };
@@ -939,6 +939,25 @@ fn parse_index_expression() {
 }
 
 #[test]
+fn parse_new_expression() {
+    let mut parser = parse_text("new Stack()");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::FreeExpression(Expression::NewExpr(Box::new(NewExpr {
+            value: Expression::CallExpr(Box::new(CallExpr {
+                caller: Expression::Identifier(Identifier {
+                    name: format! {"Stack"},
+                    span: [1, 5, 1, 10].into()
+                }),
+                arguments: vec![],
+                span: [1, 5, 1, 12].into()
+            })),
+            span: [1, 1, 1, 12].into(),
+        })))
+    )
+}
+
+#[test]
 fn parse_this_expression() {
     let mut parser = parse_text("this");
     assert_eq!(
@@ -1651,4 +1670,60 @@ fn parse_while_statement() {
             span: [1, 1, 1, 14].into()
         })
     )
+}
+
+#[test]
+fn parse_complex_program_2() {
+    let parser = parse_text(
+        "
+ /// A last-in first-out data structure.
+public model Stack<T> {
+    var items: ArrayOf<T>;
+    var capacity: Integer;
+
+    new(capacity?: Integer) {
+        this.items = [];
+        this.capacity = capacity.UnwrapOr(Core.Math.INFINITY);
+    }
+
+    /// Dynamically change the number of items in the stack.
+    /// If there are currently more items that the new capacity, then the top items will be removed until it matches the new capacity.
+    public function SetCapacity(value: Integer) {
+        while value < this.items.Length() {
+            this.items.Pop();
+        }
+        this.capacity = value;
+    }
+
+    /// Returns the top value in the stack without removing it.
+    public function Top(): Maybe<T> {
+        this.items.Last()
+    }
+
+    /// Removes the last item from the stack and returns it, if it exists.
+    public function Pop(): Maybe<T> {
+        this.items.Pop()
+    }
+
+    /// Enter data into the stack.
+    /// This method will fail if the size of the stack is already at maximum length.
+    public function Push(data: T): Outcome<_, StackError> {
+        if this.items.Length() == this.capacity {
+            Err(new StackError(\"The stack is already full.\"))
+        } else {
+            this.items.Push(data);
+            Ok(_)
+        }
+    }
+
+    /// Returns the size of the stack.
+    public function Size(): Integer {
+        this.items.Length()
+    }
+}",
+    );
+
+    for statement in parser {
+        assert!(statement.is_some() && !statement.has_errors());
+    }
 }

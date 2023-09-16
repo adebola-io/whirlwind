@@ -6,7 +6,7 @@ use whirl_ast::{
     ExpressionPrecedence, FunctionDeclaration, FunctionExpr, FunctionSignature, FunctionalType,
     GenericParameter, Identifier, IfExpression, IndexExpr, Keyword::*, LogicExpr, MemberType,
     MethodSignature, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType, ModelSignature,
-    Operator::*, Parameter, ScopeAddress, ScopeEntry, ScopeManager, ScopeType,
+    NewExpr, Operator::*, Parameter, ScopeAddress, ScopeEntry, ScopeManager, ScopeType,
     ShorthandVariableDeclaration, Span, Statement, TestDeclaration, ThisExpr, Token, TokenType,
     TraitBody, TraitDeclaration, TraitProperty, TraitPropertyType, TraitSignature, Type,
     TypeDeclaration, TypeExpression, TypeSignature, UnaryExpr, UnionType, UseDeclaration, UsePath,
@@ -219,6 +219,7 @@ impl<L: Lexer> Parser<L> {
         match self.token() {
             Some(t) => match t._type {
                 TokenType::Operator(SemiColon) => {
+                    self.advance(); // Move past ;
                     partial.map(|exp| Statement::ExpressionStatement(exp))
                 }
                 // No derivation produces <ident> <ident>. Add error and return the parsed expression.
@@ -243,6 +244,7 @@ impl<L: Lexer> Parser<L> {
         let expression = match token._type {
             TokenType::Keyword(Fn) => self.function_expression(),
             TokenType::Keyword(True | False) => self.spring(Partial::from(self.boolean_literal())),
+            TokenType::Keyword(New) => self.new_expression(),
             TokenType::Keyword(If) => self.if_expression(),
             TokenType::Keyword(_this) => self.this_expression(),
             TokenType::Operator(op @ (Negator | Not | Plus | Minus)) => self.unary_expression(op),
@@ -278,6 +280,28 @@ impl<L: Lexer> Parser<L> {
         let boolean = WhirlBoolean { value, span };
         self.advance(); // Move past boolean.
         Ok(Expression::BooleanLiteral(boolean))
+    }
+
+    /// Parses a new epxression.
+    fn new_expression(&self) -> Imperfect<Expression> {
+        expect_or_return!(TokenType::Keyword(New), self);
+        let start = self.token().unwrap().span.start;
+        self.advance(); // Move past operator.
+        self.push_precedence(ExpressionPrecedence::New);
+        let (operand, errors) = self.expression().to_tuple();
+        self.precedence_stack.borrow_mut().pop();
+        if operand.is_none() {
+            return Partial::from_errors(errors);
+        }
+        let value = operand.unwrap();
+        let end = value.span().end;
+        let span = Span::from([start, end]);
+        let un_exp = NewExpr { value, span };
+        let exp = Partial {
+            value: Some(Expression::NewExpr(Box::new(un_exp))),
+            errors,
+        };
+        self.spring(exp)
     }
 
     /// Parses a string literal.
@@ -477,6 +501,7 @@ impl<L: Lexer> Parser<L> {
                 TokenType::Operator(Dot) => self.access_expression(exp),
                 TokenType::Operator(
                     op @ (Multiply | Divide | Carat | Ampersand | BitOr | Is | Equal | NotEqual
+                    | LesserThan | GreaterThan | LesserThanOrEqual | GreaterThanOrEqual
                     | Percent | Plus | Minus | Range),
                 ) => self.binary_expression(exp, op),
                 TokenType::Operator(op @ (And | Or | LogicalAnd | LogicalOr)) => {
