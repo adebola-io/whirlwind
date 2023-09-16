@@ -36,6 +36,9 @@ pub fn stringify_type_error(scope_manager: &ScopeManager, error: &TypeErrorType)
             stringify_type_eval(scope_manager, &right),
             stringify_type_eval(scope_manager, &left),
         ),
+        TypeErrorType::TraitAsType { name } => {
+            format!("{name} refers to a trait, but it is being used as a type here.")
+        }
     }
 }
 

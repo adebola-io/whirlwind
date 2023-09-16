@@ -47,6 +47,7 @@ pub fn evaluate_discrete_type(
     match search.entry {
         // Block using variable names as types.
         ScopeEntry::Variable(_) | ScopeEntry::Function(_) => Err(errors::value_as_type(name, span)),
+        ScopeEntry::Trait(_) => return Err(errors::trait_as_type(name, span)),
         ScopeEntry::Type(TypeSignature { generic_params, .. })
         | ScopeEntry::Model(ModelSignature { generic_params, .. })
         | ScopeEntry::Enum(EnumSignature { generic_params, .. }) => {

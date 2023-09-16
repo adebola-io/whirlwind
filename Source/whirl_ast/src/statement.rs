@@ -11,7 +11,7 @@ pub enum Statement {
     ModelDeclaration(ModelDeclaration),
     FunctionDeclaration(FunctionDeclaration),
     RecordDeclaration,
-    TraitDeclaration,
+    TraitDeclaration(TraitDeclaration),
     EnumDeclaration(EnumDeclaration),
     TypeDeclaration(TypeDeclaration),
     // Control Statements.
@@ -203,6 +203,52 @@ pub struct FunctionSignature {
     pub return_type: Type,
 }
 
+/// A node for a trait declaration in the AST.
+#[derive(Debug, PartialEq)]
+pub struct TraitDeclaration {
+    pub address: ScopeAddress,
+    pub body: TraitBody,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TraitBody {
+    pub properties: Vec<TraitProperty>,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TraitProperty {
+    pub index: usize,
+    pub _type: TraitPropertyType,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum TraitPropertyType {
+    /// A method that is to be implemented.
+    Signature,
+    /// A method with a default implementation.
+    Method { body: Block },
+}
+
+/// An entry to mark a trait declaration.
+#[derive(Debug)]
+pub struct TraitSignature {
+    /// Name of the trait.
+    pub name: Identifier,
+    /// Doc comments annotating the function, if any.
+    pub info: Option<Vec<String>>,
+    /// Whether or not the function is denoted by `public`.
+    pub is_public: bool,
+    /// Generic Parameters of the function, if any.
+    pub generic_params: Option<Vec<GenericParameter>>,
+    /// Methods on the trait.
+    pub methods: Vec<MethodSignature>,
+    /// Implemented Traits.
+    pub implementations: Vec<Type>,
+}
+
 #[derive(Debug, PartialEq)]
 pub struct Location {
     pub module: String,
@@ -305,7 +351,7 @@ impl Statement {
             Statement::ModelDeclaration(c) => c.span,
             Statement::FunctionDeclaration(f) => f.span,
             Statement::RecordDeclaration => todo!(),
-            Statement::TraitDeclaration => todo!(),
+            Statement::TraitDeclaration(t) => t.span,
             Statement::EnumDeclaration(e) => e.span,
             Statement::TypeDeclaration(t) => t.span,
             Statement::WhileStatement => todo!(),
@@ -324,7 +370,7 @@ impl Statement {
             Statement::ModelDeclaration(c) => c.span.start = start,
             Statement::FunctionDeclaration(f) => f.span.start = start,
             Statement::RecordDeclaration => todo!(),
-            Statement::TraitDeclaration => todo!(),
+            Statement::TraitDeclaration(t) => t.span.start = start,
             Statement::EnumDeclaration(e) => e.span.start = start,
             Statement::TypeDeclaration(t) => t.span.start = start,
             Statement::WhileStatement => todo!(),

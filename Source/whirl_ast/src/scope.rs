@@ -1,4 +1,7 @@
-use crate::{EnumSignature, FunctionSignature, ModelSignature, TypeSignature, VariableSignature};
+use crate::{
+    EnumSignature, FunctionSignature, ModelSignature, TraitSignature, TypeSignature,
+    VariableSignature,
+};
 
 /// A hierarchical data structure that stores info in related "depths".
 /// It provides functions for creating and managing the lifecycle of nested scopes.
@@ -23,6 +26,7 @@ pub enum ScopeEntry {
     Model(ModelSignature),
     Enum(EnumSignature),
     Variable(VariableSignature),
+    Trait(TraitSignature),
 }
 
 #[derive(Debug)]
@@ -80,7 +84,8 @@ impl ScopeEntry {
             | ScopeEntry::Type(TypeSignature { name, .. })
             | ScopeEntry::Model(ModelSignature { name, .. })
             | ScopeEntry::Enum(EnumSignature { name, .. })
-            | ScopeEntry::Variable(VariableSignature { name, .. }) => &name.name,
+            | ScopeEntry::Variable(VariableSignature { name, .. })
+            | ScopeEntry::Trait(TraitSignature { name, .. }) => &name.name,
         }
     }
 
@@ -196,11 +201,20 @@ impl Scope {
             })
             .flatten()
     }
+    /// Get a trait entry by its index.
+    pub fn get_trait(&self, entry_no: usize) -> Option<&TraitSignature> {
+        self.entries
+            .get(entry_no)
+            .map(|entry| match entry {
+                ScopeEntry::Trait(t) => Some(t),
+                _ => None,
+            })
+            .flatten()
+    }
     /// Get a scope entry.
     pub fn get_entry(&self, entry_no: usize) -> Option<&ScopeEntry> {
         self.entries.get(entry_no)
     }
-
     /// Get a scope entry mutably.
     fn get_entry_mut(&mut self, entry_no: usize) -> Option<&mut ScopeEntry> {
         self.entries.get_mut(entry_no)

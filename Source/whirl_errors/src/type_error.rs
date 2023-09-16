@@ -32,6 +32,8 @@ pub enum TypeErrorType {
     },
     /// Assigning two unassignable types.
     MismatchedAssignment { left: TypeEval, right: TypeEval },
+    /// Using a trait in a type expression.
+    TraitAsType { name: String },
 }
 
 pub fn assigned_invalid(span: Span) -> TypeError {

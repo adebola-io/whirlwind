@@ -4,8 +4,9 @@ use whirl_ast::{
     AccessExpr, ArrayExpr, AssignmentExpr, BinaryExpr, Block, CallExpr, DiscreteType, Else,
     EnumDeclaration, Expression, FunctionDeclaration, FunctionExpr, Identifier, IfExpression,
     IndexExpr, LogicExpr, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType, Parameter,
-    ScopeAddress, ScopeEntry, Span, Statement, TestDeclaration, Type, TypeDeclaration,
-    TypeExpression, UnaryExpr, UseDeclaration, UsePath, UseTarget, WhirlNumber, WhirlString,
+    ScopeAddress, ScopeEntry, Span, Statement, TestDeclaration, TraitBody, TraitDeclaration,
+    TraitProperty, Type, TypeDeclaration, TypeExpression, UnaryExpr, UseDeclaration, UsePath,
+    UseTarget, WhirlNumber, WhirlString,
 };
 
 use crate::parse_text;
@@ -1512,6 +1513,112 @@ fn parse_generic_params() {
                 span: [2, 48, 4, 6].into()
             },
             span: [2, 5, 4, 6].into()
+        })
+    );
+}
+
+#[test]
+fn parse_trait_declarations() {
+    // Simple.
+    let mut parser = parse_text("trait TraitName {}");
+    let statement = parser.next().unwrap().unwrap();
+    let mut scope_manager = parser.scope_manager();
+
+    assert!(matches!(
+        scope_manager.lookaround("TraitName").unwrap().entry,
+        ScopeEntry::Trait(_)
+    ));
+
+    assert_eq!(
+        statement,
+        Statement::TraitDeclaration(TraitDeclaration {
+            address: [0, 0].into(),
+            body: TraitBody {
+                properties: vec![],
+                span: [1, 17, 1, 19].into()
+            },
+            span: [1, 1, 1, 19].into()
+        })
+    );
+
+    // With one method signature.
+    parser = parse_text(
+        "
+    public trait Addition {
+        function Add(other: This): This;
+    }
+    ",
+    );
+    let statement = parser.next().unwrap().unwrap();
+    scope_manager = parser.scope_manager();
+
+    assert!(matches!(
+        scope_manager.lookaround("Addition").unwrap().entry,
+        ScopeEntry::Trait(t) if t.is_public && t.methods[0].name.name == "Add"
+    ));
+
+    assert_eq!(
+        statement,
+        Statement::TraitDeclaration(TraitDeclaration {
+            address: [0, 0].into(),
+            body: TraitBody {
+                properties: vec![TraitProperty {
+                    index: 0,
+                    _type: whirl_ast::TraitPropertyType::Signature,
+                    span: [3, 9, 3, 41].into()
+                }],
+                span: [2, 27, 4, 6].into()
+            },
+            span: [2, 5, 4, 6].into()
+        })
+    );
+
+    // With a method signature and a method.
+    parser = parse_text(
+        "
+    public trait Addition implements Core.General {
+        function Add(other: This): This;
+        function Add2(other: This) : This {
+            // Stuff.
+        }
+    }
+    ",
+    );
+    let statement = parser.next().unwrap().unwrap();
+    scope_manager = parser.scope_manager();
+
+    assert!(matches!(
+        scope_manager.lookaround("Addition").unwrap().entry,
+        ScopeEntry::Trait(t) if t.is_public
+        && t.implementations.len() == 1
+        && t.methods.len() == 2
+    ));
+
+    assert_eq!(
+        statement,
+        Statement::TraitDeclaration(TraitDeclaration {
+            address: [0, 0].into(),
+            body: TraitBody {
+                properties: vec![
+                    TraitProperty {
+                        index: 0,
+                        _type: whirl_ast::TraitPropertyType::Signature,
+                        span: [3, 9, 3, 41].into()
+                    },
+                    TraitProperty {
+                        index: 1,
+                        _type: whirl_ast::TraitPropertyType::Method {
+                            body: Block {
+                                statements: vec![],
+                                span: [4, 43, 6, 10].into()
+                            }
+                        },
+                        span: [4, 9, 6, 10].into()
+                    }
+                ],
+                span: [2, 51, 7, 6].into()
+            },
+            span: [2, 5, 7, 6].into()
         })
     );
 }

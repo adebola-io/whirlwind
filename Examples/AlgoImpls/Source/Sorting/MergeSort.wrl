@@ -1,4 +1,4 @@
 /// Sorts an array using merge sort.
-public fn MergeSort(array: ArrayOf<Number>): ArrayOf<Number> {
+public function MergeSort(array: ArrayOf<Number>): ArrayOf<Number> {
     
 }

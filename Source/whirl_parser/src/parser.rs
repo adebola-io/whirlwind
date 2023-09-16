@@ -7,9 +7,10 @@ use whirl_ast::{
     GenericParameter, Identifier, IfExpression, IndexExpr, Keyword::*, LogicExpr, MemberType,
     MethodSignature, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType, ModelSignature,
     Operator::*, Parameter, ScopeAddress, ScopeEntry, ScopeManager, ScopeType,
-    ShorthandVariableDeclaration, Span, Statement, TestDeclaration, Token, TokenType, Type,
-    TypeDeclaration, TypeExpression, TypeSignature, UnaryExpr, UnionType, UseDeclaration, UsePath,
-    UseTarget, VariableSignature, WhirlBoolean, WhirlNumber, WhirlString,
+    ShorthandVariableDeclaration, Span, Statement, TestDeclaration, Token, TokenType, TraitBody,
+    TraitDeclaration, TraitProperty, TraitPropertyType, TraitSignature, Type, TypeDeclaration,
+    TypeExpression, TypeSignature, UnaryExpr, UnionType, UseDeclaration, UsePath, UseTarget,
+    VariableSignature, WhirlBoolean, WhirlNumber, WhirlString,
 };
 use whirl_errors::{self as errors, ParseError};
 use whirl_lexer::Lexer;
@@ -801,6 +802,10 @@ impl<L: Lexer> Parser<L> {
             TokenType::Keyword(Model) => self
                 .model_declaration(false)
                 .map(|m| Statement::ModelDeclaration(m)),
+            // // trait...
+            TokenType::Keyword(Trait) => self
+                .trait_declaration(false)
+                .map(|t| Statement::TraitDeclaration(t)),
             // unimplemented!(
             //     "{:?} not implemented yet!. The last token was {:?}",
             //     self.token().unwrap(),
@@ -928,6 +933,9 @@ impl<L: Lexer> Parser<L> {
             TokenType::Keyword(Model) => self
                 .model_declaration(true)
                 .map(|m| Statement::ModelDeclaration(m)),
+            TokenType::Keyword(Trait) => self
+                .trait_declaration(true)
+                .map(|t| Statement::TraitDeclaration(t)),
             // Parse public shorthand variable declaration as syntax error.
             TokenType::Ident(_) => {
                 let statement = self.statement();
@@ -1422,7 +1430,10 @@ impl<L: Lexer> Parser<L> {
                         TokenType::Keyword(Var) => {
                             body_errors.append(&mut generate_attrib(true, start).errors);
                         }
-                        _ => body_errors.push(errors::expected_attribute(token.span)),
+                        _ => {
+                            body_errors.push(errors::expected_attribute(token.span));
+                            self.advance();
+                        }
                     }
                 }
                 // parse static private method.
@@ -1545,6 +1556,230 @@ impl<L: Lexer> Parser<L> {
         _is_async: bool,
     ) -> Imperfect<(MethodSignature, ModelPropertyType)> {
         todo!()
+    }
+
+    /// Parses a trait declaration. Assumes that `trait` is the current token.
+    fn trait_declaration(&self, is_public: bool) -> Imperfect<TraitDeclaration> {
+        expect_or_return!(TokenType::Keyword(Trait), self);
+        let start = self.token().unwrap().span.start;
+        let info = self.get_doc_comment();
+        self.advance(); // Move past trait.
+        let name = check!(self.identifier());
+        let generic_params = check!(self.maybe_generic_params());
+        ended!(
+            errors::expected(TokenType::Bracket(LCurly), self.last_token_end(),),
+            self
+        );
+        let implementations = check!(self.maybe_trait_implementations());
+        let (results, errors) = self.trait_body().to_tuple();
+        if results.is_none() {
+            return Partial::from_errors(errors);
+        }
+        let (body, methods) = results.unwrap();
+        let signature = TraitSignature {
+            name,
+            info,
+            is_public,
+            generic_params,
+            implementations,
+            methods,
+        };
+        let end = body.span.end;
+        let entry_no = self.scope_manager().register(ScopeEntry::Trait(signature));
+        let address = ScopeAddress {
+            scope_id: self.scope_manager().current(),
+            entry_no,
+        };
+        let span = Span::from([start, end]);
+        let model = TraitDeclaration {
+            address,
+            body,
+            span,
+        };
+        Partial {
+            value: Some(model),
+            errors,
+        }
+    }
+
+    /// Parses a trait body.
+    fn trait_body(&self) -> Imperfect<(TraitBody, Vec<MethodSignature>)> {
+        expect_or_return!(TokenType::Bracket(LCurly), self);
+        let start = self.token().unwrap().span.start;
+        self.advance(); // Move past {
+
+        let mut body_errors = vec![];
+        let mut properties = vec![];
+
+        let mut method_signatures = vec![];
+
+        // Helper closure to quickly generate methods.
+        let mut generate_method = |start, is_public, is_static, is_async| {
+            expect_or_return!(TokenType::Keyword(Function), self);
+            let partial = self.trait_method(is_public, is_static, is_async);
+            if partial.is_none() {
+                return partial.map(|_| ());
+            };
+            let (tuple, errors) = partial.to_tuple();
+            let (signature, _type) = tuple.unwrap();
+            let method = TraitProperty {
+                index: method_signatures.len(),
+                _type,
+                span: Span::from([start, self.last_token_span().end]),
+            };
+            method_signatures.push(signature);
+            properties.push(method);
+            Partial {
+                value: Some(()),
+                errors,
+            }
+        };
+
+        let maybe_async = || {
+            self.token().is_some_and(|t| {
+                if t._type == TokenType::Keyword(Async) {
+                    self.advance(); // Move past async.
+                    true
+                } else {
+                    false
+                }
+            })
+        };
+
+        while self
+            .token()
+            .is_some_and(|t| t._type != TokenType::Bracket(RCurly))
+        {
+            let token = self.token().unwrap();
+            let start = token.span.start;
+            match token._type {
+                // parse public property.
+                TokenType::Keyword(Public) => {
+                    let start = token.span.start;
+                    self.advance(); // Move past public.
+                    if self.token().is_none() {
+                        body_errors.push(errors::expected_attribute(self.last_token_span()));
+                        self.advance();
+                        continue;
+                    }
+                    let token = self.token().unwrap();
+                    match token._type {
+                        // parse public static method.
+                        TokenType::Keyword(Static) => {
+                            self.advance(); // Move past static.
+                            let is_public = true;
+                            let is_static = true;
+                            let is_async = maybe_async();
+                            body_errors.append(
+                                &mut generate_method(start, is_public, is_static, is_async).errors,
+                            );
+                        }
+                        TokenType::Keyword(Async) => {
+                            self.advance(); // Move past async.
+                            let is_public = true;
+                            let is_static = false;
+                            let is_async = true;
+                            body_errors.append(
+                                &mut generate_method(start, is_public, is_static, is_async).errors,
+                            );
+                        }
+                        // parse public non-async method.
+                        TokenType::Keyword(Function) => {
+                            let is_public = true;
+                            let is_static = false;
+                            let is_async = false;
+                            body_errors.append(
+                                &mut generate_method(start, is_public, is_static, is_async).errors,
+                            );
+                        }
+                        _ => {
+                            body_errors
+                                .push(errors::expected(TokenType::Keyword(Function), token.span));
+                            self.advance();
+                        }
+                    }
+                }
+                // parse static private method.
+                TokenType::Keyword(Static) => {
+                    let start = token.span.start;
+                    self.advance(); // Move past static.
+                    let is_public = false;
+                    let is_static = true;
+                    let is_async = maybe_async();
+                    body_errors
+                        .append(&mut generate_method(start, is_public, is_static, is_async).errors);
+                }
+                // parse private method.
+                TokenType::Keyword(Function) => {
+                    let is_public = false;
+                    let is_async = false;
+                    let is_static = false;
+                    body_errors
+                        .append(&mut generate_method(start, is_public, is_static, is_async).errors);
+                }
+                _ => {
+                    body_errors.push(errors::expected(TokenType::Keyword(Function), token.span));
+                    self.advance();
+                }
+            }
+        }
+        expect_or_return!(TokenType::Bracket(RCurly), self);
+        let end = self.token().unwrap().span.end;
+        let span = Span::from([start, end]);
+        self.advance(); // Move past }
+        let body = TraitBody { properties, span };
+        Partial {
+            value: Some((body, method_signatures)),
+            errors: body_errors,
+        }
+    }
+
+    /// Parses a trait method.
+    fn trait_method(
+        &self,
+        is_public: bool,
+        is_static: bool,
+        is_async: bool,
+    ) -> Imperfect<(MethodSignature, TraitPropertyType)> {
+        expect_or_return!(TokenType::Keyword(Function), self);
+        self.advance(); // Move past function.
+        let info = self.get_doc_comment();
+        let name = check!(self.identifier());
+        let generic_params = check!(self.maybe_generic_params());
+        let params = check!(self.parameters());
+        let return_type = check!(self.maybe_type_label());
+        ended!(
+            errors::expected(TokenType::Operator(SemiColon), self.last_token_end()),
+            self
+        );
+        let token = self.token().unwrap();
+        let signature = MethodSignature {
+            name,
+            info,
+            is_static,
+            is_async,
+            is_public,
+            generic_params,
+            params,
+            return_type,
+        };
+        // If there is no body, it is a function signature.
+        if token._type == TokenType::Operator(SemiColon) {
+            let _type = TraitPropertyType::Signature;
+            self.advance(); // Move past ;
+            return Partial::from_value((signature, _type));
+        }
+        // Else it is a method.
+        let (body, errors) = self.block(ScopeType::Method).to_tuple();
+        if body.is_none() {
+            return Partial::from_errors(errors);
+        }
+        let body = body.unwrap();
+        let _type = TraitPropertyType::Method { body };
+        Partial {
+            value: Some((signature, _type)),
+            errors,
+        }
     }
 
     /// Parses an identifier and advances. It assumes that the identifier is the current token.
