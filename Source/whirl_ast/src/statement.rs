@@ -15,7 +15,7 @@ pub enum Statement {
     EnumDeclaration(EnumDeclaration),
     TypeDeclaration(TypeDeclaration),
     // Control Statements.
-    WhileStatement,
+    WhileStatement(WhileStatement),
     ForStatement,
     // Expression statements.
     ExpressionStatement(Expression),
@@ -284,6 +284,13 @@ pub struct TypeSignature {
 }
 
 #[derive(Debug, PartialEq)]
+pub struct WhileStatement {
+    pub condition: Expression,
+    pub body: Block,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
 pub struct Parameter {
     /// Name of the parameter.
     pub name: Identifier,
@@ -354,7 +361,7 @@ impl Statement {
             Statement::TraitDeclaration(t) => t.span,
             Statement::EnumDeclaration(e) => e.span,
             Statement::TypeDeclaration(t) => t.span,
-            Statement::WhileStatement => todo!(),
+            Statement::WhileStatement(w) => w.span,
             Statement::ForStatement => todo!(),
             Statement::ExpressionStatement(e) | Statement::FreeExpression(e) => e.span(),
             Statement::ShorthandVariableDeclaration(v) => v.span,
@@ -373,7 +380,7 @@ impl Statement {
             Statement::TraitDeclaration(t) => t.span.start = start,
             Statement::EnumDeclaration(e) => e.span.start = start,
             Statement::TypeDeclaration(t) => t.span.start = start,
-            Statement::WhileStatement => todo!(),
+            Statement::WhileStatement(w) => w.span.start = start,
             Statement::ForStatement => todo!(),
             Statement::ExpressionStatement(e) | Statement::FreeExpression(e) => e.set_start(start),
             Statement::ShorthandVariableDeclaration(v) => v.span.start = start,

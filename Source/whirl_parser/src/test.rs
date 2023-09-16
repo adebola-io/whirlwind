@@ -6,7 +6,7 @@ use whirl_ast::{
     IndexExpr, LogicExpr, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType, Parameter,
     ScopeAddress, ScopeEntry, Span, Statement, TestDeclaration, ThisExpr, TraitBody,
     TraitDeclaration, TraitProperty, Type, TypeDeclaration, TypeExpression, UnaryExpr,
-    UseDeclaration, UsePath, UseTarget, WhirlNumber, WhirlString,
+    UseDeclaration, UsePath, UseTarget, WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
 };
 
 use crate::parse_text;
@@ -1632,4 +1632,23 @@ fn parse_trait_declarations() {
             span: [2, 5, 7, 6].into()
         })
     );
+}
+
+#[test]
+fn parse_while_statement() {
+    let mut parser = parse_text("while true {}");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::WhileStatement(WhileStatement {
+            condition: Expression::BooleanLiteral(WhirlBoolean {
+                value: true,
+                span: [1, 7, 1, 11].into()
+            }),
+            body: Block {
+                statements: vec![],
+                span: [1, 12, 1, 14].into()
+            },
+            span: [1, 1, 1, 14].into()
+        })
+    )
 }

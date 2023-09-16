@@ -10,7 +10,7 @@ use whirl_ast::{
     ShorthandVariableDeclaration, Span, Statement, TestDeclaration, ThisExpr, Token, TokenType,
     TraitBody, TraitDeclaration, TraitProperty, TraitPropertyType, TraitSignature, Type,
     TypeDeclaration, TypeExpression, TypeSignature, UnaryExpr, UnionType, UseDeclaration, UsePath,
-    UseTarget, VariableSignature, WhirlBoolean, WhirlNumber, WhirlString,
+    UseTarget, VariableSignature, WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
 };
 use whirl_errors::{self as errors, ParseError};
 use whirl_lexer::Lexer;
@@ -815,6 +815,7 @@ impl<L: Lexer> Parser<L> {
             TokenType::Keyword(Trait) => self
                 .trait_declaration(false)
                 .map(|t| Statement::TraitDeclaration(t)),
+            TokenType::Keyword(While) => self.while_statement(),
             // unimplemented!(
             //     "{:?} not implemented yet!. The last token was {:?}",
             //     self.token().unwrap(),
@@ -1787,6 +1788,36 @@ impl<L: Lexer> Parser<L> {
         let _type = TraitPropertyType::Method { body };
         Partial {
             value: Some((signature, _type)),
+            errors,
+        }
+    }
+
+    /// Parses a while statement.
+    fn while_statement(&self) -> Imperfect<Statement> {
+        expect_or_return!(TokenType::Keyword(While), self);
+        let start = self.token().unwrap().span.start;
+        self.advance(); // Move past while.
+        let mut errors = vec![];
+        let mut condition = self.expression();
+        errors.append(&mut condition.errors);
+        if condition.is_none() {
+            return Partial::from_errors(errors);
+        }
+        let condition = condition.unwrap();
+        let mut body = self.block(ScopeType::Local);
+        errors.append(&mut body.errors);
+        if body.is_none() {
+            return Partial::from_errors(errors);
+        }
+        let body = body.unwrap();
+        let span = Span::from([start, body.span.end]);
+        let while_statement = Statement::WhileStatement(WhileStatement {
+            condition,
+            body,
+            span,
+        });
+        Partial {
+            value: Some(while_statement),
             errors,
         }
     }
