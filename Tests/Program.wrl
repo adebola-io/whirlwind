@@ -4,7 +4,7 @@ model Person {
     public var name: String;
 
     static function SayHello(): String {
-        greeting := "Person says hello!";
+        greeting := "Person says hello!"
         greeting
     }
 }

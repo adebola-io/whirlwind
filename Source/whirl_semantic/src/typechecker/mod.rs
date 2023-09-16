@@ -57,14 +57,16 @@ impl<L: Lexer> Iterator for Typechecker<L> {
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             match self.parser.next() {
-                Some(statement) => match statement {
-                    Ok(mut statement) => {
-                        let errors = self.check(&mut statement);
-                        self.statements.push(statement);
-                        return Some(errors);
+                Some(mut partial) => {
+                    self.syntax_errors.append(&mut partial.errors);
+                    if partial.is_none() {
+                        continue;
                     }
-                    Err(error) => self.syntax_errors.push(error),
-                },
+                    let mut statement = partial.unwrap();
+                    let errors = self.check(&mut statement);
+                    self.statements.push(statement);
+                    return Some(errors);
+                }
                 None => {
                     // Collect all lexical errors if parsing ends.
                     self.lexical_errors

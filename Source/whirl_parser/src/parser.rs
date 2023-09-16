@@ -13,6 +13,7 @@ use whirl_ast::{
 };
 use whirl_errors::{self as errors, ParseError};
 use whirl_lexer::Lexer;
+use whirl_utils::Partial;
 
 /// A recursive descent parser that reads tokens lazily and returns statements.
 /// It keeps tracks of three tokens to allow for limited backtracking.
@@ -29,6 +30,7 @@ pub struct Parser<L: Lexer> {
 }
 
 type Fallible<T> = Result<T, ParseError>;
+type Imperfect<T> = Partial<T, ParseError>;
 
 /// Shorthand for unconditional current token confirmation.<br>
 ///
@@ -45,6 +47,39 @@ macro_rules! expect {
             None => return Err(errors::expected($expected, $s.last_token_end())),
         }
     };};
+}
+
+/// Variant of `expect!` that returns an empty partial instead of a result.
+macro_rules! expect_or_return {
+    ($expected:expr, $s:expr) => {{
+        match $s.token() {
+            Some(token) => {
+                if token._type != $expected {
+                    return Partial::from_error(errors::expected($expected, token.span));
+                }
+            }
+            None => return Partial::from_error(errors::expected($expected, $s.last_token_end())),
+        }
+    };};
+}
+
+/// Returns an empty partial if a result is an err.
+macro_rules! check {
+    ($x: expr) => {
+        match $x {
+            Ok(x) => x,
+            Err(y) => return Partial::from_error(y),
+        }
+    };
+}
+
+/// shorthand to return an empty partial if the token stream has ended.
+macro_rules! ended {
+    ($error: expr, $self: ident) => {
+        if let None = $self.token() {
+            return Partial::from_tuple((None, vec![$error]));
+        }
+    };
 }
 
 impl<L: Lexer> Parser<L> {
@@ -155,13 +190,13 @@ impl<L: Lexer> Parser<L> {
 // Expressions
 impl<L: Lexer> Parser<L> {
     /// Parses an expression to return either an expression statement or a free expression.
-    fn expression_start(&self) -> Fallible<Statement> {
+    fn expression_start(&self) -> Imperfect<Statement> {
         // Parse a variable declaration instead if:
         // - the current token is an identifier, and
         // - the next token is a colon or a colon-assign.
-        let expression = if let Some(token) = self.token() {
+        let partial = if let Some(token) = self.token() {
             if matches!(token._type, TokenType::Ident(_)) {
-                let name = self.identifier()?;
+                let name = check!(self.identifier());
                 match self.token() {
                     Some(token)
                         if matches!(
@@ -171,54 +206,59 @@ impl<L: Lexer> Parser<L> {
                     {
                         return self.shorthand_variable_declaration(name);
                     }
-                    _ => self.reparse(Expression::Identifier(name))?,
+                    _ => self.spring(Partial::from_value(Expression::Identifier(name))),
                 }
             } else {
-                self.expression()?
+                self.expression()
             }
         } else {
-            self.expression()?
+            self.expression()
         };
 
         match self.token() {
             Some(t) => match t._type {
-                TokenType::Operator(SemiColon) => Ok(Statement::ExpressionStatement(expression)),
-                // No derivation produces <ident> <ident>.
-                TokenType::Ident(_) => Err(errors::expected(
-                    TokenType::Operator(SemiColon),
-                    Span::at(expression.span().end),
-                )),
-                _ => Ok(Statement::FreeExpression(expression)),
+                TokenType::Operator(SemiColon) => {
+                    partial.map(|exp| Statement::ExpressionStatement(exp))
+                }
+                // No derivation produces <ident> <ident>. Add error and return the parsed expression.
+                TokenType::Ident(_) => partial
+                    .with_error(errors::expected(
+                        TokenType::Operator(SemiColon),
+                        Span::at(t.span.start),
+                    ))
+                    .map(|expression| Statement::FreeExpression(expression)),
+                _ => partial.map(|expression| Statement::FreeExpression(expression)),
             },
-            None => Ok(Statement::FreeExpression(expression)),
+            None => partial.map(|expression| Statement::FreeExpression(expression)),
         }
     }
 
     /// Parses an expression.
-    fn expression(&self) -> Fallible<Expression> {
-        self.ended(errors::expression_expected(self.last_token_end()))?;
+    fn expression(&self) -> Imperfect<Expression> {
+        ended!(errors::expression_expected(self.last_token_end()), self);
 
         let token = self.token().unwrap();
 
         let expression = match token._type {
-            TokenType::Keyword(Fn) => self.function_expression()?,
-            TokenType::Keyword(True | False) => self.reparse(self.boolean_literal()?)?,
-            TokenType::Keyword(If) => self.if_expression()?,
-            TokenType::Operator(op @ (Negator | Not | Plus | Minus)) => {
-                self.unary_expression(op)?
+            TokenType::Keyword(Fn) => self.function_expression(),
+            TokenType::Keyword(True | False) => self.spring(Partial::from(self.boolean_literal())),
+            TokenType::Keyword(If) => self.if_expression(),
+            TokenType::Operator(op @ (Negator | Not | Plus | Minus)) => self.unary_expression(op),
+            TokenType::Ident(_) => {
+                self.spring(Partial::from(self.identifier()).map(|i| Expression::Identifier(i)))
             }
-            TokenType::Ident(_) => self.reparse(Expression::Identifier(self.identifier()?))?,
-            TokenType::String(_) => self.reparse(self.string_literal()?)?,
+            TokenType::String(_) => self.spring(Partial::from(self.string_literal())),
             TokenType::TemplateStringFragment(_) => todo!(),
-            TokenType::Number(_) => self.reparse(self.number_literal()?)?,
-            TokenType::Bracket(LParens) => self.reparse(self.grouped_expression()?)?,
-            TokenType::Bracket(LSquare) => self.array_expression()?,
-            TokenType::Bracket(LCurly) => {
-                self.reparse(Expression::BlockExpr(self.block(ScopeType::Local)?))?
-            }
-            _ => return Err(errors::expected(TokenType::Operator(SemiColon), token.span)),
+            TokenType::Number(_) => self.spring(Partial::from(self.number_literal())),
+            TokenType::Bracket(LParens) => self.spring(self.grouped_expression()),
+            TokenType::Bracket(LSquare) => self.array_expression(),
+            TokenType::Bracket(LCurly) => self.spring(
+                self.block(ScopeType::Local)
+                    .map(|b| Expression::BlockExpr(b)),
+            ),
+            _ => Partial::from_error(errors::expected(TokenType::Operator(SemiColon), token.span)),
         };
-        Ok(expression)
+        expression
     }
 
     /// Parses a boolean literal.
@@ -265,26 +305,34 @@ impl<L: Lexer> Parser<L> {
     }
 
     /// Parses a function expression.
-    fn function_expression(&self) -> Fallible<Expression> {
-        expect!(TokenType::Keyword(Fn), self);
+    fn function_expression(&self) -> Imperfect<Expression> {
+        expect_or_return!(TokenType::Keyword(Fn), self);
         let start = self.token().unwrap().span.start;
 
         self.advance(); // Move past fn.
-        let generic_params = self.maybe_generic_params()?;
-        let params = self.parameters()?;
-        let return_type = self.maybe_type_label()?;
+        let generic_params = check!(self.maybe_generic_params());
+        let params = check!(self.parameters());
+        let return_type = check!(self.maybe_type_label());
 
-        self.ended(errors::expected(
-            TokenType::Bracket(LCurly),
-            self.last_token_span(),
-        ))?;
+        ended!(
+            errors::expected(TokenType::Bracket(LCurly), self.last_token_span(),),
+            self
+        );
 
         let token = self.token().unwrap();
-        let body = match token._type {
+        let (body, errors) = match token._type {
             // Parse block.
-            TokenType::Bracket(LCurly) => Expression::BlockExpr(self.block(ScopeType::Functional)?),
-            _ => self.expression()?,
-        };
+            TokenType::Bracket(LCurly) => self
+                .block(ScopeType::Functional)
+                .map(|b| Expression::BlockExpr(b)),
+            _ => self.expression(),
+        }
+        .to_tuple();
+
+        if body.is_none() {
+            return Partial::from_errors(errors);
+        }
+        let body = body.unwrap();
 
         let end = body.span().end;
         let span = Span::from([start, end]);
@@ -296,44 +344,56 @@ impl<L: Lexer> Parser<L> {
             body,
             span,
         };
-        let exp = Expression::FnExpr(Box::new(function));
-        Ok(self.reparse(exp)?)
+        let exp = Partial::from_tuple((Some(Expression::FnExpr(Box::new(function))), errors));
+        self.spring(exp)
     }
 
     /// Parses an if expression.
-    fn if_expression(&self) -> Fallible<Expression> {
-        expect!(TokenType::Keyword(If), self);
+    fn if_expression(&self) -> Imperfect<Expression> {
+        expect_or_return!(TokenType::Keyword(If), self);
 
         let start = self.token().unwrap().span.start;
         self.advance(); // Move past if.
-
-        let condition = self.expression()?;
-
-        let consequent = self.block(ScopeType::Local)?;
-
+        let mut errors = vec![];
+        let (condition, mut condition_errors) = self.expression().to_tuple();
+        if condition.is_none() {
+            return Partial::from_errors(condition_errors);
+        }
+        let condition = condition.unwrap();
+        errors.append(&mut condition_errors);
+        let (consequent, mut consequent_errors) = self.block(ScopeType::Local).to_tuple();
+        if consequent.is_none() {
+            return Partial::from_errors(consequent_errors);
+        }
+        let consequent = consequent.unwrap();
+        errors.append(&mut consequent_errors);
         let mut end = consequent.span.end;
 
         // Parses an else alternate.
-        let alternate = if let Some(token) = self.token() {
-            match token._type {
-                TokenType::Keyword(Else) => {
-                    let start = self.token().unwrap().span.start;
-                    self.advance(); // Move past else.
+        let alternate = (|| {
+            if let Some(token) = self.token() {
+                match token._type {
+                    TokenType::Keyword(Else) => {
+                        let start = self.token().unwrap().span.start;
+                        self.advance(); // Move past else.
 
-                    let expression = self.expression()?;
-                    let else_end = expression.span().end;
-                    end = else_end;
-                    let else_exp = whirl_ast::Else {
-                        expression,
-                        span: Span::from([start, else_end]),
-                    };
-                    Some(else_exp)
+                        let (expression, mut exp_errors) = self.expression().to_tuple();
+                        errors.append(&mut exp_errors);
+                        let expression = expression?;
+                        let else_end = expression.span().end;
+                        end = else_end;
+                        let else_exp = whirl_ast::Else {
+                            expression,
+                            span: Span::from([start, else_end]),
+                        };
+                        Some(else_exp)
+                    }
+                    _ => None,
                 }
-                _ => None,
+            } else {
+                None
             }
-        } else {
-            None
-        };
+        })();
 
         let span = Span::from([start, end]);
 
@@ -344,35 +404,39 @@ impl<L: Lexer> Parser<L> {
             span,
         };
 
-        let expr = Expression::IfExpr(Box::new(if_expr));
+        let expr = Partial::from_tuple((Some(Expression::IfExpr(Box::new(if_expr))), errors));
 
-        Ok(self.reparse(expr)?)
+        self.spring(expr)
     }
 
     /// Parses a grouped expression.
-    fn grouped_expression(&self) -> Fallible<Expression> {
-        expect!(TokenType::Bracket(LParens), self);
+    fn grouped_expression(&self) -> Imperfect<Expression> {
+        expect_or_return!(TokenType::Bracket(LParens), self);
         self.advance(); // move past (
-        let expression = self.expression()?;
-        expect!(TokenType::Bracket(RParens), self);
+        let expression = self.expression();
+        expect_or_return!(TokenType::Bracket(RParens), self);
         self.advance(); // Move past )
-        Ok(self.reparse(expression)?)
+        self.spring(expression)
     }
 
     /// Parses an array expression.
-    fn array_expression(&self) -> Fallible<Expression> {
-        expect!(TokenType::Bracket(LSquare), self);
+    fn array_expression(&self) -> Imperfect<Expression> {
+        expect_or_return!(TokenType::Bracket(LSquare), self);
         let start = self.token().unwrap().span.start;
         self.advance(); // Move past [
 
         let mut elements = vec![];
+        let mut errors = vec![];
 
         while self
             .token()
             .is_some_and(|token| token._type != TokenType::Bracket(RSquare))
         {
-            let expression = self.expression()?;
-            elements.push(expression);
+            let (expression, mut exp_errors) = self.expression().to_tuple();
+            errors.append(&mut exp_errors);
+            if let Some(element) = expression {
+                elements.push(element);
+            }
             if self
                 .token()
                 .is_some_and(|t| t._type == TokenType::Operator(Comma))
@@ -382,17 +446,20 @@ impl<L: Lexer> Parser<L> {
             }
             break;
         }
-        expect!(TokenType::Bracket(RSquare), self);
+        expect_or_return!(TokenType::Bracket(RSquare), self);
         let end = self.token().unwrap().span.end;
         self.advance(); // Move past ];
         let span = Span::from([start, end]);
 
         let array = ArrayExpr { elements, span };
-        Ok(self.reparse(Expression::ArrayExpr(array))?)
+        self.spring(Partial {
+            value: Some(Expression::ArrayExpr(array)),
+            errors,
+        })
     }
 
     /// Reparses an expression to calculate associativity and precedence.
-    fn reparse(&self, exp: Expression) -> Fallible<Expression> {
+    fn spring(&self, exp: Imperfect<Expression>) -> Imperfect<Expression> {
         match self.token() {
             Some(token) => match token._type {
                 TokenType::Bracket(LParens) => self.call_expression(exp),
@@ -408,30 +475,34 @@ impl<L: Lexer> Parser<L> {
                 TokenType::Operator(op @ (Assign | PlusAssign | MinusAssign)) => {
                     self.assignment_expression(exp, op)
                 }
-                _ => Ok(exp),
+                _ => exp,
             },
-            None => Ok(exp),
+            None => exp,
         }
     }
 
     /// Parses a call expression.
-    fn call_expression(&self, caller: Expression) -> Fallible<Expression> {
-        if self.is_lower_or_equal_precedence(ExpressionPrecedence::Call) {
-            return Ok(caller);
+    fn call_expression(&self, caller: Imperfect<Expression>) -> Imperfect<Expression> {
+        if self.is_lower_or_equal_precedence(ExpressionPrecedence::Call) || caller.is_none() {
+            return caller;
         }
-        expect!(TokenType::Bracket(LParens), self);
+        let (caller, mut errors) = caller.to_tuple();
+        let caller = caller.unwrap();
+        expect_or_return!(TokenType::Bracket(LParens), self);
         self.advance(); // Move past (
         let start = caller.span().start;
         self.push_precedence(ExpressionPrecedence::Pseudo);
 
         let mut arguments = vec![];
-
         while self
             .token()
             .is_some_and(|t| t._type != TokenType::Bracket(RParens))
         {
-            let argument = self.expression()?;
-            arguments.push(argument);
+            let mut partial = self.expression();
+            errors.append(&mut partial.errors);
+            if let Some(argument) = partial.value {
+                arguments.push(argument);
+            }
             if self
                 .token()
                 .is_some_and(|t| t._type == TokenType::Operator(Comma))
@@ -441,8 +512,7 @@ impl<L: Lexer> Parser<L> {
             }
             break;
         }
-
-        expect!(TokenType::Bracket(RParens), self);
+        expect_or_return!(TokenType::Bracket(RParens), self);
         let end = self.token().unwrap().span.end;
         self.advance(); // Move past )
 
@@ -454,23 +524,36 @@ impl<L: Lexer> Parser<L> {
             arguments,
             span,
         };
-        let exp = Expression::CallExpr(Box::new(call_expression));
-        Ok(self.reparse(exp)?)
+        let exp = Partial {
+            value: Some(Expression::CallExpr(Box::new(call_expression))),
+            errors,
+        };
+        self.spring(exp)
     }
 
     /// Parses an index expression.
-    fn index_expression(&self, object: Expression) -> Fallible<Expression> {
-        if self.is_lower_or_equal_precedence(ExpressionPrecedence::Index) {
-            return Ok(object);
+    fn index_expression(&self, object: Imperfect<Expression>) -> Imperfect<Expression> {
+        if self.is_lower_or_equal_precedence(ExpressionPrecedence::Index) || object.is_none() {
+            return object;
         }
 
-        expect!(TokenType::Bracket(LSquare), self);
+        let (object, mut errors) = object.to_tuple();
+        let object = object.unwrap();
+        expect_or_return!(TokenType::Bracket(LSquare), self);
         self.advance(); // Move past [
         let start = object.span().start;
         self.push_precedence(ExpressionPrecedence::Pseudo);
-        let index = self.expression()?;
+        let (index, mut index_errors) = self.expression().to_tuple();
+        errors.append(&mut index_errors);
+        if index.is_none() {
+            return Partial {
+                value: Some(object),
+                errors,
+            };
+        }
+        let index = index.unwrap();
         self.precedence_stack.borrow_mut().pop();
-        expect!(TokenType::Bracket(RSquare), self);
+        expect_or_return!(TokenType::Bracket(RSquare), self);
         let end = self.token().unwrap().span.end;
         self.advance(); // Move past ]
 
@@ -479,24 +562,40 @@ impl<L: Lexer> Parser<L> {
             index,
             span: Span::from([start, end]),
         };
-
-        Ok(self.reparse(Expression::IndexExpr(Box::new(index_exp)))?)
+        let indexexpr = Partial {
+            value: Some(Expression::IndexExpr(Box::new(index_exp))),
+            errors,
+        };
+        self.spring(indexexpr)
     }
 
     /// Parses an access expression.
-    fn access_expression(&self, object: Expression) -> Fallible<Expression> {
-        if self.is_lower_or_equal_precedence(ExpressionPrecedence::Access) {
-            return Ok(object);
+    fn access_expression(&self, object: Imperfect<Expression>) -> Imperfect<Expression> {
+        if self.is_lower_or_equal_precedence(ExpressionPrecedence::Access) || object.is_none() {
+            return object;
         }
+        let (obj, mut errors) = object.to_tuple();
+        let object = obj.unwrap();
         let start = object.span().start;
         self.advance(); // Move past .
         self.push_precedence(ExpressionPrecedence::Access);
-        let property = self.expression()?;
-
+        let mut property = self.expression();
+        errors.append(&mut property.errors);
+        if property.is_none() {
+            return Partial {
+                value: Some(object),
+                errors,
+            };
+        }
+        let property = property.unwrap();
         // Only allow identifiers.
         if let Expression::Identifier(_) = property {
         } else {
-            return Err(errors::identifier_expected(property.span()));
+            errors.push(errors::identifier_expected(property.span()));
+            return Partial {
+                value: Some(object),
+                errors,
+            };
         }
 
         self.precedence_stack.borrow_mut().pop();
@@ -507,19 +606,37 @@ impl<L: Lexer> Parser<L> {
             property,
             span,
         };
-        Ok(self.reparse(Expression::AccessExpr(Box::new(access_exp)))?)
+        let exp = Partial {
+            value: Some(Expression::AccessExpr(Box::new(access_exp))),
+            errors,
+        };
+        self.spring(exp)
     }
 
     /// Parses a binary expression.
-    fn binary_expression(&self, left: Expression, op: whirl_ast::Operator) -> Fallible<Expression> {
+    fn binary_expression(
+        &self,
+        left: Imperfect<Expression>,
+        op: whirl_ast::Operator,
+    ) -> Imperfect<Expression> {
         let precedence = op.into();
-        if self.is_lower_or_equal_precedence(precedence) {
-            return Ok(left);
+        if self.is_lower_or_equal_precedence(precedence) || left.is_none() {
+            return left;
         }
+        let (left, mut errors) = left.to_tuple();
+        let left = left.unwrap();
         let start = left.span().start;
         self.advance(); // Move past operator.
         self.push_precedence(precedence);
-        let right = self.expression()?;
+        let mut partial = self.expression();
+        errors.append(&mut partial.errors);
+        if partial.is_none() {
+            return Partial {
+                value: Some(left),
+                errors,
+            };
+        }
+        let right = partial.unwrap();
         self.precedence_stack.borrow_mut().pop();
         let end = right.span().end;
         let span = Span::from([start, end]);
@@ -529,23 +646,37 @@ impl<L: Lexer> Parser<L> {
             right,
             span,
         };
-        Ok(self.reparse(Expression::BinaryExpr(Box::new(bin_exp)))?)
+        let partial = Partial {
+            value: Some(Expression::BinaryExpr(Box::new(bin_exp))),
+            errors,
+        };
+        self.spring(partial)
     }
 
     /// Parses a logical expression.
     fn logical_expression(
         &self,
-        left: Expression,
+        left: Imperfect<Expression>,
         op: whirl_ast::Operator,
-    ) -> Fallible<Expression> {
+    ) -> Imperfect<Expression> {
         let precedence = op.into();
-        if self.is_lower_or_equal_precedence(precedence) {
-            return Ok(left);
+        if self.is_lower_or_equal_precedence(precedence) || left.is_none() {
+            return left;
         }
+        let (left, mut errors) = left.to_tuple();
+        let left = left.unwrap();
         let start = left.span().start;
         self.advance(); // Move past operator.
         self.push_precedence(precedence);
-        let right = self.expression()?;
+        let mut partial = self.expression();
+        errors.append(&mut partial.errors);
+        if partial.is_none() {
+            return Partial {
+                value: Some(left),
+                errors,
+            };
+        }
+        let right = partial.unwrap();
         self.precedence_stack.borrow_mut().pop();
         let end = right.span().end;
         let span = Span::from([start, end]);
@@ -555,23 +686,37 @@ impl<L: Lexer> Parser<L> {
             right,
             span,
         };
-        Ok(self.reparse(Expression::LogicExpr(Box::new(log_exp)))?)
+        let partial = Partial {
+            value: Some(Expression::LogicExpr(Box::new(log_exp))),
+            errors,
+        };
+        self.spring(partial)
     }
 
     /// Parses an assignment expression.
     fn assignment_expression(
         &self,
-        left: Expression,
+        left: Imperfect<Expression>,
         op: whirl_ast::Operator,
-    ) -> Fallible<Expression> {
+    ) -> Imperfect<Expression> {
         let precedence = op.into();
-        if self.is_lower_or_equal_precedence(precedence) {
-            return Ok(left);
+        if self.is_lower_or_equal_precedence(precedence) || left.is_none() {
+            return left;
         }
+        let (left, mut errors) = left.to_tuple();
+        let left = left.unwrap();
         let start = left.span().start;
         self.advance(); // Move past operator.
         self.push_precedence(precedence);
-        let right = self.expression()?;
+        let mut partial = self.expression();
+        errors.append(&mut partial.errors);
+        if partial.is_none() {
+            return Partial {
+                value: Some(left),
+                errors,
+            };
+        }
+        let right = partial.unwrap();
         self.precedence_stack.borrow_mut().pop();
         let end = right.span().end;
         let span = Span::from([start, end]);
@@ -581,18 +726,26 @@ impl<L: Lexer> Parser<L> {
             right,
             span,
         };
-        Ok(self.reparse(Expression::AssignmentExpr(Box::new(ass_exp)))?)
+        let partial = Partial {
+            value: Some(Expression::AssignmentExpr(Box::new(ass_exp))),
+            errors,
+        };
+        self.spring(partial)
     }
 
     /// Parses a unary expression.
-    fn unary_expression(&self, operator: whirl_ast::Operator) -> Fallible<Expression> {
+    fn unary_expression(&self, operator: whirl_ast::Operator) -> Imperfect<Expression> {
         let precedence = operator.into();
-        expect!(TokenType::Operator(operator), self);
+        expect_or_return!(TokenType::Operator(operator), self);
         let start = self.token().unwrap().span.start;
         self.advance(); // Move past operator.
         self.push_precedence(precedence);
-        let operand = self.expression()?;
+        let (operand, errors) = self.expression().to_tuple();
         self.precedence_stack.borrow_mut().pop();
+        if operand.is_none() {
+            return Partial::from_errors(errors);
+        }
+        let operand = operand.unwrap();
         let end = operand.span().end;
         let span = Span::from([start, end]);
         let un_exp = UnaryExpr {
@@ -600,26 +753,31 @@ impl<L: Lexer> Parser<L> {
             operand,
             span,
         };
-        Ok(self.reparse(Expression::UnaryExpr(Box::new(un_exp)))?)
+        let exp = Partial {
+            value: Some(Expression::UnaryExpr(Box::new(un_exp))),
+            errors,
+        };
+        self.spring(exp)
     }
 }
 
 // Statements
 impl<L: Lexer> Parser<L> {
     /// Parses a statement.
-    fn statement(&self) -> Result<Statement, ParseError> {
-        self.ended(errors::declaration_or_statement_expected(
-            self.last_token_end(),
-        ))?;
+    fn statement(&self) -> Partial<Statement, ParseError> {
+        ended!(
+            errors::declaration_or_statement_expected(self.last_token_end(),),
+            self
+        );
 
-        let token = match self.token().unwrap()._type {
+        let statement = match self.token().unwrap()._type {
             // function...
             TokenType::Keyword(Function) => self
                 .function(false, false)
                 .map(|f| Statement::FunctionDeclaration(f)),
             // public...
             TokenType::Keyword(Public) => self.public_declaration(),
-            // async...
+            // // async...
             TokenType::Keyword(Async) => self
                 .async_function(false)
                 .map(|f| Statement::FunctionDeclaration(f)),
@@ -627,19 +785,19 @@ impl<L: Lexer> Parser<L> {
             TokenType::Keyword(whirl_ast::Keyword::Type) => self
                 .type_declaration(false)
                 .map(|t| Statement::TypeDeclaration(t)),
-            // test...
+            // // test...
             TokenType::Keyword(Test) => self
                 .test_declaration()
                 .map(|t| Statement::TestDeclaration(t)),
-            // use...
+            // // use...
             TokenType::Keyword(Use) => self
                 .use_declaration(false)
                 .map(|u| Statement::UseDeclaration(u)),
-            // enum...
+            // // enum...
             TokenType::Keyword(Enum) => self
                 .enum_declaration(false)
                 .map(|e| Statement::EnumDeclaration(e)),
-            // model...
+            // // model...
             TokenType::Keyword(Model) => self
                 .model_declaration(false)
                 .map(|m| Statement::ModelDeclaration(m)),
@@ -649,41 +807,47 @@ impl<L: Lexer> Parser<L> {
             //     self.past.borrow_mut()
             // )
             _ => self.expression_start(),
+            // _ => todo!(),
         };
 
         // If an error is encountered, clear the precedence stack and skip all the next (likely corrupted) tokens until after a right delimeter or boundary.
         // Then resume normal parsing.
-        if token.is_ok() {
-            return token;
-        }
-        self.precedence_stack.borrow_mut().clear();
-        self.advance();
-        loop {
-            match self.token() {
-                Some(token) => match token._type {
-                    TokenType::Bracket(RCurly | RParens | RSquare)
-                    | TokenType::Operator(SemiColon | GreaterThan | RightShift) => break,
-                    _ => self.advance(),
-                },
-                None => break,
+        if statement.is_none() {
+            self.precedence_stack.borrow_mut().clear();
+            self.advance();
+            loop {
+                match self.token() {
+                    Some(token) => match token._type {
+                        TokenType::Bracket(RCurly | RParens | RSquare)
+                        | TokenType::Operator(SemiColon | GreaterThan | RightShift) => break,
+                        _ => self.advance(),
+                    },
+                    None => break,
+                }
             }
         }
-        token
+        statement
     }
 
     /// Parses a function. It assumes that `function` is the current token, and has already been checked.
-    fn function(&self, is_async: bool, is_public: bool) -> Fallible<FunctionDeclaration> {
-        expect!(TokenType::Keyword(Function), self);
+    fn function(&self, is_async: bool, is_public: bool) -> Imperfect<FunctionDeclaration> {
+        expect_or_return!(TokenType::Keyword(Function), self);
         let start = self.token().unwrap().span.start;
 
         let info = self.get_doc_comment();
         self.advance(); // Move past function.
 
-        let name = self.identifier()?;
-        let generic_params = self.maybe_generic_params()?;
-        let params = self.parameters()?;
-        let return_type = self.maybe_type_label()?;
-        let body = self.block(ScopeType::Functional)?;
+        let name = check!(self.identifier());
+        let generic_params = check!(self.maybe_generic_params());
+        let params = check!(self.parameters());
+        let return_type = check!(self.maybe_type_label());
+        // Errors found in the body of the function.
+        let (body, errors) = self.block(ScopeType::Functional).to_tuple();
+        // Require a function body.
+        if body.is_none() {
+            return Partial::from_errors(errors);
+        }
+        let body = body.unwrap();
 
         let signature = FunctionSignature {
             name,
@@ -708,89 +872,97 @@ impl<L: Lexer> Parser<L> {
             body,
         };
 
-        Ok(function)
+        Partial::from_tuple((Some(function), errors))
     }
 
     /// Parses an async function. Assumes that `async` is the current token (and has already been checked).
-    fn async_function(&self, is_public: bool) -> Fallible<FunctionDeclaration> {
-        expect!(TokenType::Keyword(Async), self);
+    fn async_function(&self, is_public: bool) -> Imperfect<FunctionDeclaration> {
+        expect_or_return!(TokenType::Keyword(Async), self);
         let start = self.token().unwrap().span.start;
         self.advance(); // Move past async.
 
-        expect!(TokenType::Keyword(Function), self);
+        expect_or_return!(TokenType::Keyword(Function), self);
 
-        let mut function = self.function(true, is_public)?;
-        function.span.start = start;
+        let mut partial = self.function(true, is_public);
+        if let Some(function) = &mut partial.value {
+            function.span.start = start;
+        }
 
-        Ok(function)
+        partial
     }
 
     /// Parses a public declaration. Assumes that `public` is the current token.
-    fn public_declaration(&self) -> Fallible<Statement> {
-        expect!(TokenType::Keyword(Public), self);
+    fn public_declaration(&self) -> Imperfect<Statement> {
+        expect_or_return!(TokenType::Keyword(Public), self);
 
         let start = self.token().unwrap().span.start;
 
         self.advance(); // Move past public.
 
-        self.ended(errors::declaration_expected(self.last_token_span()))?;
+        ended!(errors::declaration_expected(self.last_token_span()), self);
 
         let token = self.token().unwrap();
 
-        let mut statement = match token._type {
+        let mut partial = match token._type {
             // Repeated.
-            TokenType::Keyword(Public) => return Err(errors::declaration_expected(token.span)),
+            TokenType::Keyword(Public) => {
+                Partial::from_error(errors::declaration_expected(token.span))
+            }
 
-            TokenType::Keyword(Function) => {
-                Statement::FunctionDeclaration(self.function(false, true)?)
-            }
-            TokenType::Keyword(Test) => return Err(errors::public_test(token.span)),
-            TokenType::Keyword(Use) => Statement::UseDeclaration(self.use_declaration(true)?),
-            TokenType::Keyword(Async) => Statement::FunctionDeclaration(self.async_function(true)?),
-            TokenType::Keyword(whirl_ast::Keyword::Type) => {
-                Statement::TypeDeclaration(self.type_declaration(true)?)
-            }
-            TokenType::Keyword(Enum) => Statement::EnumDeclaration(self.enum_declaration(true)?),
-            TokenType::Keyword(Model) => Statement::ModelDeclaration(self.model_declaration(true)?),
+            TokenType::Keyword(Function) => self
+                .function(false, true)
+                .map(|f| Statement::FunctionDeclaration(f)),
+            TokenType::Keyword(Test) => Partial::from_error(errors::public_test(token.span)),
+            TokenType::Keyword(Use) => self
+                .use_declaration(true)
+                .map(|u| Statement::UseDeclaration(u)),
+            TokenType::Keyword(Async) => self
+                .async_function(true)
+                .map(|f| Statement::FunctionDeclaration(f)),
+            TokenType::Keyword(whirl_ast::Keyword::Type) => self
+                .type_declaration(true)
+                .map(|t| Statement::TypeDeclaration(t)),
+            TokenType::Keyword(Enum) => self
+                .enum_declaration(true)
+                .map(|e| Statement::EnumDeclaration(e)),
+            TokenType::Keyword(Model) => self
+                .model_declaration(true)
+                .map(|m| Statement::ModelDeclaration(m)),
             // Parse public shorthand variable declaration as syntax error.
             TokenType::Ident(_) => {
-                let statement = self.statement()?;
-                return if statement.is_variable_declaration() {
-                    Err(errors::public_shorthand_var(statement.span()))
+                let statement = self.statement();
+                return if statement.exists_and(|s| s.is_variable_declaration()) {
+                    Partial::from_error(errors::public_shorthand_var(statement.unwrap().span()))
                 } else {
-                    Err(errors::declaration_expected(Span::from([start, start])))
+                    Partial::from_error(errors::declaration_expected(Span::from([start, start])))
                 };
             }
-            _ => return Err(errors::declaration_expected(token.span)),
+            _ => Partial::from_error(errors::declaration_expected(token.span)),
         };
 
-        statement.set_start(start);
+        if let Some(statement) = &mut partial.value {
+            statement.set_start(start);
+        }
 
-        Ok(statement)
+        partial
     }
 
     /// Parses a type declaration. Assumes that `type` is the current token.
-    fn type_declaration(&self, is_public: bool) -> Fallible<TypeDeclaration> {
-        expect!(TokenType::Keyword(Type), self);
+    fn type_declaration(&self, is_public: bool) -> Imperfect<TypeDeclaration> {
+        expect_or_return!(TokenType::Keyword(Type), self);
         let start = self.token().unwrap().span.start;
-
         let info = self.get_doc_comment();
         self.advance(); // move past type.
 
-        let name = self.identifier()?;
-        let generic_params = self.maybe_generic_params()?;
-        expect!(TokenType::Operator(Assign), self);
+        let name = check!(self.identifier());
+        let generic_params = check!(self.maybe_generic_params());
+        expect_or_return!(TokenType::Operator(Assign), self);
         self.advance(); // Move past =
-
-        let value = self.type_expression()?;
-
-        expect!(TokenType::Operator(SemiColon), self);
+        let value = check!(self.type_expression());
+        expect_or_return!(TokenType::Operator(SemiColon), self);
         let end = value.span().end;
-
         self.advance(); // Move past ;
-
         let span = Span::from([start, end]);
-
         let signature = TypeSignature {
             name,
             info,
@@ -798,9 +970,7 @@ impl<L: Lexer> Parser<L> {
             generic_params,
             value,
         };
-
         let entry_no = self.scope_manager().register(ScopeEntry::Type(signature));
-
         let type_ = TypeDeclaration {
             address: ScopeAddress {
                 scope_id: self.scope_manager().current(),
@@ -808,17 +978,16 @@ impl<L: Lexer> Parser<L> {
             },
             span,
         };
-
-        Ok(type_)
+        Partial::from_value(type_)
     }
 
     /// Parses a test declaration. Assumes that `test` is the current token.
-    fn test_declaration(&self) -> Fallible<TestDeclaration> {
-        expect!(TokenType::Keyword(Test), self);
+    fn test_declaration(&self) -> Imperfect<TestDeclaration> {
+        expect_or_return!(TokenType::Keyword(Test), self);
         let start = self.token().unwrap().span.start;
         self.advance(); // Move past test.
 
-        self.ended(errors::string_expected(self.last_token_end()))?;
+        ended!(errors::string_expected(self.last_token_end()), self);
         let token = self.token().unwrap();
 
         match token._type {
@@ -828,7 +997,11 @@ impl<L: Lexer> Parser<L> {
 
                 self.advance(); // Move past string.
 
-                let body = self.block(ScopeType::Test)?;
+                let (body, errors) = self.block(ScopeType::Test).to_tuple();
+                if body.is_none() {
+                    return Partial::from_errors(errors);
+                }
+                let body = body.unwrap();
                 let span = Span::from([start, body.span.end]);
                 let test_decl = TestDeclaration {
                     name,
@@ -836,38 +1009,30 @@ impl<L: Lexer> Parser<L> {
                     body,
                     span,
                 };
-                Ok(test_decl)
+                Partial::from_tuple((Some(test_decl), errors))
             }
-            _ => Err(errors::string_expected(token.span)),
+            _ => Partial::from_error(errors::string_expected(token.span)),
         }
     }
 
     /// Parses a use import. Assumes that `use` is the current token.
-    fn use_declaration(&self, is_public: bool) -> Fallible<UseDeclaration> {
-        expect!(TokenType::Keyword(Use), self);
-
+    fn use_declaration(&self, is_public: bool) -> Imperfect<UseDeclaration> {
+        expect_or_return!(TokenType::Keyword(Use), self);
         let start = self.token().unwrap().span.start;
         self.advance(); // Move past use.
-
-        let name = self.identifier()?;
-
-        let path = self.use_path()?;
-
-        expect!(TokenType::Operator(SemiColon), self);
+        let name = check!(self.identifier());
+        let path = check!(self.use_path());
+        expect_or_return!(TokenType::Operator(SemiColon), self);
         let end = self.token().unwrap().span.end;
         self.advance(); // Move past ;
-
         let span = Span::from([start, end]);
-
         let target = UseTarget { name, path };
-
         let use_decl = UseDeclaration {
             target,
             is_public,
             span,
         };
-
-        Ok(use_decl)
+        Partial::from_value(use_decl)
     }
 
     /// Parses a use path.
@@ -930,14 +1095,18 @@ impl<L: Lexer> Parser<L> {
     }
 
     /// Parses an enum declaration. Assumes that `enum` is the current token.
-    fn enum_declaration(&self, is_public: bool) -> Fallible<EnumDeclaration> {
-        expect!(TokenType::Keyword(Enum), self);
+    fn enum_declaration(&self, is_public: bool) -> Imperfect<EnumDeclaration> {
+        expect_or_return!(TokenType::Keyword(Enum), self);
         let start = self.token().unwrap().span.start;
         let info = self.get_doc_comment();
         self.advance(); // Move past enum.
-        let name = self.identifier()?;
-        let generic_params = self.maybe_generic_params()?;
-        let (variants, end) = self.enum_variants()?;
+        let name = check!(self.identifier());
+        let generic_params = check!(self.maybe_generic_params());
+        let (variants, errors) = self.enum_variants().to_tuple();
+        if variants.is_none() {
+            return Partial::from_errors(errors);
+        }
+        let (variants, end) = variants.unwrap();
         let signature = EnumSignature {
             name,
             info,
@@ -952,20 +1121,25 @@ impl<L: Lexer> Parser<L> {
         };
         let span = Span::from([start, end]);
         let enum_ = EnumDeclaration { address, span };
-        Ok(enum_)
+        Partial::from_value(enum_)
     }
 
     /// Parses an enum variant.
-    fn enum_variants(&self) -> Fallible<(Vec<EnumVariant>, [u32; 2])> {
-        expect!(TokenType::Bracket(LCurly), self);
+    fn enum_variants(&self) -> Imperfect<(Vec<EnumVariant>, [u32; 2])> {
+        expect_or_return!(TokenType::Bracket(LCurly), self);
         self.advance(); // Move past {
 
         let mut variants = vec![];
+        let mut errors = vec![];
         while self
             .token()
             .is_some_and(|t| t._type != TokenType::Bracket(LCurly))
         {
-            variants.push(self.enum_variant()?);
+            let mut partial = self.enum_variant();
+            errors.append(&mut partial.errors);
+            if let Some(variant) = partial.value {
+                variants.push(variant);
+            }
             if self.token().unwrap()._type == TokenType::Operator(Comma) {
                 self.advance();
                 continue;
@@ -973,17 +1147,17 @@ impl<L: Lexer> Parser<L> {
             break;
         }
 
-        expect!(TokenType::Bracket(RCurly), self);
+        expect_or_return!(TokenType::Bracket(RCurly), self);
         let end = self.token().unwrap().span.end;
         self.advance(); // Close }
 
-        Ok((variants, end))
+        Partial::from_tuple((Some((variants, end)), errors))
     }
 
     /// Parses an enum variant. Assumes that the name is the current token.
-    fn enum_variant(&self) -> Fallible<EnumVariant> {
+    fn enum_variant(&self) -> Imperfect<EnumVariant> {
         let info = self.get_doc_comment();
-        let name = self.identifier()?;
+        let name = check!(self.identifier());
         let start = name.span.start;
         let end;
         let mut tagged_type = None;
@@ -993,8 +1167,8 @@ impl<L: Lexer> Parser<L> {
             .is_some_and(|token| token._type == TokenType::Bracket(LParens))
         {
             self.advance(); // Move past (
-            tagged_type = Some(self.type_expression()?);
-            expect!(TokenType::Bracket(RParens), self);
+            tagged_type = Some(check!(self.type_expression()));
+            expect_or_return!(TokenType::Bracket(RParens), self);
             end = self.token().unwrap().span.end;
             self.advance(); // Move past )
         } else {
@@ -1010,23 +1184,27 @@ impl<L: Lexer> Parser<L> {
             span,
         };
 
-        Ok(variant)
+        Partial::from_value(variant)
     }
 
     /// Parses a model declaration. Assumes that `model` is the current token.
-    fn model_declaration(&self, is_public: bool) -> Fallible<ModelDeclaration> {
-        expect!(TokenType::Keyword(Model), self);
+    fn model_declaration(&self, is_public: bool) -> Imperfect<ModelDeclaration> {
+        expect_or_return!(TokenType::Keyword(Model), self);
         let start = self.token().unwrap().span.start;
         let info = self.get_doc_comment();
         self.advance(); // Move past model.
-        let name = self.identifier()?;
-        let generic_params = self.maybe_generic_params()?;
-        self.ended(errors::expected(
-            TokenType::Bracket(LCurly),
-            self.last_token_end(),
-        ))?;
-        let implementations = self.maybe_trait_implementations()?;
-        let (body, properties, methods, parameters) = self.model_body()?;
+        let name = check!(self.identifier());
+        let generic_params = check!(self.maybe_generic_params());
+        ended!(
+            errors::expected(TokenType::Bracket(LCurly), self.last_token_end(),),
+            self
+        );
+        let implementations = check!(self.maybe_trait_implementations());
+        let (results, errors) = self.model_body().to_tuple();
+        if results.is_none() {
+            return Partial::from_errors(errors);
+        }
+        let (body, properties, methods, parameters) = results.unwrap();
         let signature = ModelSignature {
             name,
             info,
@@ -1049,7 +1227,10 @@ impl<L: Lexer> Parser<L> {
             body,
             span,
         };
-        Ok(model)
+        Partial {
+            value: Some(model),
+            errors,
+        }
     }
 
     /// Maybe parses a list of trait implementations.
@@ -1094,15 +1275,17 @@ impl<L: Lexer> Parser<L> {
     /// Rambly function to parse a model body.
     fn model_body(
         &self,
-    ) -> Fallible<(
+    ) -> Imperfect<(
         ModelBody,
         Vec<AttributeSignature>,
         Vec<MethodSignature>,
         Vec<Parameter>,
     )> {
-        expect!(TokenType::Bracket(LCurly), self);
+        expect_or_return!(TokenType::Bracket(LCurly), self);
         let start = self.token().unwrap().span.start;
         self.advance(); // Move past {
+
+        let mut body_errors = vec![];
 
         let mut attribute_signatures = vec![];
         let mut method_signatures = vec![];
@@ -1113,8 +1296,13 @@ impl<L: Lexer> Parser<L> {
 
         // Helper closure to quickly generate methods.
         let mut generate_method = |start, is_public, is_static, is_async| {
-            expect!(TokenType::Keyword(Function), self);
-            let (signature, _type) = self.method(is_public, is_static, is_async)?;
+            expect_or_return!(TokenType::Keyword(Function), self);
+            let partial = self.method(is_public, is_static, is_async);
+            if partial.is_none() {
+                return partial.map(|_| ());
+            };
+            let (tuple, errors) = partial.to_tuple();
+            let (signature, _type) = tuple.unwrap();
             let method = ModelProperty {
                 index: method_signatures.len(),
                 _type,
@@ -1122,7 +1310,32 @@ impl<L: Lexer> Parser<L> {
             };
             method_signatures.push(signature);
             properties.push(method);
-            Ok(())
+            Partial {
+                value: Some(()),
+                errors,
+            }
+        };
+
+        // Helper closure to quickly generate attributes.
+        let mut generate_attrib = |is_public, start| {
+            let partial = self.attribute(is_public);
+            if partial.is_none() {
+                return partial.map(|_| ());
+            }
+            let (tuple, errors) = partial.to_tuple();
+            let (signature, _type) = tuple.unwrap();
+            // Build model property enum from type.
+            let attribute = ModelProperty {
+                index: attribute_signatures.len(),
+                _type,
+                span: Span::from([start, self.last_token_span().end]),
+            };
+            attribute_signatures.push(signature);
+            attribute_properties.push(attribute);
+            Partial {
+                value: Some(()),
+                errors,
+            }
         };
 
         let maybe_async = || {
@@ -1145,19 +1358,37 @@ impl<L: Lexer> Parser<L> {
             match token._type {
                 // parse new constructor.
                 TokenType::Keyword(New) => {
-                    self.advance();
-                    parameters = self.parameters()?;
-                    constructor = Some(self.block(ScopeType::Constructor)?)
+                    self.advance(); // move past new.
+                    let mut partial = Partial::from(self.parameters());
+                    if partial.is_none() {
+                        body_errors.append(&mut partial.errors);
+                        self.advance();
+                        continue;
+                    }
+                    parameters = partial.unwrap();
+                    let mut bloc_partial = self.block(ScopeType::Constructor);
+                    if bloc_partial.is_none() {
+                        body_errors.append(&mut bloc_partial.errors);
+                        self.advance();
+                        continue;
+                    }
+                    constructor = Some(bloc_partial.unwrap());
                 }
                 // parse public property.
                 TokenType::Keyword(Public) => {
                     let start = token.span.start;
                     self.advance(); // Move past public.
-                    self.ended(errors::expected_attribute(self.last_token_span()))?;
+                    if self.token().is_none() {
+                        body_errors.push(errors::expected_attribute(self.last_token_span()));
+                        self.advance();
+                        continue;
+                    }
                     let token = self.token().unwrap();
                     match token._type {
                         TokenType::Keyword(New) => {
-                            return Err(errors::public_on_new(self.last_token_span()))
+                            body_errors.push(errors::public_on_new(self.last_token_span()));
+                            self.advance();
+                            continue;
                         }
                         // parse public static method.
                         TokenType::Keyword(Static) => {
@@ -1165,29 +1396,33 @@ impl<L: Lexer> Parser<L> {
                             let is_public = true;
                             let is_static = true;
                             let is_async = maybe_async();
-                            generate_method(start, is_public, is_static, is_async)?;
+                            body_errors.append(
+                                &mut generate_method(start, is_public, is_static, is_async).errors,
+                            );
                         }
                         TokenType::Keyword(Async) => {
                             self.advance(); // Move past async.
-                            generate_method(start, true, false, true)?;
+                            let is_public = true;
+                            let is_static = false;
+                            let is_async = true;
+                            body_errors.append(
+                                &mut generate_method(start, is_public, is_static, is_async).errors,
+                            );
                         }
                         // parse public non-async method.
                         TokenType::Keyword(Function) => {
-                            generate_method(start, true, false, false)?;
+                            let is_public = true;
+                            let is_static = false;
+                            let is_async = false;
+                            body_errors.append(
+                                &mut generate_method(start, is_public, is_static, is_async).errors,
+                            );
                         }
                         // parse a public attribute.
                         TokenType::Keyword(Var) => {
-                            let (signature, _type) = self.attribute(true)?;
-                            // Build model property enum from type.
-                            let attribute = ModelProperty {
-                                index: attribute_signatures.len(),
-                                _type,
-                                span: Span::from([start, self.last_token_span().end]),
-                            };
-                            attribute_signatures.push(signature);
-                            attribute_properties.push(attribute);
+                            body_errors.append(&mut generate_attrib(true, start).errors);
                         }
-                        _ => return Err(errors::expected_attribute(token.span)),
+                        _ => body_errors.push(errors::expected_attribute(token.span)),
                     }
                 }
                 // parse static private method.
@@ -1197,31 +1432,29 @@ impl<L: Lexer> Parser<L> {
                     let is_public = false;
                     let is_static = true;
                     let is_async = maybe_async();
-                    generate_method(start, is_public, is_static, is_async)?;
+                    body_errors
+                        .append(&mut generate_method(start, is_public, is_static, is_async).errors);
                 }
                 // parse private method.
                 TokenType::Keyword(Function) => {
                     let is_public = false;
                     let is_async = false;
                     let is_static = false;
-                    generate_method(start, is_public, is_static, is_async)?;
+                    body_errors
+                        .append(&mut generate_method(start, is_public, is_static, is_async).errors);
                 }
                 // parse a private attribute.
                 TokenType::Keyword(Var) => {
-                    let (signature, _type) = self.attribute(false)?;
-                    // Build model property enum from type.
-                    let attribute = ModelProperty {
-                        index: attribute_signatures.len(),
-                        _type,
-                        span: Span::from([start, self.last_token_span().end]),
-                    };
-                    attribute_signatures.push(signature);
-                    attribute_properties.push(attribute);
+                    body_errors.append(&mut generate_attrib(false, start).errors);
                 }
-                _ => return Err(errors::expected_attribute(token.span)),
+                _ => {
+                    body_errors.push(errors::expected_attribute(token.span));
+
+                    self.advance();
+                }
             }
         }
-        expect!(TokenType::Bracket(RCurly), self);
+        expect_or_return!(TokenType::Bracket(RCurly), self);
         let end = self.token().unwrap().span.end;
         let span = Span::from([start, end]);
         self.advance(); // Move past }
@@ -1232,17 +1465,20 @@ impl<L: Lexer> Parser<L> {
             constructor,
             span,
         };
-        Ok((body, attribute_signatures, method_signatures, parameters))
+        Partial {
+            value: Some((body, attribute_signatures, method_signatures, parameters)),
+            errors: body_errors,
+        }
     }
 
     /// Parses an attribute in a model.
-    fn attribute(&self, is_public: bool) -> Fallible<(AttributeSignature, ModelPropertyType)> {
-        expect!(TokenType::Keyword(Var), self);
+    fn attribute(&self, is_public: bool) -> Imperfect<(AttributeSignature, ModelPropertyType)> {
+        expect_or_return!(TokenType::Keyword(Var), self);
         self.advance(); // Move past var.
         let info = self.get_doc_comment();
-        let name = self.identifier()?;
-        let var_type = self.type_label()?;
-        expect!(TokenType::Operator(SemiColon), self);
+        let name = check!(self.identifier());
+        let var_type = check!(self.type_label());
+        expect_or_return!(TokenType::Operator(SemiColon), self);
         self.advance(); // Move past ;.
 
         let signature = AttributeSignature {
@@ -1253,7 +1489,10 @@ impl<L: Lexer> Parser<L> {
         };
 
         let property_type = ModelPropertyType::Attribute;
-        Ok((signature, property_type))
+        Partial {
+            value: Some((signature, property_type)),
+            errors: vec![],
+        }
     }
 
     /// Parses a method in a model.
@@ -1262,22 +1501,26 @@ impl<L: Lexer> Parser<L> {
         is_public: bool,
         is_static: bool,
         is_async: bool,
-    ) -> Fallible<(MethodSignature, ModelPropertyType)> {
-        expect!(TokenType::Keyword(Function), self);
+    ) -> Imperfect<(MethodSignature, ModelPropertyType)> {
+        expect_or_return!(TokenType::Keyword(Function), self);
         self.advance(); // Move past function.
         let info = self.get_doc_comment();
-        self.ended(errors::identifier_expected(self.last_token_end()))?;
+        ended!(errors::identifier_expected(self.last_token_end()), self);
         let token = self.token().unwrap();
         // If [ is the next token, parse a trait impl.
         if token._type == TokenType::Bracket(LSquare) {
             return self.trait_impl_method(is_public, is_static, is_async);
         }
         // else parse normal function.
-        let name = self.identifier()?;
-        let generic_params = self.maybe_generic_params()?;
-        let params = self.parameters()?;
-        let return_type = self.maybe_type_label()?;
-        let body = self.block(ScopeType::Method)?;
+        let name = check!(self.identifier());
+        let generic_params = check!(self.maybe_generic_params());
+        let params = check!(self.parameters());
+        let return_type = check!(self.maybe_type_label());
+        let (body, errors) = self.block(ScopeType::Method).to_tuple();
+        if body.is_none() {
+            return Partial::from_errors(errors);
+        }
+        let body = body.unwrap();
         let signature = MethodSignature {
             name,
             info,
@@ -1289,7 +1532,10 @@ impl<L: Lexer> Parser<L> {
             return_type,
         };
         let _type = ModelPropertyType::Method { body };
-        Ok((signature, _type))
+        Partial {
+            value: Some((signature, _type)),
+            errors,
+        }
     }
 
     fn trait_impl_method(
@@ -1297,7 +1543,7 @@ impl<L: Lexer> Parser<L> {
         _is_public: bool,
         _is_static: bool,
         _is_async: bool,
-    ) -> Fallible<(MethodSignature, ModelPropertyType)> {
+    ) -> Imperfect<(MethodSignature, ModelPropertyType)> {
         todo!()
     }
 
@@ -1366,8 +1612,8 @@ impl<L: Lexer> Parser<L> {
     }
 
     /// Parses a block of statements. It assumes that `{` is the current token.
-    fn block(&self, scope_type: ScopeType) -> Fallible<Block> {
-        expect!(TokenType::Bracket(LCurly), self);
+    fn block(&self, scope_type: ScopeType) -> Imperfect<Block> {
+        expect_or_return!(TokenType::Bracket(LCurly), self);
 
         let start = self.token().unwrap().span.start;
         self.advance(); // Move past {
@@ -1375,15 +1621,22 @@ impl<L: Lexer> Parser<L> {
         self.scope_manager().enter(scope_type);
 
         let mut statements = vec![];
+        // Collects any errors found so that parsing can continue.
+        let mut errors = vec![];
         while self
             .token()
             .is_some_and(|t| t._type != TokenType::Bracket(RCurly))
         {
-            let statement = self.statement()?;
-            statements.push(statement);
+            let mut partial = self.statement();
+            // Collect errors encountered.
+            errors.append(&mut partial.errors);
+            // Collect the statement in parsing was successful.
+            if let Some(statement) = partial.value {
+                statements.push(statement);
+            }
         }
 
-        expect!(TokenType::Bracket(RCurly), self);
+        expect_or_return!(TokenType::Bracket(RCurly), self);
         let end = self.token().unwrap().span.end;
         self.advance(); // Close }
 
@@ -1394,7 +1647,10 @@ impl<L: Lexer> Parser<L> {
             span: Span { start, end },
         };
 
-        Ok(block)
+        Partial {
+            value: Some(block),
+            errors,
+        }
     }
 
     /// Parses a parameter. Assumes that the parameter name is the current token.
@@ -1432,17 +1688,21 @@ impl<L: Lexer> Parser<L> {
     }
 
     /// Parses a shorthand variable declaration. Assumes that the name is the current token.
-    fn shorthand_variable_declaration(&self, name: Identifier) -> Fallible<Statement> {
+    fn shorthand_variable_declaration(&self, name: Identifier) -> Imperfect<Statement> {
         let start = name.span.start;
         let info = self.get_doc_comment();
-        let assigned_type = self.maybe_type_label()?;
+        let assigned_type = check!(self.maybe_type_label());
         let is_shorthand = true;
 
-        expect!(TokenType::Operator(ColonAssign), self);
+        expect_or_return!(TokenType::Operator(ColonAssign), self);
 
         self.advance(); // Move past :=
 
-        let value = self.expression()?;
+        let (expression, mut expr_errors) = self.expression().to_tuple();
+        if expression.is_none() {
+            return Partial::from_errors(expr_errors);
+        }
+        let value = expression.unwrap();
 
         let signature = VariableSignature {
             name,
@@ -1457,9 +1717,21 @@ impl<L: Lexer> Parser<L> {
             .scope_manager()
             .register(ScopeEntry::Variable(signature));
 
-        expect!(TokenType::Operator(SemiColon), self);
-        let end = self.token().unwrap().span.end;
-        self.advance(); // Move past ;
+        // Make semicolon error less fatal.
+        let end = if self
+            .token()
+            .is_some_and(|t| t._type == TokenType::Operator(SemiColon))
+        {
+            let end = self.token().unwrap().span.end;
+            self.advance(); // Move past ;
+            end
+        } else {
+            expr_errors.push(errors::expected(
+                TokenType::Operator(SemiColon),
+                self.last_token_end(),
+            ));
+            value.span().end
+        };
 
         let statement = Statement::ShorthandVariableDeclaration(ShorthandVariableDeclaration {
             address: [self.scope_manager().current(), entry_no].into(),
@@ -1467,7 +1739,7 @@ impl<L: Lexer> Parser<L> {
             span: Span::from([start, end]),
         });
 
-        Ok(statement)
+        Partial::from_tuple((Some(statement), expr_errors))
     }
 }
 
@@ -1689,7 +1961,7 @@ impl<L: Lexer> Parser<L> {
 }
 
 impl<L: Lexer> Iterator for Parser<L> {
-    type Item = Fallible<Statement>;
+    type Item = Partial<Statement, ParseError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         // Kickstart the parsing with the first token.
@@ -1697,7 +1969,6 @@ impl<L: Lexer> Iterator for Parser<L> {
             self.advance();
         }
         self.token()?;
-        let statement_or_error = self.statement();
-        Some(statement_or_error)
+        Some(self.statement())
     }
 }

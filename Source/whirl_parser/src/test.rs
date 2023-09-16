@@ -1208,7 +1208,7 @@ function RandomFormat(): String {
     );
 
     for statement in parser {
-        assert!(statement.is_ok())
+        assert!(statement.is_some() && !statement.has_errors())
     }
 }
 
@@ -1361,7 +1361,10 @@ fn parse_model_functions() {
             span: [2, 5, 6, 6].into(),
         }),
     );
+}
 
+#[test]
+fn parse_static_method() {
     // Simple static function with variable.
     let mut parser = parse_text(
         "
@@ -1373,7 +1376,8 @@ fn parse_model_functions() {
     }
     ",
     );
-    let statement = parser.next().unwrap().unwrap();
+    let statement = parser.next().unwrap();
+    let statement = statement.unwrap();
     assert!(matches!(
         parser.scope_manager().lookaround("Person").unwrap().entry,
         ScopeEntry::Model(m) if m.is_public && m.methods[0].name.name == "CreatePerson" && m.attributes[0].name.name == "name"
