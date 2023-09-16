@@ -7,7 +7,7 @@ members = [
     "Source/whirl_parser",
     "Source/whirl_printer",
     "Source/whirl_repl",
-    "Source/whirl_semantic",
+    "Source/whirl_analyzer",
     "Source/whirl_server",
     "Source/whirl_utils"
     ]

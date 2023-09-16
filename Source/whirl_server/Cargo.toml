@@ -9,6 +9,6 @@ edition = "2021"
 tokio = { version = "1", features = ["full"] }
 tower-lsp = {version = "0.20.0"}
 whirl_ast = {version = "*", path = "../whirl_ast"}
-whirl_semantic = {version = "*", path = "../whirl_semantic"}
+whirl_analyzer = {version = "*", path = "../whirl_analyzer"}
 whirl_printer = {version = "*", path = "../whirl_printer"}
 whirl_errors = {version="*", path="../whirl_errors"}

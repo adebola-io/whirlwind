@@ -1,7 +1,7 @@
 use tower_lsp::lsp_types::{Hover, HoverContents, LanguageString, MarkedString};
+use whirl_analyzer::type_utils::evaluate_discrete_type;
 use whirl_ast::{ASTVisitor, ModelPropertyType, ScopeManager, TypeExpression};
 use whirl_printer::{AttributeHover, MethodHover, SignatureFormatter};
-use whirl_semantic::type_utils::evaluate_discrete_type;
 
 /// Information shown during hovering.
 pub struct HoverInfo {

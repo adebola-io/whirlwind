@@ -732,6 +732,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
 
 [[package]]
+name = "whirl_analyzer"
+version = "0.1.0"
+dependencies = [
+ "whirl_ast",
+ "whirl_errors",
+ "whirl_lexer",
+ "whirl_parser",
+]
+
+[[package]]
 name = "whirl_ast"
 version = "0.1.0"
 
@@ -777,25 +787,15 @@ name = "whirl_repl"
 version = "0.1.0"
 
 [[package]]
-name = "whirl_semantic"
-version = "0.1.0"
-dependencies = [
- "whirl_ast",
- "whirl_errors",
- "whirl_lexer",
- "whirl_parser",
-]
-
-[[package]]
 name = "whirl_server"
 version = "0.1.0"
 dependencies = [
  "tokio",
  "tower-lsp",
+ "whirl_analyzer",
  "whirl_ast",
  "whirl_errors",
  "whirl_printer",
- "whirl_semantic",
 ]
 
 [[package]]

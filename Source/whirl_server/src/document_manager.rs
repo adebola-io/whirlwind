@@ -5,8 +5,8 @@ use tower_lsp::lsp_types::{
     DocumentDiagnosticReport, FullDocumentDiagnosticReport, HoverParams, Position,
     RelatedFullDocumentDiagnosticReport, TextDocumentContentChangeEvent, Url,
 };
+use whirl_analyzer::Module;
 use whirl_ast::ASTVisitor;
-use whirl_semantic::Module;
 
 use crate::{
     diagnostic::to_diagnostic,
