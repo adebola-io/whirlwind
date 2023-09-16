@@ -210,7 +210,7 @@ ArrayElements ::= Expression ("," ArrayElements?)?
 
 Else ::= "else " Expression
 
-GenericParameter ::= Identifier TypeLabel? DefaultGenericArgument?
+GenericParameter ::= Identifier (TypeLabel ("+" TypeExpression)*)? DefaultGenericArgument?
 
 GenericArguments ::= TypeExpression ("," GenericArguments?)?
 

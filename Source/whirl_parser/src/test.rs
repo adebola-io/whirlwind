@@ -1412,3 +1412,106 @@ fn parse_static_method() {
         }),
     )
 }
+
+#[test]
+fn parse_generic_params() {
+    // Simple.
+    let mut parser = parse_text(
+        "function Find<T>
+        (
+            array: ArrayOf<T>, 
+            predicate: fn(value: T): Boolean
+        ): Maybe<T> {
+
+        }",
+    );
+    let mut statement = parser.next().unwrap().unwrap();
+
+    let mut scope_manager = parser.scope_manager();
+
+    assert!(matches!(
+        scope_manager.lookaround("Find").unwrap().entry,
+        ScopeEntry::Function(f) if f.generic_params.as_ref().unwrap()[0].name.name == "T"
+    ));
+
+    assert_eq!(
+        statement,
+        Statement::FunctionDeclaration(FunctionDeclaration {
+            address: ScopeAddress {
+                scope_id: 0,
+                entry_no: 0
+            },
+            body: Block {
+                statements: vec![],
+                span: [5, 21, 7, 10].into()
+            },
+            span: [1, 1, 7, 10].into()
+        })
+    );
+
+    // With trait guards.
+    parser = parse_text(
+        "
+    enum Result<T, E: Error> {
+        Ok(T),
+        Err(E)
+    }",
+    );
+    statement = parser.next().unwrap().unwrap();
+
+    scope_manager = parser.scope_manager();
+
+    assert!(matches!(
+        scope_manager.lookaround("Result").unwrap().entry,
+        ScopeEntry::Enum(e) if {
+            let param = &e.generic_params.as_ref().unwrap()[1];
+            param.name.name == "E" && matches!(
+                param.traits[0],
+                TypeExpression::Discrete(ref d) if d.name.name == "Error"
+            )
+        }
+    ));
+
+    assert_eq!(
+        statement,
+        Statement::EnumDeclaration(EnumDeclaration {
+            address: [0, 0].into(),
+            span: [2, 5, 5, 6].into()
+        })
+    );
+
+    // With default values.
+    parser = parse_text(
+        "
+    model Stack<T: Sized + Nullable = Integer> {
+
+    }
+    ",
+    );
+    statement = parser.next().unwrap().unwrap();
+
+    scope_manager = parser.scope_manager();
+    assert!(matches!(
+        scope_manager.lookaround("Stack").unwrap().entry,
+        ScopeEntry::Model(m) if {
+            let param = &m.generic_params.as_ref().unwrap()[0];
+            param.name.name == "T" && param.traits.len() == 2 && matches!(
+                param.default.as_ref().unwrap(),
+                TypeExpression::Discrete(ref d) if d.name.name == "Integer"
+            )
+        }
+    ));
+
+    assert_eq!(
+        statement,
+        Statement::ModelDeclaration(ModelDeclaration {
+            address: [0, 0].into(),
+            body: ModelBody {
+                properties: vec![],
+                constructor: None,
+                span: [2, 48, 4, 6].into()
+            },
+            span: [2, 5, 4, 6].into()
+        })
+    );
+}

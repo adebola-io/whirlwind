@@ -1565,15 +1565,83 @@ impl<L: Lexer> Parser<L> {
         }
     }
 
-    /// Parses a model's or function's generic parameters. Assumes that `<` is maybe the current token.
+    /// Parses generic parameters. Assumes that `<` is maybe the current token.
     fn maybe_generic_params(&self) -> Fallible<Option<Vec<GenericParameter>>> {
         if !self
             .token()
-            .is_some_and(|t| t._type == TokenType::Operator(Colon))
+            .is_some_and(|t| t._type == TokenType::Operator(LesserThan))
         {
             return Ok(None);
         }
-        todo!()
+        self.advance(); // Move past <
+        let mut generic_params = vec![];
+
+        while self
+            .token()
+            .is_some_and(|t| t._type != TokenType::Operator(GreaterThan))
+        {
+            let parameter = self.generic_param()?;
+            generic_params.push(parameter);
+            if self
+                .token()
+                .is_some_and(|t| t._type == TokenType::Operator(Comma))
+            {
+                self.advance(); // Move past ,
+                continue;
+            }
+            break;
+        }
+        expect!(TokenType::Operator(GreaterThan), self);
+        self.advance(); // Move past >
+        Ok(Some(generic_params))
+    }
+
+    /// Parses a generic parameter.
+    fn generic_param(&self) -> Fallible<GenericParameter> {
+        let name = self.identifier()?;
+        let mut traits = vec![];
+        // Parse assigned traits.
+        if self
+            .token()
+            .is_some_and(|t| t._type == TokenType::Operator(Colon))
+        {
+            self.advance();
+            loop {
+                let r#trait = self.type_expression()?;
+                if let TypeExpression::Union(_)
+                | TypeExpression::Functional(_)
+                | TypeExpression::This { .. }
+                | TypeExpression::Invalid = r#trait
+                {
+                    return Err(errors::type_in_trait_position(r#trait));
+                }
+                traits.push(r#trait);
+                if self
+                    .token()
+                    .is_some_and(|t| t._type == TokenType::Operator(Plus))
+                {
+                    self.advance();
+                    continue;
+                }
+                break;
+            }
+        }
+        // Parse default value.
+        let default = if self
+            .token()
+            .is_some_and(|t| t._type == TokenType::Operator(Assign))
+        {
+            self.advance(); // Move past =
+            Some(self.type_expression()?)
+        } else {
+            None
+        };
+        let generic_param = GenericParameter {
+            name,
+            traits,
+            default,
+        };
+        Ok(generic_param)
     }
 
     /// Parses the parameters of a function. It assumes that `(` should be the current token.
