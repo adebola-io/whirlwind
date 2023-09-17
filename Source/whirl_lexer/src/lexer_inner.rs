@@ -158,7 +158,7 @@ pub trait LexerInner {
     /// Returns the span of the current token.
     fn report_span(&self) -> Span;
     /// Returns the length of each line that has been completed so far.
-    /// For convenience, it is one-based rather than zero, i.e. the length of line 1 is `self.line_lengths[1]`.
+    /// It is zero-based, meaning that the length of line 1 is `line_lengths[0]`.
     fn line_lengths(&self) -> &[u32];
 
     /// Removes the stashed character.
@@ -402,7 +402,7 @@ pub trait LexerInner {
         if encountered_newline {
             token.span.end = [
                 token.span.end[0] - 1,
-                self.line_lengths()[(token.span.end[0] - 1) as usize],
+                self.line_lengths()[(token.span.end[0] - 2) as usize],
             ];
         } else {
             token.span.end[1] = token.span.start[1] + len as u32 + if radix != 10 { 2 } else { 0 };
@@ -516,7 +516,7 @@ pub trait LexerInner {
         if encounted_newline {
             token.span.end = [
                 token.span.end[0] - 1,
-                self.line_lengths()[(token.span.end[0] - 1) as usize],
+                self.line_lengths()[(token.span.end[0] - 2) as usize],
             ];
         } else {
             // identifier is on the same line, so simple math can get its span.

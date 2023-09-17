@@ -30,7 +30,7 @@ impl DocumentManager {
         let file = WhirlDocument {
             version: 0,
             uri: params.text_document.uri,
-            module: Module::from(params.text_document.text.as_str()),
+            module: Module::from_text(params.text_document.text),
         };
         self.documents.write().unwrap().push(file);
     }
@@ -81,9 +81,8 @@ impl DocumentManager {
                     result_id: None,
                     items: doc
                         .module
-                        .program_errors
-                        .iter()
-                        .map(|p| to_diagnostic(&doc.module.scope_manager, p))
+                        .errors()
+                        .map(|p| to_diagnostic(&doc.module.scopes, p))
                         .collect::<Vec<Diagnostic>>(),
                 },
             })
@@ -103,8 +102,8 @@ impl WhirlDocument {
     fn get_hover_for_position(&self, position: Position) -> Option<HoverInfo> {
         // Editor ranges are zero-based, for some reason.
         let position = [position.line + 1, position.character + 1];
-        let hover_finder = HoverFinder::with_scope_manager(&self.module.scope_manager);
-        for statement in &self.module.statements {
+        let hover_finder = HoverFinder::with_scope_manager(&self.module.scopes);
+        for statement in self.module.statements() {
             let hover_info = hover_finder.visit_statement(statement, &position);
             if hover_info.is_some() {
                 return hover_info;

@@ -1,3 +1,4 @@
+mod change;
 mod expression;
 mod scope;
 mod span;
@@ -6,6 +7,7 @@ mod token;
 mod typing;
 mod visitor;
 
+pub use change::*;
 pub use expression::*;
 pub use scope::*;
 pub use span::*;

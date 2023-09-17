@@ -13,6 +13,7 @@ public model Stack<T> {
     /// If there are currently more items that the new capacity, then the stack will be truncated.
     /// # Examples
     /// ```wrl
+    /// use Structures.Stack;
     /// stack: Stack<Integer> := new Stack();
     ///
     /// Assert(stack.Capacity() == 0);

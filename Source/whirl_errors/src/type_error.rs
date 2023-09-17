@@ -103,3 +103,12 @@ pub fn mismatched_assignment(left: TypeEval, right: TypeEval, span: Span) -> Typ
         spans: vec![span],
     }
 }
+
+pub fn trait_as_type(name: &str, span: whirl_ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::TraitAsType {
+            name: name.to_owned(),
+        },
+        spans: vec![span],
+    }
+}

@@ -1,9 +1,11 @@
 mod test;
 pub mod type_utils;
 
+use std::str::Chars;
+
 use whirl_ast::{MutASTVisitor, ScopeEntry, ScopeManager, Span, Statement, TypeEval};
 use whirl_errors::{LexError, ParseError};
-use whirl_lexer::Lexer;
+use whirl_lexer::{Lexer, TextLexer};
 use whirl_parser::parse_text;
 
 use crate::primitive::Primitives;
@@ -30,7 +32,7 @@ impl<L: Lexer> Typechecker<L> {
         self.parser.scope_manager()
     }
 
-    pub fn new(input: &str, primitives: Primitives) -> Typechecker<whirl_lexer::TextLexer> {
+    pub fn from_text(input: &str, primitives: Primitives) -> Typechecker<TextLexer<Chars>> {
         let checker = Typechecker {
             parser: parse_text(input),
             statements: vec![],

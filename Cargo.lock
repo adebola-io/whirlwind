@@ -739,6 +739,7 @@ dependencies = [
  "whirl_errors",
  "whirl_lexer",
  "whirl_parser",
+ "whirl_utils",
 ]
 
 [[package]]
