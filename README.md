@@ -23,12 +23,14 @@ Whirl is a simple, interpreted programming language for quickly and easily writi
 
 Whirl is inspired heavily by the syntax of languages like Rust and Typescript. An example of Whirl code would be:
 
-```csharp
-public function Add(a: Integer, b: Integer): Integer {
+```ts
+function Add(a: Integer, b: Integer): Integer 
+{
   a + b
 }
 
-function Main() {
+function Main() 
+{
   c := Add(2, 3);
   Core.Fmt.Println(c);
 }
