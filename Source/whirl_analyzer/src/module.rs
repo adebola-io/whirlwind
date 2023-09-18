@@ -111,6 +111,14 @@ impl Module {
         }
     }
 
+    pub fn refresh_with_text(&mut self, new_text: String) {
+        self.errors.clear();
+        self.scopes = ScopeManager::new();
+        self.statements.clear();
+        self.source = ModuleSource::PlainText(new_text);
+        self.build();
+    }
+
     /// Reconcile a text change with the module.
     /// TODO: The new statement generation breaks when the text is behind the original statement and overwrites a part of it.
     fn reconcile(&mut self, change: &Change) {
@@ -197,10 +205,11 @@ mod tests {
             "
             function Main() {
               function Test () {
-                 square:= fn (a: Number): Number {
+                square:= fn (a: Number): Number {
                     newValue := a ^ 2;
                     newValue
                 };
+                name: String = \"Hello\";
               }
             }
     "

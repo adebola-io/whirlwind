@@ -3,14 +3,13 @@ use std::sync::RwLock;
 use tower_lsp::lsp_types::{
     Diagnostic, DidChangeTextDocumentParams, DidOpenTextDocumentParams, DocumentDiagnosticParams,
     DocumentDiagnosticReport, FullDocumentDiagnosticReport, HoverParams, Position,
-    RelatedFullDocumentDiagnosticReport, TextDocumentContentChangeEvent, Url,
+    RelatedFullDocumentDiagnosticReport, Url,
 };
 use whirl_analyzer::Module;
 use whirl_ast::ASTVisitor;
 
 use crate::{
     diagnostic::to_diagnostic,
-    did_change::ChangeHandler,
     hover::{HoverFinder, HoverInfo},
 };
 
@@ -56,7 +55,7 @@ impl DocumentManager {
         false
     }
     /// Handles didChange event
-    pub fn handle_change(&self, params: DidChangeTextDocumentParams) {
+    pub fn handle_change(&self, mut params: DidChangeTextDocumentParams) {
         let mut documents = self.documents.write().unwrap();
         let document = documents
             .iter_mut()
@@ -64,8 +63,10 @@ impl DocumentManager {
         if document.is_none() {
             return;
         }
+        let last = params.content_changes.len() - 1;
+        let most_current = std::mem::take(&mut params.content_changes[last].text);
         let document = document.unwrap();
-        document.refresh(params.text_document.version, params.content_changes);
+        document.module.refresh_with_text(most_current)
     }
     /// Get diagnostics.
     pub fn get_diagnostics(
@@ -96,7 +97,7 @@ impl DocumentManager {
 pub struct WhirlDocument {
     uri: Url,
     version: usize,
-    module: Module,
+    pub module: Module,
 }
 
 impl WhirlDocument {
@@ -113,10 +114,10 @@ impl WhirlDocument {
         }
         return None;
     }
-    /// Refresh a document with a set of changes to the text.
-    fn refresh(&mut self, version: i32, changes: Vec<TextDocumentContentChangeEvent>) {
-        self.version = version as usize;
-        let handler = ChangeHandler::from_module(&mut self.module);
-        handler.update(changes);
-    }
+    // /// Refresh a document with a set of changes to the text.
+    // fn refresh(&mut self, version: i32, changes: Vec<TextDocumentContentChangeEvent>) {
+    //     self.version = version as usize;
+    //     let handler = ChangeHandler::from_module(&mut self.module);
+    //     handler.update(changes);
+    // }
 }

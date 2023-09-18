@@ -55,8 +55,8 @@ model EmployeeList implements PartialEq<This> {
         this.items = [];
     }
 
-    function [PartialEq.Equals](other: This): Boolean {
-        this.items == other.items
-    }
+    // function [PartialEq.Equals](other: This): Boolean {
+    //    this.items == other.items
+    // }
 }
 
