@@ -7,8 +7,8 @@ use whirl_ast::{
     GenericParameter, Identifier, IfExpression, IndexExpr, Keyword::*, LogicExpr, MemberType,
     MethodSignature, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType, ModelSignature,
     NewExpr, Operator::*, Parameter, ScopeAddress, ScopeEntry, ScopeManager, ScopeType,
-    ShorthandVariableDeclaration, Span, Statement, TestDeclaration, ThisExpr, Token, TokenType,
-    TraitBody, TraitDeclaration, TraitProperty, TraitPropertyType, TraitSignature, Type,
+    ShorthandVariableDeclaration, Span, Spannable, Statement, TestDeclaration, ThisExpr, Token,
+    TokenType, TraitBody, TraitDeclaration, TraitProperty, TraitPropertyType, TraitSignature, Type,
     TypeDeclaration, TypeExpression, TypeSignature, UnaryExpr, UnionType, UseDeclaration, UsePath,
     UseTarget, VariableSignature, WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
 };
@@ -2008,9 +2008,11 @@ impl<L: Lexer> Parser<L> {
         let end = self.token().unwrap().span.end;
         self.advance(); // Close }
 
+        let scope_id = self.scope_manager().current();
         self.scope_manager().leave();
 
         let block = Block {
+            scope_id,
             statements,
             span: Span { start, end },
         };

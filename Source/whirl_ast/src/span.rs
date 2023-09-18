@@ -1,14 +1,24 @@
-use std::ops::Range;
+use std::ops::{Add, Range};
 
 /// A trait that allows for AST nodes to be moved either by lines or characters.
 /// It is used to edit the AST in place so that text can continue to be parsed without rebuilding.
-pub trait Positioning {
+pub trait Positioning: Spannable {
     /// Adjust an AST node by moving its components vertically.
     fn move_by_line(&mut self, offset: i32);
     /// Adjust an AST node by moving its components horizontally.
     fn move_by_character(&mut self, offset: i32);
     /// Returns the individual nodes within a node that are closest to a span.
-    fn closest_nodes_to(&mut self, span: Span) -> Vec<&Self>;
+    fn closest_nodes_to(&self, span: Span) -> Vec<&Self>;
+}
+
+/// A node that occupies a span.
+pub trait Spannable {
+    /// Returns the span of the node.
+    fn span(&self) -> Span;
+    /// Change the start position of the node.
+    fn set_start(&mut self, start: [u32; 2]);
+    /// Returns all the scopes contained _within_ the span of this node.
+    fn captured_scopes(&self) -> Vec<usize>;
 }
 
 /// Represents a range in input text.
@@ -45,41 +55,84 @@ impl Span {
         }
         return true;
     }
-    /// Here be literal magic.
+    // Here be literal magic.
     /// Converts a span to an `a..b` range, given the lengths of each line in the source text.
-    pub fn to_range(self, line_lengths: &[usize]) -> Range<usize> {
-        // minus happens because spans are one-based.
-        let [start_line, start_char] = self.start.map(|x| x as usize);
-        let [end_line, end_char] = self.end.map(|x| x as usize);
+    pub fn to_range(self, line_lengths: &[u32]) -> Range<usize> {
+        // minuses happen because spans are one-based.
+        let [start_line, start_char] = self.start.map(|s| s - 1);
+        let [end_line, end_char] = self.end.map(|s| s - 1);
 
         let mut start = 0;
-        for line_length in line_lengths[0..(start_line - 1)].into_iter() {
+        let mut index = 0;
+        while index < start_line {
             // Gather all line_lengths (and the newline character) up to this start of the span.
-            start += line_length + 1;
+            start += line_lengths[index as usize] + 1;
+            index += 1;
         }
+        // Add the characters up to the start of the span.
+        start += start_char;
 
         let end = if start_line == end_line {
-            start + (start_char + end_char) - 2
+            start + (end_char - start_char)
         } else {
-            let mut inner_width = 0;
+            let mut inner_width = start - start_char;
             for line in start_line..end_line {
-                inner_width += line_lengths[line - 1] + 1;
+                let length = line_lengths[line as usize] + 1;
+                inner_width += length;
             }
-            inner_width + start_char + end_char - 1
+            inner_width + end_char
         };
 
-        Range { start, end }
+        Range {
+            start: start as usize,
+            end: end as usize,
+        }
     }
     /// Checks that a point exists immediately after or immediately before a span.
-    pub fn is_directly_adjacent_to(&self, position: [u32; 2]) -> bool {
+    pub fn is_adjacent_to(&self, position: [u32; 2]) -> bool {
         return (position[0] == self.start[0] && position[1] == self.start[1] - 1)
             || (position[0] == self.end[0] && position[1] == self.end[1] + 1);
+    }
+
+    /// Checks that another span is directly next to or within the span.
+    pub fn is_in_vicinity(&self, span: Span) -> bool {
+        self.encloses(span) || self.is_adjacent_to(span.start) || self.is_adjacent_to(span.end)
     }
 }
 
 impl std::fmt::Debug for Span {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{{ {:?}, {:?} }}", self.start, self.end)
+    }
+}
+
+impl Add for Span {
+    type Output = Self;
+
+    /// Combine two spans to produce a span that encloses both.
+    fn add(self, rhs: Self) -> Self::Output {
+        let start_line = self.start[0].min(rhs.start[0]);
+        let start_char = if self.start[0] == rhs.start[0] {
+            self.start[1].min(rhs.start[1])
+        } else if self.start[0] < rhs.start[0] {
+            self.start[1]
+        } else {
+            rhs.start[1]
+        };
+
+        let end_line = self.end[0].max(rhs.end[0]);
+        let end_char = if self.end[0] == rhs.end[0] {
+            self.end[1].max(rhs.end[1])
+        } else if self.end[0] > rhs.end[0] {
+            self.end[1]
+        } else {
+            rhs.end[1]
+        };
+
+        Span {
+            start: [start_line, start_char],
+            end: [end_line, end_char],
+        }
     }
 }
 
@@ -131,11 +184,11 @@ mod tests {
     fn test_adjacence() {
         let span = Span::from([1, 4, 5, 5]);
 
-        assert!(span.is_directly_adjacent_to([1, 3]));
-        assert!(span.is_directly_adjacent_to([5, 6]));
+        assert!(span.is_adjacent_to([1, 3]));
+        assert!(span.is_adjacent_to([5, 6]));
 
-        assert!(!span.is_directly_adjacent_to([1, 10]));
-        assert!(!span.is_directly_adjacent_to([5, 12]));
+        assert!(!span.is_adjacent_to([1, 10]));
+        assert!(!span.is_adjacent_to([5, 12]));
     }
 
     #[test]
@@ -145,7 +198,7 @@ function Hello() {
 
 }
 ";
-        let line_lengths: Vec<usize> = text.lines().map(|s| s.len()).collect();
+        let line_lengths: Vec<u32> = text.lines().map(|s| s.len()).map(|x| x as u32).collect();
         let span = Span::from([2, 1, 2, 9]);
         let range = span.to_range(&line_lengths);
         assert_eq!(text.get(range).unwrap(), "function");
@@ -157,5 +210,18 @@ function Hello() {
 
 }"
         )
+    }
+
+    #[test]
+    fn span_arithmetic() {
+        let span_1 = Span::from([1, 1, 5, 9]);
+        let span_2 = Span::from([2, 4, 3, 8]);
+        // span 1 is larger.
+        assert_eq!(span_1 + span_2, span_1);
+
+        let span_3 = Span::from([1, 1, 1, 99]);
+        let span_4 = Span::from([2, 5, 8, 19]);
+        // span 1 is larger.
+        assert_eq!(span_3 + span_4, Span::from([1, 1, 8, 19]));
     }
 }

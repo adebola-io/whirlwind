@@ -15,23 +15,43 @@ pub struct TextLexer<I: Iterator<Item = char>> {
     stash: Option<char>,
     /// A vector containing the lengths of each line in the string.
     /// It is useful for recomputing the number of characters in the string.
+    /// It does not contain the terminators at the end of the line.
     pub line_lengths: Vec<u32>,
     saved: Option<Token>,
 }
 
+impl<I: Iterator<Item = char>> From<I> for TextLexer<I> {
+    fn from(value: I) -> Self {
+        TextLexer {
+            chars: value,
+            position: 1,
+            line: 1,
+            span_start: [1, 1],
+            errors: vec![],
+            stash: None,
+            line_lengths: vec![],
+            saved: None,
+        }
+    }
+}
+
 impl<I: Iterator<Item = char>> LexerInner for TextLexer<I> {
     fn next_char(&mut self) -> Option<char> {
-        self.chars.next().map(|char| {
-            if char == '\n' {
+        if let Some(ch) = self.chars.next() {
+            if ch == '\n' {
                 // Store line length and move to next.
-                self.line_lengths.push(self.position);
+                self.line_lengths.push(self.position - 1);
                 self.position = 1;
                 self.line += 1;
             } else {
                 self.position += 1;
             }
-            char
-        })
+            Some(ch)
+        } else {
+            // Store the length of the last line.
+            self.line_lengths.push(self.position - 1);
+            None
+        }
     }
 
     fn start_span(&mut self) {

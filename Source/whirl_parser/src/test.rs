@@ -21,7 +21,7 @@ fn parsing_public_functions() {
         statement,
         Statement::FunctionDeclaration(FunctionDeclaration {
             address: [0, 0].into(),
-            body: Block::empty([1, 37, 1, 39].into()),
+            body: Block::empty(1, [1, 37, 1, 39].into()),
             span: [1, 1, 1, 39].into()
         })
     )
@@ -53,7 +53,7 @@ fn parsing_functions_with_types() {
         statement,
         Statement::FunctionDeclaration(FunctionDeclaration {
             address: [0, 0].into(),
-            body: Block::empty([1, 50, 1, 52].into()),
+            body: Block::empty(1, [1, 50, 1, 52].into()),
             span: [1, 1, 1, 52].into()
         })
     )
@@ -82,7 +82,7 @@ fn parsing_functions_with_member_types() {
         statement,
         Statement::FunctionDeclaration(FunctionDeclaration {
             address: [0, 0].into(),
-            body: Block::empty([1, 40, 1, 42].into()),
+            body: Block::empty(1, [1, 40, 1, 42].into()),
             span: [1, 1, 1, 42].into()
         })
     )
@@ -111,7 +111,7 @@ fn parsing_functions_with_generic_types() {
         statement,
         Statement::FunctionDeclaration(FunctionDeclaration {
             address: [0, 0].into(),
-            body: Block::empty([1, 42, 1, 44].into()),
+            body: Block::empty(1, [1, 42, 1, 44].into()),
             span: [1, 1, 1, 44].into()
         })
     );
@@ -139,7 +139,7 @@ fn parsing_functions_with_generic_types() {
         statement,
         Statement::FunctionDeclaration(FunctionDeclaration {
             address: [0, 0].into(),
-            body: Block::empty([1, 61, 1, 63].into()),
+            body: Block::empty(1, [1, 61, 1, 63].into()),
             span: [1, 1, 1, 63].into()
         })
     )
@@ -175,7 +175,7 @@ fn parsing_functional_types() {
         statement,
         Statement::FunctionDeclaration(FunctionDeclaration {
             address: [0, 0].into(),
-            body: Block::empty([1, 52, 1, 54].into()),
+            body: Block::empty(1, [1, 52, 1, 54].into()),
             span: [1, 1, 1, 54].into()
         })
     );
@@ -222,7 +222,7 @@ fn parsing_union_types() {
         statement,
         Statement::FunctionDeclaration(FunctionDeclaration {
             address: [0, 0].into(),
-            body: Block::empty([10, 9, 10, 11].into()),
+            body: Block::empty(1, [10, 9, 10, 11].into()),
             span: [2, 9, 10, 11].into()
         })
     );
@@ -237,7 +237,7 @@ fn parsing_functions() {
         parser.next().unwrap().unwrap(),
         Statement::FunctionDeclaration(FunctionDeclaration {
             address: ScopeAddress::from([0, 0]),
-            body: Block::empty(Span::from([1, 20, 1, 22])),
+            body: Block::empty(1, Span::from([1, 20, 1, 22])),
             span: Span::from([1, 1, 1, 22])
         })
     );
@@ -265,9 +265,10 @@ fn parsing_functions() {
         Statement::FunctionDeclaration(FunctionDeclaration {
             address: ScopeAddress::from([0, 0]),
             body: Block {
+                scope_id: 1,
                 statements: vec![Statement::FunctionDeclaration(FunctionDeclaration {
                     address: ScopeAddress::from([1, 0]),
-                    body: Block::empty(Span::from([3, 34, 5, 10])),
+                    body: Block::empty(2, Span::from([3, 34, 5, 10])),
                     span: Span::from([3, 9, 5, 10])
                 })],
                 span: Span::from([2, 25, 6, 6])
@@ -289,6 +290,7 @@ fn parsing_functions() {
         Statement::FunctionDeclaration(FunctionDeclaration {
             address: ScopeAddress::from([0, 0]),
             body: Block {
+                scope_id: 1,
                 statements: vec![],
                 span: Span::from([1, 30, 1, 32])
             },
@@ -314,6 +316,7 @@ fn parsing_async_functions() {
         Statement::FunctionDeclaration(FunctionDeclaration {
             address: ScopeAddress::from([0, 0]),
             body: Block {
+                scope_id: 1,
                 statements: vec![],
                 span: Span::from([1, 36, 1, 38])
             },
@@ -428,7 +431,7 @@ fn test_testing_block() {
         Statement::TestDeclaration(TestDeclaration {
             name: format!("test stuff"),
             name_span: [1, 6, 1, 18].into(),
-            body: Block::empty([1, 19, 1, 21].into()),
+            body: Block::empty(1, [1, 19, 1, 21].into()),
             span: [1, 1, 1, 21].into()
         })
     );
@@ -792,6 +795,7 @@ fn parse_if_expressions() {
                 span: [1, 4, 1, 13].into()
             })),
             consequent: Block {
+                scope_id: 1,
                 statements: vec![Statement::FreeExpression(Expression::StringLiteral(
                     WhirlString {
                         value: format!("Come on in"),
@@ -819,6 +823,7 @@ fn parse_if_expressions() {
                 span: [1, 4, 1, 13].into()
             })),
             consequent: Block {
+                scope_id: 1,
                 statements: vec![Statement::FreeExpression(Expression::StringLiteral(
                     WhirlString {
                         value: format!("Come on in"),
@@ -829,6 +834,7 @@ fn parse_if_expressions() {
             },
             alternate: Some(Else {
                 expression: Expression::BlockExpr(Block {
+                    scope_id: 2,
                     statements: vec![Statement::FreeExpression(Expression::StringLiteral(
                         WhirlString {
                             value: format!("You are not eligible."),
@@ -1380,6 +1386,7 @@ fn parse_model_functions() {
                     index: 0,
                     _type: ModelPropertyType::Method {
                         body: Block {
+                            scope_id: 1,
                             statements: vec![],
                             span: [3, 31, 5, 9].into()
                         }
@@ -1429,6 +1436,7 @@ fn parse_static_method() {
                         index: 0,
                         _type: ModelPropertyType::Method {
                             body: Block {
+                                scope_id: 1,
                                 statements: vec![],
                                 span: [4, 40, 6, 10].into()
                             }
@@ -1473,6 +1481,7 @@ fn parse_generic_params() {
                 entry_no: 0
             },
             body: Block {
+                scope_id: 1,
                 statements: vec![],
                 span: [5, 21, 7, 10].into()
             },
@@ -1639,6 +1648,7 @@ fn parse_trait_declarations() {
                         index: 1,
                         _type: whirl_ast::TraitPropertyType::Method {
                             body: Block {
+                                scope_id: 1,
                                 statements: vec![],
                                 span: [4, 43, 6, 10].into()
                             }
@@ -1664,6 +1674,7 @@ fn parse_while_statement() {
                 span: [1, 7, 1, 11].into()
             }),
             body: Block {
+                scope_id: 1,
                 statements: vec![],
                 span: [1, 12, 1, 14].into()
             },

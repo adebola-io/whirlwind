@@ -27,10 +27,12 @@ impl DocumentManager {
     }
     /// Add a new document to be tracked.
     pub fn add_document(&self, params: DidOpenTextDocumentParams) {
+        let mut module = Module::from_text(params.text_document.text);
+        module.build();
         let file = WhirlDocument {
             version: 0,
             uri: params.text_document.uri,
-            module: Module::from_text(params.text_document.text),
+            module,
         };
         self.documents.write().unwrap().push(file);
     }

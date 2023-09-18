@@ -1,10 +1,10 @@
 #![cfg(test)]
 
-use crate::{type_check_text, TypeError};
+use crate::{analyze_text, TypeError};
 
 #[test]
 fn test_adding_string_and_number() {
-    let mut typechecker = type_check_text(
+    let mut typechecker = analyze_text(
         "
     function Main() {
         a := 1 + true;

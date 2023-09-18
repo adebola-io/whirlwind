@@ -452,23 +452,15 @@ pub trait LexerInner {
     /// Lexes an identifier or a keyword. It also lexes word operators like `is`, `and`, `or` and `not`.
     fn ident_or_keyword(&mut self, first_char: char) -> Token {
         let mut ident_text = String::from(first_char);
-        // let mut is_ended = false;
-        let mut encounted_newline = false;
 
         loop {
             match self.next_char() {
                 Some(ch) if is_valid_identifier(ch) => ident_text.push(ch),
                 Some(ch) => {
-                    if ch == '\n' {
-                        encounted_newline = true
-                    }
                     self.stash(ch);
                     break;
                 }
-                None => {
-                    // is_ended = true;
-                    break;
-                }
+                None => break,
             }
         }
         let len = ident_text.len();
@@ -513,15 +505,9 @@ pub trait LexerInner {
             },
         };
         // Offset correction.
-        if encounted_newline {
-            token.span.end = [
-                token.span.end[0] - 1,
-                self.line_lengths()[(token.span.end[0] - 2) as usize],
-            ];
-        } else {
-            // identifier is on the same line, so simple math can get its span.
-            token.span.end[1] = token.span.start[1] + len as u32;
-        }
+        // identifier chars always occupy the same line, so simple math can get its span.
+        token.span.end = [token.span.start[0], token.span.start[1] + len as u32];
+
         token
     }
 }

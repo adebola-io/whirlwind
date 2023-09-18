@@ -1,4 +1,4 @@
-use crate::{Block, GenericParameter, Parameter, Span, Type};
+use crate::{Block, GenericParameter, Parameter, Span, Spannable, Type};
 
 #[derive(Debug, PartialEq)]
 pub enum Expression {
@@ -213,8 +213,8 @@ pub enum ExpressionPrecedence {
     Pseudo = 99,                   // placeholder operator.
 }
 
-impl Expression {
-    pub fn span(&self) -> Span {
+impl Spannable for Expression {
+    fn span(&self) -> Span {
         match self {
             Expression::Identifier(i) => i.span,
             Expression::StringLiteral(s) => s.span,
@@ -236,7 +236,7 @@ impl Expression {
         }
     }
 
-    pub(crate) fn set_start(&mut self, start: [u32; 2]) {
+    fn set_start(&mut self, start: [u32; 2]) {
         match self {
             Expression::Identifier(i) => i.span.start = start,
             Expression::StringLiteral(s) => s.span.start = start,
@@ -256,5 +256,50 @@ impl Expression {
             Expression::ThisExpr(t) => t.span.start = start,
             Expression::NewExpr(n) => n.span.start = start,
         }
+    }
+    fn captured_scopes(&self) -> Vec<usize> {
+        let mut nested = vec![];
+        match self {
+            Expression::NewExpr(n) => nested.append(&mut n.value.captured_scopes()),
+            Expression::CallExpr(c) => c
+                .arguments
+                .iter()
+                .for_each(|arg| nested.append(&mut arg.captured_scopes())),
+            Expression::FnExpr(f) => nested.append(&mut f.body.captured_scopes()),
+            Expression::IfExpr(i) => {
+                nested.push(i.consequent.scope_id);
+                if let Some(alternate) = &i.alternate {
+                    nested.append(&mut alternate.expression.captured_scopes())
+                }
+            }
+            Expression::ArrayExpr(a) => a
+                .elements
+                .iter()
+                .for_each(|elem| nested.append(&mut elem.captured_scopes())),
+            Expression::AccessExpr(a) => {
+                nested.append(&mut a.object.captured_scopes());
+                nested.append(&mut a.property.captured_scopes());
+            }
+            Expression::IndexExpr(i) => {
+                nested.append(&mut i.object.captured_scopes());
+                nested.append(&mut i.index.captured_scopes());
+            }
+            Expression::BinaryExpr(b) => {
+                nested.append(&mut b.left.captured_scopes());
+                nested.append(&mut b.right.captured_scopes());
+            }
+            Expression::AssignmentExpr(a) => {
+                nested.append(&mut a.left.captured_scopes());
+                nested.append(&mut a.right.captured_scopes());
+            }
+            Expression::UnaryExpr(u) => nested.append(&mut u.operand.captured_scopes()),
+            Expression::LogicExpr(l) => {
+                nested.append(&mut l.left.captured_scopes());
+                nested.append(&mut l.right.captured_scopes());
+            }
+            Expression::BlockExpr(b) => nested.push(b.scope_id),
+            _ => {}
+        }
+        nested
     }
 }

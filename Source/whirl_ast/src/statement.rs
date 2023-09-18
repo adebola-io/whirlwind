@@ -1,4 +1,7 @@
-use crate::{Expression, GenericParameter, Identifier, ScopeAddress, Span, Type, TypeExpression};
+use crate::{
+    Expression, GenericParameter, Identifier, Positioning, ScopeAddress, Span, Spannable, Type,
+    TypeExpression,
+};
 
 #[derive(Debug, PartialEq)]
 pub enum Statement {
@@ -257,6 +260,7 @@ pub struct Location {
 
 #[derive(Debug, PartialEq)]
 pub struct Block {
+    pub scope_id: usize,
     pub statements: Vec<Statement>,
     pub span: Span,
 }
@@ -336,8 +340,9 @@ pub struct EnumVariant {
 }
 
 impl Block {
-    pub fn empty(span: Span) -> Self {
+    pub fn empty(scope_id: usize, span: Span) -> Self {
         Block {
+            scope_id,
             statements: vec![],
             span,
         }
@@ -348,8 +353,105 @@ impl Statement {
     pub fn is_variable_declaration(&self) -> bool {
         matches!(self, Statement::VariableDeclaration)
     }
+}
 
-    pub fn span(&self) -> Span {
+impl Positioning for Statement {
+    fn move_by_line(&mut self, _offset: i32) {
+        todo!()
+    }
+    fn move_by_character(&mut self, _offset: i32) {
+        todo!()
+    }
+    // Here be pure hackery.
+    /// This function attempts to pinpoint the closest nodes in a statement's parse tree to a particular span.
+    /// These are the statements that will reparsed by the module when there are text changes.
+    fn closest_nodes_to(&self, span: Span) -> Vec<&Self> {
+        let mut nodes = vec![];
+        let statement_span = self.span();
+        // The span is on the fringes of the statement.
+        if statement_span.is_adjacent_to(span.start) || statement_span.is_adjacent_to(span.end) {
+            nodes.push(self);
+        } else if statement_span.encloses(span) {
+            // The span is within the statement.
+            match self {
+                Statement::TestDeclaration(TestDeclaration { body, .. })
+                | Statement::FunctionDeclaration(FunctionDeclaration { body, .. })
+                | Statement::WhileStatement(WhileStatement { body, .. }) => {
+                    if body.span.encloses(span) {
+                        // The span is within the body of the statement, not just the statement itself.
+                        nodes.append(&mut collect_closest_within_block(self, body, span));
+                    }
+                }
+                // Within a trait declaration.
+                Statement::TraitDeclaration(decl) => {
+                    for prop in &decl.body.properties {
+                        if prop.span.is_in_vicinity(span) {
+                            match &prop._type {
+                                TraitPropertyType::Signature => nodes.push(self),
+                                TraitPropertyType::Method { body } => {
+                                    if body.span.encloses(span) {
+                                        // The span is within the body of a method, not just the trait itself.
+                                        nodes.append(&mut collect_closest_within_block(
+                                            self, body, span,
+                                        ));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                // Within a model declaration.
+                Statement::ModelDeclaration(decl) => {
+                    for prop in &decl.body.properties {
+                        if prop.span.is_in_vicinity(span) {
+                            match &prop._type {
+                                ModelPropertyType::Attribute => nodes.push(self),
+                                ModelPropertyType::TraitImpl { body, .. }
+                                | ModelPropertyType::Method { body } => {
+                                    if body.span.encloses(span) {
+                                        // The span is within the body of a method, not just the model itself.
+                                        nodes.append(&mut collect_closest_within_block(
+                                            self, body, span,
+                                        ));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                // Within a shorthand variable declaration.
+                Statement::ShorthandVariableDeclaration(var_decl) => {
+                    let expression = &var_decl.value;
+                    if expression.span().encloses(span) {
+                        // span is within the expression value of the node.
+                        nodes.append(&mut collect_closest_within_expression(
+                            self, expression, span,
+                        ))
+                    }
+                }
+                Statement::ExpressionStatement(expression)
+                | Statement::FreeExpression(expression) => nodes.append(
+                    &mut collect_closest_within_expression(self, expression, span),
+                ),
+                // Statement::ConstantDeclaration => todo!(),
+                // Statement::RecordDeclaration => todo!(),
+                // Statement::VariableDeclaration => todo!(),
+                // Statement::ForStatement => todo!(),
+                _ => nodes.push(self),
+            }
+            if nodes.len() == 0 {
+                nodes.push(self);
+            }
+        } else if statement_span.contains(span.start) || statement_span.contains(span.end) {
+            // span is half in or out of the statement.
+            nodes.push(self)
+        }
+        nodes
+    }
+}
+
+impl Spannable for Statement {
+    fn span(&self) -> Span {
         match self {
             Statement::TestDeclaration(t) => t.span,
             Statement::UseDeclaration(u) => u.span,
@@ -367,8 +469,7 @@ impl Statement {
             Statement::ShorthandVariableDeclaration(v) => v.span,
         }
     }
-    /// Dynamically change the starting point of the statement.
-    pub fn set_start(&mut self, start: [u32; 2]) {
+    fn set_start(&mut self, start: [u32; 2]) {
         match self {
             Statement::TestDeclaration(t) => t.span.start = start,
             Statement::UseDeclaration(u) => u.span.start = start,
@@ -386,4 +487,111 @@ impl Statement {
             Statement::ShorthandVariableDeclaration(v) => v.span.start = start,
         }
     }
+    fn captured_scopes(&self) -> Vec<usize> {
+        let mut nested = vec![];
+        match self {
+            Statement::TestDeclaration(TestDeclaration { body, .. })
+            | Statement::FunctionDeclaration(FunctionDeclaration { body, .. })
+            | Statement::WhileStatement(WhileStatement { body, .. }) => {
+                nested.push(body.scope_id);
+            }
+            Statement::ModelDeclaration(_) => todo!(),
+            Statement::TraitDeclaration(_) => todo!(),
+            Statement::ShorthandVariableDeclaration(ShorthandVariableDeclaration {
+                value: expression,
+                ..
+            })
+            | Statement::ExpressionStatement(expression)
+            | Statement::FreeExpression(expression) => {
+                nested.append(&mut expression.captured_scopes())
+            }
+            // Statement::ConstantDeclaration => todo!(),
+            // Statement::RecordDeclaration => todo!(),
+            // Statement::VariableDeclaration => todo!(),
+            // Statement::ForStatement => todo!(),
+            _ => {}
+        }
+        nested
+    }
+}
+
+/// Collect the closest statements to a span within a block of statements.
+pub fn collect_closest_within_block<'a>(
+    owner_statement: &'a Statement,
+    body: &'a Block,
+    span: Span,
+) -> Vec<&'a Statement> {
+    let mut nodes = vec![];
+    for statement in &body.statements {
+        nodes.append(&mut statement.closest_nodes_to(span));
+    }
+    // Could not find any matches, parse the entire statement itsefl.
+    if nodes.len() == 0 {
+        nodes.push(owner_statement);
+    }
+    nodes
+}
+
+/// Macro rule to check within an expression for statements that are near a span, if the span is enclosed by the span of the expression. Does that make sense?
+macro_rules! expr_enclose {
+    ($owner: expr, $exp: expr, $span: expr) => {
+        if $exp.span().encloses($span) {
+            return collect_closest_within_expression($owner, &$exp, $span);
+        }
+    };
+}
+
+/// Collect the closest statements to a span within an expression.
+pub fn collect_closest_within_expression<'a>(
+    owner: &'a Statement,
+    expression: &'a Expression,
+    span: Span,
+) -> Vec<&'a Statement> {
+    match expression {
+        Expression::UnaryExpr(u) => expr_enclose!(owner, u.operand, span),
+        Expression::NewExpr(n) => expr_enclose!(owner, n.value, span),
+        Expression::CallExpr(callexp) => {
+            for argument in callexp.arguments.iter() {
+                expr_enclose!(owner, argument, span)
+            }
+        }
+        Expression::FnExpr(func_exp) => expr_enclose!(owner, func_exp.body, span),
+        Expression::IfExpr(if_exp) => {
+            expr_enclose!(owner, if_exp.condition, span);
+            if if_exp.consequent.span.encloses(span) {
+                return collect_closest_within_block(owner, &if_exp.consequent, span);
+            }
+            if let Some(_else) = &if_exp.alternate {
+                expr_enclose!(owner, _else.expression, span)
+            }
+        }
+        Expression::ArrayExpr(array) => {
+            for element in array.elements.iter() {
+                expr_enclose!(owner, element, span)
+            }
+        }
+        Expression::AccessExpr(a) => {
+            expr_enclose!(owner, a.object, span);
+            expr_enclose!(owner, a.property, span);
+        }
+        Expression::IndexExpr(i) => {
+            expr_enclose!(owner, i.object, span);
+            expr_enclose!(owner, i.index, span);
+        }
+        Expression::BinaryExpr(b) => {
+            expr_enclose!(owner, b.left, span);
+            expr_enclose!(owner, b.right, span);
+        }
+        Expression::AssignmentExpr(a) => {
+            expr_enclose!(owner, a.left, span);
+            expr_enclose!(owner, a.right, span);
+        }
+        Expression::LogicExpr(l) => {
+            expr_enclose!(owner, l.left, span);
+            expr_enclose!(owner, l.right, span);
+        }
+        Expression::BlockExpr(body) => return collect_closest_within_block(owner, body, span),
+        _ => return vec![owner],
+    };
+    return vec![owner];
 }

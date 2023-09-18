@@ -21,7 +21,7 @@ pub struct StringEditor<'a> {
 
 impl StringMutation {
     /// Create a new text mutation.
-    /// The start and end are the inclusive indexes for the range of characters that should be replaced.
+    /// The start and end are the indexes for the range of characters that should be replaced.
     /// # Panics
     /// It panics if start is greater than end.
     pub fn new(text: &str, start: usize, end: usize) -> Self {
@@ -51,7 +51,7 @@ impl StringMutation {
     pub fn touches(&self, idx: usize) -> bool {
         // In the range of the crossed out text or the range of new text.
         self.range.start <= idx
-            && (self.range.end >= idx || self.new_text.len() + self.range.start >= idx)
+            && (self.range.end >= idx || self.new_text.len() + self.range.start > idx)
     }
 }
 
@@ -71,15 +71,15 @@ impl Iterator for StringMutation {
 
 impl<'a> StringEditor<'a> {
     /// Create a new revised text iterator from a string and a mutation.
-    /// The optional bounds are inclusive indexes used to constrain the slice to iterate over.
+    /// The optional bounds are indexes used to constrain the slice to iterate over.
     pub fn new(
         original_text: &'a str,
         mutation: StringMutation,
-        bounds: Option<[usize; 2]>,
+        bounds: Option<Range<usize>>,
     ) -> Self {
         let mut chars = original_text.chars();
         // Shift to bound start.
-        let (idx, end) = if let Some([start, end]) = bounds {
+        let (idx, end) = if let Some(Range { start, end }) = bounds {
             if start > 0 {
                 chars.nth(start - 1);
             }
@@ -104,7 +104,7 @@ impl<'a> Iterator for StringEditor<'a> {
         // Constrain reviser.
         if self
             .end
-            .is_some_and(|e| e == self.idx && !change_is_in_play)
+            .is_some_and(|e| e + 1 == self.idx && !change_is_in_play)
         {
             return None;
         }
@@ -113,13 +113,13 @@ impl<'a> Iterator for StringEditor<'a> {
             self.change.next().or_else(|| {
                 self.idx = self.change.range.end + 1;
                 // Skip to next char.
-                let skip_width = self.change.range.end - self.change.range.start + 1;
+                let skip_width = self.change.range.end - self.change.range.start;
                 self.chars.nth(skip_width)
             })
-        } else if self.idx == self.change.range.end + 1 {
+        } else if self.idx == self.change.new_text.len() + self.change.range.start {
             // Skip to next char.
-            self.chars
-                .nth(self.change.range.end - self.change.range.start + 1)
+            let skip_width = self.change.range.end - self.change.range.start;
+            self.chars.nth(skip_width)
         } else {
             self.chars.next()
         };
@@ -135,7 +135,7 @@ mod tests {
     #[test]
     fn test_revision() {
         let main_text = "I am a writer";
-        let mutation = StringMutation::new("singer", 7, 12);
+        let mutation = StringMutation::new("singer", 7, 13);
 
         let reviser = StringEditor::new(main_text, mutation, None);
         let new_string: String = reviser.collect();
@@ -144,11 +144,22 @@ mod tests {
     }
 
     #[test]
+    fn test_revision_with_longer_text() {
+        let main_text = "His*name is Charlie";
+        let mutation = StringMutation::new(" middle ", 3, 4);
+
+        let reviser = StringEditor::new(main_text, mutation, None);
+        let new_string: String = reviser.collect();
+
+        assert_eq!(new_string, "His middle name is Charlie");
+    }
+
+    #[test]
     fn test_constraining() {
         let main_text = "Hello, My name is John.";
-        let mutation = StringMutation::new("Michael", 18, 21);
+        let mutation = StringMutation::new("Michael", 18, 22);
 
-        let reviser = StringEditor::new(main_text, mutation, Some([7, 22]));
+        let reviser = StringEditor::new(main_text, mutation, Some(7..22));
         let new_string: String = reviser.collect();
 
         assert_eq!(new_string, "My name is Michael.");

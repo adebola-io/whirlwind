@@ -1,14 +1,17 @@
+use std::collections::HashMap;
+
 use crate::{
     EnumSignature, FunctionSignature, ModelSignature, TraitSignature, TypeSignature,
     VariableSignature,
 };
 
-/// A hierarchical data structure that stores info in related "depths".
+/// A hierarchical data structure that stores info in related, ordered "depths".
 /// It provides functions for creating and managing the lifecycle of nested scopes.
 #[derive(Debug)]
 pub struct ScopeManager {
     scopes: Vec<Scope>,
     current_scope: usize,
+    last_valid: Option<usize>,
 }
 
 /// A shallow copy of the scope manager with a different current scope.
@@ -29,7 +32,7 @@ pub enum ScopeEntry {
     Trait(TraitSignature),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub enum ScopeType {
     Global,
     Functional,
@@ -37,6 +40,9 @@ pub enum ScopeType {
     Test,
     Constructor,
     Method,
+    /// A placeholder scope.
+    #[default]
+    VoidScope,
 }
 
 /// The scope address stores the address of a symbol in the scope manager.
@@ -48,7 +54,7 @@ pub struct ScopeAddress {
     pub entry_no: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Scope {
     pub id: usize,
     _type: ScopeType,
@@ -140,6 +146,10 @@ impl Scope {
     pub fn add(&mut self, entry: ScopeEntry) -> usize {
         self.entries.push(entry);
         self.entries.len() - 1
+    }
+    /// Remove an entry with an index.
+    pub fn remove(&mut self, entry_no: usize) -> ScopeEntry {
+        self.entries.remove(entry_no)
     }
     /// Get a model entry by its index.
     pub fn get_model(&self, entry_no: usize) -> Option<&ModelSignature> {
@@ -233,11 +243,12 @@ impl ScopeManager {
         ScopeManager {
             scopes: vec![Scope::global()],
             current_scope: 0,
+            last_valid: None,
         }
     }
     /// Checks if the program is currently in the global scope.
     pub fn is_global(&self) -> bool {
-        self.current_scope == 0
+        matches!(&self.scopes[self.current_scope]._type, ScopeType::Global)
     }
     pub fn create_shadow(&self, current_scope: usize) -> ScopeManagerShadow {
         ScopeManagerShadow {
@@ -278,6 +289,44 @@ impl ScopeManager {
             .children_index
             .push(new_scope_index);
         self.current_scope = new_scope_index;
+    }
+    /// Removes a scope at an index from the program.
+    ///
+    /// To preserve the hierarchy, the scope and its descendants are moved into a new scope manager.<br>
+    ///
+    /// After removal, holes are left in the main manager that can be removed with [`ScopeManager::rectify()`].
+    pub fn remove(&mut self, id: usize) -> Option<ScopeManager> {
+        self.scopes.get(id)?;
+        let mut submanager = remove_scope_in_place(self, id);
+        submanager.rectify();
+        Some(submanager)
+    }
+    /// Adjusts the indexes of all the scopes present, while removing all holes in the program.
+    pub fn rectify(&mut self) {
+        // Remove all void scopes.
+        self.scopes
+            .retain(|scope| !matches!(scope._type, ScopeType::VoidScope));
+
+        // Create old-index -> new-index mapping.
+        let mut map = HashMap::<usize, usize>::new();
+        self.scopes.iter().enumerate().for_each(|(index, scope)| {
+            map.insert(scope.id, index);
+        });
+
+        // Reconcile for each scope.
+        self.scopes.iter_mut().for_each(|scope| {
+            if let Some(parent_id) = scope.parent_index {
+                scope.parent_index = map.get(&parent_id).copied();
+            }
+            scope.id = *map.get(&scope.id).unwrap();
+            scope.children_index.sort();
+            scope.children_index.iter_mut().for_each(|child_id| {
+                *child_id = *map.get(&child_id).unwrap();
+            })
+        });
+        // Back to top.
+        self.current_scope = 0;
+        self.last_valid = None;
     }
     /// Search within the current scope for an entry.
     pub fn lookaround(&self, name: &str) -> Option<ScopeSearch> {
@@ -340,10 +389,10 @@ impl ScopeManager {
     }
     /// Leaves the current scope and return to its parent.
     /// # Panics
-    /// Panics if the current scope is the global scope.
+    /// Panics if the current scope is the first scope.
     pub fn leave(&mut self) {
         if self.current_scope == 0 {
-            panic!("Cannot leave global scope.")
+            panic!("Cannot leave first scope.")
         }
         self.current_scope = self.scopes[self.current_scope].parent_index.unwrap();
     }
@@ -379,6 +428,61 @@ impl ScopeManager {
             None => panic!("Could not find scope with id {}", address.scope_id),
         }
     }
+    /// It takes a new scope manager and moves it into the holes that exist in the first.
+    /// Basically reverses a removal.
+    pub fn merge(&mut self, submanager: &mut ScopeManager) {
+        // Ensure that manager is not rectified.
+        if self.last_valid.is_none() {
+            panic!("Scope manager is already in a rectified state.");
+        }
+        // Gather all holes.
+        let holes = self
+            .scopes
+            .iter()
+            .enumerate()
+            .filter(|scope| matches!(scope.1._type, ScopeType::VoidScope))
+            .map(|tuple| tuple.0)
+            .collect::<Vec<_>>();
+        let offset = self.scopes.len();
+        self.remove(self.last_valid.unwrap()); // I have no idea.
+        let first = submanager.scopes.first_mut();
+        if let Some(first_sub_scope) = first {
+            first_sub_scope.parent_index = self.last_valid;
+            first_sub_scope.id = first_sub_scope.id + offset;
+            first_sub_scope
+                .children_index
+                .iter_mut()
+                .for_each(|chid| *chid = *chid + offset);
+            // Join downwards
+            self.scopes[self.last_valid.unwrap()]
+                .children_index
+                .push(first_sub_scope.id);
+        }
+        // Shift all indexes to end of main manager.
+        submanager.scopes.iter_mut().skip(1).for_each(|scope| {
+            scope.parent_index = scope
+                .parent_index
+                .map(|pid| pid + offset)
+                .or(self.last_valid);
+            scope.id = scope.id + self.scopes.len();
+
+            scope
+                .children_index
+                .iter_mut()
+                .for_each(|chid| *chid = *chid + offset);
+        });
+        // fill holes.
+        for hole in holes {
+            let scope_to_inject = submanager.scopes.remove(0);
+            self.scopes[hole] = scope_to_inject;
+        }
+        // Add rest values.
+        // Shift all indexes to end of main manager.
+        while !submanager.scopes.is_empty() {
+            self.scopes.push(submanager.scopes.remove(0));
+        }
+        self.rectify();
+    }
 }
 
 impl<'a> ScopeManagerShadow<'a> {
@@ -413,6 +517,36 @@ impl<'a> ScopeManagerShadow<'a> {
     }
 }
 
+/// Removes a scope and all its children.
+/// It creates a new uncollapsed scope manager for the unedited scope tree.
+fn remove_scope_in_place(manager: &mut ScopeManager, scope_id: usize) -> ScopeManager {
+    let mut scope = std::mem::take(&mut manager.scopes[scope_id]);
+    // Remove from parent.
+    if let Some(parent) = scope.parent_index {
+        let parent_scope = &mut manager.scopes[parent];
+        if !matches!(parent_scope._type, ScopeType::VoidScope) {
+            parent_scope
+                .children_index
+                .retain(|index| *index != scope_id);
+            manager.last_valid = Some(parent_scope.id);
+        }
+    }
+    let children_index = std::mem::take(&mut scope.children_index);
+
+    let mut sub_manager = ScopeManager {
+        scopes: vec![scope],
+        current_scope: 0,
+        last_valid: None,
+    };
+
+    // Remove its children.
+    for child_index in children_index {
+        let mut sub_sub_manager = remove_scope_in_place(manager, child_index);
+        sub_manager.scopes.append(&mut sub_sub_manager.scopes);
+    }
+    sub_manager
+}
+
 #[cfg(test)]
 mod tests {
     use crate::scope::ScopeType;
@@ -439,5 +573,31 @@ mod tests {
         scope_manager.leave();
         scope_manager.leave();
         assert_eq!(scope_manager.depth(), 1);
+    }
+
+    #[test]
+    fn test_removal() {
+        let mut scope_manager = ScopeManager::new();
+
+        scope_manager.enter(ScopeType::Local); // create scope 1 as child of 0
+        scope_manager.enter(ScopeType::Method); // create scope 2 as child of 1
+        scope_manager.enter(ScopeType::Test); // create scope 3 as child of 2
+        scope_manager.leave(); // back to scope 2
+        scope_manager.enter(ScopeType::Local); // create scope 4 as child of 2
+        scope_manager.enter(ScopeType::Constructor); // create scope 5 as child of 4.
+
+        let mut fragment = scope_manager.remove(3).unwrap();
+        println!("REMOVED: {:#?}\n\n\n", fragment);
+        fragment.enter(ScopeType::Functional); // create scope 6 as child of (former) 3
+        fragment.enter(ScopeType::Test); // create scope 7 as child of 6
+        println!("REMOVED AND EDITED: {:#?}\n\n\n", fragment);
+
+        println!(
+            "AFTER REMOVAL: {:#?}\n\n\n The last_valid was {:?}\n\n\n",
+            scope_manager, scope_manager.last_valid
+        );
+        scope_manager.merge(&mut fragment);
+
+        println!("AFTER MERGING: {:#?}\n\n\n", scope_manager);
     }
 }
