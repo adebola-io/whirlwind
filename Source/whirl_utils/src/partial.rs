@@ -11,6 +11,7 @@ impl<T, E> Partial<T, E> {
     /// Ignore all errors and return the result type.
     /// # Panics.
     /// This method will panic if any errors are encountered, or if there is no result.
+    #[track_caller]
     pub fn unwrap(self) -> T {
         if self.errors.len() > 0 {
             panic!("Called Partial::unwrap() on a Partial with errors.")
@@ -18,6 +19,20 @@ impl<T, E> Partial<T, E> {
         match self.value {
             Some(result) => result,
             None => panic!("Called Partial::unwrap() on a Partial with no result."),
+        }
+    }
+    /// Attempt to return the result type, or panic with a message based on the errors contained.
+    #[track_caller]
+    pub fn expect<F: FnOnce(Vec<E>) -> String>(self, callback_if_err: F) -> T {
+        if self.errors.len() > 0 {
+            panic!("{}", callback_if_err(self.errors))
+        }
+        match self.value {
+            Some(result) => result,
+            None => panic!(
+                "Called Partial::unwrap() on a Partial with no result.\n {:}",
+                callback_if_err(self.errors)
+            ),
         }
     }
     /// Maps a `Partial<T, E>` to `Partial<U, E>` by applying a function to a contained value.

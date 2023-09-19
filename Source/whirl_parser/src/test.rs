@@ -1768,15 +1768,28 @@ fn parse_return_statement() {
     );
 
     // With expression.
-    let mut parser = parse_text("return a;");
+    let mut parser = parse_text("fn () {return a;}");
     assert_eq!(
         parser.next().unwrap().unwrap(),
-        Statement::ReturnStatement(ReturnStatement {
-            value: Some(Expression::Identifier(Identifier {
-                name: format!("a"),
-                span: [1, 8, 1, 9].into()
-            })),
-            span: [1, 1, 1, 10].into()
-        })
+        Statement::FreeExpression(Expression::FnExpr(Box::new(FunctionExpr {
+            generic_params: None,
+            params: vec![],
+            return_type: Type {
+                declared: None,
+                inferred: None
+            },
+            body: Expression::BlockExpr(Block {
+                scope_id: 1,
+                statements: vec![Statement::ReturnStatement(ReturnStatement {
+                    value: Some(Expression::Identifier(Identifier {
+                        name: format!("a"),
+                        span: [1, 15, 1, 16].into()
+                    })),
+                    span: [1, 8, 1, 17].into()
+                })],
+                span: [1, 7, 1, 18].into()
+            }),
+            span: [1, 1, 1, 18].into()
+        })))
     )
 }
