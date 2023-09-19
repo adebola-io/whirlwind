@@ -199,6 +199,7 @@ pub enum Keyword {
     In,
     Implements,
     Model,
+    Module,
     New,
     Public,
     Record,

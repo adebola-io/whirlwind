@@ -12,3 +12,17 @@ pub enum ProgramError {
     LexerError(LexError),
     TypeError(TypeError),
 }
+
+pub fn module_declaration_not_global(span: whirl_ast::Span) -> ParseError {
+    ParseError {
+        error_type: ParserErrorType::NonGlobalModuleDeclaration,
+        span,
+    }
+}
+
+pub fn invalid_return(span: whirl_ast::Span) -> ParseError {
+    ParseError {
+        error_type: ParserErrorType::InvalidReturn,
+        span,
+    }
+}

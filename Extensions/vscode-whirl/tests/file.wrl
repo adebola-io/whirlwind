@@ -1,0 +1,40 @@
+module String;
+
+use Package.Internals;
+
+/// Model for creating, manipulating and formatting text sequences.
+public model String {
+    /// Returns a `Maybe` with the character at the zero based index in the string.
+    ///
+    /// It also supports negative indexes, which will return values from the end of the string.
+    /// # Usage
+    /// ```whirl
+    /// str := "This is a string";
+    /// 
+    /// Assert(str.At(0)).Equals(Some("T"));
+    /// Assert(str.At(8)).Equals(Some("a")) 
+    /// Assert(str.At(11)).Equals(Some("t"));
+    /// ```
+    /// _Indexing from behind:_
+    /// 
+    /// ```
+    /// Assert(str.At(-1)).Equals(Some("g"));
+    /// Assert(str.At(-3)).Equals(Some("i"));
+    /// ```
+    /// It will return no value if the length of the string is exceeded.
+    public function At(position: Integer): Maybe<String> {
+        return Internals.Invoke("strat", this, position);
+    }
+    /// Adds text to the end of the string.
+    /// # Usage
+    /// ```
+    /// str := "Hello";
+    /// 
+    /// str.Append(", world!");
+    /// 
+    /// Assert(Str).Equals("Hello, world!");
+    /// ```
+    public function Append(toAdd: String) {
+        Internals.Invoke("strappend", this, toAdd);
+    }
+}

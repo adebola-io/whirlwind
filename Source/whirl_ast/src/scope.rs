@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    EnumSignature, FunctionSignature, ModelSignature, TraitSignature, TypeSignature,
+    EnumSignature, FunctionSignature, Identifier, ModelSignature, TraitSignature, TypeSignature,
     VariableSignature,
 };
 
@@ -9,6 +9,7 @@ use crate::{
 /// It provides functions for creating and managing the lifecycle of nested scopes.
 #[derive(Debug)]
 pub struct ScopeManager {
+    module_name: Option<Identifier>,
     scopes: Vec<Scope>,
     current_scope: usize,
     last_valid: Option<usize>,
@@ -30,6 +31,7 @@ pub enum ScopeEntry {
     Enum(EnumSignature),
     Variable(VariableSignature),
     Trait(TraitSignature),
+    // Imported(ImportedSignature),
 }
 
 #[derive(Debug, Default)]
@@ -229,6 +231,10 @@ impl Scope {
     fn get_entry_mut(&mut self, entry_no: usize) -> Option<&mut ScopeEntry> {
         self.entries.get_mut(entry_no)
     }
+    /// Returns true if the scope is a global scope.
+    pub fn is_global(&self) -> bool {
+        matches!(self._type, ScopeType::Global)
+    }
 }
 
 impl Default for ScopeManager {
@@ -241,6 +247,16 @@ impl ScopeManager {
     /// Create a new scope manager.
     pub fn new() -> Self {
         ScopeManager {
+            module_name: None,
+            scopes: vec![Scope::global()],
+            current_scope: 0,
+            last_valid: None,
+        }
+    }
+    /// Create a scope manager for a module.
+    pub fn for_module(module_name: Identifier) -> Self {
+        ScopeManager {
+            module_name: Some(module_name),
             scopes: vec![Scope::global()],
             current_scope: 0,
             last_valid: None,
@@ -404,7 +420,14 @@ impl ScopeManager {
     pub fn get_scope_mut(&mut self, index: usize) -> Option<&mut Scope> {
         self.scopes.get_mut(index)
     }
-
+    /// Returns the module name of the scope, if it exists.
+    pub fn get_module_name(&self) -> Option<&str> {
+        self.module_name.as_ref().map(|x| x.name.as_str())
+    }
+    /// Set the name of the scope.
+    pub fn set_name(&mut self, name: Identifier) {
+        self.module_name = Some(name);
+    }
     /// Returns an entry using a scope address without checks.
     /// Panics if the scope or entry is not found.
     pub fn get_entry_unguarded(&self, address: ScopeAddress) -> &ScopeEntry {
@@ -416,7 +439,6 @@ impl ScopeManager {
             None => panic!("Could not find scope with id {}", address.scope_id),
         }
     }
-
     /// Returns a **mutable** entry using a scope address without checks.
     /// Panics if the scope or entry is not found.
     pub fn get_entry_unguarded_mut(&mut self, address: ScopeAddress) -> &mut ScopeEntry {
@@ -483,6 +505,25 @@ impl ScopeManager {
         }
         self.rectify();
     }
+
+    /// Checks up the scope tree to see if the current scope is within a function or method.
+    pub fn is_in_function_context(&self) -> bool {
+        let mut current_scope = self.current_scope;
+        loop {
+            let scope = &self.scopes[current_scope];
+            if matches!(scope._type, ScopeType::Functional | ScopeType::Method) {
+                return true;
+            } else if let Some(parent) = scope.parent_index {
+                current_scope = parent;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    pub fn is_test(&self) -> bool {
+        matches!(&self.scopes[self.current_scope]._type, ScopeType::Test)
+    }
 }
 
 impl<'a> ScopeManagerShadow<'a> {
@@ -534,6 +575,7 @@ fn remove_scope_in_place(manager: &mut ScopeManager, scope_id: usize) -> ScopeMa
     let children_index = std::mem::take(&mut scope.children_index);
 
     let mut sub_manager = ScopeManager {
+        module_name: None,
         scopes: vec![scope],
         current_scope: 0,
         last_valid: None,

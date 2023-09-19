@@ -192,33 +192,3 @@ pub fn get_affected_scopes(nodes: Vec<&Statement>) -> Vec<usize> {
     }
     affected_scopes
 }
-
-#[cfg(test)]
-mod tests {
-    use whirl_ast::Change;
-
-    use crate::Module;
-
-    #[test]
-    fn module_updating() {
-        let mut module = Module::from_text(
-            "
-            function Main() {
-              function Test () {
-                square:= fn (a: Number): Number {
-                    newValue := a ^ 2;
-                    newValue
-                };
-                name: String = \"Hello\";
-              }
-            }
-    "
-            .to_string(),
-        );
-
-        module.update(&[
-            // Change::new([2, 18, 2, 26], "SayMama"),
-            Change::new([4, 18, 4, 24], "SquaringFunction "),
-        ]);
-    }
-}

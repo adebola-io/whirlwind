@@ -7,7 +7,7 @@
    "onEnterRules": [
       {
          "beforeText": "^\\s*///\\s*",
-         "action": { "indent": "none", "appendText": "///" }
+         "action": { "indent": "none", "appendText": "/// " }
       }
    ],
    "brackets": [

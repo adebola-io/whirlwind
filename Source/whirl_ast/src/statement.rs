@@ -12,6 +12,7 @@ pub enum Statement {
     ShorthandVariableDeclaration(ShorthandVariableDeclaration),
     ConstantDeclaration,
     ModelDeclaration(ModelDeclaration),
+    ModuleDeclaration(ModuleDeclaration),
     FunctionDeclaration(FunctionDeclaration),
     RecordDeclaration,
     TraitDeclaration(TraitDeclaration),
@@ -19,11 +20,18 @@ pub enum Statement {
     TypeDeclaration(TypeDeclaration),
     // Control Statements.
     WhileStatement(WhileStatement),
+    ReturnStatement(ReturnStatement),
     ForStatement,
     // Expression statements.
     ExpressionStatement(Expression),
     /// An expression without the semicolon.
     FreeExpression(Expression),
+}
+
+#[derive(Debug, PartialEq)]
+/// A node for a module declaration.
+pub struct ModuleDeclaration {
+    pub span: Span,
 }
 
 /// A node for a use declaration in the AST.
@@ -295,6 +303,12 @@ pub struct WhileStatement {
 }
 
 #[derive(Debug, PartialEq)]
+pub struct ReturnStatement {
+    pub value: Option<Expression>,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
 pub struct Parameter {
     /// Name of the parameter.
     pub name: Identifier,
@@ -467,6 +481,8 @@ impl Spannable for Statement {
             Statement::ForStatement => todo!(),
             Statement::ExpressionStatement(e) | Statement::FreeExpression(e) => e.span(),
             Statement::ShorthandVariableDeclaration(v) => v.span,
+            Statement::ModuleDeclaration(m) => m.span,
+            Statement::ReturnStatement(r) => r.span,
         }
     }
     fn set_start(&mut self, start: [u32; 2]) {
@@ -485,6 +501,8 @@ impl Spannable for Statement {
             Statement::ForStatement => todo!(),
             Statement::ExpressionStatement(e) | Statement::FreeExpression(e) => e.set_start(start),
             Statement::ShorthandVariableDeclaration(v) => v.span.start = start,
+            Statement::ModuleDeclaration(m) => m.span.start = start,
+            Statement::ReturnStatement(r) => r.span.start = start,
         }
     }
     fn captured_scopes(&self) -> Vec<usize> {

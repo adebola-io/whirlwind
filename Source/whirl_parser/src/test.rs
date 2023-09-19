@@ -3,10 +3,11 @@
 use whirl_ast::{
     AccessExpr, ArrayExpr, AssignmentExpr, BinaryExpr, Block, CallExpr, DiscreteType, Else,
     EnumDeclaration, Expression, FunctionDeclaration, FunctionExpr, Identifier, IfExpression,
-    IndexExpr, LogicExpr, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType, NewExpr,
-    Parameter, ScopeAddress, ScopeEntry, Span, Statement, TestDeclaration, ThisExpr, TraitBody,
-    TraitDeclaration, TraitProperty, Type, TypeDeclaration, TypeExpression, UnaryExpr,
-    UseDeclaration, UsePath, UseTarget, WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
+    IndexExpr, LogicExpr, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType,
+    ModuleDeclaration, NewExpr, Parameter, ReturnStatement, ScopeAddress, ScopeEntry, Span,
+    Statement, TestDeclaration, ThisExpr, TraitBody, TraitDeclaration, TraitProperty, Type,
+    TypeDeclaration, TypeExpression, UnaryExpr, UseDeclaration, UsePath, UseTarget, WhileStatement,
+    WhirlBoolean, WhirlNumber, WhirlString,
 };
 
 use crate::parse_text;
@@ -1737,4 +1738,45 @@ public model Stack<T> {
     for statement in parser {
         assert!(statement.is_some() && !statement.has_errors());
     }
+}
+
+#[test]
+fn parse_module_declaration() {
+    let mut parser = parse_text("module Structures;");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::ModuleDeclaration(ModuleDeclaration {
+            span: [1, 1, 1, 19].into()
+        })
+    );
+    assert_eq!(
+        parser.scope_manager().get_module_name().unwrap(),
+        "Structures"
+    )
+}
+
+#[test]
+fn parse_return_statement() {
+    // Without expression.
+    let mut parser = parse_text("return;");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::ReturnStatement(ReturnStatement {
+            value: None,
+            span: [1, 1, 1, 8].into()
+        })
+    );
+
+    // With expression.
+    let mut parser = parse_text("return a;");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::ReturnStatement(ReturnStatement {
+            value: Some(Expression::Identifier(Identifier {
+                name: format!("a"),
+                span: [1, 8, 1, 9].into()
+            })),
+            span: [1, 1, 1, 10].into()
+        })
+    )
 }

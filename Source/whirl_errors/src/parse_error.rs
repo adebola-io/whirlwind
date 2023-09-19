@@ -22,6 +22,9 @@ pub enum ParserErrorType {
     TypeInTraitPosition(whirl_ast::TypeExpression),
     ExpectedAttribute,
     PublicAccessTypeOnConstructor,
+    DuplicateModuleName,
+    NonGlobalModuleDeclaration,
+    InvalidReturn,
 }
 
 pub fn public_shorthand_var(span: Span) -> ParseError {
@@ -118,6 +121,13 @@ pub fn expected_attribute(span: Span) -> ParseError {
 pub fn public_on_new(span: Span) -> ParseError {
     ParseError {
         error_type: ParserErrorType::PublicAccessTypeOnConstructor,
+        span,
+    }
+}
+
+pub fn duplicate_module_name(span: whirl_ast::Span) -> ParseError {
+    ParseError {
+        error_type: ParserErrorType::DuplicateModuleName,
         span,
     }
 }

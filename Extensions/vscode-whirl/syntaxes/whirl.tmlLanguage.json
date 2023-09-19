@@ -7,6 +7,7 @@
       { "include": "#type_declaration" },
       { "include": "#model_header" },
       { "include": "#trait_header" },
+      { "include": "#module_declaration" },
       { "include": "#use_declaration" },
       { "include": "#enum_declaration" },
       { "include": "#enum_variant_hover" },
@@ -29,7 +30,7 @@
       },
       "injunction": {
          "name": "meta.injunction keyword.storage.injunction",
-         "match": "\\b(use|enum|public|static|test|var|new|const|model|async|record|trait|type|extends|implements|not|and|or|is)\\b"
+         "match": "\\b(use|module|enum|public|static|test|var|new|const|model|async|record|trait|type|extends|implements|not|and|or|is|Package)\\b"
       },
       "comment": {
          "patterns": [
@@ -196,6 +197,18 @@
          "end": "(?=\\{)"
       },
 
+      "module_declaration": {
+         "match": "(\\bmodule\\b\\s+)(\\w+)",
+         "captures": {
+            "1": {
+               "name": "keyword"
+            },
+            "2": {
+               "name": "entity.name.class support.class"
+            }
+         }
+      },
+
       "use_declaration": {
          "begin": "(\\buse\\b\\s+)",
          "beginCaptures": {
@@ -204,6 +217,7 @@
             }
          },
          "patterns": [
+            { "include": "#injunction" },
             {
                "name": "entity.name.class support.class",
                "match": "(\\b\\w+\\b)"

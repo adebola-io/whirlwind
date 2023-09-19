@@ -17,6 +17,31 @@ pub trait SignatureFormatter: HoverFormatter {
     fn info(&self) -> Option<&Vec<String>>;
 }
 
+pub struct PublicAtomHover<'a, T: SignatureFormatter> {
+    pub signature: &'a T,
+    pub scope_manager: &'a ScopeManager,
+}
+
+impl<'a, T: SignatureFormatter> HoverFormatter for PublicAtomHover<'a, T> {
+    fn to_formatted(&self) -> String {
+        let mut string = String::new();
+        // Add module name.
+        if let Some(name) = self.scope_manager.get_module_name() {
+            string.push_str("module ");
+            string.push_str(name);
+            string.push('\n');
+        }
+        string.push_str(&self.signature.to_formatted());
+        string
+    }
+}
+
+impl<'a, T: SignatureFormatter> SignatureFormatter for PublicAtomHover<'a, T> {
+    fn info(&self) -> Option<&Vec<String>> {
+        self.signature.info()
+    }
+}
+
 impl HoverFormatter for FunctionSignature {
     fn to_formatted(&self) -> String {
         // Construct function signature.

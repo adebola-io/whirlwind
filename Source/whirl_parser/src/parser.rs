@@ -6,11 +6,12 @@ use whirl_ast::{
     ExpressionPrecedence, FunctionDeclaration, FunctionExpr, FunctionSignature, FunctionalType,
     GenericParameter, Identifier, IfExpression, IndexExpr, Keyword::*, LogicExpr, MemberType,
     MethodSignature, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType, ModelSignature,
-    NewExpr, Operator::*, Parameter, ScopeAddress, ScopeEntry, ScopeManager, ScopeType,
-    ShorthandVariableDeclaration, Span, Spannable, Statement, TestDeclaration, ThisExpr, Token,
-    TokenType, TraitBody, TraitDeclaration, TraitProperty, TraitPropertyType, TraitSignature, Type,
-    TypeDeclaration, TypeExpression, TypeSignature, UnaryExpr, UnionType, UseDeclaration, UsePath,
-    UseTarget, VariableSignature, WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
+    ModuleDeclaration, NewExpr, Operator::*, Parameter, ReturnStatement, ScopeAddress, ScopeEntry,
+    ScopeManager, ScopeType, ShorthandVariableDeclaration, Span, Spannable, Statement,
+    TestDeclaration, ThisExpr, Token, TokenType, TraitBody, TraitDeclaration, TraitProperty,
+    TraitPropertyType, TraitSignature, Type, TypeDeclaration, TypeExpression, TypeSignature,
+    UnaryExpr, UnionType, UseDeclaration, UsePath, UseTarget, VariableSignature, WhileStatement,
+    WhirlBoolean, WhirlNumber, WhirlString,
 };
 use whirl_errors::{self as errors, ParseError};
 use whirl_lexer::Lexer;
@@ -832,6 +833,10 @@ impl<L: Lexer> Parser<L> {
             TokenType::Keyword(Enum) => self
                 .enum_declaration(false)
                 .map(|e| Statement::EnumDeclaration(e)),
+            // // module...
+            TokenType::Keyword(Module) => self
+                .module_declaration()
+                .map(|m| Statement::ModuleDeclaration(m)),
             // // model...
             TokenType::Keyword(Model) => self
                 .model_declaration(false)
@@ -841,6 +846,7 @@ impl<L: Lexer> Parser<L> {
                 .trait_declaration(false)
                 .map(|t| Statement::TraitDeclaration(t)),
             TokenType::Keyword(While) => self.while_statement(),
+            TokenType::Keyword(Return) => self.return_statement(),
             // unimplemented!(
             //     "{:?} not implemented yet!. The last token was {:?}",
             //     self.token().unwrap(),
@@ -1228,6 +1234,50 @@ impl<L: Lexer> Parser<L> {
         };
 
         Partial::from_value(variant)
+    }
+
+    /// Parses a module declaration. Assumes that `module` is the current token.
+    fn module_declaration(&self) -> Imperfect<ModuleDeclaration> {
+        expect_or_return!(TokenType::Keyword(Module), self);
+        let start = self.token().unwrap().span.start;
+        self.advance(); // Move past module.
+        let name = check!(self.identifier());
+        let mut errors = vec![];
+
+        let end = match self.token() {
+            Some(token) if token._type == TokenType::Operator(SemiColon) => {
+                let span = token.span;
+                self.advance(); // Move past ;
+                span.end
+            }
+            _ => {
+                errors.push(errors::expected(
+                    TokenType::Operator(SemiColon),
+                    self.last_token_end(),
+                ));
+                name.span.end
+            }
+        };
+
+        let module = ModuleDeclaration {
+            span: Span { start, end },
+        };
+
+        // Module already has a name.
+        if self.scope_manager().get_module_name().is_some() {
+            errors.push(errors::duplicate_module_name(module.span))
+        } else
+        // Module is not in global scope.
+        if !self.scope_manager().is_global() {
+            errors.push(errors::module_declaration_not_global(module.span))
+        } else {
+            self.scope_manager().set_name(name);
+        }
+
+        Partial {
+            value: Some(module),
+            errors,
+        }
     }
 
     /// Parses a model declaration. Assumes that `model` is the current token.
@@ -1847,6 +1897,58 @@ impl<L: Lexer> Parser<L> {
         }
     }
 
+    /// Parses a return statement.
+    fn return_statement(&self) -> Imperfect<Statement> {
+        expect_or_return!(TokenType::Keyword(Return), self);
+        let start = self.token().unwrap().span.start;
+        let ret_end = self.token().unwrap().span.start;
+        self.advance(); // move past return
+        let mut errors = vec![];
+
+        if self
+            .token()
+            .is_some_and(|t| t._type == TokenType::Operator(SemiColon))
+        {
+            let end = self.token().unwrap().span.end;
+            self.advance(); // move past ;
+            return Partial::from_value(Statement::ReturnStatement(ReturnStatement {
+                value: None,
+                span: Span { start, end },
+            }));
+        }
+        let mut expression = self.expression();
+        errors.append(&mut expression.errors);
+
+        let end = if !self
+            .token()
+            .is_some_and(|t| t._type == TokenType::Operator(SemiColon))
+        {
+            errors.push(errors::expected(
+                TokenType::Operator(SemiColon),
+                self.last_token_span(),
+            ));
+            expression
+                .value
+                .as_ref()
+                .map(|v| v.span().end)
+                .unwrap_or(ret_end)
+        } else {
+            let end = self.token().unwrap().span.end;
+            self.advance(); // move past
+            end
+        };
+
+        let return_ = ReturnStatement {
+            value: expression.value,
+            span: Span { start, end },
+        };
+        if !self.scope_manager().is_in_function_context() {
+            errors.push(errors::invalid_return(return_.span));
+        }
+
+        let statement = Statement::ReturnStatement(return_);
+        Partial::from_tuple((Some(statement), errors))
+    }
     /// Parses an identifier and advances. It assumes that the identifier is the current token.
     fn identifier(&self) -> Fallible<Identifier> {
         self.ended(errors::identifier_expected(self.last_token_end()))?;

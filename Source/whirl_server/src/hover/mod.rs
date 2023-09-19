@@ -1,7 +1,7 @@
 use tower_lsp::lsp_types::{Hover, HoverContents, LanguageString, MarkedString};
 use whirl_analyzer::type_utils::evaluate_discrete_type;
 use whirl_ast::{ASTVisitor, ModelPropertyType, ScopeManager, TypeExpression};
-use whirl_printer::{AttributeHover, MethodHover, SignatureFormatter};
+use whirl_printer::{AttributeHover, MethodHover, PublicAtomHover, SignatureFormatter};
 
 /// Information shown during hovering.
 pub struct HoverInfo {
@@ -96,6 +96,14 @@ impl<'a> ASTVisitor<[u32; 2], Option<HoverInfo>> for HoverFinder<'a> {
         let model = scope.get_model(model_decl.address.entry_no)?;
         // Hovering over a variable name.
         if model.name.span.contains(*args) {
+            // Global model functions.
+            if scope.is_global() && model.is_public {
+                let global_model_hover = PublicAtomHover {
+                    signature: model,
+                    scope_manager,
+                };
+                return Some((&global_model_hover).into());
+            }
             return Some(model.into());
         }
         // Hovering over a trait.
@@ -120,6 +128,14 @@ impl<'a> ASTVisitor<[u32; 2], Option<HoverInfo>> for HoverFinder<'a> {
                                 model,
                                 scope_manager,
                             };
+                            if scope.is_global() && model.is_public && attribute.is_public {
+                                let global_attrib_hover = PublicAtomHover {
+                                    scope_manager,
+                                    signature: &hover_over_attrib,
+                                };
+                                return Some((&global_attrib_hover).into());
+                            }
+
                             return Some((&hover_over_attrib).into());
                         }
                         // Hovering over an attribute type.
@@ -140,6 +156,13 @@ impl<'a> ASTVisitor<[u32; 2], Option<HoverInfo>> for HoverFinder<'a> {
                                 model,
                                 scope_manager,
                             };
+                            if scope.is_global() && model.is_public && method.is_public {
+                                let global_hover = PublicAtomHover {
+                                    scope_manager,
+                                    signature: &hover_over_function,
+                                };
+                                return Some((&global_hover).into());
+                            }
                             return Some((&hover_over_function).into());
                         }
                         // Hovering over a parameter.
@@ -189,11 +212,20 @@ impl<'a> ASTVisitor<[u32; 2], Option<HoverInfo>> for HoverFinder<'a> {
         function: &whirl_ast::FunctionDeclaration,
         args: &[u32; 2],
     ) -> Option<HoverInfo> {
+        let scope_manager = &self.scope_manager;
         let scope = self.scope_manager.get_scope(function.address.scope_id)?;
         let signature = scope.get_function(function.address.entry_no)?;
         let body = &function.body;
         // Hovering over the function name.
         if signature.name.span.contains(*args) {
+            // Global public functions.
+            if scope.is_global() && signature.is_public {
+                let global_function_hover = PublicAtomHover {
+                    signature,
+                    scope_manager,
+                };
+                return Some((&global_function_hover).into());
+            }
             return Some(signature.into());
         }
         // Hovering over a parameter.
@@ -228,7 +260,7 @@ impl<'a> ASTVisitor<[u32; 2], Option<HoverInfo>> for HoverFinder<'a> {
         return None;
     }
 
-    /// Hover over a type declaration.
+    /// Hover over a type declaration.:
     fn visit_type_declaration(
         &self,
         type_decl: &whirl_ast::TypeDeclaration,
@@ -238,6 +270,13 @@ impl<'a> ASTVisitor<[u32; 2], Option<HoverInfo>> for HoverFinder<'a> {
         let signature = scope.get_type(type_decl.address.entry_no)?;
         // Hovering over the type name.
         if signature.name.span.contains(*args) {
+            if scope.is_global() && signature.is_public {
+                let global_hover = PublicAtomHover {
+                    scope_manager: self.scope_manager,
+                    signature,
+                };
+                return Some((&global_hover).into());
+            }
             return Some(signature.into());
         }
         return None;
@@ -254,11 +293,25 @@ impl<'a> ASTVisitor<[u32; 2], Option<HoverInfo>> for HoverFinder<'a> {
 
         // Hovering over enum name.
         if signature.name.span.contains(*args) {
+            if scope.is_global() && signature.is_public {
+                let global_hover = PublicAtomHover {
+                    scope_manager: self.scope_manager,
+                    signature,
+                };
+                return Some((&global_hover).into());
+            }
             return Some(signature.into());
         }
 
         for variant in &signature.variants {
             if variant.span.contains(*args) {
+                if scope.is_global() && signature.is_public {
+                    let global_hover = PublicAtomHover {
+                        scope_manager: self.scope_manager,
+                        signature: &(&signature.name, variant),
+                    };
+                    return Some((&global_hover).into());
+                }
                 return Some(HoverInfo::from(&(&signature.name, variant)));
             }
         }

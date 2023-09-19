@@ -77,6 +77,15 @@ pub fn stringify_parse_error(error: &ParserErrorType) -> String {
         ParserErrorType::PublicAccessTypeOnConstructor => {
             format!("Constructors do not allow public modifiers.")
         }
+        ParserErrorType::DuplicateModuleName => {
+            format!("Module name is already declared for this file.")
+        }
+        ParserErrorType::NonGlobalModuleDeclaration => {
+            format!("Module name can only be declared in the global context.")
+        }
+        ParserErrorType::InvalidReturn => {
+            format!("Return statements can only be used within a function or method.")
+        }
     }
 }
 
