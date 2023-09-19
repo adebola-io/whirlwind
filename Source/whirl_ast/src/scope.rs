@@ -1,24 +1,24 @@
 use std::collections::HashMap;
 
 use crate::{
-    EnumSignature, FunctionSignature, Identifier, ModelSignature, TraitSignature, TypeSignature,
-    VariableSignature,
+    EnumSignature, FunctionSignature, Identifier, ModelSignature, Parameter, TraitSignature,
+    TypeSignature, VariableSignature,
 };
 
 /// A hierarchical data structure that stores info in related, ordered "depths".
 /// It provides functions for creating and managing the lifecycle of nested scopes.
 #[derive(Debug)]
-pub struct ScopeManager {
+pub struct ModuleScope {
     module_name: Option<Identifier>,
     scopes: Vec<Scope>,
     current_scope: usize,
     last_valid: Option<usize>,
 }
 
-/// A shallow copy of the scope manager with a different current scope.
+/// A shallow copy of the module scope with a different current scope.
 /// Allows for lookup without leaving the current scope.
-pub struct ScopeManagerShadow<'a> {
-    base: &'a ScopeManager,
+pub struct ModuleScopeShadow<'a> {
+    base: &'a ModuleScope,
     current_scope: usize,
 }
 
@@ -31,23 +31,27 @@ pub enum ScopeEntry {
     Enum(EnumSignature),
     Variable(VariableSignature),
     Trait(TraitSignature),
+    Parameter(Parameter),
     // Imported(ImportedSignature),
 }
 
 #[derive(Debug, Default)]
 pub enum ScopeType {
-    Global,
-    Functional,
-    Local,
-    Test,
-    Constructor,
-    Method,
+    Local = 0,
+    Test = 1,
+    Functional = 2,
+    Constructor = 3,
+    Method = 4,
+    Global = 5,
+    Directory = 6,
+    Package = 7,
+    Workspace = 8,
     /// A placeholder scope.
     #[default]
-    VoidScope,
+    VoidScope = 9,
 }
 
-/// The scope address stores the address of a symbol in the scope manager.
+/// The scope address stores the address of a symbol in the module scope.
 #[derive(Debug, Default, PartialEq, Clone, Copy)]
 pub struct ScopeAddress {
     /// The entry in which it is declared.
@@ -60,14 +64,14 @@ pub struct ScopeAddress {
 pub struct Scope {
     pub id: usize,
     _type: ScopeType,
-    /// The index of the parent scope in the scope manager.
+    /// The index of the parent scope in the module scope.
     parent_index: Option<usize>,
-    /// The index of the children scopes in the scope manager.
+    /// The index of the children scopes in the module scope.
     children_index: Vec<usize>,
     entries: Vec<ScopeEntry>,
 }
 
-/// The result of a search through the scope manager.
+/// The result of a search through the module scope.
 #[derive(Debug)]
 pub struct ScopeSearch<'a> {
     pub index: usize,
@@ -93,7 +97,8 @@ impl ScopeEntry {
             | ScopeEntry::Model(ModelSignature { name, .. })
             | ScopeEntry::Enum(EnumSignature { name, .. })
             | ScopeEntry::Variable(VariableSignature { name, .. })
-            | ScopeEntry::Trait(TraitSignature { name, .. }) => &name.name,
+            | ScopeEntry::Trait(TraitSignature { name, .. })
+            | ScopeEntry::Parameter(Parameter { name, .. }) => &name.name,
         }
     }
 
@@ -110,6 +115,14 @@ impl ScopeEntry {
         match self {
             ScopeEntry::Variable(v) => v,
             _ => panic!("{} is not a variable!", self.name()),
+        }
+    }
+
+    /// Returns an entry as a function signature. Panics if the entry is not a function variant.
+    pub fn func(&self) -> &FunctionSignature {
+        match self {
+            ScopeEntry::Function(f) => f,
+            _ => panic!("{} is not a function!", self.name()),
         }
     }
 }
@@ -237,25 +250,25 @@ impl Scope {
     }
 }
 
-impl Default for ScopeManager {
+impl Default for ModuleScope {
     fn default() -> Self {
-        ScopeManager::new()
+        ModuleScope::new()
     }
 }
 
-impl ScopeManager {
-    /// Create a new scope manager.
+impl ModuleScope {
+    /// Create a new module scope.
     pub fn new() -> Self {
-        ScopeManager {
+        ModuleScope {
             module_name: None,
             scopes: vec![Scope::global()],
             current_scope: 0,
             last_valid: None,
         }
     }
-    /// Create a scope manager for a module.
+    /// Create a module scope for a module.
     pub fn for_module(module_name: Identifier) -> Self {
-        ScopeManager {
+        ModuleScope {
             module_name: Some(module_name),
             scopes: vec![Scope::global()],
             current_scope: 0,
@@ -266,8 +279,8 @@ impl ScopeManager {
     pub fn is_global(&self) -> bool {
         matches!(&self.scopes[self.current_scope]._type, ScopeType::Global)
     }
-    pub fn create_shadow(&self, current_scope: usize) -> ScopeManagerShadow {
-        ScopeManagerShadow {
+    pub fn create_shadow(&self, current_scope: usize) -> ModuleScopeShadow {
+        ModuleScopeShadow {
             base: self,
             current_scope,
         }
@@ -296,6 +309,10 @@ impl ScopeManager {
     pub fn current(&self) -> usize {
         self.current_scope
     }
+    /// Goes to a new current scope.
+    pub fn goto(&mut self, scope_id: usize) {
+        self.current_scope = scope_id;
+    }
     /// Creates a new local scope and enters it.
     pub fn enter(&mut self, _type: ScopeType) {
         let new_scope_index = self.scopes.len();
@@ -308,10 +325,10 @@ impl ScopeManager {
     }
     /// Removes a scope at an index from the program.
     ///
-    /// To preserve the hierarchy, the scope and its descendants are moved into a new scope manager.<br>
+    /// To preserve the hierarchy, the scope and its descendants are moved into a new module scope.<br>
     ///
-    /// After removal, holes are left in the main manager that can be removed with [`ScopeManager::rectify()`].
-    pub fn remove(&mut self, id: usize) -> Option<ScopeManager> {
+    /// After removal, holes are left in the main manager that can be removed with [`ModuleScope::rectify()`].
+    pub fn remove(&mut self, id: usize) -> Option<ModuleScope> {
         self.scopes.get(id)?;
         let mut submanager = remove_scope_in_place(self, id);
         submanager.rectify();
@@ -450,12 +467,12 @@ impl ScopeManager {
             None => panic!("Could not find scope with id {}", address.scope_id),
         }
     }
-    /// It takes a new scope manager and moves it into the holes that exist in the first.
+    /// It takes a new module scope and moves it into the holes that exist in the first.
     /// Basically reverses a removal.
-    pub fn merge(&mut self, submanager: &mut ScopeManager) {
+    pub fn merge(&mut self, submanager: &mut ModuleScope) {
         // Ensure that manager is not rectified.
         if self.last_valid.is_none() {
-            panic!("Scope manager is already in a rectified state.");
+            panic!("module scope is already in a rectified state.");
         }
         // Gather all holes.
         let holes = self
@@ -505,7 +522,6 @@ impl ScopeManager {
         }
         self.rectify();
     }
-
     /// Checks up the scope tree to see if the current scope is within a function or method.
     pub fn is_in_function_context(&self) -> bool {
         let mut current_scope = self.current_scope;
@@ -520,13 +536,13 @@ impl ScopeManager {
             }
         }
     }
-
+    /// Checks if the current scope is a test scope.
     pub fn is_test(&self) -> bool {
         matches!(&self.scopes[self.current_scope]._type, ScopeType::Test)
     }
 }
 
-impl<'a> ScopeManagerShadow<'a> {
+impl<'a> ModuleScopeShadow<'a> {
     /// Search for an entry within the current scope, or within any of its ancestors.
     pub fn lookaround(&self, name: &str) -> Option<ScopeSearch> {
         let scope = &self.base.scopes[self.current_scope];
@@ -559,8 +575,8 @@ impl<'a> ScopeManagerShadow<'a> {
 }
 
 /// Removes a scope and all its children.
-/// It creates a new uncollapsed scope manager for the unedited scope tree.
-fn remove_scope_in_place(manager: &mut ScopeManager, scope_id: usize) -> ScopeManager {
+/// It creates a new uncollapsed module scope for the unedited scope tree.
+fn remove_scope_in_place(manager: &mut ModuleScope, scope_id: usize) -> ModuleScope {
     let mut scope = std::mem::take(&mut manager.scopes[scope_id]);
     // Remove from parent.
     if let Some(parent) = scope.parent_index {
@@ -574,7 +590,7 @@ fn remove_scope_in_place(manager: &mut ScopeManager, scope_id: usize) -> ScopeMa
     }
     let children_index = std::mem::take(&mut scope.children_index);
 
-    let mut sub_manager = ScopeManager {
+    let mut sub_manager = ModuleScope {
         module_name: None,
         scopes: vec![scope],
         current_scope: 0,
@@ -593,42 +609,42 @@ fn remove_scope_in_place(manager: &mut ScopeManager, scope_id: usize) -> ScopeMa
 mod tests {
     use crate::scope::ScopeType;
 
-    use super::ScopeManager;
+    use super::ModuleScope;
 
     #[test]
     fn test_depth() {
-        let mut scope_manager = ScopeManager::new();
+        let mut module_scope = ModuleScope::new();
 
-        assert_eq!(scope_manager.depth(), 0);
+        assert_eq!(module_scope.depth(), 0);
 
-        scope_manager.enter(ScopeType::Local);
-        scope_manager.enter(ScopeType::Local);
-        assert_eq!(scope_manager.depth(), 2);
+        module_scope.enter(ScopeType::Local);
+        module_scope.enter(ScopeType::Local);
+        assert_eq!(module_scope.depth(), 2);
 
-        scope_manager.enter(ScopeType::Local);
-        scope_manager.enter(ScopeType::Local);
-        assert_eq!(scope_manager.depth(), 4);
+        module_scope.enter(ScopeType::Local);
+        module_scope.enter(ScopeType::Local);
+        assert_eq!(module_scope.depth(), 4);
 
-        scope_manager.leave();
-        assert_eq!(scope_manager.depth(), 3);
+        module_scope.leave();
+        assert_eq!(module_scope.depth(), 3);
 
-        scope_manager.leave();
-        scope_manager.leave();
-        assert_eq!(scope_manager.depth(), 1);
+        module_scope.leave();
+        module_scope.leave();
+        assert_eq!(module_scope.depth(), 1);
     }
 
     #[test]
     fn test_removal() {
-        let mut scope_manager = ScopeManager::new();
+        let mut module_scope = ModuleScope::new();
 
-        scope_manager.enter(ScopeType::Local); // create scope 1 as child of 0
-        scope_manager.enter(ScopeType::Method); // create scope 2 as child of 1
-        scope_manager.enter(ScopeType::Test); // create scope 3 as child of 2
-        scope_manager.leave(); // back to scope 2
-        scope_manager.enter(ScopeType::Local); // create scope 4 as child of 2
-        scope_manager.enter(ScopeType::Constructor); // create scope 5 as child of 4.
+        module_scope.enter(ScopeType::Local); // create scope 1 as child of 0
+        module_scope.enter(ScopeType::Method); // create scope 2 as child of 1
+        module_scope.enter(ScopeType::Test); // create scope 3 as child of 2
+        module_scope.leave(); // back to scope 2
+        module_scope.enter(ScopeType::Local); // create scope 4 as child of 2
+        module_scope.enter(ScopeType::Constructor); // create scope 5 as child of 4.
 
-        let mut fragment = scope_manager.remove(3).unwrap();
+        let mut fragment = module_scope.remove(3).unwrap();
         println!("REMOVED: {:#?}\n\n\n", fragment);
         fragment.enter(ScopeType::Functional); // create scope 6 as child of (former) 3
         fragment.enter(ScopeType::Test); // create scope 7 as child of 6
@@ -636,10 +652,10 @@ mod tests {
 
         println!(
             "AFTER REMOVAL: {:#?}\n\n\n The last_valid was {:?}\n\n\n",
-            scope_manager, scope_manager.last_valid
+            module_scope, module_scope.last_valid
         );
-        scope_manager.merge(&mut fragment);
+        module_scope.merge(&mut fragment);
 
-        println!("AFTER MERGING: {:#?}\n\n\n", scope_manager);
+        println!("AFTER MERGING: {:#?}\n\n\n", module_scope);
     }
 }

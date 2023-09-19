@@ -26,3 +26,10 @@ pub fn invalid_return(span: whirl_ast::Span) -> ParseError {
         span,
     }
 }
+
+pub fn unknown_variable_in_scope(name: String, span: whirl_ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::UnknownVariableInScope { name },
+        spans: vec![span],
+    }
+}

@@ -8,7 +8,7 @@ pub struct ModuleAddress {
 }
 
 /// The first representation of a type.
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct Type {
     pub declared: Option<TypeExpression>,
     pub inferred: Option<TypeEval>,
@@ -41,6 +41,7 @@ pub enum TypeEval {
     /// A type error.
     #[default]
     Invalid,
+    Unknown,
 }
 impl TypeEval {
     pub fn is_invalid(&self) -> bool {
@@ -48,7 +49,14 @@ impl TypeEval {
     }
 }
 
-#[derive(PartialEq)]
+pub trait TypedValue {
+    /// Returns the type evaluated for the value.
+    fn evaluated_type(&self) -> Option<&TypeEval>;
+    /// Returns the type declared for the value.
+    fn declared_type(&self) -> Option<&TypeExpression>;
+}
+
+#[derive(PartialEq, Clone)]
 pub enum TypeExpression {
     Union(UnionType),
     Functional(FunctionalType),
@@ -59,14 +67,14 @@ pub enum TypeExpression {
 }
 
 /// A complex union type e.g. `type Animal = Cat | Dog | Parrot; `
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct UnionType {
     pub types: Vec<TypeExpression>,
     pub span: Span,
 }
 
 /// A function type e.g. `type Predicate<T> = fn(value: T): Boolean;`
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct FunctionalType {
     pub params: Vec<Parameter>,
     pub generic_params: Option<Vec<GenericParameter>>,
@@ -75,7 +83,7 @@ pub struct FunctionalType {
 }
 
 /// A type that is part of an member expression. e.g. `type Error = Core.Io.Error`;
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct MemberType {
     pub namespace: Box<TypeExpression>,
     pub property: Box<TypeExpression>,
@@ -83,7 +91,7 @@ pub struct MemberType {
 }
 
 /// A simple type. e.g. `type SignalValue = Number;`
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct DiscreteType {
     pub name: Identifier,
     pub generic_args: Option<Vec<TypeExpression>>,
@@ -97,7 +105,7 @@ impl std::fmt::Display for TypeExpression {
 }
 
 /// A type parameter on a function, model or type.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct GenericParameter {
     pub name: Identifier,
     pub traits: Vec<TypeExpression>,

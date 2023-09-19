@@ -9,5 +9,6 @@ members = [
     "Source/whirl_repl",
     "Source/whirl_analyzer",
     "Source/whirl_server",
-    "Source/whirl_utils"
+    "Source/whirl_utils",
+    "Source/whirl_macros"
     ]

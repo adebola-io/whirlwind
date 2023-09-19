@@ -1,7 +1,7 @@
 use whirl_ast::{
-    AttributeSignature, EnumSignature, EnumVariant, FunctionSignature, GenericParameter,
-    Identifier, MethodSignature, ModelSignature, Parameter, ScopeManager, TypeEval, TypeExpression,
-    TypeSignature, VariableSignature,
+    AttributeContext, EnumSignature, EnumVariant, FunctionSignature, GenericParameter, Identifier,
+    MethodContext, ModelSignature, ModuleScope, Parameter, PublicSignatureContext, Signature,
+    TypeEval, TypeExpression, TypeSignature, VariableSignature,
 };
 
 use crate::stringify_type_eval;
@@ -11,34 +11,17 @@ pub trait HoverFormatter {
     fn to_formatted(&self) -> String;
 }
 
-/// Generator trait for how declarations in particular are illustrated.
-pub trait SignatureFormatter: HoverFormatter {
-    /// Returns documentation info about the declaration.
-    fn info(&self) -> Option<&Vec<String>>;
-}
-
-pub struct PublicAtomHover<'a, T: SignatureFormatter> {
-    pub signature: &'a T,
-    pub scope_manager: &'a ScopeManager,
-}
-
-impl<'a, T: SignatureFormatter> HoverFormatter for PublicAtomHover<'a, T> {
+impl<'a, T: Signature + HoverFormatter> HoverFormatter for PublicSignatureContext<'a, T> {
     fn to_formatted(&self) -> String {
         let mut string = String::new();
         // Add module name.
-        if let Some(name) = self.scope_manager.get_module_name() {
+        if let Some(name) = self.module_scope.get_module_name() {
             string.push_str("module ");
             string.push_str(name);
             string.push('\n');
         }
         string.push_str(&self.signature.to_formatted());
         string
-    }
-}
-
-impl<'a, T: SignatureFormatter> SignatureFormatter for PublicAtomHover<'a, T> {
-    fn info(&self) -> Option<&Vec<String>> {
-        self.signature.info()
     }
 }
 
@@ -61,12 +44,6 @@ impl HoverFormatter for FunctionSignature {
     }
 }
 
-impl SignatureFormatter for FunctionSignature {
-    fn info(&self) -> Option<&Vec<String>> {
-        self.info.as_ref()
-    }
-}
-
 impl HoverFormatter for TypeSignature {
     fn to_formatted(&self) -> String {
         let mut string = String::new();
@@ -79,12 +56,6 @@ impl HoverFormatter for TypeSignature {
         string.push_str(" = ");
         string.push_str(&self.value.to_formatted());
         string
-    }
-}
-
-impl SignatureFormatter for TypeSignature {
-    fn info(&self) -> Option<&Vec<String>> {
-        self.info.as_ref()
     }
 }
 
@@ -101,12 +72,6 @@ impl HoverFormatter for EnumSignature {
     }
 }
 
-impl SignatureFormatter for EnumSignature {
-    fn info(&self) -> Option<&Vec<String>> {
-        self.info.as_ref()
-    }
-}
-
 impl HoverFormatter for ModelSignature {
     fn to_formatted(&self) -> String {
         let mut string = String::new();
@@ -120,12 +85,6 @@ impl HoverFormatter for ModelSignature {
             // todo: implementations
         }
         string
-    }
-}
-
-impl SignatureFormatter for ModelSignature {
-    fn info(&self) -> Option<&Vec<String>> {
-        self.info.as_ref()
     }
 }
 
@@ -148,12 +107,6 @@ impl HoverFormatter for Parameter {
         };
         string.push_str(&param_type_str);
         string
-    }
-}
-
-impl SignatureFormatter for Parameter {
-    fn info(&self) -> Option<&Vec<String>> {
-        self.info.as_ref()
     }
 }
 
@@ -265,17 +218,11 @@ impl HoverFormatter for (&Identifier, &EnumVariant) {
     }
 }
 
-impl SignatureFormatter for (&Identifier, &EnumVariant) {
-    fn info(&self) -> Option<&Vec<String>> {
-        self.1.info.as_ref()
-    }
-}
-
-impl HoverFormatter for (&ScopeManager, &VariableSignature) {
+impl HoverFormatter for (&ModuleScope, &VariableSignature) {
     fn to_formatted(&self) -> String {
         let mut string = String::new();
         let signature = self.1;
-        let scope_manager = self.0;
+        let module_scope = self.0;
         if signature.is_public {
             string.push_str("public ");
         }
@@ -283,7 +230,7 @@ impl HoverFormatter for (&ScopeManager, &VariableSignature) {
         string.push_str(&signature.name.name);
         string.push_str(": ");
         let var_type = match signature.var_type.inferred {
-            Some(ref type_eval) => stringify_type_eval(scope_manager, type_eval),
+            Some(ref type_eval) => stringify_type_eval(module_scope, type_eval),
             None => match signature.var_type.declared {
                 Some(ref t) => t.to_formatted(),
                 None => format!("unknown"),
@@ -294,47 +241,24 @@ impl HoverFormatter for (&ScopeManager, &VariableSignature) {
     }
 }
 
-impl SignatureFormatter for (&ScopeManager, &VariableSignature) {
-    fn info(&self) -> Option<&Vec<String>> {
-        self.1.info.as_ref()
-    }
-}
-
-impl HoverFormatter for (&ScopeManager, TypeEval) {
+impl HoverFormatter for (&ModuleScope, TypeEval) {
     fn to_formatted(&self) -> String {
         match self.1 {
             TypeEval::Pointer { address, .. } => match self.0.get_entry_unguarded(address) {
                 whirl_ast::ScopeEntry::Type(typ) => typ.to_formatted(),
                 whirl_ast::ScopeEntry::Enum(e) => e.to_formatted(),
                 whirl_ast::ScopeEntry::Model(c) => c.to_formatted(),
+                whirl_ast::ScopeEntry::Parameter(p) => p.to_formatted(),
+
                 _ => String::new(),
             },
             TypeEval::Invalid => String::new(),
+            TypeEval::Unknown => String::from("unknown"),
         }
     }
 }
 
-impl SignatureFormatter for (&ScopeManager, TypeEval) {
-    fn info(&self) -> Option<&Vec<String>> {
-        match self.1 {
-            TypeEval::Pointer { address, .. } => match self.0.get_entry_unguarded(address) {
-                whirl_ast::ScopeEntry::Type(typ) => typ.info(),
-                whirl_ast::ScopeEntry::Enum(e) => e.info(),
-                whirl_ast::ScopeEntry::Model(c) => c.info(),
-                _ => None,
-            },
-            TypeEval::Invalid => None,
-        }
-    }
-}
-
-pub struct AttributeHover<'a> {
-    pub scope_manager: &'a ScopeManager,
-    pub model: &'a ModelSignature,
-    pub attribute: &'a AttributeSignature,
-}
-
-impl<'a> HoverFormatter for AttributeHover<'a> {
+impl<'a> HoverFormatter for AttributeContext<'a> {
     fn to_formatted(&self) -> String {
         let mut string = self.model.to_formatted();
         string.push('\n');
@@ -346,7 +270,7 @@ impl<'a> HoverFormatter for AttributeHover<'a> {
         string.push_str(&signature.name.name);
         string.push_str(": ");
         let var_type = match signature.var_type.inferred {
-            Some(ref type_eval) => stringify_type_eval(self.scope_manager, type_eval),
+            Some(ref type_eval) => stringify_type_eval(self.module_scope, type_eval),
             None => match signature.var_type.declared {
                 Some(ref t) => t.to_formatted(),
                 None => format!("unknown"),
@@ -357,19 +281,7 @@ impl<'a> HoverFormatter for AttributeHover<'a> {
     }
 }
 
-impl<'a> SignatureFormatter for AttributeHover<'a> {
-    fn info(&self) -> Option<&Vec<String>> {
-        self.attribute.info.as_ref()
-    }
-}
-
-pub struct MethodHover<'a> {
-    pub scope_manager: &'a ScopeManager,
-    pub model: &'a ModelSignature,
-    pub method: &'a MethodSignature,
-}
-
-impl<'a> HoverFormatter for MethodHover<'a> {
+impl<'a> HoverFormatter for MethodContext<'a> {
     fn to_formatted(&self) -> String {
         let mut string = self.model.to_formatted();
         string.push('\n');
@@ -389,12 +301,6 @@ impl<'a> HoverFormatter for MethodHover<'a> {
         print_parameters(&mut string, &signature.params);
         maybe_print_return_type(&mut string, &signature.return_type);
         string
-    }
-}
-
-impl<'a> SignatureFormatter for MethodHover<'a> {
-    fn info(&self) -> Option<&Vec<String>> {
-        self.method.info.as_ref()
     }
 }
 

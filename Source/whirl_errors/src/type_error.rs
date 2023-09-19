@@ -34,6 +34,8 @@ pub enum TypeErrorType {
     MismatchedAssignment { left: TypeEval, right: TypeEval },
     /// Using a trait in a type expression.
     TraitAsType { name: String },
+    /// Using a variable that does not exist.
+    UnknownVariableInScope { name: String },
 }
 
 pub fn assigned_invalid(span: Span) -> TypeError {

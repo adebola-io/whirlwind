@@ -1,17 +1,17 @@
 use crate::analyze_text;
 use std::{mem::take, path::PathBuf, slice::Iter};
-use whirl_ast::{Change, Positioning, ScopeManager, Spannable, Statement};
+use whirl_ast::{ModuleScope, Spannable, Statement};
 use whirl_errors::ProgramError;
-use whirl_lexer::TextLexer;
-use whirl_parser::Parser;
-use whirl_utils::{StringEditor, StringMutation};
+// use whirl_lexer::TextLexer;
+// use whirl_parser::Parser;
+// use whirl_utils::{StringEditor, StringMutation};
 
 /// A completely parsed program.
 /// This struct presents higher level operations for the frontend representation of source code.
 #[derive(Debug)]
 pub struct Module {
     pub name: String,
-    pub scopes: ScopeManager,
+    pub scopes: ModuleScope,
     statements: Vec<Statement>,
     built: bool,
     errors: Vec<ProgramError>,
@@ -63,11 +63,10 @@ impl Module {
                 for syntax_error in take(&mut checker.syntax_errors) {
                     self.errors.push(ProgramError::ParserError(syntax_error))
                 }
-
                 for lex_error in take(&mut checker.lexical_errors) {
                     self.errors.push(ProgramError::LexerError(lex_error))
                 }
-                self.scopes = take(checker.scope_manager());
+                self.scopes = take(checker.module_scope());
                 self.statements = take(&mut checker.statements);
                 self.line_lens = take(&mut checker.parser.lexer.borrow_mut().line_lengths);
             }
@@ -79,7 +78,7 @@ impl Module {
     pub fn from_text(value: String) -> Self {
         let mut module = Module {
             name: String::new(),
-            scopes: ScopeManager::new(),
+            scopes: ModuleScope::new(),
             statements: vec![],
             errors: vec![],
             built: false,
@@ -112,7 +111,7 @@ impl Module {
 
     pub fn refresh_with_text(&mut self, new_text: String) {
         self.errors.clear();
-        self.scopes = ScopeManager::new();
+        self.scopes = ModuleScope::new();
         self.statements.clear();
         self.build(ModuleSource::PlainText(new_text));
     }
@@ -166,11 +165,11 @@ impl Module {
     //                     None => break,
     //                 }
     //             }
-    //             self.scopes.merge(parser.scope_manager());
+    //             self.scopes.merge(parser.module_scope());
     //             println!("{:#?}", self.scopes);
 
     //             // for statement in parser {
-    //             //     parser.set_scope_manager()
+    //             //     parser.set_module_scope()
     //             //     if statement.is_none() {
     //             //         continue;
     //             //     }
@@ -183,7 +182,7 @@ impl Module {
     // }
 }
 
-pub fn get_affected_scopes(nodes: Vec<&Statement>) -> Vec<usize> {
+pub fn _get_affected_scopes(nodes: Vec<&Statement>) -> Vec<usize> {
     let mut affected_scopes = vec![];
     for node in nodes {
         affected_scopes.append(&mut node.captured_scopes())

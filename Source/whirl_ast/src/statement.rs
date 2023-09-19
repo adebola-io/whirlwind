@@ -1,6 +1,5 @@
 use crate::{
-    Expression, GenericParameter, Identifier, Positioning, ScopeAddress, Span, Spannable, Type,
-    TypeExpression,
+    Expression, Identifier, Positioning, ScopeAddress, Span, Spannable, Type, TypeExpression,
 };
 
 #[derive(Debug, PartialEq)]
@@ -108,75 +107,6 @@ pub enum ModelPropertyType {
     TraitImpl { owner_trait: Type, body: Block },
 }
 
-#[derive(Debug)]
-pub struct ModelSignature {
-    /// Name of the model.
-    pub name: Identifier,
-    /// Doc comments annotating the function, if any.
-    pub info: Option<Vec<String>>,
-    /// Whether it was denoted as public.
-    pub is_public: bool,
-    /// Generic Parameters of the function, if any.
-    pub generic_params: Option<Vec<GenericParameter>>,
-    /// The constructor parameters.
-    pub parameters: Vec<Parameter>,
-    /// Implemented Traits.
-    pub implementations: Vec<Type>,
-    /// The properties of the model.
-    pub attributes: Vec<AttributeSignature>,
-    /// The methods of the model.
-    pub methods: Vec<MethodSignature>,
-}
-
-/// Entry to mark an attribute.
-#[derive(Debug)]
-pub struct AttributeSignature {
-    /// Name of the attribute.
-    pub name: Identifier,
-    /// Documentation about the attribute.
-    pub info: Option<Vec<String>>,
-    /// Whether or not it is denoted by public.
-    pub is_public: bool,
-    /// The variable type.
-    pub var_type: Type,
-}
-
-/// Entry to mark a method.
-#[derive(Debug)]
-pub struct MethodSignature {
-    /// Name of the method.
-    pub name: Identifier,
-    /// Doc comments annotating the method, if any.
-    pub info: Option<Vec<String>>,
-    /// Whether or not the method is declared as static.
-    pub is_static: bool,
-    /// Whether or not the method is denoted by `async`.
-    pub is_async: bool,
-    /// Whether or not the method is denoted by `public`.
-    pub is_public: bool,
-    /// Generic Parameters of the function, if any.
-    pub generic_params: Option<Vec<GenericParameter>>,
-    /// The parameters of the function, if any.
-    pub params: Vec<Parameter>,
-    /// Optional return type.
-    pub return_type: Type,
-}
-
-/// Entry to mark a variable.
-#[derive(Debug)]
-pub struct VariableSignature {
-    /// Name of the variable.
-    pub name: Identifier,
-    /// Documentation about the variable, if any.
-    pub info: Option<Vec<String>>,
-    /// Whether it was declared with shorthand syntax or not.
-    pub is_shorthand: bool,
-    /// Whether or not the variable is denoted by `public`.
-    pub is_public: bool,
-    /// The variable's assigned type.
-    pub var_type: Type,
-}
-
 /// A node for a test block.
 #[derive(Debug, PartialEq)]
 pub struct TestDeclaration {
@@ -187,31 +117,12 @@ pub struct TestDeclaration {
 }
 
 /// A node for a function declaration in the AST.
-/// For efficiency most of its details are stored in the scope manager.
+/// For efficiency most of its details are stored in the module scope.
 #[derive(Debug, PartialEq)]
 pub struct FunctionDeclaration {
     pub address: ScopeAddress,
     pub body: Block,
     pub span: Span,
-}
-
-/// An entry to mark a function.
-#[derive(Debug)]
-pub struct FunctionSignature {
-    /// Name of the function.
-    pub name: Identifier,
-    /// Doc comments annotating the function, if any.
-    pub info: Option<Vec<String>>,
-    /// Whether or not the function is denoted by `async`.
-    pub is_async: bool,
-    /// Whether or not the function is denoted by `public`.
-    pub is_public: bool,
-    /// Generic Parameters of the function, if any.
-    pub generic_params: Option<Vec<GenericParameter>>,
-    /// The parameters of the function, if any.
-    pub params: Vec<Parameter>,
-    /// Optional return type.
-    pub return_type: Type,
 }
 
 /// A node for a trait declaration in the AST.
@@ -243,23 +154,6 @@ pub enum TraitPropertyType {
     Method { body: Block },
 }
 
-/// An entry to mark a trait declaration.
-#[derive(Debug)]
-pub struct TraitSignature {
-    /// Name of the trait.
-    pub name: Identifier,
-    /// Doc comments annotating the function, if any.
-    pub info: Option<Vec<String>>,
-    /// Whether or not the function is denoted by `public`.
-    pub is_public: bool,
-    /// Generic Parameters of the function, if any.
-    pub generic_params: Option<Vec<GenericParameter>>,
-    /// Methods on the trait.
-    pub methods: Vec<MethodSignature>,
-    /// Implemented Traits.
-    pub implementations: Vec<Type>,
-}
-
 #[derive(Debug, PartialEq)]
 pub struct Location {
     pub module: String,
@@ -274,25 +168,11 @@ pub struct Block {
 }
 
 /// A node for a type declaration.
-/// As wih functions, most of its info is in the scope manager.
+/// As wih functions, most of its info is in the module scope.
 #[derive(Debug, PartialEq)]
 pub struct TypeDeclaration {
     pub address: ScopeAddress,
     pub span: Span,
-}
-
-/// Entry to mark a type.
-#[derive(Debug)]
-pub struct TypeSignature {
-    /// Type name.
-    pub name: Identifier,
-    /// Doc comments annotating the type, if any.
-    pub info: Option<Vec<String>>,
-    /// Whether or not the function is denoted by `public`.
-    pub is_public: bool,
-    /// Generic Parameters of the function, if any.
-    pub generic_params: Option<Vec<GenericParameter>>,
-    pub value: TypeExpression,
 }
 
 #[derive(Debug, PartialEq)]
@@ -308,38 +188,11 @@ pub struct ReturnStatement {
     pub span: Span,
 }
 
-#[derive(Debug, PartialEq)]
-pub struct Parameter {
-    /// Name of the parameter.
-    pub name: Identifier,
-    /// Parameter type label.
-    pub type_label: Type,
-    /// Whether or not the parameter is optional.
-    pub is_optional: bool,
-    /// Doc comments annotating the parameter, if any.
-    pub info: Option<Vec<String>>,
-}
-
 /// Node for an enumerated type.
 #[derive(Debug, PartialEq)]
 pub struct EnumDeclaration {
     pub address: ScopeAddress,
     pub span: Span,
-}
-
-/// Entry to mark an enum.
-#[derive(Debug)]
-pub struct EnumSignature {
-    /// enum name.
-    pub name: Identifier,
-    /// Doc comments annotating the enum, if any.
-    pub info: Option<Vec<String>>,
-    /// Whether or not the function is denoted by `public`.
-    pub is_public: bool,
-    /// Generic Parameters of the function, if any.
-    pub generic_params: Option<Vec<GenericParameter>>,
-    /// The enum variants.
-    pub variants: Vec<EnumVariant>,
 }
 
 /// Entry to mark an enum variant.

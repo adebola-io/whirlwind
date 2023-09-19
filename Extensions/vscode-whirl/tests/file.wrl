@@ -8,7 +8,7 @@ public model String {
     ///
     /// It also supports negative indexes, which will return values from the end of the string.
     /// # Usage
-    /// ```whirl
+    /// ```
     /// str := "This is a string";
     /// 
     /// Assert(str.At(0)).Equals(Some("T"));
@@ -37,4 +37,45 @@ public model String {
     public function Append(toAdd: String) {
         Internals.Invoke("strapp", this, toAdd)
     }
+    /// Returns an iterator over the valid characters in the string.
+    /// # Usage
+    /// ```
+    /// str := "adebola.io"
+    /// 
+    /// for char in str.Chars() {
+    ///     Core.Io.Println(char);
+    /// }
+    /// ```
+    public function Chars(): Chars {
+        Internals.Invoke("strchr", this)
+    }
+    /// Empties the string of its characters.
+    public function Clear(){
+        Internals.Invoke("strcls", this)
+    }
+    /// Returns true if a substring is contained within the string.
+    /// # Usage
+    /// ```
+    /// str := "This is a world premiere.";
+    /// 
+    /// AssertThat(str.Contains("world"));
+    /// AssertThat(str.Contains("premiere"));
+    /// ```
+    public function Contains(substring: String): Boolean {
+        Internals.Invoke("strcont", this, substring)
+    }
+    /// Replaces all instances of a substring with a new substring and returns the new string.
+    /// # Usage
+    /// ```
+    /// str := "John goes to school. John buys a book.";
+    /// 
+    /// strReplaced := str.Replace("John", "Mike");
+    /// 
+    /// Assert(strReplaced).Equals("Mike goes to school. Mike buys a book.")
+    /// ```
+    public function Replace(substring: String, newstring: String): String {
+        Internals.Invoke("strrplce", this, substring, newstring)
+    }
 }
+
+

@@ -1,14 +1,14 @@
-use whirl_ast::{ScopeManager, TypeEval};
+use whirl_ast::{ModuleScope, TypeEval};
 
 /// Stringify a type evaluation.
-pub fn stringify_type_eval(scope_manager: &ScopeManager, eval: &TypeEval) -> String {
+pub fn stringify_type_eval(module_scope: &ModuleScope, eval: &TypeEval) -> String {
     match eval {
         TypeEval::Pointer {
             address: scope_address,
             args: generic_args,
         } => {
             let mut string = String::new();
-            let entry = scope_manager
+            let entry = module_scope
                 .get_scope(scope_address.scope_id)
                 .unwrap()
                 .get_entry(scope_address.entry_no)
@@ -18,7 +18,7 @@ pub fn stringify_type_eval(scope_manager: &ScopeManager, eval: &TypeEval) -> Str
             if let Some(args) = generic_args {
                 string.push('<');
                 for (index, arg) in args.iter().enumerate() {
-                    string.push_str(&stringify_type_eval(scope_manager, arg));
+                    string.push_str(&stringify_type_eval(module_scope, arg));
                     if index + 1 != args.len() {
                         string.push_str(", ");
                     }
@@ -27,6 +27,8 @@ pub fn stringify_type_eval(scope_manager: &ScopeManager, eval: &TypeEval) -> Str
             }
             string
         }
+
         TypeEval::Invalid => format!("invalid"),
+        TypeEval::Unknown => format!("unknown"),
     }
 }
