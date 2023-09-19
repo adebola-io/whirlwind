@@ -1,5 +1,5 @@
 mod diagnostic;
-mod did_change;
+
 mod document_manager;
 mod hover;
 

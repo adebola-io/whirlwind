@@ -66,7 +66,8 @@ impl DocumentManager {
         let last = params.content_changes.len() - 1;
         let most_current = std::mem::take(&mut params.content_changes[last].text);
         let document = document.unwrap();
-        document.module.refresh_with_text(most_current)
+        document.module.refresh_with_text(most_current);
+        document.version = params.text_document.version;
     }
     /// Get diagnostics.
     pub fn get_diagnostics(
@@ -96,7 +97,7 @@ impl DocumentManager {
 #[derive(Debug)]
 pub struct WhirlDocument {
     uri: Url,
-    version: usize,
+    version: i32,
     pub module: Module,
 }
 

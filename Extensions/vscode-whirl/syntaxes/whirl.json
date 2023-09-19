@@ -4,6 +4,12 @@
       "docComment": "///",
       "blockComment": ["/*", "*/"]
    },
+   "onEnterRules": [
+      {
+         "beforeText": "^\\s*///\\s*",
+         "action": { "indent": "none", "appendText": "///" }
+      }
+   ],
    "brackets": [
       ["{", "}"],
       ["[", "]"],
