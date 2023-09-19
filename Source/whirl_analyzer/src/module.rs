@@ -11,7 +11,6 @@ use whirl_utils::{StringEditor, StringMutation};
 #[derive(Debug)]
 pub struct Module {
     pub name: String,
-    pub source: ModuleSource,
     pub scopes: ScopeManager,
     statements: Vec<Statement>,
     built: bool,
@@ -44,13 +43,13 @@ pub enum FilePathSync {
 
 impl Module {
     /// Build a module from its source.
-    pub fn build(&mut self) {
+    pub fn build(&mut self, source: ModuleSource) {
         if self.built {
             return;
         }
-        match self.source {
-            ModuleSource::PlainText(ref source_code) => {
-                let mut checker = analyze_text(source_code);
+        match source {
+            ModuleSource::PlainText(source_code) => {
+                let mut checker = analyze_text(&source_code);
 
                 loop {
                     if let Some(statement_errors) = checker.next() {
@@ -77,17 +76,17 @@ impl Module {
     }
 
     /// Creates a module from Whirl source code text.
-    /// It does not start parsing or analysis until [`Module::build()`] is called.
     pub fn from_text(value: String) -> Self {
-        Module {
+        let mut module = Module {
             name: String::new(),
             scopes: ScopeManager::new(),
             statements: vec![],
             errors: vec![],
             built: false,
-            source: ModuleSource::PlainText(value),
             line_lens: vec![],
-        }
+        };
+        module.build(ModuleSource::PlainText(value));
+        module
     }
 
     /// Returns the errors found in the module.
@@ -100,89 +99,88 @@ impl Module {
         self.statements.iter()
     }
 
-    /// Change parts of the module without rebuilding the entire representation.
-    pub fn update(&mut self, changes: &[Change]) {
-        // Create the representation if it does not already exist.
-        if !self.built {
-            self.build();
-        }
-        for change in changes {
-            self.reconcile(change)
-        }
-    }
+    // /// Change parts of the module without rebuilding the entire representation.
+    // pub fn update(&mut self, changes: &[Change]) {
+    //     // Create the representation if it does not already exist.
+    //     if !self.built {
+    //         self.build();
+    //     }
+    //     for change in changes {
+    //         self.reconcile(change)
+    //     }
+    // }
 
     pub fn refresh_with_text(&mut self, new_text: String) {
         self.errors.clear();
         self.scopes = ScopeManager::new();
         self.statements.clear();
-        self.source = ModuleSource::PlainText(new_text);
-        self.build();
+        self.build(ModuleSource::PlainText(new_text));
     }
 
-    /// Reconcile a text change with the module.
-    /// TODO: The new statement generation breaks when the text is behind the original statement and overwrites a part of it.
-    fn reconcile(&mut self, change: &Change) {
-        let nodes: Vec<&Statement> = self
-            .statements()
-            .map(|s| s.closest_nodes_to(change.span))
-            .flatten()
-            .collect();
+    // Reconcile a text change with the module.
+    // TODO: The new statement generation breaks when the text is behind the original statement and overwrites a part of it.
+    // fn reconcile(&mut self, change: &Change) {
+    //     let nodes: Vec<&Statement> = self
+    //         .statements()
+    //         .map(|s| s.closest_nodes_to(change.span))
+    //         .flatten()
+    //         .collect();
 
-        let change_range = change.span.to_range(&self.line_lens);
+    //     let change_range = change.span.to_range(&self.line_lens);
 
-        // TODO: Incrementally change.
-        let parsing_bounds = if nodes.len() > 0 {
-            let first_span = nodes[0].span();
-            let last_span = nodes.last().unwrap().span();
-            let full_span = first_span + last_span;
-            let mut node_range = full_span.to_range(&self.line_lens);
-            // Enlarge span to accomodate the changes.
-            let original_length = change_range.end - change_range.start;
-            let expected_length = change.new_text.len();
-            if expected_length > original_length {
-                node_range.end += expected_length - original_length;
-            }
-            Some(node_range)
-        } else {
-            None
-        };
+    //     // TODO: Incrementally change.
+    //     let parsing_bounds = if nodes.len() > 0 {
+    //         let first_span = nodes[0].span();
+    //         let last_span = nodes.last().unwrap().span();
+    //         let full_span = first_span + last_span;
+    //         let mut node_range = full_span.to_range(&self.line_lens);
+    //         // Enlarge span to accomodate the changes.
+    //         let original_length = change_range.end - change_range.start;
+    //         let expected_length = change.new_text.len();
+    //         if expected_length > original_length {
+    //             node_range.end += expected_length - original_length;
+    //         }
+    //         Some(node_range)
+    //     } else {
+    //         None
+    //     };
 
-        match &self.source {
-            ModuleSource::PlainText(plaintext) => {
-                let mutation =
-                    StringMutation::new(&change.new_text, change_range.start, change_range.end);
-                let reviser = StringEditor::new(&plaintext, mutation, parsing_bounds);
-                let lexer = TextLexer::from(reviser);
-                let mut parser = Parser::from_lexer(lexer);
+    //     match source {
+    //         ModuleSource::PlainText(plaintext) => {
+    //             let mutation =
+    //                 StringMutation::new(&change.new_text, change_range.start, change_range.end);
+    //             let reviser = StringEditor::new(&plaintext, mutation, parsing_bounds);
+    //             let lexer = TextLexer::from(reviser);
+    //             let mut parser = Parser::from_lexer(lexer);
 
-                // Remove invalidated scopes.
-                let scope_ids = get_affected_scopes(nodes);
-                for scope_id in scope_ids {
-                    self.scopes.remove(scope_id);
-                }
+    //             // Remove invalidated scopes.
+    //             let scope_ids = get_affected_scopes(nodes);
+    //             for scope_id in scope_ids {
+    //                 self.scopes.remove(scope_id);
+    //             }
 
-                let mut new_statements = vec![];
-                loop {
-                    match parser.next() {
-                        Some(statement_partial) => new_statements.push(statement_partial),
-                        None => break,
-                    }
-                }
-                self.scopes.merge(parser.scope_manager());
-                println!("{:#?}", self.scopes);
+    //             let mut new_statements = vec![];
+    //             loop {
+    //                 match parser.next() {
+    //                     Some(statement_partial) => new_statements.push(statement_partial),
+    //                     None => break,
+    //                 }
+    //             }
+    //             self.scopes.merge(parser.scope_manager());
+    //             println!("{:#?}", self.scopes);
 
-                // for statement in parser {
-                //     parser.set_scope_manager()
-                //     if statement.is_none() {
-                //         continue;
-                //     }
-                //     let statement = statement.unwrap();
+    //             // for statement in parser {
+    //             //     parser.set_scope_manager()
+    //             //     if statement.is_none() {
+    //             //         continue;
+    //             //     }
+    //             //     let statement = statement.unwrap();
 
-                // }
-            }
-            ModuleSource::FilePath { .. } => todo!(),
-        };
-    }
+    //             // }
+    //         }
+    //         ModuleSource::FilePath { .. } => todo!(),
+    //     };
+    // }
 }
 
 pub fn get_affected_scopes(nodes: Vec<&Statement>) -> Vec<usize> {

@@ -137,7 +137,7 @@ impl Scope {
     }
     /// Find an item inside the current scope.
     pub fn find(&self, name: &str) -> Option<(usize, &ScopeEntry)> {
-        for (index, entry) in self.entries.iter().enumerate() {
+        for (index, entry) in self.entries.iter().enumerate().rev() {
             if entry.name() == name {
                 return Some((index, entry));
             }

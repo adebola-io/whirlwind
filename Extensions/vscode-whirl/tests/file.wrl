@@ -23,7 +23,7 @@ public model String {
     /// ```
     /// It will return no value if the length of the string is exceeded.
     public function At(position: Integer): Maybe<String> {
-        return Internals.Invoke("strat", this, position);
+        Internals.Invoke("strat", this, position)
     }
     /// Adds text to the end of the string.
     /// # Usage
@@ -35,6 +35,6 @@ public model String {
     /// Assert(Str).Equals("Hello, world!");
     /// ```
     public function Append(toAdd: String) {
-        Internals.Invoke("strappend", this, toAdd);
+        Internals.Invoke("strapp", this, toAdd)
     }
 }
