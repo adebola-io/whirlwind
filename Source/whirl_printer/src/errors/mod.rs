@@ -42,6 +42,7 @@ pub fn stringify_type_error(module_ambience: &ModuleAmbience, error: &TypeErrorT
         TypeErrorType::UnknownVariableInScope { name } => {
             format!("Use of undeclared variable {name}")
         }
+        TypeErrorType::GlobalControl => format!("Control statements and expressions are not allowed in the global scope. Consider moving into a function instead."),
     }
 }
 

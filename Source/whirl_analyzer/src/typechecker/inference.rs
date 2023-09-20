@@ -1,6 +1,6 @@
 use std::{cell::RefCell, str::Chars};
 
-use whirl_ast::{ASTVisitorNoArgs, ModuleAmbience, ScopeEntry, Span, Statement, TypeEval};
+use whirl_ast::{ASTVisitorNoArgs, ModuleAmbience, ScopeEntry, Spannable, Statement, TypeEval};
 use whirl_errors::{LexError, ParseError};
 use whirl_lexer::{Lexer, TextLexer};
 use whirl_parser::parse_text;
@@ -10,6 +10,8 @@ use crate::{primitive::Primitives, type_utils};
 use whirl_errors::TypeError;
 
 /// Resolves all values in the program and infers their types.
+/// It is technically 50% of the typechecker and control flow analyzer, since it
+/// also checks function return types, if expressions, etc. but eh.
 pub struct TypeInferrer<L: Lexer> {
     pub parser: whirl_parser::Parser<L>,
     pub statements: Vec<Statement>,
@@ -31,14 +33,14 @@ impl<L: Lexer> TypeInferrer<L> {
     }
 
     pub fn from_text(input: &str, primitives: Primitives) -> TypeInferrer<TextLexer<Chars>> {
-        let checker = TypeInferrer {
+        let inferrer = TypeInferrer {
             parser: parse_text(input),
             statements: vec![],
             type_errors: RefCell::new(vec![]),
             lexical_errors: vec![],
             syntax_errors: vec![],
         };
-        let module_ambience = checker.parser.module_ambience();
+        let module_ambience = inferrer.parser.module_ambience();
         // Register all primitive values.
         for primitive_type in primitives.types {
             module_ambience.register(ScopeEntry::Type(primitive_type));
@@ -47,7 +49,7 @@ impl<L: Lexer> TypeInferrer<L> {
             module_ambience.register(ScopeEntry::Model(primitive_model));
         }
 
-        checker
+        inferrer
     }
 }
 
@@ -104,7 +106,11 @@ impl<L: Lexer> ASTVisitorNoArgs<TypeEval> for TypeInferrer<L> {
                 }
                 Ok(expression_as_eval) => {
                     // Fuse the value and declared types.
-                    match assign_right_to_left(expression_as_eval, value_type, variable_decl.span) {
+                    match type_utils::assign_right_to_left(
+                        expression_as_eval,
+                        value_type,
+                        variable_decl.span,
+                    ) {
                         Ok(eval) => signature.var_type.inferred = Some(eval),
                         Err(error) => self.type_errors.borrow_mut().push(error),
                     }
@@ -135,12 +141,43 @@ impl<L: Lexer> ASTVisitorNoArgs<TypeEval> for TypeInferrer<L> {
         self.module_ambience().leave_scope()
     }
 
+    /// Perform inference on an expression statement.
+    fn expr_statement(&self, exp: &whirl_ast::Expression) {
+        let ambience = self.module_ambience();
+
+        if ambience.is_in_global_scope() {
+            self.type_errors
+                .borrow_mut()
+                .push(whirl_errors::global_control(exp.span()));
+        }
+
+        self.expr(exp);
+    }
+
+    /// Perform inference on a free expression.
+    fn free_expr(&self, exp: &whirl_ast::Expression) {
+        let ambience = self.module_ambience();
+
+        if ambience.is_in_global_scope() {
+            self.type_errors
+                .borrow_mut()
+                .push(whirl_errors::global_control(exp.span()));
+        }
+
+        let free_expression_type = self.expr(exp);
+
+        // todo: bubble type to block.
+        if !free_expression_type.is_invalid() && ambience.is_in_function_context() {
+            //  todo. compare return types.
+        }
+    }
+
     /// Perform inference on an identifier.
     fn identifier(&self, ident: &whirl_ast::Identifier) -> TypeEval {
         match type_utils::evaluate_type_of_variable(self.module_ambience(), ident) {
             Ok(eval) => return eval,
-            Err(e) => {
-                self.type_errors.borrow_mut().push(e);
+            Err(error) => {
+                self.type_errors.borrow_mut().push(error);
                 return TypeEval::Invalid;
             }
         }
@@ -148,7 +185,7 @@ impl<L: Lexer> ASTVisitorNoArgs<TypeEval> for TypeInferrer<L> {
 
     /// Perform inference on a string.
     fn string(&self, _string: &whirl_ast::WhirlString) -> TypeEval {
-        TypeEval::Pointer {
+        TypeEval::TypeWithinModule {
             address: [0, 0].into(), // scope address for strings.
             args: None,
         }
@@ -156,7 +193,7 @@ impl<L: Lexer> ASTVisitorNoArgs<TypeEval> for TypeInferrer<L> {
 
     /// Perform inference on a boolean value.
     fn boolean(&self, _bool: &whirl_ast::WhirlBoolean) -> TypeEval {
-        TypeEval::Pointer {
+        TypeEval::TypeWithinModule {
             address: [0, 2].into(), // scope address for booleans.
             args: None,
         }
@@ -167,7 +204,7 @@ impl<L: Lexer> ASTVisitorNoArgs<TypeEval> for TypeInferrer<L> {
         let left = self.expr(&bin_exp.left);
         let right = self.expr(&bin_exp.right);
 
-        // TODO: Trait operator overloads.
+        // TODO: Trait operator overloads and generic unknowns.
         if left != right {
             self.type_errors
                 .borrow_mut()
@@ -184,22 +221,9 @@ impl<L: Lexer> ASTVisitorNoArgs<TypeEval> for TypeInferrer<L> {
 
     /// Perform inference on a number.
     fn number(&self, _number: &whirl_ast::WhirlNumber) -> TypeEval {
-        TypeEval::Pointer {
+        TypeEval::TypeWithinModule {
             address: [0, 1].into(), // scope address for integers.
             args: None,
         }
     }
-}
-
-/// Attempt to assign two types together.
-fn assign_right_to_left(
-    left: TypeEval,
-    right: TypeEval,
-    span: Span,
-) -> Result<TypeEval, TypeError> {
-    // Types are equal.
-    if left == right {
-        return Ok(left);
-    }
-    Err(whirl_errors::mismatched_assignment(left, right, span))
 }

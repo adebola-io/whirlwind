@@ -107,7 +107,7 @@ impl ModuleAmbience {
         depth
     }
     /// Returns the index of the current scope.
-    pub fn current(&self) -> usize {
+    pub fn current_scope(&self) -> usize {
         self.current_scope
     }
     /// Goes to a new current scope.

@@ -18,9 +18,16 @@ pub trait ASTVisitor<Arguments = (), Output: Default = ()> {
             Statement::EnumDeclaration(e) => self.enum_decl(e, args),
             Statement::ModelDeclaration(m) => self.model_decl(m, args),
             Statement::ShorthandVariableDeclaration(v) => self.shorthand_var_decl(v, args),
-            Statement::ExpressionStatement(e) | Statement::FreeExpression(e) => self.expr(e, args),
+            Statement::ExpressionStatement(e) => self.expr_statement(e, args),
+            Statement::FreeExpression(e) => self.free_expr(e, args),
             _ => Output::default(),
         }
+    }
+    fn expr_statement(&self, exp: &Expression, args: &Arguments) -> Output {
+        self.expr(exp, args)
+    }
+    fn free_expr(&self, exp: &Expression, args: &Arguments) -> Output {
+        self.expr(exp, args)
     }
     fn expr(&self, exp: &Expression, args: &Arguments) -> Output {
         match exp {
@@ -169,13 +176,20 @@ pub trait MutASTVisitor<Output: Default = ()> {
             Statement::TypeDeclaration(t) => self.type_declaration(t),
             // Statement::TraitDeclaration(t) => self.trait_declaration(t),
             Statement::ExpressionStatement(e) => {
-                self.expression(e);
+                self.expr_statement(e);
             }
             Statement::FreeExpression(e) => {
-                self.expression(e);
+                self.free_expr(e);
             }
             _ => {}
         }
+    }
+
+    fn expr_statement(&mut self, exp: &mut Expression) {
+        self.expression(exp);
+    }
+    fn free_expr(&mut self, exp: &mut Expression) {
+        self.expression(exp);
     }
 
     fn test_declaration(&mut self, test_decl: &mut TestDeclaration) {}
@@ -235,9 +249,8 @@ pub trait ASTVisitorNoArgs<Output: Default = ()> {
             Statement::EnumDeclaration(e) => self.enum_declaration(e),
             Statement::TypeDeclaration(t) => self.type_declaration(t),
             Statement::TraitDeclaration(t) => self.trait_declaration(t),
-            Statement::ExpressionStatement(e) | Statement::FreeExpression(e) => {
-                self.expr(e);
-            }
+            Statement::ExpressionStatement(e) => self.expr_statement(e),
+            Statement::FreeExpression(e) => self.free_expr(e),
             Statement::ModelDeclaration(m) => self.model_declaration(m),
             Statement::ModuleDeclaration(m) => self.module_declaration(m),
             Statement::RecordDeclaration => todo!(),
@@ -247,6 +260,14 @@ pub trait ASTVisitorNoArgs<Output: Default = ()> {
             Statement::ConstantDeclaration => todo!(),
             Statement::ForStatement => todo!(),
         }
+    }
+
+    fn free_expr(&self, exp: &Expression) {
+        self.expr(exp);
+    }
+
+    fn expr_statement(&self, exp: &Expression) {
+        self.expr(exp);
     }
 
     fn while_statement(&self, whil: &WhileStatement) {}

@@ -911,7 +911,7 @@ impl<L: Lexer> Parser<L> {
 
         let function = FunctionDeclaration {
             address: ScopeAddress {
-                scope_id: self.module_ambience().current(),
+                scope_id: self.module_ambience().current_scope(),
                 entry_no,
             },
             span: Span::from([start, body.span.end]),
@@ -1022,7 +1022,7 @@ impl<L: Lexer> Parser<L> {
         let entry_no = self.module_ambience().register(ScopeEntry::Type(signature));
         let type_ = TypeDeclaration {
             address: ScopeAddress {
-                scope_id: self.module_ambience().current(),
+                scope_id: self.module_ambience().current_scope(),
                 entry_no,
             },
             span,
@@ -1165,7 +1165,7 @@ impl<L: Lexer> Parser<L> {
         };
         let entry_no = self.module_ambience().register(ScopeEntry::Enum(signature));
         let address = ScopeAddress {
-            scope_id: self.module_ambience().current(),
+            scope_id: self.module_ambience().current_scope(),
             entry_no,
         };
         let span = Span::from([start, end]);
@@ -1313,7 +1313,7 @@ impl<L: Lexer> Parser<L> {
             .module_ambience()
             .register(ScopeEntry::Model(signature));
         let address = ScopeAddress {
-            scope_id: self.module_ambience().current(),
+            scope_id: self.module_ambience().current_scope(),
             entry_no,
         };
         let span = Span::from([start, end]);
@@ -1676,7 +1676,7 @@ impl<L: Lexer> Parser<L> {
             .module_ambience()
             .register(ScopeEntry::Trait(signature));
         let address = ScopeAddress {
-            scope_id: self.module_ambience().current(),
+            scope_id: self.module_ambience().current_scope(),
             entry_no,
         };
         let span = Span::from([start, end]);
@@ -2114,7 +2114,7 @@ impl<L: Lexer> Parser<L> {
         let end = self.token().unwrap().span.end;
         self.advance(); // Close }
 
-        let scope_id = self.module_ambience().current();
+        let scope_id = self.module_ambience().current_scope();
         self.module_ambience().leave_scope();
 
         let block = Block {
@@ -2210,7 +2210,7 @@ impl<L: Lexer> Parser<L> {
         };
 
         let statement = Statement::ShorthandVariableDeclaration(ShorthandVariableDeclaration {
-            address: [self.module_ambience().current(), entry_no].into(),
+            address: [self.module_ambience().current_scope(), entry_no].into(),
             value,
             span: Span::from([start, end]),
         });

@@ -244,14 +244,16 @@ impl HoverFormatter for (&ModuleAmbience, &VariableSignature) {
 impl HoverFormatter for (&ModuleAmbience, TypeEval) {
     fn to_formatted(&self) -> String {
         match self.1 {
-            TypeEval::Pointer { address, .. } => match self.0.get_entry_unguarded(address) {
-                whirl_ast::ScopeEntry::Type(typ) => typ.to_formatted(),
-                whirl_ast::ScopeEntry::Enum(e) => e.to_formatted(),
-                whirl_ast::ScopeEntry::Model(c) => c.to_formatted(),
-                whirl_ast::ScopeEntry::Parameter(p) => p.to_formatted(),
+            TypeEval::TypeWithinModule { address, .. } => {
+                match self.0.get_entry_unguarded(address) {
+                    whirl_ast::ScopeEntry::Type(typ) => typ.to_formatted(),
+                    whirl_ast::ScopeEntry::Enum(e) => e.to_formatted(),
+                    whirl_ast::ScopeEntry::Model(c) => c.to_formatted(),
+                    whirl_ast::ScopeEntry::Parameter(p) => p.to_formatted(),
 
-                _ => String::new(),
-            },
+                    _ => String::new(),
+                }
+            }
             TypeEval::Invalid => String::new(),
             TypeEval::Unknown => String::from("unknown"),
         }

@@ -33,8 +33,8 @@ impl Type {
 /// Result of a type evaluation.
 #[derive(Default, PartialEq, Debug, Clone)]
 pub enum TypeEval {
-    /// An address of a scope entry.
-    Pointer {
+    /// An address of a scope entry within the module ambience.
+    TypeWithinModule {
         address: ScopeAddress,
         args: Option<Vec<TypeEval>>,
     },

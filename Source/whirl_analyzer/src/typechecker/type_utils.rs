@@ -76,7 +76,7 @@ pub fn evaluate_discrete_type(
                 None
             };
             let address = [search.scope.id, search.index].into();
-            let eval = TypeEval::Pointer { address, args };
+            let eval = TypeEval::TypeWithinModule { address, args };
             Ok(eval)
         }
     }
@@ -93,7 +93,7 @@ pub fn evaluate_type_of_variable(
             | ScopeEntry::Type(_)
             | ScopeEntry::Enum(_)
             | ScopeEntry::Trait(_)
-            | ScopeEntry::Model(_) => Ok(TypeEval::Pointer {
+            | ScopeEntry::Model(_) => Ok(TypeEval::TypeWithinModule {
                 address: ScopeAddress {
                     scope_id: value.scope.id,
                     entry_no: value.index,

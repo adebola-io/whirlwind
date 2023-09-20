@@ -36,6 +36,8 @@ pub enum TypeErrorType {
     TraitAsType { name: String },
     /// Using a variable that does not exist.
     UnknownVariableInScope { name: String },
+    /// Global control flow statements.
+    GlobalControl,
 }
 
 pub fn assigned_invalid(span: Span) -> TypeError {

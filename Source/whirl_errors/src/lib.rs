@@ -33,3 +33,10 @@ pub fn unknown_variable_in_scope(name: String, span: whirl_ast::Span) -> TypeErr
         spans: vec![span],
     }
 }
+
+pub fn global_control(span: whirl_ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::GlobalControl,
+        spans: vec![span],
+    }
+}

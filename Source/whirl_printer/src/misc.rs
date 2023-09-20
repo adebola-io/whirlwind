@@ -3,7 +3,7 @@ use whirl_ast::{ModuleAmbience, TypeEval};
 /// Stringify a type evaluation.
 pub fn stringify_type_eval(module_ambience: &ModuleAmbience, eval: &TypeEval) -> String {
     match eval {
-        TypeEval::Pointer {
+        TypeEval::TypeWithinModule {
             address: scope_address,
             args: generic_args,
         } => {

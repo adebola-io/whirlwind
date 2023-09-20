@@ -186,12 +186,14 @@ impl Signature for (&ModuleAmbience, &VariableSignature) {
 impl Signature for (&ModuleAmbience, TypeEval) {
     fn info(&self) -> Option<&Vec<String>> {
         match self.1 {
-            TypeEval::Pointer { address, .. } => match self.0.get_entry_unguarded(address) {
-                ScopeEntry::Type(typ) => typ.info(),
-                ScopeEntry::Enum(e) => e.info(),
-                ScopeEntry::Model(c) => c.info(),
-                _ => None,
-            },
+            TypeEval::TypeWithinModule { address, .. } => {
+                match self.0.get_entry_unguarded(address) {
+                    ScopeEntry::Type(typ) => typ.info(),
+                    ScopeEntry::Enum(e) => e.info(),
+                    ScopeEntry::Model(c) => c.info(),
+                    _ => None,
+                }
+            }
             TypeEval::Unknown | TypeEval::Invalid => None,
         }
     }
