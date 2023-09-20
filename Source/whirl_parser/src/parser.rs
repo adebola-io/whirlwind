@@ -6,8 +6,8 @@ use whirl_ast::{
     ExpressionPrecedence, FunctionDeclaration, FunctionExpr, FunctionSignature, FunctionalType,
     GenericParameter, Identifier, IfExpression, IndexExpr, Keyword::*, LogicExpr, MemberType,
     MethodSignature, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType, ModelSignature,
-    ModuleDeclaration, ModuleScope, NewExpr, Operator::*, Parameter, ReturnStatement, ScopeAddress,
-    ScopeEntry, ScopeType, ShorthandVariableDeclaration, Span, Spannable, Statement,
+    ModuleAmbience, ModuleDeclaration, NewExpr, Operator::*, Parameter, ReturnStatement,
+    ScopeAddress, ScopeEntry, ScopeType, ShorthandVariableDeclaration, Span, Spannable, Statement,
     TestDeclaration, ThisExpr, Token, TokenType, TraitBody, TraitDeclaration, TraitProperty,
     TraitPropertyType, TraitSignature, Type, TypeDeclaration, TypeExpression, TypeSignature,
     UnaryExpr, UnionType, UseDeclaration, UsePath, UseTarget, VariableSignature, WhileStatement,
@@ -21,7 +21,7 @@ use whirl_utils::Partial;
 /// It keeps tracks of three tokens to allow for limited backtracking.
 pub struct Parser<L: Lexer> {
     pub lexer: RefCell<L>,
-    module_scope: RefCell<ModuleScope>,
+    module_ambience: RefCell<ModuleAmbience>,
     present: RefCell<Option<Token>>,
     past: RefCell<Option<Token>>,
     future: RefCell<Option<Token>>,
@@ -89,7 +89,7 @@ impl<L: Lexer> Parser<L> {
     pub fn from_lexer(lexer: L) -> Self {
         Self {
             lexer: RefCell::new(lexer),
-            module_scope: RefCell::new(ModuleScope::new()),
+            module_ambience: RefCell::new(ModuleAmbience::new()),
             present: RefCell::new(None),
             past: RefCell::new(None),
             future: RefCell::new(None),
@@ -135,9 +135,9 @@ impl<L: Lexer> Parser<L> {
         self.precedence_stack.borrow_mut().push(precedence);
     }
 
-    /// Returns a reference to the module scope.
-    pub fn module_scope(&self) -> &mut ModuleScope {
-        unsafe { &mut *self.module_scope.as_ptr() }
+    /// Returns a reference to the module ambience.
+    pub fn module_ambience(&self) -> &mut ModuleAmbience {
+        unsafe { &mut *self.module_ambience.as_ptr() }
     }
 
     /// Returns the span of the token before.
@@ -906,12 +906,12 @@ impl<L: Lexer> Parser<L> {
         };
 
         let entry_no = self
-            .module_scope()
+            .module_ambience()
             .register(ScopeEntry::Function(signature));
 
         let function = FunctionDeclaration {
             address: ScopeAddress {
-                scope_id: self.module_scope().current(),
+                scope_id: self.module_ambience().current(),
                 entry_no,
             },
             span: Span::from([start, body.span.end]),
@@ -1019,10 +1019,10 @@ impl<L: Lexer> Parser<L> {
             generic_params,
             value,
         };
-        let entry_no = self.module_scope().register(ScopeEntry::Type(signature));
+        let entry_no = self.module_ambience().register(ScopeEntry::Type(signature));
         let type_ = TypeDeclaration {
             address: ScopeAddress {
-                scope_id: self.module_scope().current(),
+                scope_id: self.module_ambience().current(),
                 entry_no,
             },
             span,
@@ -1163,9 +1163,9 @@ impl<L: Lexer> Parser<L> {
             generic_params,
             variants,
         };
-        let entry_no = self.module_scope().register(ScopeEntry::Enum(signature));
+        let entry_no = self.module_ambience().register(ScopeEntry::Enum(signature));
         let address = ScopeAddress {
-            scope_id: self.module_scope().current(),
+            scope_id: self.module_ambience().current(),
             entry_no,
         };
         let span = Span::from([start, end]);
@@ -1264,14 +1264,14 @@ impl<L: Lexer> Parser<L> {
         };
 
         // Module already has a name.
-        if self.module_scope().get_module_name().is_some() {
+        if self.module_ambience().get_module_name().is_some() {
             errors.push(errors::duplicate_module_name(module.span))
         } else
         // Module is not in global scope.
-        if !self.module_scope().is_global() {
+        if !self.module_ambience().is_in_global_scope() {
             errors.push(errors::module_declaration_not_global(module.span))
         } else {
-            self.module_scope().set_name(name);
+            self.module_ambience().set_module_name(name);
         }
 
         Partial {
@@ -1309,9 +1309,11 @@ impl<L: Lexer> Parser<L> {
             methods,
         };
         let end = body.span.end;
-        let entry_no = self.module_scope().register(ScopeEntry::Model(signature));
+        let entry_no = self
+            .module_ambience()
+            .register(ScopeEntry::Model(signature));
         let address = ScopeAddress {
-            scope_id: self.module_scope().current(),
+            scope_id: self.module_ambience().current(),
             entry_no,
         };
         let span = Span::from([start, end]);
@@ -1670,9 +1672,11 @@ impl<L: Lexer> Parser<L> {
             methods,
         };
         let end = body.span.end;
-        let entry_no = self.module_scope().register(ScopeEntry::Trait(signature));
+        let entry_no = self
+            .module_ambience()
+            .register(ScopeEntry::Trait(signature));
         let address = ScopeAddress {
-            scope_id: self.module_scope().current(),
+            scope_id: self.module_ambience().current(),
             entry_no,
         };
         let span = Span::from([start, end]);
@@ -1942,7 +1946,7 @@ impl<L: Lexer> Parser<L> {
             value: expression.value,
             span: Span { start, end },
         };
-        if !self.module_scope().is_in_function_context() {
+        if !self.module_ambience().is_in_function_context() {
             errors.push(errors::invalid_return(return_.span));
         }
 
@@ -2088,7 +2092,7 @@ impl<L: Lexer> Parser<L> {
         let start = self.token().unwrap().span.start;
         self.advance(); // Move past {
 
-        self.module_scope().enter(scope_type);
+        self.module_ambience().enter(scope_type);
 
         let mut statements = vec![];
         // Collects any errors found so that parsing can continue.
@@ -2110,8 +2114,8 @@ impl<L: Lexer> Parser<L> {
         let end = self.token().unwrap().span.end;
         self.advance(); // Close }
 
-        let scope_id = self.module_scope().current();
-        self.module_scope().leave();
+        let scope_id = self.module_ambience().current();
+        self.module_ambience().leave_scope();
 
         let block = Block {
             scope_id,
@@ -2186,7 +2190,7 @@ impl<L: Lexer> Parser<L> {
         };
 
         let entry_no = self
-            .module_scope()
+            .module_ambience()
             .register(ScopeEntry::Variable(signature));
 
         // Make semicolon error less fatal.
@@ -2206,7 +2210,7 @@ impl<L: Lexer> Parser<L> {
         };
 
         let statement = Statement::ShorthandVariableDeclaration(ShorthandVariableDeclaration {
-            address: [self.module_scope().current(), entry_no].into(),
+            address: [self.module_ambience().current(), entry_no].into(),
             value,
             span: Span::from([start, end]),
         });

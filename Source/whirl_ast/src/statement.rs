@@ -117,7 +117,7 @@ pub struct TestDeclaration {
 }
 
 /// A node for a function declaration in the AST.
-/// For efficiency most of its details are stored in the module scope.
+/// For efficiency most of its details are stored in the module ambience.
 #[derive(Debug, PartialEq)]
 pub struct FunctionDeclaration {
     pub address: ScopeAddress,
@@ -168,7 +168,7 @@ pub struct Block {
 }
 
 /// A node for a type declaration.
-/// As wih functions, most of its info is in the module scope.
+/// As wih functions, most of its info is in the module ambience.
 #[derive(Debug, PartialEq)]
 pub struct TypeDeclaration {
     pub address: ScopeAddress,

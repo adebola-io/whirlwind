@@ -35,7 +35,7 @@ fn parsing_functions_with_types() {
     let statement = parser.next().unwrap().unwrap();
 
     assert!(parser
-        .module_scope()
+        .module_ambience()
         .lookaround("GenerateHash")
         .is_some_and(|search| matches!(
             search.entry,
@@ -66,7 +66,7 @@ fn parsing_functions_with_member_types() {
     let statement = parser.next().unwrap().unwrap();
 
     assert!(parser
-        .module_scope()
+        .module_ambience()
         .lookaround("WriteFile")
         .is_some_and(|search| matches!(
             search.entry,
@@ -95,7 +95,7 @@ fn parsing_functions_with_generic_types() {
     let mut statement = parser.next().unwrap().unwrap();
 
     assert!(parser
-        .module_scope()
+        .module_ambience()
         .lookaround("Combine")
         .is_some_and(|search| matches!(
             search.entry,
@@ -122,7 +122,7 @@ fn parsing_functions_with_generic_types() {
     statement = parser.next().unwrap().unwrap();
 
     assert!(parser
-        .module_scope()
+        .module_ambience()
         .lookaround("Flatten")
         .is_some_and(|search| matches!(
             search.entry,
@@ -153,11 +153,11 @@ fn parsing_functional_types() {
 
     // println!(
     //     "{:?}",
-    //     parser.module_scope().lookaround("Find").unwrap().entry
+    //     parser.module_ambience().lookaround("Find").unwrap().entry
     // );
 
     assert!(parser
-        .module_scope()
+        .module_ambience()
         .lookaround("Find")
         .is_some_and(|search| matches!(
             search.entry,
@@ -201,14 +201,14 @@ fn parsing_union_types() {
     // println!(
     //     "{:#?}",
     //     parser
-    //         .module_scope()
+    //         .module_ambience()
     //         .lookaround("EatHealthy")
     //         .unwrap()
     //         .entry
     // );
 
     assert!(parser
-        .module_scope()
+        .module_ambience()
         .lookaround("EatHealthy")
         .is_some_and(|search| matches!(
             search.entry,
@@ -255,11 +255,11 @@ fn parsing_functions() {
     );
 
     let mut statement = parser.next().unwrap().unwrap();
-    let mut module_scope = parser.module_scope();
+    let mut module_ambience = parser.module_ambience();
 
-    assert!(module_scope.is_global());
-    assert_eq!(module_scope.len(), 3);
-    assert!(module_scope.lookdown("SayHelloAgain").is_some());
+    assert!(module_ambience.is_in_global_scope());
+    assert_eq!(module_ambience.scope_len(), 3);
+    assert!(module_ambience.lookdown("SayHelloAgain").is_some());
 
     assert_eq!(
         statement,
@@ -282,9 +282,9 @@ fn parsing_functions() {
     parser = parse_text("function GreetUser(name, id?){}");
 
     statement = parser.next().unwrap().unwrap();
-    module_scope = parser.module_scope();
+    module_ambience = parser.module_ambience();
 
-    assert!(module_scope.lookaround("GreetUser").is_some());
+    assert!(module_ambience.lookaround("GreetUser").is_some());
 
     assert_eq!(
         statement,
@@ -306,9 +306,9 @@ fn parsing_async_functions() {
     let mut parser = parse_text("async function GreetUser(name, id?){}");
 
     let statement = parser.next().unwrap().unwrap();
-    let module_scope = parser.module_scope();
+    let module_ambience = parser.module_ambience();
 
-    assert!(module_scope.lookaround("GreetUser").is_some_and(
+    assert!(module_ambience.lookaround("GreetUser").is_some_and(
         |search| matches!(search.entry, whirl_ast::ScopeEntry::Function(f) if f.is_async)
     ));
 
@@ -331,9 +331,9 @@ fn parsing_type_declarations() {
     let mut parser = parse_text("public type Number = SignedInteger | UnsignedInteger | Float;");
 
     let statement = parser.next().unwrap().unwrap();
-    let module_scope = parser.module_scope();
+    let module_ambience = parser.module_ambience();
 
-    assert!(module_scope.lookaround("Number").is_some_and(
+    assert!(module_ambience.lookaround("Number").is_some_and(
         |search| matches!(search.entry, whirl_ast::ScopeEntry::Type(t) if t.is_public)
     ));
 
@@ -382,9 +382,9 @@ type Predicate = fn(value?: ArrayOf<String>): Boolean;
     for statement in &mut parser {
         statements.push(statement);
     }
-    let module_scope = parser.module_scope();
+    let module_ambience = parser.module_ambience();
 
-    assert!(module_scope
+    assert!(module_ambience
         .lookaround("Statement")
         .is_some_and(|search| matches!(
             search.entry,
@@ -401,9 +401,9 @@ fn parsing_this_type() {
     let mut parser = parse_text("type Self = This;");
 
     let statement = parser.next().unwrap().unwrap();
-    let module_scope = parser.module_scope();
+    let module_ambience = parser.module_ambience();
 
-    assert!(module_scope
+    assert!(module_ambience
         .lookaround("Self")
         .is_some_and(|search| matches!(
             search.entry, whirl_ast::ScopeEntry::Type(t) if matches!(
@@ -451,9 +451,9 @@ fn parsing_enum_variant() {
 
     let mut statement = parser.next().unwrap().unwrap();
 
-    let mut module_scope = parser.module_scope();
+    let mut module_ambience = parser.module_ambience();
 
-    assert!(module_scope
+    assert!(module_ambience
         .lookaround("Scope")
         .is_some_and(|search| matches!(
             search.entry, whirl_ast::ScopeEntry::Enum(e) if matches!(
@@ -481,9 +481,9 @@ fn parsing_enum_variant() {
 
     statement = parser.next().unwrap().unwrap();
 
-    module_scope = parser.module_scope();
+    module_ambience = parser.module_ambience();
 
-    assert!(module_scope
+    assert!(module_ambience
         .lookaround("Node")
         .is_some_and(|search| matches!(
             search.entry, whirl_ast::ScopeEntry::Enum(e) if matches!(
@@ -872,10 +872,10 @@ fn parse_shorthand_variables() {
         })
     );
 
-    let module_scope = parser.module_scope();
+    let module_ambience = parser.module_ambience();
 
     assert!(matches!(
-        module_scope.lookaround("message").unwrap().entry,
+        module_ambience.lookaround("message").unwrap().entry,
         ScopeEntry::Variable(whirl_ast::VariableSignature {name,..}) if name.name == format!("message")));
 
     // With type
@@ -1256,7 +1256,7 @@ fn parse_models() {
     let mut parser = parse_text("model Person {}");
     let statement = parser.next().unwrap().unwrap();
     assert!(matches!(
-        parser.module_scope().lookaround("Person").unwrap().entry,
+        parser.module_ambience().lookaround("Person").unwrap().entry,
         ScopeEntry::Model(_)
     ));
 
@@ -1277,7 +1277,7 @@ fn parse_models() {
     let mut parser = parse_text("model TextBook implements Book {}");
     let statement = parser.next().unwrap().unwrap();
     assert!(matches!(
-        parser.module_scope().lookaround("TextBook").unwrap().entry,
+        parser.module_ambience().lookaround("TextBook").unwrap().entry,
         ScopeEntry::Model(m) if m.implementations.len() == 1
     ));
 
@@ -1307,7 +1307,7 @@ fn parse_model_properties() {
     );
     let statement = parser.next().unwrap().unwrap();
     assert!(matches!(
-        parser.module_scope().lookaround("Person").unwrap().entry,
+        parser.module_ambience().lookaround("Person").unwrap().entry,
         ScopeEntry::Model(m) if m.attributes[0].name.name == "name" // haha.
     ));
 
@@ -1338,7 +1338,7 @@ fn parse_model_properties() {
     );
     let statement = parser.next().unwrap().unwrap();
     assert!(matches!(
-        parser.module_scope().lookaround("Person").unwrap().entry,
+        parser.module_ambience().lookaround("Person").unwrap().entry,
         ScopeEntry::Model(m) if m.attributes[0].name.name == "name" && m.attributes[0].is_public // haha.
     ));
 
@@ -1374,7 +1374,7 @@ fn parse_model_functions() {
     );
     let statement = parser.next().unwrap().unwrap();
     assert!(matches!(
-        parser.module_scope().lookaround("Person").unwrap().entry,
+        parser.module_ambience().lookaround("Person").unwrap().entry,
         ScopeEntry::Model(m) if m.methods[0].name.name == "DoSomething"
     ));
 
@@ -1418,7 +1418,7 @@ fn parse_static_method() {
     let statement = parser.next().unwrap();
     let statement = statement.unwrap();
     assert!(matches!(
-        parser.module_scope().lookaround("Person").unwrap().entry,
+        parser.module_ambience().lookaround("Person").unwrap().entry,
         ScopeEntry::Model(m) if m.is_public && m.methods[0].name.name == "CreatePerson" && m.attributes[0].name.name == "name"
     ));
 
@@ -1467,10 +1467,10 @@ fn parse_generic_params() {
     );
     let mut statement = parser.next().unwrap().unwrap();
 
-    let mut module_scope = parser.module_scope();
+    let mut module_ambience = parser.module_ambience();
 
     assert!(matches!(
-        module_scope.lookaround("Find").unwrap().entry,
+        module_ambience.lookaround("Find").unwrap().entry,
         ScopeEntry::Function(f) if f.generic_params.as_ref().unwrap()[0].name.name == "T"
     ));
 
@@ -1500,10 +1500,10 @@ fn parse_generic_params() {
     );
     statement = parser.next().unwrap().unwrap();
 
-    module_scope = parser.module_scope();
+    module_ambience = parser.module_ambience();
 
     assert!(matches!(
-        module_scope.lookaround("Result").unwrap().entry,
+        module_ambience.lookaround("Result").unwrap().entry,
         ScopeEntry::Enum(e) if {
             let param = &e.generic_params.as_ref().unwrap()[1];
             param.name.name == "E" && matches!(
@@ -1531,9 +1531,9 @@ fn parse_generic_params() {
     );
     statement = parser.next().unwrap().unwrap();
 
-    module_scope = parser.module_scope();
+    module_ambience = parser.module_ambience();
     assert!(matches!(
-        module_scope.lookaround("Stack").unwrap().entry,
+        module_ambience.lookaround("Stack").unwrap().entry,
         ScopeEntry::Model(m) if {
             let param = &m.generic_params.as_ref().unwrap()[0];
             param.name.name == "T" && param.traits.len() == 2 && matches!(
@@ -1562,10 +1562,10 @@ fn parse_trait_declarations() {
     // Simple.
     let mut parser = parse_text("trait TraitName {}");
     let statement = parser.next().unwrap().unwrap();
-    let mut module_scope = parser.module_scope();
+    let mut module_ambience = parser.module_ambience();
 
     assert!(matches!(
-        module_scope.lookaround("TraitName").unwrap().entry,
+        module_ambience.lookaround("TraitName").unwrap().entry,
         ScopeEntry::Trait(_)
     ));
 
@@ -1590,10 +1590,10 @@ fn parse_trait_declarations() {
     ",
     );
     let statement = parser.next().unwrap().unwrap();
-    module_scope = parser.module_scope();
+    module_ambience = parser.module_ambience();
 
     assert!(matches!(
-        module_scope.lookaround("Addition").unwrap().entry,
+        module_ambience.lookaround("Addition").unwrap().entry,
         ScopeEntry::Trait(t) if t.is_public && t.methods[0].name.name == "Add"
     ));
 
@@ -1625,10 +1625,10 @@ fn parse_trait_declarations() {
     ",
     );
     let statement = parser.next().unwrap().unwrap();
-    module_scope = parser.module_scope();
+    module_ambience = parser.module_ambience();
 
     assert!(matches!(
-        module_scope.lookaround("Addition").unwrap().entry,
+        module_ambience.lookaround("Addition").unwrap().entry,
         ScopeEntry::Trait(t) if t.is_public
         && t.implementations.len() == 1
         && t.methods.len() == 2
@@ -1750,7 +1750,7 @@ fn parse_module_declaration() {
         })
     );
     assert_eq!(
-        parser.module_scope().get_module_name().unwrap(),
+        parser.module_ambience().get_module_name().unwrap(),
         "Structures"
     )
 }

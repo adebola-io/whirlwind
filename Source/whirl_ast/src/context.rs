@@ -1,27 +1,27 @@
 use crate::{
-    AttributeSignature, MethodSignature, ModelSignature, ModuleScope, Signature, TypedValue,
+    AttributeSignature, MethodSignature, ModelSignature, ModuleAmbience, Signature, TypedValue,
 };
 
-/// A compact representation of a typed value and the module scope.
+/// A compact representation of a typed value and the module ambience.
 pub struct TypedValueContext<'a, T: TypedValue> {
-    pub module_scope: &'a ModuleScope,
+    pub module_ambience: &'a ModuleAmbience,
     pub atom: T,
 }
 
 /// A signature that is exposed to other modules in the program.
 pub struct PublicSignatureContext<'a, T: Signature> {
     pub signature: &'a T,
-    pub module_scope: &'a ModuleScope,
+    pub module_ambience: &'a ModuleAmbience,
 }
 
 pub struct AttributeContext<'a> {
-    pub module_scope: &'a ModuleScope,
+    pub module_ambience: &'a ModuleAmbience,
     pub model: &'a ModelSignature,
     pub attribute: &'a AttributeSignature,
 }
 
 pub struct MethodContext<'a> {
-    pub module_scope: &'a ModuleScope,
+    pub module_ambience: &'a ModuleAmbience,
     pub model: &'a ModelSignature,
     pub method: &'a MethodSignature,
 }

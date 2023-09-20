@@ -1,6 +1,6 @@
 use std::{cell::RefCell, str::Chars};
 
-use whirl_ast::{ASTVisitorNoArgs, ModuleScope, ScopeEntry, Span, Statement, TypeEval};
+use whirl_ast::{ASTVisitorNoArgs, ModuleAmbience, ScopeEntry, Span, Statement, TypeEval};
 use whirl_errors::{LexError, ParseError};
 use whirl_lexer::{Lexer, TextLexer};
 use whirl_parser::parse_text;
@@ -9,7 +9,7 @@ use crate::{primitive::Primitives, type_utils};
 
 use whirl_errors::TypeError;
 
-/// Infers the types of, and resolves all values used in the program.
+/// Resolves all values in the program and infers their types.
 pub struct TypeInferrer<L: Lexer> {
     pub parser: whirl_parser::Parser<L>,
     pub statements: Vec<Statement>,
@@ -25,9 +25,9 @@ impl<L: Lexer> TypeInferrer<L> {
         self.type_errors.take()
     }
 
-    /// Returns the (parser's) module scope.
-    pub fn module_scope(&self) -> &mut ModuleScope {
-        self.parser.module_scope()
+    /// Returns the (parser's) module ambience.
+    pub fn module_ambience(&self) -> &mut ModuleAmbience {
+        self.parser.module_ambience()
     }
 
     pub fn from_text(input: &str, primitives: Primitives) -> TypeInferrer<TextLexer<Chars>> {
@@ -38,13 +38,13 @@ impl<L: Lexer> TypeInferrer<L> {
             lexical_errors: vec![],
             syntax_errors: vec![],
         };
-        let module_scope = checker.parser.module_scope();
+        let module_ambience = checker.parser.module_ambience();
         // Register all primitive values.
         for primitive_type in primitives.types {
-            module_scope.register(ScopeEntry::Type(primitive_type));
+            module_ambience.register(ScopeEntry::Type(primitive_type));
         }
         for primitive_model in primitives.models {
-            module_scope.register(ScopeEntry::Model(primitive_model));
+            module_ambience.register(ScopeEntry::Model(primitive_model));
         }
 
         checker
@@ -80,21 +80,21 @@ impl<L: Lexer> Iterator for TypeInferrer<L> {
 
 impl<L: Lexer> ASTVisitorNoArgs<TypeEval> for TypeInferrer<L> {
     /// Perform inference on a shorthand variable declaration.
-    fn visit_shorthand_variable_declaration(
+    fn shorthand_variable_declaration(
         &self,
         variable_decl: &whirl_ast::ShorthandVariableDeclaration,
     ) {
         let address = variable_decl.address;
         let value_type = self.expr(&variable_decl.value);
         let signature = self
-            .module_scope()
+            .module_ambience()
             .get_entry_unguarded_mut(address)
             .var_mut();
 
         if let Some(ref type_expression) = signature.var_type.declared {
             // Check if assigned type is valid in the given scope.
             match type_utils::eval_type_expression(
-                self.module_scope(),
+                self.module_ambience(),
                 type_expression,
                 address.scope_id,
             ) {
@@ -118,26 +118,26 @@ impl<L: Lexer> ASTVisitorNoArgs<TypeEval> for TypeInferrer<L> {
 
     /// Perform inference on a function declaration.
     fn function_declaration(&self, function: &whirl_ast::FunctionDeclaration) {
-        let module_scope = self.module_scope();
+        let module_ambience = self.module_ambience();
         // Input parameters into body scope.
-        module_scope.goto(function.body.scope_id);
-        let parameters = &module_scope
+        module_ambience.jump_to_scope(function.body.scope_id);
+        let parameters = &module_ambience
             .get_entry_unguarded(function.address)
             .func()
             .params;
-        let module_scope = self.module_scope(); // unrecommended FU to rust.
+        let module_ambience = self.module_ambience(); // unrecommended FU to rust.
         for parameter in parameters.iter() {
-            module_scope.register(ScopeEntry::Parameter(parameter.clone()));
+            module_ambience.register(ScopeEntry::Parameter(parameter.clone()));
         }
         for (_index, statement) in function.body.statements.iter().enumerate() {
             self.statement(statement)
         }
-        self.module_scope().leave()
+        self.module_ambience().leave_scope()
     }
 
     /// Perform inference on an identifier.
-    fn visit_identifier(&self, ident: &whirl_ast::Identifier) -> TypeEval {
-        match type_utils::evaluate_type_of_variable(self.module_scope(), ident) {
+    fn identifier(&self, ident: &whirl_ast::Identifier) -> TypeEval {
+        match type_utils::evaluate_type_of_variable(self.module_ambience(), ident) {
             Ok(eval) => return eval,
             Err(e) => {
                 self.type_errors.borrow_mut().push(e);
@@ -155,7 +155,7 @@ impl<L: Lexer> ASTVisitorNoArgs<TypeEval> for TypeInferrer<L> {
     }
 
     /// Perform inference on a boolean value.
-    fn visit_boolean(&self, _bool: &whirl_ast::WhirlBoolean) -> TypeEval {
+    fn boolean(&self, _bool: &whirl_ast::WhirlBoolean) -> TypeEval {
         TypeEval::Pointer {
             address: [0, 2].into(), // scope address for booleans.
             args: None,
@@ -163,7 +163,7 @@ impl<L: Lexer> ASTVisitorNoArgs<TypeEval> for TypeInferrer<L> {
     }
 
     /// Perform inference on a binary expression.
-    fn visit_binary_expr(&self, bin_exp: &whirl_ast::BinaryExpr) -> TypeEval {
+    fn binary_expr(&self, bin_exp: &whirl_ast::BinaryExpr) -> TypeEval {
         let left = self.expr(&bin_exp.left);
         let right = self.expr(&bin_exp.right);
 

@@ -1,6 +1,6 @@
 use crate::analyze_text;
 use std::{mem::take, path::PathBuf, slice::Iter};
-use whirl_ast::{ModuleScope, Spannable, Statement};
+use whirl_ast::{ModuleAmbience, Spannable, Statement};
 use whirl_errors::ProgramError;
 // use whirl_lexer::TextLexer;
 // use whirl_parser::Parser;
@@ -11,7 +11,7 @@ use whirl_errors::ProgramError;
 #[derive(Debug)]
 pub struct Module {
     pub name: String,
-    pub scopes: ModuleScope,
+    pub scopes: ModuleAmbience,
     statements: Vec<Statement>,
     built: bool,
     errors: Vec<ProgramError>,
@@ -66,7 +66,7 @@ impl Module {
                 for lex_error in take(&mut checker.lexical_errors) {
                     self.errors.push(ProgramError::LexerError(lex_error))
                 }
-                self.scopes = take(checker.module_scope());
+                self.scopes = take(checker.module_ambience());
                 self.statements = take(&mut checker.statements);
                 self.line_lens = take(&mut checker.parser.lexer.borrow_mut().line_lengths);
             }
@@ -78,7 +78,7 @@ impl Module {
     pub fn from_text(value: String) -> Self {
         let mut module = Module {
             name: String::new(),
-            scopes: ModuleScope::new(),
+            scopes: ModuleAmbience::new(),
             statements: vec![],
             errors: vec![],
             built: false,
@@ -111,7 +111,7 @@ impl Module {
 
     pub fn refresh_with_text(&mut self, new_text: String) {
         self.errors.clear();
-        self.scopes = ModuleScope::new();
+        self.scopes = ModuleAmbience::new();
         self.statements.clear();
         self.build(ModuleSource::PlainText(new_text));
     }
@@ -165,11 +165,11 @@ impl Module {
     //                     None => break,
     //                 }
     //             }
-    //             self.scopes.merge(parser.module_scope());
+    //             self.scopes.merge(parser.module_ambience());
     //             println!("{:#?}", self.scopes);
 
     //             // for statement in parser {
-    //             //     parser.set_module_scope()
+    //             //     parser.set_module_ambience()
     //             //     if statement.is_none() {
     //             //         continue;
     //             //     }

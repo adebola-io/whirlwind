@@ -1,6 +1,6 @@
 use whirl_ast::{
-    DiscreteType, EnumSignature, Identifier, ModelSignature, ModuleScope, ScopeAddress, ScopeEntry,
-    Span, TypeEval, TypeExpression, TypeSignature,
+    DiscreteType, EnumSignature, Identifier, ModelSignature, ModuleAmbience, ScopeAddress,
+    ScopeEntry, Span, TypeEval, TypeExpression, TypeSignature,
 };
 
 use crate::TypeError;
@@ -8,7 +8,7 @@ use whirl_errors as errors;
 
 /// Confirms that a type expression is valid in the scope it is defined, and then generate a type evaluation for it.
 pub fn eval_type_expression(
-    module_scope: &ModuleScope,
+    module_ambience: &ModuleAmbience,
     expression: &TypeExpression,
     scope: usize,
 ) -> Result<TypeEval, TypeError> {
@@ -16,7 +16,7 @@ pub fn eval_type_expression(
     match expression {
         // Type checking discrete types.
         TypeExpression::Discrete(discrete_type) => {
-            evaluate_discrete_type(module_scope, discrete_type, scope)
+            evaluate_discrete_type(module_ambience, discrete_type, scope)
         }
         // TODO: disallow This type outside model context.
         TypeExpression::This { .. } => todo!(),
@@ -27,11 +27,11 @@ pub fn eval_type_expression(
 
 /// Try to convert a discrete type to an evaluation.
 pub fn evaluate_discrete_type(
-    module_scope: &ModuleScope,
+    module_ambience: &ModuleAmbience,
     discrete_type: &DiscreteType,
     scope: usize,
 ) -> Result<TypeEval, TypeError> {
-    let shadow = module_scope.create_shadow(scope);
+    let shadow = module_ambience.create_shadow(scope);
     let name = &discrete_type.name.name;
     let span = discrete_type.name.span;
     let generic_args = &discrete_type.generic_args;
@@ -69,7 +69,7 @@ pub fn evaluate_discrete_type(
                 let mut evaluated_args = vec![];
                 for argument in arguments {
                     // TODO: Compute trait guards.
-                    evaluated_args.push(eval_type_expression(module_scope, argument, scope)?);
+                    evaluated_args.push(eval_type_expression(module_ambience, argument, scope)?);
                 }
                 Some(evaluated_args)
             } else {
@@ -84,10 +84,10 @@ pub fn evaluate_discrete_type(
 
 /// Get the type of a value in the current scope.
 pub fn evaluate_type_of_variable(
-    module_scope: &ModuleScope,
+    module_ambience: &ModuleAmbience,
     variable: &Identifier,
 ) -> Result<TypeEval, TypeError> {
-    match module_scope.lookup(&variable.name) {
+    match module_ambience.lookup(&variable.name) {
         Some(value) => match value.entry {
             ScopeEntry::Function(_)
             | ScopeEntry::Type(_)

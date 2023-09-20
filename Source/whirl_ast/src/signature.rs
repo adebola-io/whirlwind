@@ -1,5 +1,5 @@
 use crate::{
-    EnumVariant, GenericParameter, Identifier, ModuleScope, ScopeEntry, Type, TypeEval,
+    EnumVariant, GenericParameter, Identifier, ModuleAmbience, ScopeEntry, Type, TypeEval,
     TypeExpression,
 };
 
@@ -177,13 +177,13 @@ impl Signature for (&Identifier, &EnumVariant) {
     }
 }
 
-impl Signature for (&ModuleScope, &VariableSignature) {
+impl Signature for (&ModuleAmbience, &VariableSignature) {
     fn info(&self) -> Option<&Vec<String>> {
         self.1.info.as_ref()
     }
 }
 
-impl Signature for (&ModuleScope, TypeEval) {
+impl Signature for (&ModuleAmbience, TypeEval) {
     fn info(&self) -> Option<&Vec<String>> {
         match self.1 {
             TypeEval::Pointer { address, .. } => match self.0.get_entry_unguarded(address) {

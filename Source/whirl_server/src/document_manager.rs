@@ -105,9 +105,9 @@ impl WhirlDocument {
     fn get_hover_for_position(&self, position: Position) -> Option<HoverInfo> {
         // Editor ranges are zero-based, for some reason.
         let position = [position.line + 1, position.character + 1];
-        let hover_finder = HoverFinder::with_module_scope(&self.module.scopes);
+        let hover_finder = HoverFinder::with_module_ambience(&self.module.scopes);
         for statement in self.module.statements() {
-            let hover_info = hover_finder.visit_statement(statement, &position);
+            let hover_info = hover_finder.statement(statement, &position);
             if hover_info.is_some() {
                 return hover_info;
             }

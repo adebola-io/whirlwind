@@ -11,50 +11,123 @@ use crate::{
 /// A very skeletal trait for immutably traversing the Abstract Syntax Tree.
 pub trait ASTVisitor<Arguments = (), Output: Default = ()> {
     /// Visit a statement node.
-    fn visit_statement(&self, statement: &Statement, args: &Arguments) -> Output {
+    fn statement(&self, statement: &Statement, args: &Arguments) -> Output {
         match statement {
-            Statement::FunctionDeclaration(f) => self.visit_function(f, args),
-            Statement::TypeDeclaration(t) => self.visit_type_declaration(t, args),
-            Statement::EnumDeclaration(e) => self.visit_enum_declaration(e, args),
-            Statement::ModelDeclaration(m) => self.visit_model_declaration(m, args),
-            Statement::ShorthandVariableDeclaration(v) => {
-                self.visit_shorthand_variable_declaration(v, args)
-            }
-            Statement::ExpressionStatement(e) | Statement::FreeExpression(e) => {
-                self.visit_expression(e, args)
-            }
+            Statement::FunctionDeclaration(f) => self.function(f, args),
+            Statement::TypeDeclaration(t) => self.type_decl(t, args),
+            Statement::EnumDeclaration(e) => self.enum_decl(e, args),
+            Statement::ModelDeclaration(m) => self.model_decl(m, args),
+            Statement::ShorthandVariableDeclaration(v) => self.shorthand_var_decl(v, args),
+            Statement::ExpressionStatement(e) | Statement::FreeExpression(e) => self.expr(e, args),
             _ => Output::default(),
         }
     }
-    fn visit_expression(&self, exp: &Expression, args: &Arguments) -> Output {
+    fn expr(&self, exp: &Expression, args: &Arguments) -> Output {
         match exp {
-            Expression::Identifier(i) => self.visit_identifier(i, args),
-            Expression::StringLiteral(_)
-            | Expression::NumberLiteral(_)
-            | Expression::BooleanLiteral(_) => Output::default(),
-            Expression::NewExpr(n) => self.visit_expression(&n.value, args),
-            Expression::ThisExpr(t) => self.visit_this_expression(t, args),
-            Expression::CallExpr(_) => todo!(),
-            Expression::FnExpr(_) => todo!(),
-            Expression::IfExpr(_) => todo!(),
-            Expression::ArrayExpr(_) => todo!(),
-            Expression::AccessExpr(_) => todo!(),
-            Expression::IndexExpr(_) => todo!(),
-            Expression::BinaryExpr(_) => todo!(),
-            Expression::AssignmentExpr(_) => todo!(),
-            Expression::UnaryExpr(_) => todo!(),
-            Expression::LogicExpr(_) => todo!(),
-            Expression::BlockExpr(_) => todo!(),
+            Expression::Identifier(i) => self.identifier(i, args),
+            Expression::StringLiteral(s) => self.string(s, args),
+            Expression::NumberLiteral(n) => self.number(n, args),
+            Expression::BooleanLiteral(b) => self.boolean(b, args),
+            Expression::NewExpr(n) => self.new_expr(n, args),
+            Expression::ThisExpr(t) => self.this_expr(t, args),
+            Expression::CallExpr(c) => self.call_expr(c, args),
+            Expression::FnExpr(f) => self.function_expr(f, args),
+            Expression::IfExpr(i) => self.if_expr(i, args),
+            Expression::ArrayExpr(a) => self.array(a, args),
+            Expression::AccessExpr(a) => self.access(a, args),
+            Expression::IndexExpr(i) => self.index(i, args),
+            Expression::BinaryExpr(b) => self.bin_exp(b, args),
+            Expression::AssignmentExpr(a) => self.ass_exp(a, args),
+            Expression::UnaryExpr(u) => self.un_exp(u, args),
+            Expression::LogicExpr(l) => self.log_exp(l, args),
+            Expression::BlockExpr(b) => self.block(b, args),
         }
     }
-    // Visit a type declaration node.
-    fn visit_type_declaration(&self, type_decl: &TypeDeclaration, args: &Arguments) -> Output {
+
+    fn if_expr(&self, ifexp: &IfExpression, args: &Arguments) -> Output {
+        self.expr(&ifexp.condition, args);
+        self.block(&ifexp.consequent, args);
+        if let Some(el) = &ifexp.alternate {
+            self.expr(&el.expression, args);
+        }
         Output::default()
     }
-    fn visit_this_expression(&self, this: &ThisExpr, args: &Arguments) -> Output {
+
+    fn block(&self, block: &Block, args: &Arguments) -> Output {
+        for stat in &block.statements {
+            self.statement(stat, args);
+        }
         Output::default()
     }
-    fn visit_shorthand_variable_declaration(
+
+    fn log_exp(&self, logexp: &LogicExpr, args: &Arguments) -> Output {
+        self.expr(&logexp.left, args);
+        self.expr(&logexp.right, args)
+    }
+
+    fn un_exp(&self, unexp: &UnaryExpr, args: &Arguments) -> Output {
+        self.expr(&unexp.operand, args)
+    }
+
+    fn ass_exp(&self, assexp: &AssignmentExpr, args: &Arguments) -> Output {
+        self.expr(&assexp.left, args);
+        self.expr(&assexp.right, args)
+    }
+
+    fn bin_exp(&self, binexp: &BinaryExpr, args: &Arguments) -> Output {
+        self.expr(&binexp.left, args);
+        self.expr(&binexp.right, args)
+    }
+
+    fn index(&self, index_expr: &IndexExpr, args: &Arguments) -> Output {
+        self.expr(&index_expr.object, args);
+        self.expr(&index_expr.index, args)
+    }
+
+    fn access(&self, acces_expr: &AccessExpr, args: &Arguments) -> Output {
+        self.expr(&acces_expr.object, args);
+        self.expr(&acces_expr.property, args)
+    }
+
+    fn array(&self, arr: &ArrayExpr, args: &Arguments) -> Output {
+        for elem in &arr.elements {
+            self.expr(elem, args);
+        }
+        Output::default()
+    }
+
+    fn function_expr(&self, function_expr: &FunctionExpr, args: &Arguments) -> Output {
+        self.expr(&function_expr.body, args)
+    }
+    fn call_expr(&self, call: &CallExpr, args: &Arguments) -> Output {
+        self.expr(&call.caller, args);
+        for arg in &call.arguments {
+            self.expr(arg, args);
+        }
+        Output::default()
+    }
+    fn type_decl(&self, type_decl: &TypeDeclaration, args: &Arguments) -> Output {
+        Output::default()
+    }
+    fn string(&self, string: &WhirlString, args: &Arguments) -> Output {
+        Output::default()
+    }
+    fn number(&self, number: &WhirlNumber, args: &Arguments) -> Output {
+        Output::default()
+    }
+    fn boolean(&self, bool: &WhirlBoolean, args: &Arguments) -> Output {
+        Output::default()
+    }
+    fn this_expr(&self, this: &ThisExpr, args: &Arguments) -> Output {
+        Output::default()
+    }
+    fn identifier(&self, ident: &Identifier, args: &Arguments) -> Output {
+        Output::default()
+    }
+    fn new_expr(&self, new_exp: &NewExpr, args: &Arguments) -> Output {
+        self.expr(&new_exp.value, args)
+    }
+    fn shorthand_var_decl(
         &self,
         var_decl: &ShorthandVariableDeclaration,
         args: &Arguments,
@@ -62,27 +135,23 @@ pub trait ASTVisitor<Arguments = (), Output: Default = ()> {
         Output::default()
     }
     /// Visit a function node.
-    fn visit_function(&self, function: &FunctionDeclaration, args: &Arguments) -> Output {
+    fn function(&self, function: &FunctionDeclaration, args: &Arguments) -> Output {
         let body = &function.body;
         for statement in &body.statements {
-            self.visit_statement(statement, args);
+            self.statement(statement, args);
         }
         Output::default()
     }
     /// Visit a parameter node.
-    fn visit_parameter(&self, parameter: &Parameter, args: &Arguments) -> Output {
-        self.visit_identifier(&parameter.name, args)
+    fn param(&self, parameter: &Parameter, args: &Arguments) -> Output {
+        self.identifier(&parameter.name, args)
     }
     /// Visit an enum node.
-    fn visit_enum_declaration(&self, enum_decl: &EnumDeclaration, args: &Arguments) -> Output {
+    fn enum_decl(&self, enum_decl: &EnumDeclaration, args: &Arguments) -> Output {
         Output::default()
     }
     /// Visit a model node.
-    fn visit_model_declaration(&self, model: &ModelDeclaration, args: &Arguments) -> Output {
-        Output::default()
-    }
-    /// Visit an identifier node.
-    fn visit_identifier(&self, ident: &Identifier, args: &Arguments) -> Output {
+    fn model_decl(&self, model: &ModelDeclaration, args: &Arguments) -> Output {
         Output::default()
     }
 }
@@ -90,71 +159,66 @@ pub trait ASTVisitor<Arguments = (), Output: Default = ()> {
 /// Mutable implementation of [`ASTVisitor`].
 #[allow(unused)]
 pub trait MutASTVisitor<Output: Default = ()> {
-    fn visit_statement(&mut self, statement: &mut Statement) {
+    fn statement(&mut self, statement: &mut Statement) {
         match statement {
-            Statement::TestDeclaration(t) => self.visit_test_declaration(t),
-            Statement::UseDeclaration(u) => self.visit_use_declaration(u),
-            Statement::ShorthandVariableDeclaration(v) => {
-                self.visit_shorthand_variable_declaration(v)
-            }
-            Statement::FunctionDeclaration(f) => self.visit_function_declaration(f),
-            Statement::EnumDeclaration(e) => self.visit_enum_declaration(e),
-            Statement::TypeDeclaration(t) => self.visit_type_declaration(t),
-            // Statement::TraitDeclaration(t) => self.visit_trait_declaration(t),
+            Statement::TestDeclaration(t) => self.test_declaration(t),
+            Statement::UseDeclaration(u) => self.use_declaration(u),
+            Statement::ShorthandVariableDeclaration(v) => self.shorthand_variable_declaration(v),
+            Statement::FunctionDeclaration(f) => self.function_declaration(f),
+            Statement::EnumDeclaration(e) => self.enum_declaration(e),
+            Statement::TypeDeclaration(t) => self.type_declaration(t),
+            // Statement::TraitDeclaration(t) => self.trait_declaration(t),
             Statement::ExpressionStatement(e) => {
-                self.visit_expression(e);
+                self.expression(e);
             }
             Statement::FreeExpression(e) => {
-                self.visit_expression(e);
+                self.expression(e);
             }
             _ => {}
         }
     }
 
-    fn visit_test_declaration(&mut self, test_decl: &mut TestDeclaration) {}
+    fn test_declaration(&mut self, test_decl: &mut TestDeclaration) {}
 
-    fn visit_use_declaration(&mut self, use_decl: &mut UseDeclaration) {}
+    fn use_declaration(&mut self, use_decl: &mut UseDeclaration) {}
 
-    fn visit_type_declaration(&mut self, type_decl: &mut TypeDeclaration) {}
+    fn type_declaration(&mut self, type_decl: &mut TypeDeclaration) {}
 
-    fn visit_shorthand_variable_declaration(
-        &mut self,
-        variable_decl: &mut ShorthandVariableDeclaration,
-    ) {
+    fn shorthand_variable_declaration(&mut self, variable_decl: &mut ShorthandVariableDeclaration) {
     }
 
-    fn visit_function_declaration(&mut self, function: &mut FunctionDeclaration) {}
+    fn function_declaration(&mut self, function: &mut FunctionDeclaration) {}
 
-    fn visit_enum_declaration(&mut self, enum_decl: &mut EnumDeclaration) {}
+    fn enum_declaration(&mut self, enum_decl: &mut EnumDeclaration) {}
 
-    fn visit_expression(&mut self, exp: &mut Expression) -> Output {
+    fn expression(&mut self, exp: &mut Expression) -> Output {
         match exp {
-            Expression::Identifier(i) => self.visit_identifier(i),
-            Expression::StringLiteral(s) => self.visit_string(s),
-            Expression::NumberLiteral(n) => self.visit_number(n),
-            Expression::BooleanLiteral(b) => self.visit_boolean(b),
-            Expression::BinaryExpr(b) => self.visit_binary_expr(b),
+            Expression::Identifier(i) => self.identifier(i),
+            Expression::StringLiteral(s) => self.string(s),
+            Expression::NumberLiteral(n) => self.number(n),
+            Expression::BooleanLiteral(b) => self.boolean(b),
+            Expression::BinaryExpr(b) => self.binary_expr(b),
             _ => Output::default(),
         }
     }
 
-    fn visit_identifier(&mut self, ident: &mut Identifier) -> Output {
+    fn identifier(&mut self, ident: &mut Identifier) -> Output {
         Output::default()
     }
 
-    fn visit_string(&mut self, string: &mut WhirlString) -> Output {
+    fn string(&mut self, string: &mut WhirlString) -> Output {
         Output::default()
     }
 
-    fn visit_boolean(&mut self, bool: &mut WhirlBoolean) -> Output {
+    fn boolean(&mut self, bool: &mut WhirlBoolean) -> Output {
         Output::default()
     }
 
-    fn visit_binary_expr(&mut self, bin_exp: &mut BinaryExpr) -> Output {
+    fn binary_expr(&mut self, bin_exp: &mut BinaryExpr) -> Output {
         Output::default()
     }
 
-    fn visit_number(&mut self, number: &mut WhirlNumber) -> Output {
+    fn number(&mut self, number: &mut WhirlNumber) -> Output {
         Output::default()
     }
 }
@@ -166,9 +230,7 @@ pub trait ASTVisitorNoArgs<Output: Default = ()> {
         match statement {
             Statement::TestDeclaration(t) => self.test_declaration(t),
             Statement::UseDeclaration(u) => self.use_declaration(u),
-            Statement::ShorthandVariableDeclaration(v) => {
-                self.visit_shorthand_variable_declaration(v)
-            }
+            Statement::ShorthandVariableDeclaration(v) => self.shorthand_variable_declaration(v),
             Statement::FunctionDeclaration(f) => self.function_declaration(f),
             Statement::EnumDeclaration(e) => self.enum_declaration(e),
             Statement::TypeDeclaration(t) => self.type_declaration(t),
@@ -203,7 +265,7 @@ pub trait ASTVisitorNoArgs<Output: Default = ()> {
 
     fn type_declaration(&self, type_decl: &TypeDeclaration) {}
 
-    fn visit_shorthand_variable_declaration(&self, variable_decl: &ShorthandVariableDeclaration) {}
+    fn shorthand_variable_declaration(&self, variable_decl: &ShorthandVariableDeclaration) {}
 
     fn function_declaration(&self, function: &FunctionDeclaration) {}
 
@@ -211,11 +273,11 @@ pub trait ASTVisitorNoArgs<Output: Default = ()> {
 
     fn expr(&self, exp: &Expression) -> Output {
         match exp {
-            Expression::Identifier(i) => self.visit_identifier(i),
+            Expression::Identifier(i) => self.identifier(i),
             Expression::StringLiteral(s) => self.string(s),
             Expression::NumberLiteral(n) => self.number(n),
-            Expression::BooleanLiteral(b) => self.visit_boolean(b),
-            Expression::BinaryExpr(b) => self.visit_binary_expr(b),
+            Expression::BooleanLiteral(b) => self.boolean(b),
+            Expression::BinaryExpr(b) => self.binary_expr(b),
             Expression::NewExpr(n) => self.new_expr(n),
             Expression::ThisExpr(t) => self.this_expr(t),
             Expression::CallExpr(c) => self.call_expr(c),
@@ -252,7 +314,7 @@ pub trait ASTVisitorNoArgs<Output: Default = ()> {
         Output::default()
     }
 
-    fn visit_identifier(&self, ident: &Identifier) -> Output {
+    fn identifier(&self, ident: &Identifier) -> Output {
         Output::default()
     }
 
@@ -307,11 +369,11 @@ pub trait ASTVisitorNoArgs<Output: Default = ()> {
         Output::default()
     }
 
-    fn visit_boolean(&self, bool: &WhirlBoolean) -> Output {
+    fn boolean(&self, bool: &WhirlBoolean) -> Output {
         Output::default()
     }
 
-    fn visit_binary_expr(&self, bin_exp: &BinaryExpr) -> Output {
+    fn binary_expr(&self, bin_exp: &BinaryExpr) -> Output {
         self.expr(&bin_exp.left);
         self.expr(&bin_exp.right)
     }

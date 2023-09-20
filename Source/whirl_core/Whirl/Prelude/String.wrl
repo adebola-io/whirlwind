@@ -1,0 +1,81 @@
+module String;
+
+use Package.Internals;
+
+/// Model for creating, manipulating and formatting text sequences.
+public model String {
+    /// Returns a `Maybe` with the character at a zero based index in the string.
+    ///
+    /// It also supports negative indexes, which will return values in reverse from the end of the string.
+    /// # Usage
+    /// ```
+    /// str := "This is a string";
+    /// 
+    /// Assert(str.At(0)).Equals(Some("T"));
+    /// Assert(str.At(8)).Equals(Some("a")) 
+    /// Assert(str.At(11)).Equals(Some("t"));
+    /// ```
+    /// _Indexing from behind:_
+    /// 
+    /// ```
+    /// Assert(str.At(-1)).Equals(Some("g"));
+    /// Assert(str.At(-3)).Equals(Some("i"));
+    /// ```
+    /// It will return no value if the length of the string is exceeded.
+    public function At(position: Integer): Maybe<String> {
+        Internals.Invoke("strat", this, position)
+    }
+    /// Adds text to the end of the string.
+    /// # Usage
+    /// ```
+    /// str := "Hello";
+    /// 
+    /// str.Append(", world!");
+    /// 
+    /// Assert(Str).Equals("Hello, world!");
+    /// ```
+    public function Append(toAdd: String) {
+        Internals.Invoke("strapp", this, toAdd)
+    }
+    /// Returns an iterator over the valid characters in the string.
+    /// # Usage
+    /// ```
+    /// str := "adebola.io"
+    /// 
+    /// for char in str.Chars() {
+    ///     Core.Io.Println(char);
+    /// }
+    /// ```
+    public function Chars(): Chars {
+        Internals.Invoke("strchr", this)
+    }
+    /// Empties the string of its characters.
+    public function Clear(){
+        Internals.Invoke("strcls", this)
+    }
+    /// Returns true if a substring is contained within the string.
+    /// # Usage
+    /// ```
+    /// str := "This is a world premiere.";
+    /// 
+    /// AssertThat(str.Contains("world"));
+    /// AssertThat(str.Contains("premiere"));
+    /// ```
+    public function Contains(substring: String): Boolean {
+        Internals.Invoke("strcont", this, substring)
+    }
+    /// Replaces all instances of a substring with a new substring and returns the new string.
+    /// # Usage
+    /// ```
+    /// str := "John goes to school. John buys a book.";
+    /// 
+    /// strReplaced := str.Replace("John", "Mike");
+    /// 
+    /// Assert(strReplaced).Equals("Mike goes to school. Mike buys a book.")
+    /// ```
+    public function Replace(substring: String, newstring: String): String {
+        Internals.Invoke("strrplce", this, substring, newstring)
+    }
+}
+
+

@@ -1,6 +1,6 @@
 use whirl_ast::{
     AttributeContext, EnumSignature, EnumVariant, FunctionSignature, GenericParameter, Identifier,
-    MethodContext, ModelSignature, ModuleScope, Parameter, PublicSignatureContext, Signature,
+    MethodContext, ModelSignature, ModuleAmbience, Parameter, PublicSignatureContext, Signature,
     TypeEval, TypeExpression, TypeSignature, VariableSignature,
 };
 
@@ -15,7 +15,7 @@ impl<'a, T: Signature + HoverFormatter> HoverFormatter for PublicSignatureContex
     fn to_formatted(&self) -> String {
         let mut string = String::new();
         // Add module name.
-        if let Some(name) = self.module_scope.get_module_name() {
+        if let Some(name) = self.module_ambience.get_module_name() {
             string.push_str("module ");
             string.push_str(name);
             string.push('\n');
@@ -218,11 +218,11 @@ impl HoverFormatter for (&Identifier, &EnumVariant) {
     }
 }
 
-impl HoverFormatter for (&ModuleScope, &VariableSignature) {
+impl HoverFormatter for (&ModuleAmbience, &VariableSignature) {
     fn to_formatted(&self) -> String {
         let mut string = String::new();
         let signature = self.1;
-        let module_scope = self.0;
+        let module_ambience = self.0;
         if signature.is_public {
             string.push_str("public ");
         }
@@ -230,7 +230,7 @@ impl HoverFormatter for (&ModuleScope, &VariableSignature) {
         string.push_str(&signature.name.name);
         string.push_str(": ");
         let var_type = match signature.var_type.inferred {
-            Some(ref type_eval) => stringify_type_eval(module_scope, type_eval),
+            Some(ref type_eval) => stringify_type_eval(module_ambience, type_eval),
             None => match signature.var_type.declared {
                 Some(ref t) => t.to_formatted(),
                 None => format!("unknown"),
@@ -241,7 +241,7 @@ impl HoverFormatter for (&ModuleScope, &VariableSignature) {
     }
 }
 
-impl HoverFormatter for (&ModuleScope, TypeEval) {
+impl HoverFormatter for (&ModuleAmbience, TypeEval) {
     fn to_formatted(&self) -> String {
         match self.1 {
             TypeEval::Pointer { address, .. } => match self.0.get_entry_unguarded(address) {
@@ -270,7 +270,7 @@ impl<'a> HoverFormatter for AttributeContext<'a> {
         string.push_str(&signature.name.name);
         string.push_str(": ");
         let var_type = match signature.var_type.inferred {
-            Some(ref type_eval) => stringify_type_eval(self.module_scope, type_eval),
+            Some(ref type_eval) => stringify_type_eval(self.module_ambience, type_eval),
             None => match signature.var_type.declared {
                 Some(ref t) => t.to_formatted(),
                 None => format!("unknown"),

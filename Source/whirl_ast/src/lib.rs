@@ -1,3 +1,4 @@
+mod ambience;
 mod change;
 mod context;
 mod expression;
@@ -9,6 +10,7 @@ mod token;
 mod typing;
 mod visitor;
 
+pub use ambience::*;
 pub use change::*;
 pub use context::*;
 pub use expression::*;
