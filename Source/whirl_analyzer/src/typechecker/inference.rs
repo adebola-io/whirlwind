@@ -1,6 +1,8 @@
 use std::{cell::RefCell, str::Chars};
 
-use whirl_ast::{ASTVisitorNoArgs, ModuleAmbience, ScopeEntry, Spannable, Statement, TypeEval};
+use whirl_ast::{
+    ASTVisitorExprOutputNoArgs, ModuleAmbience, ScopeEntry, Spannable, Statement, TypeEval,
+};
 use whirl_errors::{LexError, ParseError};
 use whirl_lexer::{Lexer, TextLexer};
 use whirl_parser::parse_text;
@@ -80,7 +82,7 @@ impl<L: Lexer> Iterator for TypeInferrer<L> {
     }
 }
 
-impl<L: Lexer> ASTVisitorNoArgs<TypeEval> for TypeInferrer<L> {
+impl<L: Lexer> ASTVisitorExprOutputNoArgs<TypeEval> for TypeInferrer<L> {
     /// Perform inference on a shorthand variable declaration.
     fn shorthand_variable_declaration(
         &self,

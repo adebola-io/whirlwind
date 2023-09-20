@@ -1,8 +1,8 @@
 module Default;
 
-/// This is a language level trait that can be implemented by types that have default values, even when they are not initialized.
+/// This is a language level trait to be implemented by types that have default values when they are not initialized.
 /// ## Usage
-/// Suppose you want a position that, if not set, should start at the origin (0, 0). A non implemented approach would be: 
+/// Suppose there is a `Position` model that, if not set, should start at the origin (0, 0). A non implemented approach would be: 
 /// ```
 /// model Position {
 ///    var x: Number;
@@ -42,5 +42,6 @@ module Default;
 /// Core.Io.Println(p2);
 /// ```
 public trait Default {
-
+    /// Returns a new instantiation of the implementing model.
+    public function Init(): This;
 }

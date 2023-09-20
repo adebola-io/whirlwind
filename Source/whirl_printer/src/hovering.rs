@@ -1,7 +1,8 @@
 use whirl_ast::{
-    AttributeContext, EnumSignature, EnumVariant, FunctionSignature, GenericParameter, Identifier,
-    MethodContext, ModelSignature, ModuleAmbience, Parameter, PublicSignatureContext, Signature,
-    TypeEval, TypeExpression, TypeSignature, VariableSignature,
+    EnumSignature, EnumVariant, FunctionSignature, GenericParameter, Identifier, MethodSignature,
+    ModelSignature, ModuleAmbience, Parameter, PublicSignatureContext, Signature, ThreeTierContext,
+    TraitSignature, TypeEval, TypeExpression, TypeSignature, TypedValue, TypedValueContext,
+    VariableSignature,
 };
 
 use crate::stringify_type_eval;
@@ -29,9 +30,7 @@ impl HoverFormatter for FunctionSignature {
     fn to_formatted(&self) -> String {
         // Construct function signature.
         let mut string = String::new();
-        if self.is_public {
-            string.push_str("public ");
-        }
+        maybe_print_public(&mut string, self);
         if self.is_async {
             string.push_str("async ");
         }
@@ -47,9 +46,7 @@ impl HoverFormatter for FunctionSignature {
 impl HoverFormatter for TypeSignature {
     fn to_formatted(&self) -> String {
         let mut string = String::new();
-        if self.is_public {
-            string.push_str("public ");
-        }
+        maybe_print_public(&mut string, self);
         string.push_str("type ");
         string.push_str(&self.name.name);
         // Todo: Generic params.
@@ -62,9 +59,7 @@ impl HoverFormatter for TypeSignature {
 impl HoverFormatter for EnumSignature {
     fn to_formatted(&self) -> String {
         let mut string = String::new();
-        if self.is_public {
-            string.push_str("public ");
-        }
+        maybe_print_public(&mut string, self);
         string.push_str("enum ");
         string.push_str(&self.name.name);
         // Todo: Generic params.
@@ -75,15 +70,66 @@ impl HoverFormatter for EnumSignature {
 impl HoverFormatter for ModelSignature {
     fn to_formatted(&self) -> String {
         let mut string = String::new();
-        if self.is_public {
-            string.push_str("public ");
-        }
+        maybe_print_public(&mut string, self);
         string.push_str("model ");
         string.push_str(&self.name.name);
         maybe_print_generic_params(&mut string, self.generic_params.as_ref());
         for _implementation in &self.implementations {
             // todo: implementations
         }
+        string
+    }
+}
+
+impl HoverFormatter for MethodSignature {
+    fn to_formatted(&self) -> String {
+        // Construct function signature.
+        let mut string = String::new();
+        maybe_print_public(&mut string, self);
+        if self.is_static {
+            string.push_str("static ")
+        }
+        if self.is_async {
+            string.push_str("async ");
+        }
+        string.push_str("function ");
+        string.push_str(&self.name.name);
+        maybe_print_generic_params(&mut string, self.generic_params.as_ref());
+        print_parameters(&mut string, &self.params);
+        maybe_print_return_type(&mut string, &self.return_type);
+        string
+    }
+}
+
+impl HoverFormatter for TraitSignature {
+    fn to_formatted(&self) -> String {
+        let mut string = String::new();
+        maybe_print_public(&mut string, self);
+        string.push_str("trait ");
+        string.push_str(&self.name.name);
+        maybe_print_generic_params(&mut string, self.generic_params.as_ref());
+        for _implementation in &self.implementations {
+            // todo: implementations
+        }
+        string
+    }
+}
+
+impl<T: TypedValue + Signature> HoverFormatter for TypedValueContext<'_, T> {
+    fn to_formatted(&self) -> String {
+        let mut string = String::new();
+        maybe_print_public(&mut string, self.atom);
+        string.push_str("var ");
+        string.push_str(&self.atom.name());
+        string.push_str(": ");
+        let var_type = match self.atom.evaluated_type() {
+            Some(ref type_eval) => stringify_type_eval(&self.module_ambience, type_eval),
+            None => match self.atom.declared_type() {
+                Some(ref t) => t.to_formatted(),
+                None => format!("unknown"),
+            },
+        };
+        string.push_str(&var_type);
         string
     }
 }
@@ -223,9 +269,7 @@ impl HoverFormatter for (&ModuleAmbience, &VariableSignature) {
         let mut string = String::new();
         let signature = self.1;
         let module_ambience = self.0;
-        if signature.is_public {
-            string.push_str("public ");
-        }
+        maybe_print_public(&mut string, signature);
         string.push_str("var ");
         string.push_str(&signature.name.name);
         string.push_str(": ");
@@ -260,48 +304,13 @@ impl HoverFormatter for (&ModuleAmbience, TypeEval) {
     }
 }
 
-impl<'a> HoverFormatter for AttributeContext<'a> {
+impl<'a, T: Signature + HoverFormatter, U: Signature + HoverFormatter> HoverFormatter
+    for ThreeTierContext<'a, T, U>
+{
     fn to_formatted(&self) -> String {
-        let mut string = self.model.to_formatted();
+        let mut string = self.parent.to_formatted();
         string.push('\n');
-        let signature = self.attribute;
-        if signature.is_public {
-            string.push_str("public ");
-        }
-        string.push_str("var ");
-        string.push_str(&signature.name.name);
-        string.push_str(": ");
-        let var_type = match signature.var_type.inferred {
-            Some(ref type_eval) => stringify_type_eval(self.module_ambience, type_eval),
-            None => match signature.var_type.declared {
-                Some(ref t) => t.to_formatted(),
-                None => format!("unknown"),
-            },
-        };
-        string.push_str(&var_type);
-        string
-    }
-}
-
-impl<'a> HoverFormatter for MethodContext<'a> {
-    fn to_formatted(&self) -> String {
-        let mut string = self.model.to_formatted();
-        string.push('\n');
-        let signature = self.method;
-        if signature.is_public {
-            string.push_str("public ");
-        }
-        if signature.is_static {
-            string.push_str("static ");
-        }
-        if signature.is_async {
-            string.push_str("async ");
-        }
-        string.push_str("function ");
-        string.push_str(&signature.name.name);
-        maybe_print_generic_params(&mut string, signature.generic_params.as_ref());
-        print_parameters(&mut string, &signature.params);
-        maybe_print_return_type(&mut string, &signature.return_type);
+        string.push_str(&self.signature.to_formatted());
         string
     }
 }
@@ -339,6 +348,13 @@ fn maybe_print_generic_params(string: &mut String, generic_params: Option<&Vec<G
         string.push('>');
     }
 }
+
+fn maybe_print_public<T: Signature>(string: &mut String, signature: &T) {
+    if signature.is_public() {
+        string.push_str("public ");
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use whirl_ast::{

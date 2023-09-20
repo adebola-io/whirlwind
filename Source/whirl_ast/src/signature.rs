@@ -1,6 +1,6 @@
 use crate::{
     EnumVariant, GenericParameter, Identifier, ModuleAmbience, ScopeEntry, Type, TypeEval,
-    TypeExpression,
+    TypeExpression, TypedValue,
 };
 
 use whirl_macros::Signature;
@@ -169,6 +169,16 @@ pub struct EnumSignature {
     pub generic_params: Option<Vec<GenericParameter>>,
     /// The enum variants.
     pub variants: Vec<EnumVariant>,
+}
+
+impl TypedValue for AttributeSignature {
+    fn evaluated_type(&self) -> Option<&TypeEval> {
+        self.var_type.inferred.as_ref()
+    }
+
+    fn declared_type(&self) -> Option<&TypeExpression> {
+        self.var_type.declared.as_ref()
+    }
 }
 
 impl Signature for (&Identifier, &EnumVariant) {

@@ -1,11 +1,9 @@
-use crate::{
-    AttributeSignature, MethodSignature, ModelSignature, ModuleAmbience, Signature, TypedValue,
-};
+use crate::{ModuleAmbience, Signature, TypedValue};
 
 /// A compact representation of a typed value and the module ambience.
 pub struct TypedValueContext<'a, T: TypedValue> {
     pub module_ambience: &'a ModuleAmbience,
-    pub atom: T,
+    pub atom: &'a T,
 }
 
 /// A signature that is exposed to other modules in the program.
@@ -14,27 +12,27 @@ pub struct PublicSignatureContext<'a, T: Signature> {
     pub module_ambience: &'a ModuleAmbience,
 }
 
-pub struct AttributeContext<'a> {
+pub struct ThreeTierContext<'a, T: Signature, U: Signature> {
     pub module_ambience: &'a ModuleAmbience,
-    pub model: &'a ModelSignature,
-    pub attribute: &'a AttributeSignature,
+    pub parent: &'a T,
+    pub signature: &'a U,
 }
 
-pub struct MethodContext<'a> {
-    pub module_ambience: &'a ModuleAmbience,
-    pub model: &'a ModelSignature,
-    pub method: &'a MethodSignature,
-}
-
-impl<'a> Signature for AttributeContext<'a> {
+impl<'a, T: Signature + TypedValue> Signature for TypedValueContext<'a, T> {
+    fn name(&self) -> &str {
+        self.atom.name()
+    }
+    fn is_public(&self) -> bool {
+        self.atom.is_public()
+    }
     fn info(&self) -> Option<&Vec<String>> {
-        self.attribute.info.as_ref()
+        self.atom.info()
     }
 }
 
-impl<'a> Signature for MethodContext<'a> {
+impl<'a, T: Signature, U: Signature> Signature for ThreeTierContext<'a, T, U> {
     fn info(&self) -> Option<&Vec<String>> {
-        self.method.info.as_ref()
+        self.signature.info()
     }
 }
 

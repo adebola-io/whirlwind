@@ -20,8 +20,12 @@ pub trait ASTVisitor<Arguments = (), Output: Default = ()> {
             Statement::ShorthandVariableDeclaration(v) => self.shorthand_var_decl(v, args),
             Statement::ExpressionStatement(e) => self.expr_statement(e, args),
             Statement::FreeExpression(e) => self.free_expr(e, args),
+            Statement::TraitDeclaration(t) => self.trait_declaraion(t, args),
             _ => Output::default(),
         }
+    }
+    fn trait_declaraion(&self, _trait: &TraitDeclaration, args: &Arguments) -> Output {
+        Output::default()
     }
     fn expr_statement(&self, exp: &Expression, args: &Arguments) -> Output {
         self.expr(exp, args)
@@ -163,6 +167,166 @@ pub trait ASTVisitor<Arguments = (), Output: Default = ()> {
     }
 }
 
+#[allow(unused_variables)]
+/// Ast visitor with no arguments.
+pub trait ASTVisitorNoArgs<Output: Default = ()> {
+    /// Visit a statement node.
+    fn statement(&self, statement: &Statement) -> Output {
+        match statement {
+            Statement::FunctionDeclaration(f) => self.function(f),
+            Statement::TypeDeclaration(t) => self.type_decl(t),
+            Statement::EnumDeclaration(e) => self.enum_decl(e),
+            Statement::ModelDeclaration(m) => self.model_decl(m),
+            Statement::ShorthandVariableDeclaration(v) => self.shorthand_var_decl(v),
+            Statement::ExpressionStatement(e) => self.expr_statement(e),
+            Statement::FreeExpression(e) => self.free_expr(e),
+            Statement::TraitDeclaration(t) => self.trait_declaraion(t),
+            Statement::ModuleDeclaration(m) => self.module_declaration(m),
+            _ => Output::default(),
+        }
+    }
+    fn module_declaration(&self, module: &ModuleDeclaration) -> Output {
+        Output::default()
+    }
+    fn trait_declaraion(&self, _trait: &TraitDeclaration) -> Output {
+        Output::default()
+    }
+    fn expr_statement(&self, exp: &Expression) -> Output {
+        self.expr(exp)
+    }
+    fn free_expr(&self, exp: &Expression) -> Output {
+        self.expr(exp)
+    }
+    fn expr(&self, exp: &Expression) -> Output {
+        match exp {
+            Expression::Identifier(i) => self.identifier(i),
+            Expression::StringLiteral(s) => self.string(s),
+            Expression::NumberLiteral(n) => self.number(n),
+            Expression::BooleanLiteral(b) => self.boolean(b),
+            Expression::NewExpr(n) => self.new_expr(n),
+            Expression::ThisExpr(t) => self.this_expr(t),
+            Expression::CallExpr(c) => self.call_expr(c),
+            Expression::FnExpr(f) => self.function_expr(f),
+            Expression::IfExpr(i) => self.if_expr(i),
+            Expression::ArrayExpr(a) => self.array(a),
+            Expression::AccessExpr(a) => self.access(a),
+            Expression::IndexExpr(i) => self.index(i),
+            Expression::BinaryExpr(b) => self.bin_exp(b),
+            Expression::AssignmentExpr(a) => self.ass_exp(a),
+            Expression::UnaryExpr(u) => self.un_exp(u),
+            Expression::LogicExpr(l) => self.log_exp(l),
+            Expression::BlockExpr(b) => self.block(b),
+        }
+    }
+
+    fn if_expr(&self, ifexp: &IfExpression) -> Output {
+        self.expr(&ifexp.condition);
+        self.block(&ifexp.consequent);
+        if let Some(el) = &ifexp.alternate {
+            self.expr(&el.expression);
+        }
+        Output::default()
+    }
+
+    fn block(&self, block: &Block) -> Output {
+        for stat in &block.statements {
+            self.statement(stat);
+        }
+        Output::default()
+    }
+
+    fn log_exp(&self, logexp: &LogicExpr) -> Output {
+        self.expr(&logexp.left);
+        self.expr(&logexp.right)
+    }
+
+    fn un_exp(&self, unexp: &UnaryExpr) -> Output {
+        self.expr(&unexp.operand)
+    }
+
+    fn ass_exp(&self, assexp: &AssignmentExpr) -> Output {
+        self.expr(&assexp.left);
+        self.expr(&assexp.right)
+    }
+
+    fn bin_exp(&self, binexp: &BinaryExpr) -> Output {
+        self.expr(&binexp.left);
+        self.expr(&binexp.right)
+    }
+
+    fn index(&self, index_expr: &IndexExpr) -> Output {
+        self.expr(&index_expr.object);
+        self.expr(&index_expr.index)
+    }
+
+    fn access(&self, acces_expr: &AccessExpr) -> Output {
+        self.expr(&acces_expr.object);
+        self.expr(&acces_expr.property)
+    }
+
+    fn array(&self, arr: &ArrayExpr) -> Output {
+        for elem in &arr.elements {
+            self.expr(elem);
+        }
+        Output::default()
+    }
+
+    fn function_expr(&self, function_expr: &FunctionExpr) -> Output {
+        self.expr(&function_expr.body)
+    }
+    fn call_expr(&self, call: &CallExpr) -> Output {
+        self.expr(&call.caller);
+        for arg in &call.arguments {
+            self.expr(arg);
+        }
+        Output::default()
+    }
+    fn type_decl(&self, type_decl: &TypeDeclaration) -> Output {
+        Output::default()
+    }
+    fn string(&self, string: &WhirlString) -> Output {
+        Output::default()
+    }
+    fn number(&self, number: &WhirlNumber) -> Output {
+        Output::default()
+    }
+    fn boolean(&self, bool: &WhirlBoolean) -> Output {
+        Output::default()
+    }
+    fn this_expr(&self, this: &ThisExpr) -> Output {
+        Output::default()
+    }
+    fn identifier(&self, ident: &Identifier) -> Output {
+        Output::default()
+    }
+    fn new_expr(&self, new_exp: &NewExpr) -> Output {
+        self.expr(&new_exp.value)
+    }
+    fn shorthand_var_decl(&self, var_decl: &ShorthandVariableDeclaration) -> Output {
+        Output::default()
+    }
+    /// Visit a function node.
+    fn function(&self, function: &FunctionDeclaration) -> Output {
+        let body = &function.body;
+        for statement in &body.statements {
+            self.statement(statement);
+        }
+        Output::default()
+    }
+    /// Visit a parameter node.
+    fn param(&self, parameter: &Parameter) -> Output {
+        self.identifier(&parameter.name)
+    }
+    /// Visit an enum node.
+    fn enum_decl(&self, enum_decl: &EnumDeclaration) -> Output {
+        Output::default()
+    }
+    /// Visit a model node.
+    fn model_decl(&self, model: &ModelDeclaration) -> Output {
+        Output::default()
+    }
+}
+
 /// Mutable implementation of [`ASTVisitor`].
 #[allow(unused)]
 pub trait MutASTVisitor<Output: Default = ()> {
@@ -239,7 +403,7 @@ pub trait MutASTVisitor<Output: Default = ()> {
 
 ///  [`ASTVisitor`] with no arguments.
 #[allow(unused)]
-pub trait ASTVisitorNoArgs<Output: Default = ()> {
+pub trait ASTVisitorExprOutputNoArgs<Output: Default = ()> {
     fn statement(&self, statement: &Statement) {
         match statement {
             Statement::TestDeclaration(t) => self.test_declaration(t),

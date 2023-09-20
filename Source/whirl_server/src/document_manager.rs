@@ -6,7 +6,7 @@ use tower_lsp::lsp_types::{
     RelatedFullDocumentDiagnosticReport, Url,
 };
 use whirl_analyzer::Module;
-use whirl_ast::ASTVisitor;
+use whirl_ast::ASTVisitorNoArgs;
 
 use crate::{
     diagnostic::to_diagnostic,
@@ -105,9 +105,9 @@ impl WhirlDocument {
     fn get_hover_for_position(&self, position: Position) -> Option<HoverInfo> {
         // Editor ranges are zero-based, for some reason.
         let position = [position.line + 1, position.character + 1];
-        let hover_finder = HoverFinder::with_module_ambience(&self.module.ambience);
+        let hover_finder = HoverFinder::new(&self.module.ambience, position);
         for statement in self.module.statements() {
-            let hover_info = hover_finder.statement(statement, &position);
+            let hover_info = hover_finder.statement(statement);
             if hover_info.is_some() {
                 return hover_info;
             }

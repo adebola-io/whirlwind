@@ -63,7 +63,7 @@ public model String {
         Internals.Invoke("strcls", this)
     }
     /// Returns true if a substring is contained within the string.
-    /// # Usage
+    /// ### Usage
     /// ```
     /// str := "This is a world premiere.";
     /// 
@@ -73,8 +73,18 @@ public model String {
     public function Contains(substring: String): Boolean {
         Internals.Invoke("strcont", this, substring)
     }
+    /// Returns the number of characters in the string.
+    /// ### Usage
+    /// ```
+    /// str := "Hello";
+    /// 
+    /// Assert(str.Length()).Equals(5);
+    /// ```
+    public function Length(): Integer {
+        Internals.Invoke("strlen", this)
+    }
     /// Replaces all instances of a substring and returns the new string.
-    /// # Usage
+    /// ### Usage
     /// ```
     /// str := "John goes to school. John buys a book.";
     /// 
@@ -84,6 +94,18 @@ public model String {
     /// ```
     public function Replace(substring: String, newstring: String): String {
         Internals.Invoke("strrplce", this, substring, newstring)
+    }
+    /// Returns a reversed version of the string.
+    /// ### Usage
+    /// ```
+    /// str := "pandemonium";
+    /// 
+    /// str2 := str.Reverse();
+    /// 
+    /// Assert(str2).Equals("muinomednap");
+    /// ```
+    public function Reverse(): String {
+        Internals.Invoke("strrvrse", this)
     }    
 }
 
