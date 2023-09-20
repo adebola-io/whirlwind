@@ -11,7 +11,7 @@ use whirl_errors::ProgramError;
 #[derive(Debug)]
 pub struct Module {
     pub name: String,
-    pub scopes: ModuleAmbience,
+    pub ambience: ModuleAmbience,
     statements: Vec<Statement>,
     built: bool,
     errors: Vec<ProgramError>,
@@ -66,11 +66,15 @@ impl Module {
                 for lex_error in take(&mut checker.lexical_errors) {
                     self.errors.push(ProgramError::LexerError(lex_error))
                 }
-                self.scopes = take(checker.module_ambience());
+                self.ambience = take(checker.module_ambience());
                 self.statements = take(&mut checker.statements);
                 self.line_lens = take(&mut checker.parser.lexer.borrow_mut().line_lengths);
             }
             ModuleSource::FilePath { .. } => todo!(),
+        }
+        // Module Error.
+        if self.ambience.get_module_name().is_none() {
+            self.errors.push(whirl_errors::nameless_module())
         }
     }
 
@@ -78,7 +82,7 @@ impl Module {
     pub fn from_text(value: String) -> Self {
         let mut module = Module {
             name: String::new(),
-            scopes: ModuleAmbience::new(),
+            ambience: ModuleAmbience::new(),
             statements: vec![],
             errors: vec![],
             built: false,
@@ -111,7 +115,7 @@ impl Module {
 
     pub fn refresh_with_text(&mut self, new_text: String) {
         self.errors.clear();
-        self.scopes = ModuleAmbience::new();
+        self.ambience = ModuleAmbience::new();
         self.statements.clear();
         self.build(ModuleSource::PlainText(new_text));
     }

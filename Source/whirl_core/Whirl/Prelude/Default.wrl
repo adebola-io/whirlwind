@@ -1,0 +1,46 @@
+module Default;
+
+/// This is a language level trait that can be implemented by types that have default values, even when they are not initialized.
+/// ## Usage
+/// Suppose you want a position that, if not set, should start at the origin (0, 0). A non implemented approach would be: 
+/// ```
+/// model Position {
+///    var x: Number;
+///    var y: Number;
+///    new(x: Number, y: Number) {
+///       this.x = x; 
+///       this.y = y; 
+///    }
+///    static public function Origin(): This {
+///        new Position(0, 0)
+///    }
+/// }
+/// var p1 = Position.Origin();
+/// ```
+/// Using the Default trait, it would instead be:
+/// ```
+/// model Position implements Default {
+///    var x: Number:
+///    var y: Number:
+///    new(x: Number, y: Number) {
+///       this.x = x; 
+///       this.y = y; 
+///    }
+///    static function [Default.Init](): This {
+///       new Position(0, 0)
+///    }
+/// }
+/// var p1: Position; /// Is automatically assigned (0, 0)
+/// ```
+/// Static analysis is used to determine when to assign a default value, meaning that variables that are initialised later will not be defaulted. 
+/// ```
+/// var p1: Position; 
+/// Core.Io.Println(p1); /// p1 is used before assignment, so it will be defaulted. 
+/// 
+/// var p2: Position;
+/// p2 = new Position(2, 3); /// p2 is unconditionally assigned before usage, so no need for a default. 
+/// Core.Io.Println(p2);
+/// ```
+public trait Default {
+
+}

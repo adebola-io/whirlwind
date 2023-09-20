@@ -4,8 +4,8 @@ use whirl_ast::{BinOperator, Span, TypeEval};
 #[derive(Debug, PartialEq)]
 pub struct TypeError {
     pub _type: TypeErrorType,
-    // Affected areas.
-    pub spans: Vec<Span>,
+    // Affected area.
+    pub span: Span,
 }
 
 #[derive(Debug, PartialEq)]
@@ -38,12 +38,14 @@ pub enum TypeErrorType {
     UnknownVariableInScope { name: String },
     /// Global control flow statements.
     GlobalControl,
+    /// Writing a test in a local scope.
+    TestInNonGlobalScope,
 }
 
 pub fn assigned_invalid(span: Span) -> TypeError {
     TypeError {
         _type: TypeErrorType::AssignedInvalid,
-        spans: vec![span],
+        span,
     }
 }
 
@@ -59,7 +61,7 @@ pub fn invalid_binary(
             operator,
             right,
         },
-        spans: vec![span],
+        span,
     }
 }
 
@@ -68,7 +70,7 @@ pub fn unknown_type(name: &str, span: Span) -> TypeError {
         _type: TypeErrorType::UnknownType {
             name: name.to_owned(),
         },
-        spans: vec![span],
+        span,
     }
 }
 
@@ -77,7 +79,7 @@ pub fn value_as_type(name: &str, span: Span) -> TypeError {
         _type: TypeErrorType::ValueAsType {
             name: name.to_owned(),
         },
-        spans: vec![span],
+        span,
     }
 }
 
@@ -86,7 +88,7 @@ pub fn unexpected_generic_args(name: &str, span: Span) -> TypeError {
         _type: TypeErrorType::UnexpectedGenericArgs {
             value: name.to_owned(),
         },
-        spans: vec![span],
+        span,
     }
 }
 
@@ -97,14 +99,14 @@ pub fn mismatched_generics(name: &str, expected: usize, assigned: usize, span: S
             expected,
             assigned,
         },
-        spans: vec![span],
+        span,
     }
 }
 
 pub fn mismatched_assignment(left: TypeEval, right: TypeEval, span: Span) -> TypeError {
     TypeError {
         _type: TypeErrorType::MismatchedAssignment { left, right },
-        spans: vec![span],
+        span,
     }
 }
 
@@ -113,6 +115,6 @@ pub fn trait_as_type(name: &str, span: whirl_ast::Span) -> TypeError {
         _type: TypeErrorType::TraitAsType {
             name: name.to_owned(),
         },
-        spans: vec![span],
+        span,
     }
 }

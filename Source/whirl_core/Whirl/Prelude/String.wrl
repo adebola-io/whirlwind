@@ -7,7 +7,7 @@ public model String {
     /// Returns a `Maybe` with the character at a zero based index in the string.
     ///
     /// It also supports negative indexes, which will return values in reverse from the end of the string.
-    /// # Usage
+    /// ## Usage
     /// ```
     /// str := "This is a string";
     /// 
@@ -26,7 +26,7 @@ public model String {
         Internals.Invoke("strat", this, position)
     }
     /// Adds text to the end of the string.
-    /// # Usage
+    /// ## Usage
     /// ```
     /// str := "Hello";
     /// 
@@ -38,7 +38,7 @@ public model String {
         Internals.Invoke("strapp", this, toAdd)
     }
     /// Returns an iterator over the valid characters in the string.
-    /// # Usage
+    /// ## Usage
     /// ```
     /// str := "adebola.io"
     /// 
@@ -50,6 +50,15 @@ public model String {
         Internals.Invoke("strchr", this)
     }
     /// Empties the string of its characters.
+    /// ### Usage
+    /// ```
+    /// str := "tralalalalaleeday";
+    /// 
+    /// str.Clear();
+    /// 
+    /// Assert(str).Equals("");
+    /// Assert(str.Length()).Equals(0);
+    /// ```
     public function Clear(){
         Internals.Invoke("strcls", this)
     }
@@ -64,18 +73,20 @@ public model String {
     public function Contains(substring: String): Boolean {
         Internals.Invoke("strcont", this, substring)
     }
-    /// Replaces all instances of a substring with a new substring and returns the new string.
+    /// Replaces all instances of a substring and returns the new string.
     /// # Usage
     /// ```
     /// str := "John goes to school. John buys a book.";
     /// 
-    /// strReplaced := str.Replace("John", "Mike");
+    /// str2 := str.Replace("John", "Mike");
     /// 
-    /// Assert(strReplaced).Equals("Mike goes to school. Mike buys a book.")
+    /// Assert(str2).Equals("Mike goes to school. Mike buys a book.")
     /// ```
     public function Replace(substring: String, newstring: String): String {
         Internals.Invoke("strrplce", this, substring, newstring)
-    }
+    }    
 }
+
+
 
 

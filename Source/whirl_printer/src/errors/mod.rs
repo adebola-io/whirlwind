@@ -1,5 +1,5 @@
 use whirl_ast::ModuleAmbience;
-use whirl_errors::{LexErrorType, ParserErrorType, TypeErrorType};
+use whirl_errors::{LexErrorType, ParserErrorType, ProjectErrorType, TypeErrorType};
 
 use crate::stringify_type_eval;
 
@@ -43,9 +43,11 @@ pub fn stringify_type_error(module_ambience: &ModuleAmbience, error: &TypeErrorT
             format!("Use of undeclared variable {name}")
         }
         TypeErrorType::GlobalControl => format!("Control statements and expressions are not allowed in the global scope. Consider moving into a function instead."),
+        TypeErrorType::TestInNonGlobalScope => format!("Test declarations are only allowed in the global scope."),
     }
 }
 
+/// Stringify a parse error
 pub fn stringify_parse_error(error: &ParserErrorType) -> String {
     match error {
         ParserErrorType::DeclarationOrStatementExpected => {
@@ -105,5 +107,12 @@ pub fn stringify_lex_error(error: &LexErrorType) -> String {
         }
         LexErrorType::NoValAfterExponent => format!("Expected value after exponent."),
         LexErrorType::UnexpectedEndOfInput => format!("Unexpected end of input."),
+    }
+}
+
+/// Stringify a project error.
+pub fn stringify_proj_error(error: &ProjectErrorType) -> String {
+    match error {
+        ProjectErrorType::NamelessModule => format!("All modules must have a module declaration."),
     }
 }

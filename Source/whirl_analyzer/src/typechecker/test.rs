@@ -28,7 +28,7 @@ fn test_adding_string_and_number() {
                     args: None
                 }
             },
-            spans: vec![[3, 14, 3, 22].into()]
+            span: [3, 14, 3, 22].into()
         }]
     )
 }
@@ -45,7 +45,7 @@ fn test_global_control_statements() {
         infer.next().unwrap(),
         vec![TypeError {
             _type: TypeErrorType::GlobalControl,
-            spans: vec![[1, 1, 3, 10].into()]
+            span: [1, 1, 3, 10].into()
         }]
     )
 }

@@ -141,6 +141,18 @@ impl<L: Lexer> ASTVisitorNoArgs<TypeEval> for TypeInferrer<L> {
         self.module_ambience().leave_scope()
     }
 
+    /// Perform inference on a test declaration.
+    fn test_declaration(&self, test_decl: &whirl_ast::TestDeclaration) {
+        if !self.module_ambience().is_in_global_scope() {
+            self.type_errors
+                .borrow_mut()
+                .push(whirl_errors::test_in_non_global_scope(test_decl.span))
+        }
+        for statement in &test_decl.body.statements {
+            self.statement(statement)
+        }
+    }
+
     /// Perform inference on an expression statement.
     fn expr_statement(&self, exp: &whirl_ast::Expression) {
         let ambience = self.module_ambience();
