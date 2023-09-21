@@ -4,16 +4,15 @@ use errors::{
 };
 use whirl_ast::{
     ASTVisitorExprOutputNoArgs, DiscreteType, EnumSignature, Expression, Identifier,
-    ModelSignature, ModuleAmbience, ScopeAddress, ScopeEntry, Span, Spannable, TypeEval,
+    ModelSignature, ModuleAmbience, Parameter, ScopeAddress, ScopeEntry, Span, Spannable, TypeEval,
     TypeExpression, TypeSignature,
 };
-use whirl_lexer::Lexer;
 
 use crate::{TypeError, TypeInferrer};
 use whirl_errors as errors;
 
 /// Confirms that a type expression is valid in the scope it is defined, and then generate a type evaluation for it.
-pub fn eval_type_expression(
+pub fn infer_type_expression(
     module_ambience: &ModuleAmbience,
     expression: &TypeExpression,
     scope: usize,
@@ -75,7 +74,7 @@ pub fn evaluate_discrete_type(
                 let mut evaluated_args = vec![];
                 for argument in arguments {
                     // TODO: Compute trait guards.
-                    evaluated_args.push(eval_type_expression(module_ambience, argument, scope)?);
+                    evaluated_args.push(infer_type_expression(module_ambience, argument, scope)?);
                 }
                 Some(evaluated_args)
             } else {
@@ -160,41 +159,56 @@ pub fn construct_type(
     }
 }
 
-pub fn build_model_from_call_expression<L: Lexer>(
+/// What happens when the inferrer encounters `new ModelName()`
+pub fn build_model_instance(
     caller_type: TypeEval,
-    arguments: &Vec<Expression>,
-    inferrer: &TypeInferrer<L>,
+    constructor_arguments: &Vec<Expression>,
+    inferrer: &TypeInferrer,
     span: Span,
 ) -> Result<TypeEval, TypeError> {
-    let ambience = inferrer.module_ambience();
+    let ambience = inferrer.ambience();
     let address = construct_type(caller_type, ambience, span)?;
-    let entry = ambience.get_entry_unguarded(address).model();
+    let entry = ambience.get_entry_unguarded_mut(address).model_mut();
+    let ambience = inferrer.ambience(); // :(
     let name = ambience.get_entry_unguarded(address).name();
     // Confirm constructor.
-    match &entry.parameters {
+    match &mut entry.parameters {
         None => return Err(whirl_errors::unconstructable_model(name.to_string(), span)),
         Some(params) => {
             // Confirm arguments.
             // TODO: Generics.
-            if arguments.len() != params.len() {
+            if constructor_arguments.len() != params.len() {
                 return Err(whirl_errors::mismatched_model_args(
                     name.to_string(),
                     params.len(),
-                    arguments.len(),
+                    constructor_arguments.len(),
                     span,
                 ));
             }
             // Compare parameters and arguments.
-            for (index, argument) in arguments.iter().enumerate() {
+            for (index, argument) in constructor_arguments.iter().enumerate() {
                 let inferred_argument_type = inferrer.expr(argument);
-                if let Some(inferred_param_type) = &params[index].type_label.inferred {
-                    if &inferred_argument_type != inferred_param_type {
-                        return Err(errors::mismatched_assignment(
-                            inferred_param_type.clone(),
-                            inferred_argument_type,
-                            argument.span(),
-                        ));
-                    }
+                // Infer param types if they are still undone, because they exist on a later statement.
+                let mut param = &mut params[index];
+                if param.type_label.inferred.is_none() {
+                    param.type_label.inferred = Some(
+                        match infer_parameter_type(param, address.scope_id, ambience) {
+                            Ok(eval) => eval,
+                            Err(error) => {
+                                inferrer.type_errors.borrow_mut().push(error);
+                                TypeEval::Invalid
+                            }
+                        },
+                    );
+                }
+                // Previous statement guarantees this will never panic.
+                let inferred_param_type = param.type_label.inferred.as_ref().unwrap();
+                if &inferred_argument_type != inferred_param_type {
+                    return Err(errors::mismatched_assignment(
+                        inferred_param_type.clone(),
+                        inferred_argument_type,
+                        argument.span(),
+                    ));
                 }
             }
             return Ok(TypeEval::Instance {
@@ -202,5 +216,22 @@ pub fn build_model_from_call_expression<L: Lexer>(
                 args: None,
             });
         }
+    }
+}
+
+/// Infer a type eval of a parameter.
+pub fn infer_parameter_type(
+    parameter: &Parameter,
+    scope_declared: usize,
+    ambience: &ModuleAmbience,
+) -> Result<TypeEval, TypeError> {
+    match parameter.type_label.declared {
+        Some(ref type_expression) => {
+            infer_type_expression(ambience, type_expression, scope_declared)
+        }
+        None => Err(whirl_errors::uninferrable_parameter(
+            parameter.name.name.to_owned(),
+            parameter.name.span,
+        )),
     }
 }

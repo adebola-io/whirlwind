@@ -408,7 +408,7 @@ pub trait ASTVisitorExprOutputNoArgs<Output: Default = ()> {
         match statement {
             Statement::TestDeclaration(t) => self.test_declaration(t),
             Statement::UseDeclaration(u) => self.use_declaration(u),
-            Statement::ShorthandVariableDeclaration(v) => self.shorthand_variable_declaration(v),
+            Statement::ShorthandVariableDeclaration(v) => self.shorthand_var_decl(v),
             Statement::FunctionDeclaration(f) => self.function_declaration(f),
             Statement::EnumDeclaration(e) => self.enum_declaration(e),
             Statement::TypeDeclaration(t) => self.type_declaration(t),
@@ -450,7 +450,7 @@ pub trait ASTVisitorExprOutputNoArgs<Output: Default = ()> {
 
     fn type_declaration(&self, type_decl: &TypeDeclaration) {}
 
-    fn shorthand_variable_declaration(&self, variable_decl: &ShorthandVariableDeclaration) {}
+    fn shorthand_var_decl(&self, variable_decl: &ShorthandVariableDeclaration) {}
 
     fn function_declaration(&self, function: &FunctionDeclaration) {}
 

@@ -1,9 +1,7 @@
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range};
 use whirl_ast::{ModuleAmbience, Span};
 use whirl_errors::{LexErrorPos, ProgramError};
-use whirl_printer::{
-    stringify_lex_error, stringify_parse_error, stringify_proj_error, stringify_type_error,
-};
+use whirl_printer::{stringify_lex_error, stringify_parse_error, stringify_type_error};
 
 /// Convert a program error to a diagnostic.
 pub fn to_diagnostic(module_ambience: &ModuleAmbience, error: &ProgramError) -> Diagnostic {
@@ -22,10 +20,6 @@ pub fn to_diagnostic(module_ambience: &ModuleAmbience, error: &ProgramError) -> 
         ProgramError::TypeError(type_error) => (
             stringify_type_error(module_ambience, &type_error._type),
             to_range(type_error.span),
-        ),
-        ProgramError::ProjectError(proj_error) => (
-            stringify_proj_error(&proj_error._type),
-            to_range(proj_error.span.unwrap_or_default()),
         ),
     };
     Diagnostic {

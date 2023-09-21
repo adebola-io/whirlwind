@@ -64,6 +64,7 @@ pub enum TypeErrorType {
         assigned: usize,
     },
     UninferrableParameter(String),
+    NamelessModule,
 }
 
 pub fn assigned_invalid(span: Span) -> TypeError {

@@ -1,21 +1,20 @@
 use crate::analyze_text;
-use std::{mem::take, path::PathBuf, slice::Iter};
+use std::path::PathBuf;
 use whirl_ast::{ModuleAmbience, Spannable, Statement};
-use whirl_errors::ProgramError;
-// use whirl_lexer::TextLexer;
-// use whirl_parser::Parser;
-// use whirl_utils::{StringEditor, StringMutation};
+use whirl_errors::{LexError, ParseError, ProgramError, TypeError};
 
 /// A completely parsed program.
 /// This struct presents higher level operations for the frontend representation of source code.
 #[derive(Debug)]
 pub struct Module {
-    pub name: String,
-    pub ambience: ModuleAmbience,
-    statements: Vec<Statement>,
+    pub name: Option<String>,
     built: bool,
-    errors: Vec<ProgramError>,
-    line_lens: Vec<u32>,
+    _line_lens: Vec<u32>,
+    statements: Vec<Statement>,
+    lexical_errors: Vec<LexError>,
+    syntax_errors: Vec<ParseError>,
+    type_errors: Vec<TypeError>,
+    pub ambience: ModuleAmbience,
 }
 
 #[derive(Debug)]
@@ -49,57 +48,64 @@ impl Module {
         }
         match source {
             ModuleSource::PlainText(source_code) => {
-                let mut checker = analyze_text(&source_code);
-
-                loop {
-                    if let Some(statement_errors) = checker.next() {
-                        for error in statement_errors {
-                            self.errors.push(ProgramError::TypeError(error))
-                        }
-                    } else {
-                        break;
-                    }
-                }
-                for syntax_error in take(&mut checker.syntax_errors) {
-                    self.errors.push(ProgramError::ParserError(syntax_error))
-                }
-                for lex_error in take(&mut checker.lexical_errors) {
-                    self.errors.push(ProgramError::LexerError(lex_error))
-                }
-                self.ambience = take(checker.module_ambience());
-                self.statements = take(&mut checker.statements);
-                self.line_lens = take(&mut checker.parser.lexer.borrow_mut().line_lengths);
+                let mut inferrer = analyze_text(&source_code);
+                inferrer.infer();
+                // cursed (totally safe) code.
+                *self = Module {
+                    name: inferrer.ambience().get_module_name().map(|x| x.to_string()),
+                    built: true,
+                    _line_lens: inferrer.line_lengths,
+                    statements: inferrer.statements,
+                    lexical_errors: inferrer.lexical_errors,
+                    syntax_errors: inferrer.syntax_errors,
+                    type_errors: inferrer.type_errors.take(),
+                    ambience: inferrer.ambience.take(),
+                };
             }
             ModuleSource::FilePath { .. } => todo!(),
-        }
-        // Module Error.
-        if self.ambience.get_module_name().is_none() {
-            self.errors.push(whirl_errors::nameless_module())
         }
     }
 
     /// Creates a module from Whirl source code text.
     pub fn from_text(value: String) -> Self {
-        let mut module = Module {
-            name: String::new(),
-            ambience: ModuleAmbience::new(),
-            statements: vec![],
-            errors: vec![],
-            built: false,
-            line_lens: vec![],
-        };
-        module.build(ModuleSource::PlainText(value));
-        module
+        let mut inferrer = analyze_text(&value);
+        inferrer.infer();
+        Module {
+            name: inferrer.ambience().get_module_name().map(|x| x.to_string()),
+            built: true,
+            _line_lens: inferrer.line_lengths,
+            statements: inferrer.statements,
+            lexical_errors: inferrer.lexical_errors,
+            syntax_errors: inferrer.syntax_errors,
+            type_errors: inferrer.type_errors.take(),
+            ambience: inferrer.ambience.take(),
+        }
     }
 
     /// Returns the errors found in the module.
-    pub fn errors(&self) -> Iter<'_, ProgramError> {
-        self.errors.iter()
+    pub fn errors(&self) -> impl Iterator<Item = ProgramError> {
+        self.lexical_errors
+            .iter()
+            .map(|error| ProgramError::LexerError(error))
+            .chain(
+                self.syntax_errors
+                    .iter()
+                    .map(|error| ProgramError::ParserError(error)),
+            )
+            .chain(
+                self.type_errors
+                    .iter()
+                    .map(|error| ProgramError::TypeError(error)),
+            )
     }
 
     /// Returns the statements parsed from the module.
-    pub fn statements(&self) -> Iter<'_, Statement> {
+    pub fn statements(&self) -> impl Iterator<Item = &Statement> {
         self.statements.iter()
+    }
+
+    pub fn refresh_with_text(&mut self, new_text: String) {
+        self.build(ModuleSource::PlainText(new_text));
     }
 
     // /// Change parts of the module without rebuilding the entire representation.
@@ -112,13 +118,6 @@ impl Module {
     //         self.reconcile(change)
     //     }
     // }
-
-    pub fn refresh_with_text(&mut self, new_text: String) {
-        self.errors.clear();
-        self.ambience = ModuleAmbience::new();
-        self.statements.clear();
-        self.build(ModuleSource::PlainText(new_text));
-    }
 
     // Reconcile a text change with the module.
     // TODO: The new statement generation breaks when the text is behind the original statement and overwrites a part of it.

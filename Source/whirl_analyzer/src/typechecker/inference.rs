@@ -1,10 +1,10 @@
-use std::{cell::RefCell, str::Chars};
+use std::cell::RefCell;
 
 use whirl_ast::{
     ASTVisitorExprOutputNoArgs, ModuleAmbience, ScopeEntry, Spannable, Statement, TypeEval,
 };
 use whirl_errors::{LexError, ParseError};
-use whirl_lexer::{Lexer, TextLexer};
+use whirl_lexer::Lexer;
 use whirl_parser::parse_text;
 
 use crate::{primitive::Primitives, type_utils};
@@ -14,91 +14,86 @@ use whirl_errors::TypeError;
 /// Resolves all values in the program and infers their types.
 /// It is technically 50% of the typechecker and control flow analyzer, since it
 /// also checks function return types, if expressions, etc. but eh.
-pub struct TypeInferrer<L: Lexer> {
-    pub parser: whirl_parser::Parser<L>,
+///
+/// It is at this stage that the pipeline stops being lazy and relies on
+/// the completion of the previous phase.
+pub struct TypeInferrer {
+    pub ambience: RefCell<ModuleAmbience>,
     pub statements: Vec<Statement>,
     pub type_errors: RefCell<Vec<TypeError>>,
     pub lexical_errors: Vec<LexError>,
     pub syntax_errors: Vec<ParseError>,
+    pub line_lengths: Vec<u32>,
 }
 
-impl<L: Lexer> TypeInferrer<L> {
-    /// Check a statement and return all encountered errors.
-    fn check(&mut self, statement: &mut Statement) -> Vec<TypeError> {
-        self.statement(statement);
-        self.type_errors.take()
+impl TypeInferrer {
+    /// Resolve all variables and types in the list of statements and module ambience.
+    pub fn infer(&mut self) {
+        self.statements
+            .iter()
+            .for_each(|statement| self.statement(statement))
     }
 
-    /// Returns the (parser's) module ambience.
-    pub fn module_ambience(&self) -> &mut ModuleAmbience {
-        self.parser.module_ambience()
+    /// Returns the module ambience.
+    pub fn ambience(&self) -> &mut ModuleAmbience {
+        unsafe { &mut *(self.ambience.as_ptr()) }
     }
 
-    pub fn from_text(input: &str, primitives: Primitives) -> TypeInferrer<TextLexer<Chars>> {
-        let inferrer = TypeInferrer {
-            parser: parse_text(input),
-            statements: vec![],
-            type_errors: RefCell::new(vec![]),
-            lexical_errors: vec![],
-            syntax_errors: vec![],
-        };
-        let module_ambience = inferrer.parser.module_ambience();
-        // Register all primitive values.
-        for primitive_type in primitives.types {
-            module_ambience.register(ScopeEntry::Type(primitive_type));
-        }
-        for primitive_model in primitives.models {
-            module_ambience.register(ScopeEntry::Model(primitive_model));
-        }
-
-        inferrer
-    }
-}
-
-impl<L: Lexer> Iterator for TypeInferrer<L> {
-    type Item = Vec<TypeError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+    /// lex, parse and build an inference machine from text.
+    pub fn from_text(input: &str, primitives: Primitives) -> TypeInferrer {
+        let mut parser = parse_text(input);
+        let mut syntax_errors = vec![];
+        let mut statements = vec![];
         loop {
-            match self.parser.next() {
+            match parser.next() {
                 Some(mut partial) => {
-                    self.syntax_errors.append(&mut partial.errors);
-                    if partial.is_none() {
-                        continue;
+                    syntax_errors.append(&mut partial.errors);
+                    if let Some(statement) = partial.value {
+                        statements.push(statement);
                     }
-                    let mut statement = partial.unwrap();
-                    let errors = self.check(&mut statement);
-                    self.statements.push(statement);
-                    return Some(errors);
                 }
-                None => {
-                    // Collect all lexical errors if parsing ends.
-                    self.lexical_errors
-                        .append(self.parser.lexer.borrow_mut().errors());
-                    return None;
-                }
+                None => break,
             }
         }
+
+        let ambience = RefCell::new(std::mem::take(parser.module_ambience()));
+        let lexical_errors = std::mem::take(parser.lexer.borrow_mut().errors());
+        let line_lengths = std::mem::take(&mut parser.lexer.borrow_mut().line_lengths);
+
+        // Register all primitive values.
+        for primitive_type in primitives.types {
+            ambience
+                .borrow_mut()
+                .register(ScopeEntry::Type(primitive_type));
+        }
+        for primitive_model in primitives.models {
+            ambience
+                .borrow_mut()
+                .register(ScopeEntry::Model(primitive_model));
+        }
+
+        TypeInferrer {
+            statements,
+            type_errors: RefCell::new(vec![]),
+            lexical_errors,
+            syntax_errors,
+            ambience,
+            line_lengths,
+        }
     }
 }
 
-impl<L: Lexer> ASTVisitorExprOutputNoArgs<TypeEval> for TypeInferrer<L> {
+impl ASTVisitorExprOutputNoArgs<TypeEval> for TypeInferrer {
     /// Perform inference on a shorthand variable declaration.
-    fn shorthand_variable_declaration(
-        &self,
-        variable_decl: &whirl_ast::ShorthandVariableDeclaration,
-    ) {
-        let address = variable_decl.address;
-        let value_type = self.expr(&variable_decl.value);
-        let signature = self
-            .module_ambience()
-            .get_entry_unguarded_mut(address)
-            .var_mut();
+    fn shorthand_var_decl(&self, var_decl: &whirl_ast::ShorthandVariableDeclaration) {
+        let address = var_decl.address;
+        let value_type = self.expr(&var_decl.value);
+        let signature = self.ambience().get_entry_unguarded_mut(address).var_mut();
 
         if let Some(ref type_expression) = signature.var_type.declared {
             // Check if assigned type is valid in the given scope.
-            match type_utils::eval_type_expression(
-                self.module_ambience(),
+            match type_utils::infer_type_expression(
+                self.ambience(),
                 type_expression,
                 address.scope_id,
             ) {
@@ -111,7 +106,7 @@ impl<L: Lexer> ASTVisitorExprOutputNoArgs<TypeEval> for TypeInferrer<L> {
                     match type_utils::assign_right_to_left(
                         expression_as_eval,
                         value_type,
-                        variable_decl.span,
+                        var_decl.span,
                     ) {
                         Ok(eval) => signature.var_type.inferred = Some(eval),
                         Err(error) => self.type_errors.borrow_mut().push(error),
@@ -126,68 +121,59 @@ impl<L: Lexer> ASTVisitorExprOutputNoArgs<TypeEval> for TypeInferrer<L> {
 
     /// Perform inference on a function declaration.
     fn function_declaration(&self, function: &whirl_ast::FunctionDeclaration) {
-        let module_ambience = self.module_ambience();
+        let module_ambience = self.ambience();
         // Input parameters into body scope.
         module_ambience.jump_to_scope(function.body.scope_id);
         let parameters = &mut module_ambience
             .get_entry_unguarded_mut(function.address)
             .func_mut()
             .params;
-        let module_ambience = self.module_ambience(); // unrecommended FU to rust.
+        let module_ambience = self.ambience(); // unrecommended FU to rust.
 
         // resolve parameter types.
         for parameter in parameters.iter_mut() {
-            parameter.type_label.inferred = Some(match parameter.type_label.declared {
-                Some(ref type_expression) => {
-                    // Check if assigned type is valid in the given scope.
-                    match type_utils::eval_type_expression(
-                        self.module_ambience(),
-                        type_expression,
+            // The parameter could have been already inferred if the function was called from a previous statement.
+            if let None = parameter.type_label.inferred {
+                parameter.type_label.inferred = Some(
+                    match type_utils::infer_parameter_type(
+                        parameter,
                         function.address.scope_id,
+                        &module_ambience,
                     ) {
-                        Err(error) => {
-                            self.type_errors.borrow_mut().push(error);
+                        Ok(eval) => eval,
+                        Err(err) => {
+                            self.type_errors.borrow_mut().push(err);
                             TypeEval::Invalid
                         }
-                        Ok(eval) => eval,
-                    }
-                }
-                None => {
-                    self.type_errors
-                        .borrow_mut()
-                        .push(whirl_errors::uninferrable_parameter(
-                            parameter.name.name.to_owned(),
-                            parameter.name.span,
-                        ));
-                    TypeEval::Invalid
-                }
-            });
+                    },
+                )
+            }
+
             module_ambience.register(ScopeEntry::Parameter(parameter.clone()));
         }
         for (_index, statement) in function.body.statements.iter().enumerate() {
             self.statement(statement)
         }
-        self.module_ambience().leave_scope()
+        self.ambience().leave_scope()
     }
 
     /// Perform inference on a test declaration.
     fn test_declaration(&self, test_decl: &whirl_ast::TestDeclaration) {
-        if !self.module_ambience().is_in_global_scope() {
+        if !self.ambience().is_in_global_scope() {
             self.type_errors
                 .borrow_mut()
                 .push(whirl_errors::test_in_non_global_scope(test_decl.span))
         }
-        self.module_ambience()
-            .jump_to_scope(test_decl.body.scope_id);
+        self.ambience().jump_to_scope(test_decl.body.scope_id);
         for statement in &test_decl.body.statements {
             self.statement(statement)
         }
-        self.module_ambience().leave_scope();
+        self.ambience().leave_scope();
     }
 
     /// Perform inference on an expression statement.
     fn expr_statement(&self, exp: &whirl_ast::Expression) {
-        let ambience = self.module_ambience();
+        let ambience = self.ambience();
 
         if ambience.is_in_global_scope() {
             self.type_errors
@@ -200,7 +186,7 @@ impl<L: Lexer> ASTVisitorExprOutputNoArgs<TypeEval> for TypeInferrer<L> {
 
     /// Perform inference on a free expression.
     fn free_expr(&self, exp: &whirl_ast::Expression) {
-        let ambience = self.module_ambience();
+        let ambience = self.ambience();
 
         if ambience.is_in_global_scope() {
             self.type_errors
@@ -222,7 +208,7 @@ impl<L: Lexer> ASTVisitorExprOutputNoArgs<TypeEval> for TypeInferrer<L> {
         if let whirl_ast::Expression::CallExpr(call_expr) = &new_expr.value {
             // Get type of caller.
             let model_type = self.expr(&call_expr.caller);
-            match type_utils::build_model_from_call_expression(
+            match type_utils::build_model_instance(
                 model_type,
                 &call_expr.arguments,
                 self,
@@ -244,7 +230,7 @@ impl<L: Lexer> ASTVisitorExprOutputNoArgs<TypeEval> for TypeInferrer<L> {
 
     /// Perform inference on an identifier.
     fn identifier(&self, ident: &whirl_ast::Identifier) -> TypeEval {
-        match type_utils::evaluate_type_of_variable(self.module_ambience(), ident) {
+        match type_utils::evaluate_type_of_variable(self.ambience(), ident) {
             Ok(eval) => return eval,
             Err(error) => {
                 self.type_errors.borrow_mut().push(error);

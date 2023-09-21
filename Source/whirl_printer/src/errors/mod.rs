@@ -1,5 +1,5 @@
 use whirl_ast::ModuleAmbience;
-use whirl_errors::{LexErrorType, ParserErrorType, ProjectErrorType, TypeErrorType};
+use whirl_errors::{LexErrorType, ParserErrorType, TypeErrorType};
 
 use crate::stringify_type_eval;
 
@@ -53,6 +53,8 @@ pub fn stringify_type_error(module_ambience: &ModuleAmbience, error: &TypeErrorT
             format!("'{name}' expects {expected} constructor arguments, but got {assigned}.")
         },
         TypeErrorType::UninferrableParameter(name) => format!("Cannot infer the type of parameter '{name}'. Please provide a type label."),
+        TypeErrorType::NamelessModule => format!("All modules must have a module declaration."),
+        
         
     }
 }
@@ -119,12 +121,5 @@ pub fn stringify_lex_error(error: &LexErrorType) -> String {
         }
         LexErrorType::NoValAfterExponent => format!("Expected value after exponent."),
         LexErrorType::UnexpectedEndOfInput => format!("Unexpected end of input."),
-    }
-}
-
-/// Stringify a project error.
-pub fn stringify_proj_error(error: &ProjectErrorType) -> String {
-    match error {
-        ProjectErrorType::NamelessModule => format!("All modules must have a module declaration."),
     }
 }

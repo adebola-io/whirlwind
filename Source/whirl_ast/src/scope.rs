@@ -120,6 +120,13 @@ impl ScopeEntry {
             _ => panic!("{} is not a model!", self.name()),
         }
     }
+    /// Returns an entry as a mutable model signature. Panics if the entry is not a model variant.
+    pub fn model_mut(&mut self) -> &mut ModelSignature {
+        match self {
+            ScopeEntry::Model(m) => m,
+            _ => panic!("{} is not a model!", self.name()),
+        }
+    }
 }
 
 impl Scope {
