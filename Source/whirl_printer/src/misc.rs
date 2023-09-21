@@ -1,9 +1,11 @@
-use whirl_ast::{ModuleAmbience, TypeEval};
+use whirl_ast::{
+    EnumSignature, ModelSignature, ModuleAmbience, TraitSignature, TypeEval, TypeSignature,
+};
 
 /// Stringify a type evaluation.
 pub fn stringify_type_eval(module_ambience: &ModuleAmbience, eval: &TypeEval) -> String {
     match eval {
-        TypeEval::TypeWithinModule {
+        TypeEval::Instance {
             address: scope_address,
             args: generic_args,
         } => {
@@ -27,7 +29,39 @@ pub fn stringify_type_eval(module_ambience: &ModuleAmbience, eval: &TypeEval) ->
             }
             string
         }
+        TypeEval::EnumConstructor { address }
+        | TypeEval::ModelConstructor { address }
+        | TypeEval::TraitConstructor { address }
+        | TypeEval::TypeAlias { address } => {
+            let mut string = String::new();
+            let entry = module_ambience
+                .get_scope(address.scope_id)
+                .unwrap()
+                .get_entry(address.entry_no)
+                .unwrap();
 
+            string.push_str(entry.name());
+            match entry {
+                whirl_ast::ScopeEntry::Type(TypeSignature { generic_params, .. })
+                | whirl_ast::ScopeEntry::Model(ModelSignature { generic_params, .. })
+                | whirl_ast::ScopeEntry::Enum(EnumSignature { generic_params, .. })
+                | whirl_ast::ScopeEntry::Trait(TraitSignature { generic_params, .. }) => {
+                    if let Some(params) = generic_params {
+                        string.push('<');
+                        for (index, param) in params.iter().enumerate() {
+                            string.push_str(&param.name.name);
+                            if index + 1 != params.len() {
+                                string.push_str(", ");
+                            }
+                        }
+                        string.push('>');
+                    }
+                }
+                _ => unreachable!(),
+            }
+
+            string
+        }
         TypeEval::Invalid => format!("invalid"),
         TypeEval::Unknown => format!("unknown"),
     }

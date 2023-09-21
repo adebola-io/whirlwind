@@ -22,8 +22,8 @@ pub fn stringify_type_error(module_ambience: &ModuleAmbience, error: &TypeErrorT
         TypeErrorType::UnknownType { name } => {
             format!("Cannot resolve type '{name}'")
         }
-        TypeErrorType::ValueAsType { name } => {
-            format!("'{name}' refers to a value, but it is being used as a type here.")
+        TypeErrorType::ValueAsType => {
+            format!("This refers to a value, but it is being used as a type.")
         }
         TypeErrorType::UnexpectedGenericArgs { value } => format!("Type '{value}' is not generic."),
         TypeErrorType::MismatchedGenericArgs {
@@ -44,6 +44,16 @@ pub fn stringify_type_error(module_ambience: &ModuleAmbience, error: &TypeErrorT
         }
         TypeErrorType::GlobalControl => format!("Control statements and expressions are not allowed in the global scope. Consider moving into a function instead."),
         TypeErrorType::TestInNonGlobalScope => format!("Test declarations are only allowed in the global scope."),
+        TypeErrorType::EnumInModelPlace { name } => format!("{name} refers to an enum, but it is being used as a model here."),
+        TypeErrorType::TypeInModelPlacd => format!("Type aliases cannot be used in model instantiations."),
+        TypeErrorType::InvalidNewExpression => format!("This expression is not constructable."),
+        TypeErrorType::ExpectedModelGotAbstract(eval) => format!("Expected a model, got abstract type '{}'", stringify_type_eval(module_ambience, eval)),
+        TypeErrorType::UnconstructableModel(name) => format!("'{name}' has no constructor, and therefore cannot be instantiated."),
+        TypeErrorType::MismatchedModelArgs { name, expected, assigned } => {
+            format!("'{name}' expects {expected} constructor arguments, but got {assigned}.")
+        },
+        TypeErrorType::UninferrableParameter(name) => format!("Cannot infer the type of parameter '{name}'. Please provide a type label."),
+        
     }
 }
 
@@ -92,6 +102,8 @@ pub fn stringify_parse_error(error: &ParserErrorType) -> String {
         ParserErrorType::InvalidReturn => {
             format!("Return statements can only be used within a function or method.")
         }
+        ParserErrorType::DuplicateConstructor => format!("A model can only have at most one constructor function."),
+        
     }
 }
 

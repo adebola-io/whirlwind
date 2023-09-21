@@ -129,12 +129,39 @@ impl<L: Lexer> ASTVisitorExprOutputNoArgs<TypeEval> for TypeInferrer<L> {
         let module_ambience = self.module_ambience();
         // Input parameters into body scope.
         module_ambience.jump_to_scope(function.body.scope_id);
-        let parameters = &module_ambience
-            .get_entry_unguarded(function.address)
-            .func()
+        let parameters = &mut module_ambience
+            .get_entry_unguarded_mut(function.address)
+            .func_mut()
             .params;
         let module_ambience = self.module_ambience(); // unrecommended FU to rust.
-        for parameter in parameters.iter() {
+
+        // resolve parameter types.
+        for parameter in parameters.iter_mut() {
+            parameter.type_label.inferred = Some(match parameter.type_label.declared {
+                Some(ref type_expression) => {
+                    // Check if assigned type is valid in the given scope.
+                    match type_utils::eval_type_expression(
+                        self.module_ambience(),
+                        type_expression,
+                        function.address.scope_id,
+                    ) {
+                        Err(error) => {
+                            self.type_errors.borrow_mut().push(error);
+                            TypeEval::Invalid
+                        }
+                        Ok(eval) => eval,
+                    }
+                }
+                None => {
+                    self.type_errors
+                        .borrow_mut()
+                        .push(whirl_errors::uninferrable_parameter(
+                            parameter.name.name.to_owned(),
+                            parameter.name.span,
+                        ));
+                    TypeEval::Invalid
+                }
+            });
             module_ambience.register(ScopeEntry::Parameter(parameter.clone()));
         }
         for (_index, statement) in function.body.statements.iter().enumerate() {
@@ -150,9 +177,12 @@ impl<L: Lexer> ASTVisitorExprOutputNoArgs<TypeEval> for TypeInferrer<L> {
                 .borrow_mut()
                 .push(whirl_errors::test_in_non_global_scope(test_decl.span))
         }
+        self.module_ambience()
+            .jump_to_scope(test_decl.body.scope_id);
         for statement in &test_decl.body.statements {
             self.statement(statement)
         }
+        self.module_ambience().leave_scope();
     }
 
     /// Perform inference on an expression statement.
@@ -186,6 +216,32 @@ impl<L: Lexer> ASTVisitorExprOutputNoArgs<TypeEval> for TypeInferrer<L> {
         }
     }
 
+    /// Perform inference on a new expression.
+    fn new_expr(&self, new_expr: &whirl_ast::NewExpr) -> TypeEval {
+        // Assert than sub expression is a call.
+        if let whirl_ast::Expression::CallExpr(call_expr) = &new_expr.value {
+            // Get type of caller.
+            let model_type = self.expr(&call_expr.caller);
+            match type_utils::build_model_from_call_expression(
+                model_type,
+                &call_expr.arguments,
+                self,
+                new_expr.span,
+            ) {
+                Ok(eval) => return eval,
+                Err(e) => {
+                    self.type_errors.borrow_mut().push(e);
+                    return TypeEval::Invalid;
+                }
+            }
+        } else {
+            self.type_errors
+                .borrow_mut()
+                .push(whirl_errors::invalid_new_expression(new_expr.span));
+            TypeEval::Invalid
+        }
+    }
+
     /// Perform inference on an identifier.
     fn identifier(&self, ident: &whirl_ast::Identifier) -> TypeEval {
         match type_utils::evaluate_type_of_variable(self.module_ambience(), ident) {
@@ -199,7 +255,7 @@ impl<L: Lexer> ASTVisitorExprOutputNoArgs<TypeEval> for TypeInferrer<L> {
 
     /// Perform inference on a string.
     fn string(&self, _string: &whirl_ast::WhirlString) -> TypeEval {
-        TypeEval::TypeWithinModule {
+        TypeEval::Instance {
             address: [0, 0].into(), // scope address for strings.
             args: None,
         }
@@ -207,7 +263,7 @@ impl<L: Lexer> ASTVisitorExprOutputNoArgs<TypeEval> for TypeInferrer<L> {
 
     /// Perform inference on a boolean value.
     fn boolean(&self, _bool: &whirl_ast::WhirlBoolean) -> TypeEval {
-        TypeEval::TypeWithinModule {
+        TypeEval::Instance {
             address: [0, 2].into(), // scope address for booleans.
             args: None,
         }
@@ -235,7 +291,7 @@ impl<L: Lexer> ASTVisitorExprOutputNoArgs<TypeEval> for TypeInferrer<L> {
 
     /// Perform inference on a number.
     fn number(&self, _number: &whirl_ast::WhirlNumber) -> TypeEval {
-        TypeEval::TypeWithinModule {
+        TypeEval::Instance {
             address: [0, 1].into(), // scope address for integers.
             args: None,
         }

@@ -29,8 +29,8 @@ pub struct ModelSignature {
     pub is_public: bool,
     /// Generic Parameters of the function, if any.
     pub generic_params: Option<Vec<GenericParameter>>,
-    /// The constructor parameters.
-    pub parameters: Vec<Parameter>,
+    /// The constructor parameters, if there is a constructor.
+    pub parameters: Option<Vec<Parameter>>,
     /// Implemented Traits.
     pub implementations: Vec<Type>,
     /// The properties of the model.
@@ -196,14 +196,16 @@ impl Signature for (&ModuleAmbience, &VariableSignature) {
 impl Signature for (&ModuleAmbience, TypeEval) {
     fn info(&self) -> Option<&Vec<String>> {
         match self.1 {
-            TypeEval::TypeWithinModule { address, .. } => {
-                match self.0.get_entry_unguarded(address) {
-                    ScopeEntry::Type(typ) => typ.info(),
-                    ScopeEntry::Enum(e) => e.info(),
-                    ScopeEntry::Model(c) => c.info(),
-                    _ => None,
-                }
-            }
+            TypeEval::Instance { address, .. }
+            | TypeEval::EnumConstructor { address }
+            | TypeEval::ModelConstructor { address }
+            | TypeEval::TraitConstructor { address }
+            | TypeEval::TypeAlias { address } => match self.0.get_entry_unguarded(address) {
+                ScopeEntry::Type(typ) => typ.info(),
+                ScopeEntry::Enum(e) => e.info(),
+                ScopeEntry::Model(c) => c.info(),
+                _ => None,
+            },
             TypeEval::Unknown | TypeEval::Invalid => None,
         }
     }

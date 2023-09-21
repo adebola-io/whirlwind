@@ -57,3 +57,47 @@ pub fn test_in_non_global_scope(span: whirl_ast::Span) -> TypeError {
         span,
     }
 }
+
+pub fn invalid_new_expression(span: whirl_ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::InvalidNewExpression,
+        span,
+    }
+}
+
+pub fn duplicate_constructor(span: whirl_ast::Span) -> ParseError {
+    ParseError {
+        error_type: ParserErrorType::DuplicateConstructor,
+        span,
+    }
+}
+
+pub fn unconstructable_model(name: String, span: whirl_ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::UnconstructableModel(name),
+        span,
+    }
+}
+
+pub fn mismatched_model_args(
+    name: String,
+    expected: usize,
+    assigned: usize,
+    span: whirl_ast::Span,
+) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::MismatchedModelArgs {
+            name,
+            expected,
+            assigned,
+        },
+        span,
+    }
+}
+
+pub fn uninferrable_parameter(name: String, span: whirl_ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::UninferrableParameter(name),
+        span,
+    }
+}

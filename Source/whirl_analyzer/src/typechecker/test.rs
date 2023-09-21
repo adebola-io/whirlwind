@@ -18,12 +18,12 @@ fn test_adding_string_and_number() {
         infer.next().unwrap(),
         vec![TypeError {
             _type: crate::TypeErrorType::InvalidBinary {
-                left: whirl_ast::TypeEval::TypeWithinModule {
+                left: whirl_ast::TypeEval::Instance {
                     address: [0, 1].into(),
                     args: None
                 },
                 operator: whirl_ast::BinOperator::Add,
-                right: whirl_ast::TypeEval::TypeWithinModule {
+                right: whirl_ast::TypeEval::Instance {
                     address: [0, 2].into(),
                     args: None
                 }

@@ -34,7 +34,7 @@ impl Type {
 #[derive(Default, PartialEq, Debug, Clone)]
 pub enum TypeEval {
     /// An address of a scope entry within the module ambience.
-    TypeWithinModule {
+    Instance {
         address: ScopeAddress,
         args: Option<Vec<TypeEval>>,
     },
@@ -42,6 +42,18 @@ pub enum TypeEval {
     #[default]
     Invalid,
     Unknown,
+    ModelConstructor {
+        address: ScopeAddress,
+    },
+    TraitConstructor {
+        address: ScopeAddress,
+    },
+    EnumConstructor {
+        address: ScopeAddress,
+    },
+    TypeAlias {
+        address: ScopeAddress,
+    },
 }
 impl TypeEval {
     pub fn is_invalid(&self) -> bool {

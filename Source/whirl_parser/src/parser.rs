@@ -1374,7 +1374,7 @@ impl<L: Lexer> Parser<L> {
         ModelBody,
         Vec<AttributeSignature>,
         Vec<MethodSignature>,
-        Vec<Parameter>,
+        Option<Vec<Parameter>>,
     )> {
         expect_or_return!(TokenType::Bracket(LCurly), self);
         let start = self.token().unwrap().span.start;
@@ -1385,6 +1385,7 @@ impl<L: Lexer> Parser<L> {
         let mut attribute_signatures = vec![];
         let mut method_signatures = vec![];
         let mut parameters = vec![];
+        let mut has_constructor = false;
         let mut constructor = None;
         let mut properties = vec![];
         let mut attribute_properties = vec![];
@@ -1455,12 +1456,17 @@ impl<L: Lexer> Parser<L> {
                 TokenType::Keyword(New) => {
                     self.advance(); // move past new.
                     let mut partial = Partial::from(self.parameters());
+                    if has_constructor {
+                        body_errors.push(errors::duplicate_constructor(token.span));
+                    }
                     if partial.is_none() {
                         body_errors.append(&mut partial.errors);
                         self.advance();
                         continue;
                     }
-                    parameters = partial.unwrap();
+                    if !has_constructor {
+                        parameters = partial.unwrap();
+                    }
                     let mut bloc_partial = self.block(ScopeType::Constructor);
                     if bloc_partial.is_none() {
                         body_errors.append(&mut bloc_partial.errors);
@@ -1468,6 +1474,7 @@ impl<L: Lexer> Parser<L> {
                         continue;
                     }
                     constructor = Some(bloc_partial.unwrap());
+                    has_constructor = true
                 }
                 // parse public property.
                 TokenType::Keyword(Public) => {
@@ -1564,7 +1571,16 @@ impl<L: Lexer> Parser<L> {
             span,
         };
         Partial {
-            value: Some((body, attribute_signatures, method_signatures, parameters)),
+            value: Some((
+                body,
+                attribute_signatures,
+                method_signatures,
+                if has_constructor {
+                    Some(parameters)
+                } else {
+                    None
+                },
+            )),
             errors: body_errors,
         }
     }

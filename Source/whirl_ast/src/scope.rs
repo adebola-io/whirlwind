@@ -106,6 +106,20 @@ impl ScopeEntry {
             _ => panic!("{} is not a function!", self.name()),
         }
     }
+    /// Returns an entry as a mutable function signature. Panics if the entry is not a function variant.
+    pub fn func_mut(&mut self) -> &mut FunctionSignature {
+        match self {
+            ScopeEntry::Function(f) => f,
+            _ => panic!("{} is not a function!", self.name()),
+        }
+    }
+    /// Returns an entry as a model signature. Panics if the entry is not a model variant.
+    pub fn model(&self) -> &ModelSignature {
+        match self {
+            ScopeEntry::Model(m) => m,
+            _ => panic!("{} is not a model!", self.name()),
+        }
+    }
 }
 
 impl Scope {

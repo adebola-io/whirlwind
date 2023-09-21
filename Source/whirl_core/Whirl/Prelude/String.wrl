@@ -106,9 +106,25 @@ public model String {
     /// ```
     public function Reverse(): String {
         Internals.Invoke("strrvrse", this)
+    }
+    /// Returns a section of the string.
+    /// The range argument is exclusive, meaning it goes from the left index all the way to one before the right.
+    /// ### Usage
+    /// ```
+    /// str := "Hello, world!";
+    /// 
+    /// Assert(str.Slice(0..5)).Equals("Hello"); // index 0 to 4.
+    /// ```
+    public function Slice(bounds: Range<Integer>): Maybe<String> {
+        Internals.Invoke("strslc", this)
     }    
 }
 
 
 
 
+
+
+test "Testing stuff" {
+
+}

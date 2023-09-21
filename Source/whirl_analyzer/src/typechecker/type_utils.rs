@@ -1,9 +1,15 @@
-use whirl_ast::{
-    DiscreteType, EnumSignature, Identifier, ModelSignature, ModuleAmbience, ScopeAddress,
-    ScopeEntry, Span, TypeEval, TypeExpression, TypeSignature,
+use errors::{
+    enum_in_model_place, expected_model_got_abstract, trait_as_type, type_in_model_place,
+    value_as_type,
 };
+use whirl_ast::{
+    ASTVisitorExprOutputNoArgs, DiscreteType, EnumSignature, Expression, Identifier,
+    ModelSignature, ModuleAmbience, ScopeAddress, ScopeEntry, Span, Spannable, TypeEval,
+    TypeExpression, TypeSignature,
+};
+use whirl_lexer::Lexer;
 
-use crate::TypeError;
+use crate::{TypeError, TypeInferrer};
 use whirl_errors as errors;
 
 /// Confirms that a type expression is valid in the scope it is defined, and then generate a type evaluation for it.
@@ -47,7 +53,7 @@ pub fn evaluate_discrete_type(
     match search.entry {
         // Block using variable names as types.
         ScopeEntry::Variable(_) | ScopeEntry::Function(_) | ScopeEntry::Parameter(_) => {
-            Err(errors::value_as_type(name, span))
+            Err(errors::value_as_type(span))
         }
         ScopeEntry::Trait(_) => return Err(errors::trait_as_type(name, span)),
         ScopeEntry::Type(TypeSignature { generic_params, .. })
@@ -76,7 +82,7 @@ pub fn evaluate_discrete_type(
                 None
             };
             let address = [search.scope.id, search.index].into();
-            let eval = TypeEval::TypeWithinModule { address, args };
+            let eval = TypeEval::Instance { address, args };
             Ok(eval)
         }
     }
@@ -88,23 +94,26 @@ pub fn evaluate_type_of_variable(
     variable: &Identifier,
 ) -> Result<TypeEval, TypeError> {
     match module_ambience.lookup(&variable.name) {
-        Some(value) => match value.entry {
-            ScopeEntry::Function(_)
-            | ScopeEntry::Type(_)
-            | ScopeEntry::Enum(_)
-            | ScopeEntry::Trait(_)
-            | ScopeEntry::Model(_) => Ok(TypeEval::TypeWithinModule {
-                address: ScopeAddress {
-                    scope_id: value.scope.id,
-                    entry_no: value.index,
-                },
-                args: None,
-            }),
-            ScopeEntry::Variable(v) => Ok(v.var_type.inferred.clone().unwrap_or(TypeEval::Unknown)),
-            ScopeEntry::Parameter(p) => {
-                Ok(p.type_label.inferred.clone().unwrap_or(TypeEval::Unknown))
+        Some(value) => {
+            let address: ScopeAddress = [value.scope.id, value.index].into();
+            match value.entry {
+                ScopeEntry::Type(_) => Ok(TypeEval::TypeAlias { address }),
+                ScopeEntry::Enum(_) => Ok(TypeEval::EnumConstructor { address }),
+                ScopeEntry::Trait(_) => Ok(TypeEval::TraitConstructor { address }),
+                ScopeEntry::Model(_) => Ok(TypeEval::ModelConstructor { address }),
+                ScopeEntry::Function(_) => Ok(TypeEval::Instance {
+                    address,
+                    // todo: function generics.
+                    args: None,
+                }),
+                ScopeEntry::Variable(v) => {
+                    Ok(v.var_type.inferred.clone().unwrap_or(TypeEval::Unknown))
+                }
+                ScopeEntry::Parameter(p) => {
+                    Ok(p.type_label.inferred.clone().unwrap_or(TypeEval::Unknown))
+                }
             }
-        },
+        }
         None => {
             return Err(errors::unknown_variable_in_scope(
                 variable.name.to_owned(),
@@ -125,4 +134,73 @@ pub fn assign_right_to_left(
         return Ok(left);
     }
     Err(whirl_errors::mismatched_assignment(left, right, span))
+}
+
+/// Check if an instance of the type can be created.
+pub fn construct_type(
+    typeval: TypeEval,
+    ambience: &ModuleAmbience,
+    span: Span,
+) -> Result<ScopeAddress, TypeError> {
+    match &typeval {
+        TypeEval::Instance { .. } => Err(value_as_type(span)),
+        TypeEval::Invalid | TypeEval::Unknown => {
+            return Err(expected_model_got_abstract(typeval, span))
+        }
+        TypeEval::ModelConstructor { address } => Ok(*address),
+        TypeEval::TraitConstructor { address } => Err(trait_as_type(
+            ambience.get_entry_unguarded(*address).name(),
+            span,
+        )),
+        TypeEval::EnumConstructor { address } => Err(enum_in_model_place(
+            ambience.get_entry_unguarded(*address).name(),
+            span,
+        )),
+        TypeEval::TypeAlias { .. } => Err(type_in_model_place(span)),
+    }
+}
+
+pub fn build_model_from_call_expression<L: Lexer>(
+    caller_type: TypeEval,
+    arguments: &Vec<Expression>,
+    inferrer: &TypeInferrer<L>,
+    span: Span,
+) -> Result<TypeEval, TypeError> {
+    let ambience = inferrer.module_ambience();
+    let address = construct_type(caller_type, ambience, span)?;
+    let entry = ambience.get_entry_unguarded(address).model();
+    let name = ambience.get_entry_unguarded(address).name();
+    // Confirm constructor.
+    match &entry.parameters {
+        None => return Err(whirl_errors::unconstructable_model(name.to_string(), span)),
+        Some(params) => {
+            // Confirm arguments.
+            // TODO: Generics.
+            if arguments.len() != params.len() {
+                return Err(whirl_errors::mismatched_model_args(
+                    name.to_string(),
+                    params.len(),
+                    arguments.len(),
+                    span,
+                ));
+            }
+            // Compare parameters and arguments.
+            for (index, argument) in arguments.iter().enumerate() {
+                let inferred_argument_type = inferrer.expr(argument);
+                if let Some(inferred_param_type) = &params[index].type_label.inferred {
+                    if &inferred_argument_type != inferred_param_type {
+                        return Err(errors::mismatched_assignment(
+                            inferred_param_type.clone(),
+                            inferred_argument_type,
+                            argument.span(),
+                        ));
+                    }
+                }
+            }
+            return Ok(TypeEval::Instance {
+                address,
+                args: None,
+            });
+        }
+    }
 }
