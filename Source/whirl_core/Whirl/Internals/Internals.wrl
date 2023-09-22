@@ -1,10 +1,11 @@
-// !::{disable-core-globals}::!
+// !::no-prelude::!
 module Internals;
 
+use Abstract;
 
-/// 
+
 public function Invoke(
-    command: String,
+    command: Invocation,
     param1?: Abstract,
     param2?: Abstract,
     param3?: Abstract,
@@ -16,4 +17,29 @@ public function Invoke(
     param9?: Abstract,
 ): Abstract {
     // Compiler built-in.
+}
+
+/// List of variants that can be called with Invoke().
+public enum Invocation {
+    // Strings.
+    StrAt,
+    StrAppend,
+    StrChars,
+    StrClear,
+    StrContains,
+    StrLength,
+    StrReplace,
+    StrReverse,
+    StrSlice,
+    StrSplit,
+    StrTrim,
+    StrTrimInPlace,
+    StrTrimLeft,
+    StrTrimRight,
+    StrPad,
+    StrPadLeft,
+    StrPadInPlace,
+    StrPrepend,
+    StrUppercase,
+    StrLowercase,
 }

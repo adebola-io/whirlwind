@@ -1,4 +1,4 @@
-// !::{disable-core-globals}::!
+// !::no-prelude::!
 module Core;
 
 

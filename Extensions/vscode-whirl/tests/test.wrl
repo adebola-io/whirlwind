@@ -11,36 +11,6 @@ public function Some<T>(value: T): Maybe<T> {
     new Maybe(value)
 }
 
-/// A value that may or may not exist.
-public model Maybe<T> {
-    var value: T;
-
-    new(value: T) {
-        this.value = value;
-    }
-
-    /// Returns a boolean indicating if the Maybe contains no value.
-    function IsNone(): Boolean {
-        IsNull(this.value)
-    }
-
-    /// Returns a boolean indicating whether there is a value contained or not.
-    function IsSome(): Boolean {
-        !IsNull(this.value)
-    }
-
-    function Unwrap(): T {
-        if this.IsNone() {
-            Panic(new Error("Called Unwrap on a None Value"))
-        } else { 
-            this.value 
-        }
-    }
-
-    function UnwrapOr(value: T): T {
-        if this.IsNone() { value } else { this.value }
-    }
-}
 
 
 

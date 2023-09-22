@@ -1,7 +1,57 @@
-// !::{disable-core-globals}::!
+// !::no-prelude::!
 module Maybe;
 
+use Package.{
+    Internals.{IsNull, NullPtr},
+    Process.PanicOnCaller,
+};
 
-public model Maybe {
+
+/// Creates a `Maybe` with no value.
+public function None<T>(): Maybe<T> {
+    new Maybe(NullPtr)
+}
+
+/// Creates a `Maybe` with an internal value.
+public function Some<T>(value: T): Maybe<T> {
+    new Maybe(value)
+}
+
+/// A value that may or may not exist.
+public model Maybe<T> implements Assertable {
+    var value: T;
+
+    new(value: T) {
+        this.value = value;
+    }
+    /// Returns a boolean indicating if the Maybe contains no value.
+    /// ### Usage
+    /// ```
+    /// noValue: Maybe<String> := None();
+    /// AssertThat(noValue.IsNone());
+    /// 
+    /// stringValue := Some("boy");
+    /// AssertThat(!stringValue.IsNone());
+    /// ```
+    public function IsNone(): Boolean {
+        IsNull(this.value)
+    }
+    /// Returns a boolean indicating whether there is a value contained or not.
+    public function IsSome(): Boolean {
+        !IsNull(this.value)
+    }
+    /// Ignores the maybe and returns the internal value. 
+    /// It will throw an error if no value is present.
+    public function Unwrap(): T {
+        if this.IsNone() {
+            PanicOnCaller(new Error("Called Unwrap on a None Value"))
+        } else { 
+            this.value 
+        }
+    }
+    /// Returns the internal value, or another given value.
+    public function UnwrapOr(value: T): T {
+        if this.IsNone() { value } else { this.value }
+    }
     
 }

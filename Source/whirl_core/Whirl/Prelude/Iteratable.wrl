@@ -1,4 +1,4 @@
-// !::{disable-core-globals}::!
+// !::no-prelude::!
 module Iteratable;
 
 /// ## The Iteratable trait
