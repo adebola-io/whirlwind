@@ -6,8 +6,8 @@ use whirl_ast::{
     IndexExpr, LogicExpr, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType,
     ModuleDeclaration, NewExpr, Parameter, ReturnStatement, ScopeEntry, Span, Statement,
     SymbolAddress, TestDeclaration, ThisExpr, TraitBody, TraitDeclaration, TraitProperty, Type,
-    TypeDeclaration, TypeExpression, UnaryExpr, UseDeclaration, UsePath, UseTarget, WhileStatement,
-    WhirlBoolean, WhirlNumber, WhirlString,
+    TypeDeclaration, TypeExpression, UnaryExpr, UpdateExpr, UpdateOperator, UseDeclaration,
+    UsePath, UseTarget, WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
 };
 
 use crate::parse_text;
@@ -1210,6 +1210,34 @@ fn parse_unary_expression() {
                 span: [1, 2, 1, 3].into()
             }),
             span: [1, 1, 1, 3].into()
+        })))
+    );
+}
+
+#[test]
+fn parse_update_expression() {
+    let mut parser = parse_text("a! + a?");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::FreeExpression(Expression::BinaryExpr(Box::new(BinaryExpr {
+            left: Expression::UpdateExpr(Box::new(UpdateExpr {
+                operator: UpdateOperator::Assert,
+                operand: Expression::Identifier(Identifier {
+                    name: format!("a"),
+                    span: [1, 1, 1, 2].into()
+                }),
+                span: [1, 1, 1, 3].into()
+            })),
+            operator: whirl_ast::BinOperator::Add,
+            right: Expression::UpdateExpr(Box::new(UpdateExpr {
+                operator: UpdateOperator::TryFrom,
+                operand: Expression::Identifier(Identifier {
+                    name: format!("a"),
+                    span: [1, 6, 1, 7].into()
+                }),
+                span: [1, 6, 1, 8].into()
+            })),
+            span: [1, 1, 1, 8].into()
         })))
     );
 }

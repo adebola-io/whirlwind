@@ -13,22 +13,28 @@ pub enum ScopeEntry {
     Variable(VariableSignature),
     Trait(TraitSignature),
     Parameter(Parameter),
+    // Entry reserved for a not yet parsed atom.
+    ReservedSpace,
 }
 
 #[derive(Debug, Default)]
 pub enum ScopeType {
-    Local = 0,
-    Test = 1,
-    Functional = 2,
-    Constructor = 3,
-    Method = 4,
-    Global = 5,
-    Directory = 6,
-    Package = 7,
-    Workspace = 8,
+    Local,
+    Test,
+    Functional,
+    ModelConstructorOf {
+        model: SymbolAddress,
+    },
+    ModelMethodOf {
+        model: SymbolAddress,
+    },
+    TraitMethodOf {
+        _trait: SymbolAddress,
+    },
+    Global,
     /// A placeholder scope.
     #[default]
-    VoidScope = 9,
+    VoidScope,
 }
 
 /// The location of a symbol in the whole project.
@@ -81,6 +87,7 @@ impl ScopeEntry {
             | ScopeEntry::Variable(VariableSignature { name, .. })
             | ScopeEntry::Trait(TraitSignature { name, .. })
             | ScopeEntry::Parameter(Parameter { name, .. }) => &name.name,
+            ScopeEntry::ReservedSpace => "",
         }
     }
 
@@ -127,6 +134,10 @@ impl ScopeEntry {
             ScopeEntry::Model(m) => m,
             _ => panic!("{} is not a model!", self.name()),
         }
+    }
+    /// Returns true of the entry is reserved.
+    pub fn is_reserved(&self) -> bool {
+        matches!(self, ScopeEntry::ReservedSpace)
     }
 }
 

@@ -1,5 +1,6 @@
 use crate::{
     AssignOperator, BinOperator, ExpressionPrecedence, LogicOperator, Number, Span, UnaryOperator,
+    UpdateOperator,
 };
 
 /// A token is the smallest lexical unit of a Whirl program.
@@ -64,7 +65,7 @@ pub enum Operator {
     SemiColon,          // ;
     Dot,                // .
     Range,              // ..
-    Negator,            // !
+    Exclamation,        // !
     NotEqual,           // !=
     QuestionMark,       // ?
     Comma,              // ,
@@ -100,7 +101,7 @@ impl From<Operator> for ExpressionPrecedence {
         match value {
             Operator::Dot => Self::Access,
             Operator::Range => Self::Range,
-            Operator::Negator | Operator::Not => Self::Negation,
+            Operator::Exclamation | Operator::Not => Self::Negation,
             Operator::Equal | Operator::NotEqual => Self::Equality,
             Operator::Assign | Operator::MinusAssign | Operator::PlusAssign => Self::Assignment,
             Operator::And | Operator::Or | Operator::LogicalAnd | Operator::LogicalOr => {
@@ -161,11 +162,21 @@ impl From<Operator> for LogicOperator {
 impl From<Operator> for UnaryOperator {
     fn from(value: Operator) -> Self {
         match value {
-            Operator::Negator => Self::Negation,
+            Operator::Exclamation => Self::Negation,
             Operator::Not => Self::NegationLiteral,
             Operator::Plus => Self::Plus,
             Operator::Minus => Self::Minus,
             _ => panic!("Cannot convert {:?} to unary operator!", value),
+        }
+    }
+}
+
+impl From<Operator> for UpdateOperator {
+    fn from(value: Operator) -> Self {
+        match value {
+            Operator::Exclamation => Self::Assert,
+            Operator::QuestionMark => Self::TryFrom,
+            _ => panic!("Cannot convert {:?} to an update operator!", value),
         }
     }
 }

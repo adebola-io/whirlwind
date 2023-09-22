@@ -10,8 +10,8 @@ use whirl_ast::{
     ScopeEntry, ScopeType, ShorthandVariableDeclaration, Span, Spannable, Statement, SymbolAddress,
     TestDeclaration, ThisExpr, Token, TokenType, TraitBody, TraitDeclaration, TraitProperty,
     TraitPropertyType, TraitSignature, Type, TypeDeclaration, TypeExpression, TypeSignature,
-    UnaryExpr, UnionType, UseDeclaration, UsePath, UseTarget, VariableSignature, WhileStatement,
-    WhirlBoolean, WhirlNumber, WhirlString,
+    UnaryExpr, UnionType, UpdateExpr, UseDeclaration, UsePath, UseTarget, VariableSignature,
+    WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
 };
 use whirl_errors::{self as errors, ParseError};
 use whirl_lexer::Lexer;
@@ -249,7 +249,9 @@ impl<L: Lexer> Parser<L> {
             TokenType::Keyword(New) => self.new_expression(),
             TokenType::Keyword(If) => self.if_expression(),
             TokenType::Keyword(_this) => self.this_expression(),
-            TokenType::Operator(op @ (Negator | Not | Plus | Minus)) => self.unary_expression(op),
+            TokenType::Operator(op @ (Exclamation | Not | Plus | Minus)) => {
+                self.unary_expression(op)
+            }
             TokenType::Ident(_) => {
                 self.spring(Partial::from(self.identifier()).map(|i| Expression::Identifier(i)))
             }
@@ -512,6 +514,9 @@ impl<L: Lexer> Parser<L> {
                 TokenType::Operator(op @ (Assign | PlusAssign | MinusAssign)) => {
                     self.assignment_expression(exp, op)
                 }
+                TokenType::Operator(op @ (QuestionMark | Exclamation)) => {
+                    self.update_expression(exp, op)
+                }
                 _ => exp,
             },
             None => exp,
@@ -768,6 +773,39 @@ impl<L: Lexer> Parser<L> {
             errors,
         };
         self.spring(partial)
+    }
+
+    /// Parses an update expression.
+    fn update_expression(
+        &self,
+        operand: Imperfect<Expression>,
+        operator: whirl_ast::Operator,
+    ) -> Imperfect<Expression> {
+        let precedence = match operator {
+            QuestionMark | Exclamation => ExpressionPrecedence::AssertionOrTry,
+            _ => unreachable!(),
+        };
+        if self.is_lower_or_equal_precedence(precedence) || operand.is_none() {
+            return operand;
+        }
+        let (operand, errors) = operand.to_tuple();
+        let operand = operand.unwrap();
+        expect_or_return!(TokenType::Operator(operator), self);
+        let start = operand.span().start;
+        self.precedence_stack.borrow_mut().pop();
+        let end = self.token().unwrap().span.end;
+        self.advance(); // Move past operator.
+        let span = Span::from([start, end]);
+        let un_exp = UpdateExpr {
+            operator: operator.into(),
+            operand,
+            span,
+        };
+        let exp = Partial {
+            value: Some(Expression::UpdateExpr(Box::new(un_exp))),
+            errors,
+        };
+        self.spring(exp)
     }
 
     /// Parses a unary expression.
@@ -1297,7 +1335,13 @@ impl<L: Lexer> Parser<L> {
             self
         );
         let implementations = check!(self.maybe_trait_implementations());
-        let (results, errors) = self.model_body().to_tuple();
+        let entry_no = self.module_ambience().reserve_entry_space();
+        let address = SymbolAddress {
+            module_id: self.module_ambience().id(),
+            scope_id: self.module_ambience().current_scope(),
+            entry_no,
+        };
+        let (results, errors) = self.model_body(&address).to_tuple();
         if results.is_none() {
             return Partial::from_errors(errors);
         }
@@ -1313,14 +1357,8 @@ impl<L: Lexer> Parser<L> {
             methods,
         };
         let end = body.span.end;
-        let entry_no = self
-            .module_ambience()
-            .register(ScopeEntry::Model(signature));
-        let address = SymbolAddress {
-            module_id: self.module_ambience().id(),
-            scope_id: self.module_ambience().current_scope(),
-            entry_no,
-        };
+        self.module_ambience()
+            .register_at(entry_no, ScopeEntry::Model(signature));
         let span = Span::from([start, end]);
         let model = ModelDeclaration {
             address,
@@ -1375,6 +1413,7 @@ impl<L: Lexer> Parser<L> {
     /// Rambly function to parse a model body.
     fn model_body(
         &self,
+        model_address: &SymbolAddress,
     ) -> Imperfect<(
         ModelBody,
         Vec<AttributeSignature>,
@@ -1398,7 +1437,7 @@ impl<L: Lexer> Parser<L> {
         // Helper closure to quickly generate methods.
         let mut generate_method = |start, is_public, is_static, is_async| {
             expect_or_return!(TokenType::Keyword(Function), self);
-            let partial = self.method(is_public, is_static, is_async);
+            let partial = self.method(is_public, is_static, is_async, model_address);
             if partial.is_none() {
                 return partial.map(|_| ());
             };
@@ -1472,7 +1511,9 @@ impl<L: Lexer> Parser<L> {
                     if !has_constructor {
                         parameters = partial.unwrap();
                     }
-                    let mut bloc_partial = self.block(ScopeType::Constructor);
+                    let mut bloc_partial = self.block(ScopeType::ModelConstructorOf {
+                        model: *model_address,
+                    });
                     if bloc_partial.is_none() {
                         body_errors.append(&mut bloc_partial.errors);
                         self.advance();
@@ -1620,6 +1661,7 @@ impl<L: Lexer> Parser<L> {
         is_public: bool,
         is_static: bool,
         is_async: bool,
+        model_address: &SymbolAddress,
     ) -> Imperfect<(MethodSignature, ModelPropertyType)> {
         expect_or_return!(TokenType::Keyword(Function), self);
         self.advance(); // Move past function.
@@ -1635,7 +1677,11 @@ impl<L: Lexer> Parser<L> {
         let generic_params = check!(self.maybe_generic_params());
         let params = check!(self.parameters());
         let return_type = check!(self.maybe_type_label());
-        let (body, errors) = self.block(ScopeType::Method).to_tuple();
+        let (body, errors) = self
+            .block(ScopeType::ModelMethodOf {
+                model: *model_address,
+            })
+            .to_tuple();
         if body.is_none() {
             return Partial::from_errors(errors);
         }
@@ -1678,8 +1724,14 @@ impl<L: Lexer> Parser<L> {
             errors::expected(TokenType::Bracket(LCurly), self.last_token_end(),),
             self
         );
+        let entry_no = self.module_ambience().reserve_entry_space();
+        let address = SymbolAddress {
+            module_id: self.module_ambience().id(),
+            scope_id: self.module_ambience().current_scope(),
+            entry_no,
+        };
         let implementations = check!(self.maybe_trait_implementations());
-        let (results, errors) = self.trait_body().to_tuple();
+        let (results, errors) = self.trait_body(&address).to_tuple();
         if results.is_none() {
             return Partial::from_errors(errors);
         }
@@ -1693,14 +1745,8 @@ impl<L: Lexer> Parser<L> {
             methods,
         };
         let end = body.span.end;
-        let entry_no = self
-            .module_ambience()
-            .register(ScopeEntry::Trait(signature));
-        let address = SymbolAddress {
-            module_id: self.module_ambience().id(),
-            scope_id: self.module_ambience().current_scope(),
-            entry_no,
-        };
+        self.module_ambience()
+            .register_at(entry_no, ScopeEntry::Trait(signature));
         let span = Span::from([start, end]);
         let model = TraitDeclaration {
             address,
@@ -1714,7 +1760,10 @@ impl<L: Lexer> Parser<L> {
     }
 
     /// Parses a trait body.
-    fn trait_body(&self) -> Imperfect<(TraitBody, Vec<MethodSignature>)> {
+    fn trait_body(
+        &self,
+        trait_address: &SymbolAddress,
+    ) -> Imperfect<(TraitBody, Vec<MethodSignature>)> {
         expect_or_return!(TokenType::Bracket(LCurly), self);
         let start = self.token().unwrap().span.start;
         self.advance(); // Move past {
@@ -1727,7 +1776,7 @@ impl<L: Lexer> Parser<L> {
         // Helper closure to quickly generate methods.
         let mut generate_method = |start, is_public, is_static, is_async| {
             expect_or_return!(TokenType::Keyword(Function), self);
-            let partial = self.trait_method(is_public, is_static, is_async);
+            let partial = self.trait_method(is_public, is_static, is_async, trait_address);
             if partial.is_none() {
                 return partial.map(|_| ());
             };
@@ -1851,6 +1900,7 @@ impl<L: Lexer> Parser<L> {
         is_public: bool,
         is_static: bool,
         is_async: bool,
+        trait_address: &SymbolAddress,
     ) -> Imperfect<(MethodSignature, TraitPropertyType)> {
         expect_or_return!(TokenType::Keyword(Function), self);
         self.advance(); // Move past function.
@@ -1881,7 +1931,11 @@ impl<L: Lexer> Parser<L> {
             return Partial::from_value((signature, _type));
         }
         // Else it is a method.
-        let (body, errors) = self.block(ScopeType::Method).to_tuple();
+        let (body, errors) = self
+            .block(ScopeType::TraitMethodOf {
+                _trait: *trait_address,
+            })
+            .to_tuple();
         if body.is_none() {
             return Partial::from_errors(errors);
         }

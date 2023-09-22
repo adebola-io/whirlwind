@@ -3,8 +3,8 @@ use crate::{
     Expression, FunctionDeclaration, FunctionExpr, Identifier, IfExpression, IndexExpr, LogicExpr,
     ModelDeclaration, ModuleDeclaration, NewExpr, Parameter, ReturnStatement,
     ShorthandVariableDeclaration, Statement, TestDeclaration, ThisExpr, TraitDeclaration,
-    TypeDeclaration, UnaryExpr, UseDeclaration, WhileStatement, WhirlBoolean, WhirlNumber,
-    WhirlString,
+    TypeDeclaration, UnaryExpr, UpdateExpr, UseDeclaration, WhileStatement, WhirlBoolean,
+    WhirlNumber, WhirlString,
 };
 
 #[allow(unused_variables)]
@@ -52,6 +52,7 @@ pub trait ASTVisitor<Arguments = (), Output: Default = ()> {
             Expression::UnaryExpr(u) => self.un_exp(u, args),
             Expression::LogicExpr(l) => self.log_exp(l, args),
             Expression::BlockExpr(b) => self.block(b, args),
+            Expression::UpdateExpr(u) => self.update(u, args),
         }
     }
 
@@ -78,6 +79,10 @@ pub trait ASTVisitor<Arguments = (), Output: Default = ()> {
 
     fn un_exp(&self, unexp: &UnaryExpr, args: &Arguments) -> Output {
         self.expr(&unexp.operand, args)
+    }
+
+    fn update(&self, updateexp: &UpdateExpr, args: &Arguments) -> Output {
+        self.expr(&updateexp.operand, args)
     }
 
     fn ass_exp(&self, assexp: &AssignmentExpr, args: &Arguments) -> Output {
@@ -216,6 +221,7 @@ pub trait ASTVisitorNoArgs<Output: Default = ()> {
             Expression::UnaryExpr(u) => self.un_exp(u),
             Expression::LogicExpr(l) => self.log_exp(l),
             Expression::BlockExpr(b) => self.block(b),
+            Expression::UpdateExpr(u) => self.update(u),
         }
     }
 
@@ -242,6 +248,10 @@ pub trait ASTVisitorNoArgs<Output: Default = ()> {
 
     fn un_exp(&self, unexp: &UnaryExpr) -> Output {
         self.expr(&unexp.operand)
+    }
+
+    fn update(&self, update: &UpdateExpr) -> Output {
+        self.expr(&update.operand)
     }
 
     fn ass_exp(&self, assexp: &AssignmentExpr) -> Output {
@@ -475,6 +485,7 @@ pub trait ASTVisitorExprOutputNoArgs<Output: Default = ()> {
             Expression::UnaryExpr(u) => self.unary_expr(u),
             Expression::LogicExpr(l) => self.logical_expr(l),
             Expression::BlockExpr(b) => self.block(b),
+            Expression::UpdateExpr(u) => self.update(u),
         }
     }
 
@@ -485,6 +496,10 @@ pub trait ASTVisitorExprOutputNoArgs<Output: Default = ()> {
 
     fn unary_expr(&self, unary_expr: &UnaryExpr) -> Output {
         self.expr(&unary_expr.operand)
+    }
+
+    fn update(&self, updateexp: &UpdateExpr) -> Output {
+        self.expr(&updateexp.operand)
     }
 
     fn assignment_expr(&self, ass: &AssignmentExpr) -> Output {

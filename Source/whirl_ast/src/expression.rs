@@ -18,6 +18,7 @@ pub enum Expression {
     AssignmentExpr(Box<AssignmentExpr>),
     UnaryExpr(Box<UnaryExpr>),
     LogicExpr(Box<LogicExpr>),
+    UpdateExpr(Box<UpdateExpr>),
     BlockExpr(Block),
 }
 
@@ -142,6 +143,13 @@ pub struct LogicExpr {
 }
 
 #[derive(Debug, PartialEq)]
+pub struct UpdateExpr {
+    pub operator: UpdateOperator,
+    pub operand: Expression,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
 pub struct ThisExpr {
     pub span: Span,
 }
@@ -175,6 +183,12 @@ pub enum UnaryOperator {
 }
 
 #[derive(Debug, PartialEq)]
+pub enum UpdateOperator {
+    Assert,  // a!
+    TryFrom, // a?
+}
+
+#[derive(Debug, PartialEq)]
 pub enum LogicOperator {
     And,        // a && b
     AndLiteral, // a and b
@@ -192,25 +206,26 @@ pub enum AssignOperator {
 /// Chart for expression precedence in Whirl.
 #[derive(Clone, Copy, PartialEq, PartialOrd)]
 pub enum ExpressionPrecedence {
-    Access = 1,                    // a.b
-    Index = 2,                     // a[b]
-    Call = 3,                      // a(b)
-    New = 4,                       // new a
-    Negation = 5,                  // !a, not a
-    UnaryPlusOrMinus = 6,          // +a, -a
-    Range = 7,                     // a..b
-    PowerOf = 8,                   // a ^ b
-    MultiplyDivideOrRemainder = 9, // a * b, a / b, a % b
-    AddOrSubtract = 10,            // a + b, a - b
-    BitShift = 11,                 // a << b, a >> b
-    Ordering = 12,                 // a > b, a < b, a >= b, a <= b
-    Equality = 13,                 // a == b, a != b,
-    ReferentialEquality = 14,      // a is b
-    BitLogic = 15,                 // a | b, a & b
-    Logic = 16,                    // a || b, a && b, a and b, a or b
-    Assignment = 17,               // a = b, a += b, a -= b,
-    TypeUnion = 18,                // A | B
-    Pseudo = 99,                   // placeholder operator.
+    Access = 1,                     // a.b
+    Index = 2,                      // a[b]
+    Call = 3,                       // a(b)
+    AssertionOrTry = 4,             // a?, a!
+    New = 5,                        // new a
+    Negation = 6,                   // !a, not a
+    UnaryPlusOrMinus = 7,           // +a, -a
+    Range = 8,                      // a..b
+    PowerOf = 9,                    // a ^ b
+    MultiplyDivideOrRemainder = 10, // a * b, a / b, a % b
+    AddOrSubtract = 11,             // a + b, a - b
+    BitShift = 12,                  // a << b, a >> b
+    Ordering = 13,                  // a > b, a < b, a >= b, a <= b
+    Equality = 14,                  // a == b, a != b,
+    ReferentialEquality = 15,       // a is b
+    BitLogic = 16,                  // a | b, a & b
+    Logic = 17,                     // a || b, a && b, a and b, a or b
+    Assignment = 18,                // a = b, a += b, a -= b,
+    TypeUnion = 19,                 // A | B
+    Pseudo = 99,                    // placeholder operator.
 }
 
 impl Spannable for Expression {
@@ -233,6 +248,7 @@ impl Spannable for Expression {
             Expression::BooleanLiteral(b) => b.span,
             Expression::ThisExpr(t) => t.span,
             Expression::NewExpr(n) => n.span,
+            Expression::UpdateExpr(u) => u.span,
         }
     }
 
@@ -255,6 +271,7 @@ impl Spannable for Expression {
             Expression::BooleanLiteral(b) => b.span.start = start,
             Expression::ThisExpr(t) => t.span.start = start,
             Expression::NewExpr(n) => n.span.start = start,
+            Expression::UpdateExpr(u) => u.span.start = start,
         }
     }
     fn captured_scopes(&self) -> Vec<usize> {
@@ -293,6 +310,7 @@ impl Spannable for Expression {
                 nested.append(&mut a.right.captured_scopes());
             }
             Expression::UnaryExpr(u) => nested.append(&mut u.operand.captured_scopes()),
+            Expression::UpdateExpr(u) => nested.append(&mut u.operand.captured_scopes()),
             Expression::LogicExpr(l) => {
                 nested.append(&mut l.left.captured_scopes());
                 nested.append(&mut l.right.captured_scopes());

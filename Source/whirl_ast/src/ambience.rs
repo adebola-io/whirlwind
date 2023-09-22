@@ -62,7 +62,12 @@ impl ModuleAmbience {
         let mut current_scope = self.current_scope;
         loop {
             let scope = &self.scopes[current_scope];
-            if matches!(scope._type, ScopeType::Functional | ScopeType::Method) {
+            if matches!(
+                scope._type,
+                ScopeType::Functional
+                    | ScopeType::ModelMethodOf { .. }
+                    | ScopeType::TraitMethodOf { .. }
+            ) {
                 return true;
             } else if let Some(parent) = scope.parent_index {
                 current_scope = parent;
@@ -76,7 +81,10 @@ impl ModuleAmbience {
         let mut current_scope = self.current_scope;
         loop {
             let scope = &self.scopes[current_scope];
-            if matches!(scope._type, ScopeType::Method) {
+            if matches!(
+                scope._type,
+                ScopeType::ModelMethodOf { .. } | ScopeType::TraitMethodOf { .. }
+            ) {
                 return true;
             } else if let Some(parent) = scope.parent_index {
                 current_scope = parent;
@@ -276,6 +284,19 @@ impl ModuleAmbience {
     pub fn id(&self) -> usize {
         self.module_id
     }
+    /// Reserve the next scope entry for an atom that has not yet been parsed.
+    pub fn reserve_entry_space(&mut self) -> usize {
+        self.scopes[self.current_scope].add(ScopeEntry::ReservedSpace)
+    }
+    /// Register an entry at a previously reserved entry number. It panics if the entry is already allocated.
+    #[track_caller]
+    pub fn register_at(&mut self, entry_no: usize, signature: ScopeEntry) {
+        match self.scopes[self.current_scope].get_entry_mut(entry_no) {
+            Some(entry) if entry.is_reserved() => *entry = signature,
+            Some(entry) => panic!("{entry_no} is already allocated to {}", entry.name()),
+            None => panic!("Cannot allocate to an out of bounds entry number: {entry_no}"),
+        }
+    }
 }
 
 impl<'a> ModuleAmbienceShadow<'a> {
@@ -371,11 +392,15 @@ mod tests {
         let mut module_ambience = ModuleAmbience::new(0);
 
         module_ambience.enter(ScopeType::Local); // create scope 1 as child of 0
-        module_ambience.enter(ScopeType::Method); // create scope 2 as child of 1
+        module_ambience.enter(ScopeType::ModelMethodOf {
+            model: [1, 1, 1].into(),
+        }); // create scope 2 as child of 1
         module_ambience.enter(ScopeType::Test); // create scope 3 as child of 2
         module_ambience.leave_scope(); // back to scope 2
         module_ambience.enter(ScopeType::Local); // create scope 4 as child of 2
-        module_ambience.enter(ScopeType::Constructor); // create scope 5 as child of 4.
+        module_ambience.enter(ScopeType::ModelConstructorOf {
+            model: [2, 3, 2].into(),
+        }); // create scope 5 as child of 4.
 
         let mut fragment = module_ambience.remove_scope(3).unwrap();
         println!("REMOVED: {:#?}\n\n\n", fragment);

@@ -89,7 +89,7 @@ pub trait LexerInner {
             ':' => token!(Operator::Colon, ['=', Operator::ColonAssign], self),
             ';' => token!(Operator::SemiColon, self),
             '.' => token!(Operator::Dot, ['.', Operator::Range], self),
-            '!' => token!(Operator::Negator, ['=', Operator::NotEqual], self),
+            '!' => token!(Operator::Exclamation, ['=', Operator::NotEqual], self),
             '?' => token!(Operator::QuestionMark, self),
             ',' => token!(Operator::Comma, self),
             '=' => token!(
