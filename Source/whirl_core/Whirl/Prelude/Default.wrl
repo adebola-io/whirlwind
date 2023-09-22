@@ -1,3 +1,4 @@
+// !::{disable-core-globals}::!
 module Default;
 
 /// This is a language level trait to be implemented by types that have default values when they are not initialized.
@@ -38,10 +39,10 @@ module Default;
 /// Core.Io.Println(p1); /// p1 is used before assignment, so it will be defaulted. 
 /// 
 /// var p2: Position;
-/// p2 = new Position(2, 3); /// p2 is unconditionally assigned before usage, so no need for a default. 
+/// p2 = new Position(2, 3); /// p2 is assigned before usage, so no need for a default. 
 /// Core.Io.Println(p2);
 /// ```
 public trait Default {
-    /// Returns a new instantiation of the implementing model.
-    public function Init(): This;
+    /// Returns the default instance of the implementing model.
+    public static function Init(): This;
 }

@@ -1,0 +1,6 @@
+// !::{disable-core-globals}::!
+module Core;
+
+
+public use Prelude;
+public use Internals;

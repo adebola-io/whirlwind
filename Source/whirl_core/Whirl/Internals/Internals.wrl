@@ -1,0 +1,19 @@
+// !::{disable-core-globals}::!
+module Internals;
+
+
+/// 
+public function Invoke(
+    command: String,
+    param1?: Abstract,
+    param2?: Abstract,
+    param3?: Abstract,
+    param4?: Abstract,
+    param5?: Abstract,
+    param6?: Abstract,
+    param7?: Abstract,
+    param8?: Abstract,
+    param9?: Abstract,
+): Abstract {
+    // Compiler built-in.
+}

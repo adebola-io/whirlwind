@@ -1,0 +1,7 @@
+// !::{disable-core-globals}::!
+module Maybe;
+
+
+public model Maybe {
+    
+}

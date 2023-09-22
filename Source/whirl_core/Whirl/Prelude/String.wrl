@@ -1,6 +1,13 @@
+// !::{disable-core-globals}::!
 module String;
 
 use Package.Internals;
+use Integer;
+use Range;
+use UnsignedInteger; 
+use Boolean;
+use Maybe; 
+use Iteratable;
 
 /// Model for creating, manipulating and formatting text sequences.
 public model String {
@@ -116,9 +123,53 @@ public model String {
     /// Assert(str.Slice(0..5)).Equals("Hello"); // index 0 to 4.
     /// ```
     public function Slice(bounds: Range<Integer>): Maybe<String> {
-        Internals.Invoke("strslc", this)
-    }    
+        Internals.Invoke("strslc", this, bounds)
+    }
+    /// Returns a version of the string without left or right whitespace padding.
+    /// ### Usage
+    /// ```
+    /// str := "\n\n\nWhat then shall we say?  \n\n\n\r\t";
+    /// 
+    /// Assert(str.Trim()).Equals("What then shall we say?");
+    /// ```
+    public function Trim(): String {
+        Internals.Invoke("strtrm", this)
+    }   
+    /// Returns a version of the string without left whitespace padding.
+    /// ### Usage
+    /// ```
+    /// str := "\n\n\nWhat then shall we say?\n";
+    /// 
+    /// Assert(str.TrimLeft()).Equals("What then shall we say?\n");
+    /// ```
+    public function TrimLeft(): String {
+        Internals.Invoke("strtrml", this)
+    } 
+    /// Returns a version of the string without right whitespace padding.
+    /// ### Usage
+    /// ```
+    /// str := "\nWhat then shall we say?\n\n\n";
+    /// 
+    /// Assert(str.TrimRight()).Equals("\nWhat then shall we say?");
+    /// ```
+    public function TrimRight(): String {
+        Internals.Invoke("strtrmr", this)
+    }
+    /// Returns a version of the string with padding on both sides.
+    /// ### Usage
+    /// ```
+    /// str := "Alright";
+    /// str2 := str.Pad(3);
+    /// 
+    /// Assert(str2).Equals("   Alright   "); // 3 spaces before and after.
+    /// ```
+    public function Pad(spaceCount: UnsignedInteger): String {
+        Internals.Invoke("strpd", this, spaceCount)
+    }
 }
 
 
-
+/// An iterator over the characters in a string.
+public model Chars implements Iteratable {
+    
+}
