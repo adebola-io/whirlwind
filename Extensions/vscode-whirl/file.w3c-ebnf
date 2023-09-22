@@ -20,6 +20,7 @@ TestDeclaration ::= "test " StringLiteral Block
 
 Declaration ::= VariableDeclaration
                 | ConstantDeclaration
+                | ModuleDeclaration
                 | ModelDeclaration
                 | FunctionDeclaration
                 | RecordDeclaration
@@ -37,6 +38,8 @@ VariableDeclaration ::= (Identifier | DestructurePattern) TypeLabel? ":=" Expres
                         | "var " Identifier VariableInitializer? ";"
 
 ConstantDeclaration ::= "const " (Identifier | DestructurePattern) VariableInitializer ";"
+
+ModuleDeclaration ::= "module " Identifier ";"
 
 ModelDeclaration ::= "model " Identifier GenericParameterList? ImplementsLabel? ModelBody
 

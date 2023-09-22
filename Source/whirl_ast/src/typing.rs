@@ -1,10 +1,10 @@
-use crate::{Identifier, Parameter, ScopeAddress, Span};
+use crate::{Identifier, Parameter, Span, SymbolAddress};
 
 /// Stores the address of a symbol in relation to an entire workspace.
 #[derive(Debug, PartialEq)]
 pub struct ModuleAddress {
     pub module_id: usize,
-    pub scope_address: ScopeAddress,
+    pub scope_address: SymbolAddress,
 }
 
 /// The first representation of a type.
@@ -34,8 +34,8 @@ impl Type {
 #[derive(Default, PartialEq, Debug, Clone)]
 pub enum TypeEval {
     /// An address of a scope entry within the module ambience.
-    Instance {
-        address: ScopeAddress,
+    ModelInstance {
+        model_address: SymbolAddress,
         args: Option<Vec<TypeEval>>,
     },
     /// A type error.
@@ -43,21 +43,34 @@ pub enum TypeEval {
     Invalid,
     Unknown,
     ModelConstructor {
-        address: ScopeAddress,
+        address: SymbolAddress,
     },
     TraitConstructor {
-        address: ScopeAddress,
+        address: SymbolAddress,
     },
     EnumConstructor {
-        address: ScopeAddress,
+        address: SymbolAddress,
     },
     TypeAlias {
-        address: ScopeAddress,
+        address: SymbolAddress,
+    },
+    MethodOfInstance {
+        model_address: SymbolAddress,
+        method_no: usize,
+        generic_args: Option<Vec<TypeEval>>,
     },
 }
 impl TypeEval {
     pub fn is_invalid(&self) -> bool {
         matches!(self, TypeEval::Invalid)
+    }
+    /// returns true if one tyoe is an instance of the other.
+    pub fn is_instance_of(&self, other: TypeEval) -> bool {
+        matches!(self, TypeEval::ModelInstance { model_address: a1, .. }
+            if matches!(other, TypeEval::ModelConstructor { address: a2, .. }
+                if *a1 == a2
+            )
+        )
     }
 }
 

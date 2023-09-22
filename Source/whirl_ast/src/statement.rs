@@ -1,5 +1,5 @@
 use crate::{
-    Expression, Identifier, Positioning, ScopeAddress, Span, Spannable, Type, TypeExpression,
+    Expression, Identifier, Positioning, Span, Spannable, SymbolAddress, Type, TypeExpression,
 };
 
 #[derive(Debug, PartialEq)]
@@ -70,7 +70,7 @@ pub struct UseTargetSignature {
 /// A node in the AST for a shorthand `:=` variable declaration.
 #[derive(Debug, PartialEq)]
 pub struct ShorthandVariableDeclaration {
-    pub address: ScopeAddress,
+    pub address: SymbolAddress,
     pub value: Expression,
     pub span: Span,
 }
@@ -78,7 +78,7 @@ pub struct ShorthandVariableDeclaration {
 #[derive(Debug, PartialEq)]
 /// Node in the AST for a model declaration.
 pub struct ModelDeclaration {
-    pub address: ScopeAddress,
+    pub address: SymbolAddress,
     pub body: ModelBody,
     pub span: Span,
 }
@@ -120,7 +120,7 @@ pub struct TestDeclaration {
 /// For efficiency most of its details are stored in the module ambience.
 #[derive(Debug, PartialEq)]
 pub struct FunctionDeclaration {
-    pub address: ScopeAddress,
+    pub address: SymbolAddress,
     pub body: Block,
     pub span: Span,
 }
@@ -128,7 +128,7 @@ pub struct FunctionDeclaration {
 /// A node for a trait declaration in the AST.
 #[derive(Debug, PartialEq)]
 pub struct TraitDeclaration {
-    pub address: ScopeAddress,
+    pub address: SymbolAddress,
     pub body: TraitBody,
     pub span: Span,
 }
@@ -171,7 +171,7 @@ pub struct Block {
 /// As wih functions, most of its info is in the module ambience.
 #[derive(Debug, PartialEq)]
 pub struct TypeDeclaration {
-    pub address: ScopeAddress,
+    pub address: SymbolAddress,
     pub span: Span,
 }
 
@@ -191,7 +191,7 @@ pub struct ReturnStatement {
 /// Node for an enumerated type.
 #[derive(Debug, PartialEq)]
 pub struct EnumDeclaration {
-    pub address: ScopeAddress,
+    pub address: SymbolAddress,
     pub span: Span,
 }
 

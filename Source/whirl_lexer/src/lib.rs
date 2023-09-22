@@ -8,6 +8,7 @@ use whirl_ast::{Token, TokenType};
 use whirl_errors::LexError;
 
 pub trait Lexer: LexerInner + Iterator<Item = Token> {
+    fn module_id(&self) -> usize;
     /// Lazily lexes and provides the next token in a stream.
     fn get_next_token(&mut self) -> Option<Token> {
         self.next_token_inner()

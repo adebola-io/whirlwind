@@ -85,7 +85,7 @@ impl DocumentManager {
                     items: doc
                         .module
                         .errors()
-                        .map(|p| to_diagnostic(&doc.module.ambience, &p))
+                        .map(|p| to_diagnostic(&p))
                         .collect::<Vec<Diagnostic>>(),
                 },
             })

@@ -4,8 +4,8 @@ use whirl_ast::{
     AccessExpr, ArrayExpr, AssignmentExpr, BinaryExpr, Block, CallExpr, DiscreteType, Else,
     EnumDeclaration, Expression, FunctionDeclaration, FunctionExpr, Identifier, IfExpression,
     IndexExpr, LogicExpr, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType,
-    ModuleDeclaration, NewExpr, Parameter, ReturnStatement, ScopeAddress, ScopeEntry, Span,
-    Statement, TestDeclaration, ThisExpr, TraitBody, TraitDeclaration, TraitProperty, Type,
+    ModuleDeclaration, NewExpr, Parameter, ReturnStatement, ScopeEntry, Span, Statement,
+    SymbolAddress, TestDeclaration, ThisExpr, TraitBody, TraitDeclaration, TraitProperty, Type,
     TypeDeclaration, TypeExpression, UnaryExpr, UseDeclaration, UsePath, UseTarget, WhileStatement,
     WhirlBoolean, WhirlNumber, WhirlString,
 };
@@ -21,7 +21,7 @@ fn parsing_public_functions() {
     assert_eq!(
         statement,
         Statement::FunctionDeclaration(FunctionDeclaration {
-            address: [0, 0].into(),
+            address: [0, 0, 0].into(),
             body: Block::empty(1, [1, 37, 1, 39].into()),
             span: [1, 1, 1, 39].into()
         })
@@ -53,7 +53,7 @@ fn parsing_functions_with_types() {
     assert_eq!(
         statement,
         Statement::FunctionDeclaration(FunctionDeclaration {
-            address: [0, 0].into(),
+            address: [0, 0, 0].into(),
             body: Block::empty(1, [1, 50, 1, 52].into()),
             span: [1, 1, 1, 52].into()
         })
@@ -82,7 +82,7 @@ fn parsing_functions_with_member_types() {
     assert_eq!(
         statement,
         Statement::FunctionDeclaration(FunctionDeclaration {
-            address: [0, 0].into(),
+            address: [0, 0, 0].into(),
             body: Block::empty(1, [1, 40, 1, 42].into()),
             span: [1, 1, 1, 42].into()
         })
@@ -111,7 +111,7 @@ fn parsing_functions_with_generic_types() {
     assert_eq!(
         statement,
         Statement::FunctionDeclaration(FunctionDeclaration {
-            address: [0, 0].into(),
+            address: [0, 0, 0].into(),
             body: Block::empty(1, [1, 42, 1, 44].into()),
             span: [1, 1, 1, 44].into()
         })
@@ -139,7 +139,7 @@ fn parsing_functions_with_generic_types() {
     assert_eq!(
         statement,
         Statement::FunctionDeclaration(FunctionDeclaration {
-            address: [0, 0].into(),
+            address: [0, 0, 0].into(),
             body: Block::empty(1, [1, 61, 1, 63].into()),
             span: [1, 1, 1, 63].into()
         })
@@ -175,7 +175,7 @@ fn parsing_functional_types() {
     assert_eq!(
         statement,
         Statement::FunctionDeclaration(FunctionDeclaration {
-            address: [0, 0].into(),
+            address: [0, 0, 0].into(),
             body: Block::empty(1, [1, 52, 1, 54].into()),
             span: [1, 1, 1, 54].into()
         })
@@ -222,7 +222,7 @@ fn parsing_union_types() {
     assert_eq!(
         statement,
         Statement::FunctionDeclaration(FunctionDeclaration {
-            address: [0, 0].into(),
+            address: [0, 0, 0].into(),
             body: Block::empty(1, [10, 9, 10, 11].into()),
             span: [2, 9, 10, 11].into()
         })
@@ -237,7 +237,7 @@ fn parsing_functions() {
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::FunctionDeclaration(FunctionDeclaration {
-            address: ScopeAddress::from([0, 0]),
+            address: SymbolAddress::from([0, 0, 0]),
             body: Block::empty(1, Span::from([1, 20, 1, 22])),
             span: Span::from([1, 1, 1, 22])
         })
@@ -264,11 +264,11 @@ fn parsing_functions() {
     assert_eq!(
         statement,
         Statement::FunctionDeclaration(FunctionDeclaration {
-            address: ScopeAddress::from([0, 0]),
+            address: SymbolAddress::from([0, 0, 0]),
             body: Block {
                 scope_id: 1,
                 statements: vec![Statement::FunctionDeclaration(FunctionDeclaration {
-                    address: ScopeAddress::from([1, 0]),
+                    address: SymbolAddress::from([0, 1, 0]),
                     body: Block::empty(2, Span::from([3, 34, 5, 10])),
                     span: Span::from([3, 9, 5, 10])
                 })],
@@ -289,7 +289,7 @@ fn parsing_functions() {
     assert_eq!(
         statement,
         Statement::FunctionDeclaration(FunctionDeclaration {
-            address: ScopeAddress::from([0, 0]),
+            address: SymbolAddress::from([0, 0, 0]),
             body: Block {
                 scope_id: 1,
                 statements: vec![],
@@ -315,7 +315,7 @@ fn parsing_async_functions() {
     assert_eq!(
         statement,
         Statement::FunctionDeclaration(FunctionDeclaration {
-            address: ScopeAddress::from([0, 0]),
+            address: SymbolAddress::from([0, 0, 0]),
             body: Block {
                 scope_id: 1,
                 statements: vec![],
@@ -340,7 +340,7 @@ fn parsing_type_declarations() {
     assert_eq!(
         statement,
         Statement::TypeDeclaration(TypeDeclaration {
-            address: ScopeAddress::from([0, 0]),
+            address: SymbolAddress::from([0, 0, 0]),
             span: Span::from([1, 1, 1, 61])
         })
     );
@@ -415,7 +415,7 @@ fn parsing_this_type() {
     assert_eq!(
         statement,
         Statement::TypeDeclaration(TypeDeclaration {
-            address: ScopeAddress::from([0, 0]),
+            address: SymbolAddress::from([0, 0, 0]),
             span: Span::from([1, 1, 1, 17])
         })
     );
@@ -465,7 +465,7 @@ fn parsing_enum_variant() {
     assert_eq!(
         statement,
         Statement::EnumDeclaration(EnumDeclaration {
-            address: [0, 0].into(),
+            address: [0, 0, 0].into(),
             span: Span::from([2, 6, 5, 6])
         })
     );
@@ -495,7 +495,7 @@ fn parsing_enum_variant() {
     assert_eq!(
         statement,
         Statement::EnumDeclaration(EnumDeclaration {
-            address: [0, 0].into(),
+            address: [0, 0, 0].into(),
             span: Span::from([2, 6, 5, 6])
         })
     );
@@ -859,7 +859,7 @@ fn parse_shorthand_variables() {
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::ShorthandVariableDeclaration(whirl_ast::ShorthandVariableDeclaration {
-            address: [0, 0].into(),
+            address: [0, 0, 0].into(),
             value: Expression::CallExpr(Box::new(CallExpr {
                 caller: Expression::Identifier(Identifier {
                     name: format!("GetMessage"),
@@ -883,7 +883,7 @@ fn parse_shorthand_variables() {
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::ShorthandVariableDeclaration(whirl_ast::ShorthandVariableDeclaration {
-            address: [0, 0].into(),
+            address: [0, 0, 0].into(),
             value: Expression::CallExpr(Box::new(CallExpr {
                 caller: Expression::Identifier(Identifier {
                     name: format!("MakeArray"),
@@ -1263,7 +1263,7 @@ fn parse_models() {
     assert_eq!(
         statement,
         Statement::ModelDeclaration(ModelDeclaration {
-            address: [0, 0].into(),
+            address: [0, 0, 0].into(),
             body: ModelBody {
                 properties: vec![],
                 constructor: None,
@@ -1284,7 +1284,7 @@ fn parse_models() {
     assert_eq!(
         statement,
         Statement::ModelDeclaration(ModelDeclaration {
-            address: [0, 0].into(),
+            address: [0, 0, 0].into(),
             body: ModelBody {
                 properties: vec![],
                 constructor: None,
@@ -1314,7 +1314,7 @@ fn parse_model_properties() {
     assert_eq!(
         statement,
         Statement::ModelDeclaration(ModelDeclaration {
-            address: [0, 0].into(),
+            address: [0, 0, 0].into(),
             body: ModelBody {
                 properties: vec![ModelProperty {
                     index: 0,
@@ -1345,7 +1345,7 @@ fn parse_model_properties() {
     assert_eq!(
         statement,
         Statement::ModelDeclaration(ModelDeclaration {
-            address: [0, 0].into(),
+            address: [0, 0, 0].into(),
             body: ModelBody {
                 properties: vec![ModelProperty {
                     index: 0,
@@ -1381,7 +1381,7 @@ fn parse_model_functions() {
     assert_eq!(
         statement,
         Statement::ModelDeclaration(ModelDeclaration {
-            address: [0, 0].into(),
+            address: [0, 0, 0].into(),
             body: ModelBody {
                 properties: vec![ModelProperty {
                     index: 0,
@@ -1425,7 +1425,7 @@ fn parse_static_method() {
     assert_eq!(
         statement,
         Statement::ModelDeclaration(ModelDeclaration {
-            address: [0, 0].into(),
+            address: [0, 0, 0].into(),
             body: ModelBody {
                 properties: vec![
                     ModelProperty {
@@ -1477,7 +1477,8 @@ fn parse_generic_params() {
     assert_eq!(
         statement,
         Statement::FunctionDeclaration(FunctionDeclaration {
-            address: ScopeAddress {
+            address: SymbolAddress {
+                module_id: 0,
                 scope_id: 0,
                 entry_no: 0
             },
@@ -1516,7 +1517,7 @@ fn parse_generic_params() {
     assert_eq!(
         statement,
         Statement::EnumDeclaration(EnumDeclaration {
-            address: [0, 0].into(),
+            address: [0, 0, 0].into(),
             span: [2, 5, 5, 6].into()
         })
     );
@@ -1546,7 +1547,7 @@ fn parse_generic_params() {
     assert_eq!(
         statement,
         Statement::ModelDeclaration(ModelDeclaration {
-            address: [0, 0].into(),
+            address: [0, 0, 0].into(),
             body: ModelBody {
                 properties: vec![],
                 constructor: None,
@@ -1572,7 +1573,7 @@ fn parse_trait_declarations() {
     assert_eq!(
         statement,
         Statement::TraitDeclaration(TraitDeclaration {
-            address: [0, 0].into(),
+            address: [0, 0, 0].into(),
             body: TraitBody {
                 properties: vec![],
                 span: [1, 17, 1, 19].into()
@@ -1600,7 +1601,7 @@ fn parse_trait_declarations() {
     assert_eq!(
         statement,
         Statement::TraitDeclaration(TraitDeclaration {
-            address: [0, 0].into(),
+            address: [0, 0, 0].into(),
             body: TraitBody {
                 properties: vec![TraitProperty {
                     index: 0,
@@ -1637,7 +1638,7 @@ fn parse_trait_declarations() {
     assert_eq!(
         statement,
         Statement::TraitDeclaration(TraitDeclaration {
-            address: [0, 0].into(),
+            address: [0, 0, 0].into(),
             body: TraitBody {
                 properties: vec![
                     TraitProperty {

@@ -13,7 +13,6 @@ pub enum ScopeEntry {
     Variable(VariableSignature),
     Trait(TraitSignature),
     Parameter(Parameter),
-    // Imported(ImportedSignature),
 }
 
 #[derive(Debug, Default)]
@@ -32,9 +31,10 @@ pub enum ScopeType {
     VoidScope = 9,
 }
 
-/// The scope address stores the address of a symbol in the module ambience.
+/// The location of a symbol in the whole project.
 #[derive(Debug, Default, PartialEq, Clone, Copy)]
-pub struct ScopeAddress {
+pub struct SymbolAddress {
+    pub module_id: usize,
     /// The entry in which it is declared.
     pub scope_id: usize,
     /// The entry number.
@@ -60,11 +60,12 @@ pub struct ScopeSearch<'a> {
     pub scope: &'a Scope,
 }
 
-impl From<[usize; 2]> for ScopeAddress {
-    fn from(value: [usize; 2]) -> Self {
-        ScopeAddress {
-            scope_id: value[0],
-            entry_no: value[1],
+impl From<[usize; 3]> for SymbolAddress {
+    fn from(value: [usize; 3]) -> Self {
+        SymbolAddress {
+            module_id: value[0],
+            scope_id: value[1],
+            entry_no: value[2],
         }
     }
 }

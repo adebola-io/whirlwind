@@ -5,8 +5,6 @@ use whirl_ast::{
     VariableSignature,
 };
 
-use crate::stringify_type_eval;
-
 /// Generator trait for how symbols are illustrated in a hover card.
 pub trait HoverFormatter {
     fn to_formatted(&self) -> String;
@@ -123,7 +121,7 @@ impl<T: TypedValue + Signature> HoverFormatter for TypedValueContext<'_, T> {
         string.push_str(&self.atom.name());
         string.push_str(": ");
         let var_type = match self.atom.evaluated_type() {
-            Some(ref type_eval) => stringify_type_eval(&self.module_ambience, type_eval),
+            Some(ref _type_eval) => todo!(),
             None => match self.atom.declared_type() {
                 Some(ref t) => t.to_formatted(),
                 None => format!("unknown"),
@@ -146,10 +144,7 @@ impl HoverFormatter for Parameter {
 
         let param_type_str = match self.type_label.declared {
             Some(ref declared) => declared.to_formatted(),
-            None => match self.type_label.inferred {
-                Some(_) => todo!(),
-                None => format!("unknown"),
-            },
+            None => format!("invalid"),
         };
         string.push_str(&param_type_str);
         string
@@ -268,13 +263,13 @@ impl HoverFormatter for (&ModuleAmbience, &VariableSignature) {
     fn to_formatted(&self) -> String {
         let mut string = String::new();
         let signature = self.1;
-        let module_ambience = self.0;
+        let _module_ambience = self.0;
         maybe_print_public(&mut string, signature);
         string.push_str("var ");
         string.push_str(&signature.name.name);
         string.push_str(": ");
         let var_type = match signature.var_type.inferred {
-            Some(ref type_eval) => stringify_type_eval(module_ambience, type_eval),
+            Some(ref _type_eval) => todo!(),
             None => match signature.var_type.declared {
                 Some(ref t) => t.to_formatted(),
                 None => format!("unknown"),
@@ -288,7 +283,10 @@ impl HoverFormatter for (&ModuleAmbience, &VariableSignature) {
 impl HoverFormatter for (&ModuleAmbience, TypeEval) {
     fn to_formatted(&self) -> String {
         match self.1 {
-            TypeEval::Instance { address, .. }
+            TypeEval::ModelInstance {
+                model_address: address,
+                ..
+            }
             | TypeEval::EnumConstructor { address }
             | TypeEval::ModelConstructor { address }
             | TypeEval::TraitConstructor { address }
@@ -302,6 +300,7 @@ impl HoverFormatter for (&ModuleAmbience, TypeEval) {
             },
             TypeEval::Invalid => String::new(),
             TypeEval::Unknown => String::from("unknown"),
+            _ => String::new(),
         }
     }
 }

@@ -196,7 +196,10 @@ impl Signature for (&ModuleAmbience, &VariableSignature) {
 impl Signature for (&ModuleAmbience, TypeEval) {
     fn info(&self) -> Option<&Vec<String>> {
         match self.1 {
-            TypeEval::Instance { address, .. }
+            TypeEval::ModelInstance {
+                model_address: address,
+                ..
+            }
             | TypeEval::EnumConstructor { address }
             | TypeEval::ModelConstructor { address }
             | TypeEval::TraitConstructor { address }
@@ -207,6 +210,11 @@ impl Signature for (&ModuleAmbience, TypeEval) {
                 _ => None,
             },
             TypeEval::Unknown | TypeEval::Invalid => None,
+            TypeEval::MethodOfInstance {
+                model_address: address,
+                method_no,
+                ..
+            } => self.0.get_entry_unguarded(address).model().methods[method_no].info(),
         }
     }
 }

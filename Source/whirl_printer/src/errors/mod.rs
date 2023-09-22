@@ -1,20 +1,16 @@
-use whirl_ast::ModuleAmbience;
+
 use whirl_errors::{LexErrorType, ParserErrorType, TypeErrorType};
 
-use crate::stringify_type_eval;
-
 /// Stringify a type error.
-pub fn stringify_type_error(module_ambience: &ModuleAmbience, error: &TypeErrorType) -> String {
+pub fn stringify_type_error(error: &TypeErrorType) -> String {
     match error {
         TypeErrorType::InvalidBinary {
             left,
             operator,
             right,
         } => format!(
-            "Operator '{:?}' is not defined for '{}' and '{}'.",
+            "Operator '{:?}' is not defined for {left} and {right}.",
             operator,
-            stringify_type_eval(module_ambience, &left),
-            stringify_type_eval(module_ambience, &right)
         ),
         TypeErrorType::AssignedInvalid => {
             format!("The invalid type cannot be used as an expression.")
@@ -25,16 +21,14 @@ pub fn stringify_type_error(module_ambience: &ModuleAmbience, error: &TypeErrorT
         TypeErrorType::ValueAsType => {
             format!("This refers to a value, but it is being used as a type.")
         }
-        TypeErrorType::UnexpectedGenericArgs { value } => format!("Type '{value}' is not generic."),
+        TypeErrorType::UnexpectedGenericArgs { name } => format!("'{name}' is not generic."),
         TypeErrorType::MismatchedGenericArgs {
-            value,
+            name,
             expected,
             assigned,
-        } => format!("'{value}' expects {expected} generic arguments, but got only {assigned}."),
+        } => format!("'{name}' expects {expected} generic arguments, but got {assigned} instead."),
         TypeErrorType::MismatchedAssignment { left, right } => format!(
-            "Cannot assign '{}' to '{}'.",
-            stringify_type_eval(module_ambience, &right),
-            stringify_type_eval(module_ambience, &left),
+            "Cannot assign '{left}' to '{right}'.",
         ),
         TypeErrorType::TraitAsType { name } => {
             format!("{name} refers to a trait, but it is being used as a type here.")
@@ -45,15 +39,24 @@ pub fn stringify_type_error(module_ambience: &ModuleAmbience, error: &TypeErrorT
         TypeErrorType::GlobalControl => format!("Control statements and expressions are not allowed in the global scope. Consider moving into a function instead."),
         TypeErrorType::TestInNonGlobalScope => format!("Test declarations are only allowed in the global scope."),
         TypeErrorType::EnumInModelPlace { name } => format!("{name} refers to an enum, but it is being used as a model here."),
-        TypeErrorType::TypeInModelPlacd => format!("Type aliases cannot be used in model instantiations."),
+        TypeErrorType::TypeInModelPlace => format!("Type aliases cannot be used in model instantiations."),
         TypeErrorType::InvalidNewExpression => format!("This expression is not constructable."),
-        TypeErrorType::ExpectedModelGotAbstract(eval) => format!("Expected a model, got abstract type '{}'", stringify_type_eval(module_ambience, eval)),
+        TypeErrorType::ExpectedModelGotAbstract(name) => format!("Expected a model, got abstract type '{name}'"),
         TypeErrorType::UnconstructableModel(name) => format!("'{name}' has no constructor, and therefore cannot be instantiated."),
         TypeErrorType::MismatchedModelArgs { name, expected, assigned } => {
             format!("'{name}' expects {expected} constructor arguments, but got {assigned}.")
         },
         TypeErrorType::UninferrableParameter(name) => format!("Cannot infer the type of parameter '{name}'. Please provide a type label."),
         TypeErrorType::NamelessModule => format!("All modules must have a module declaration."),
+        TypeErrorType::ConstructorAssigntoInstance(name) => format!("A constructor cannot be assigned as an instance. Do you mean `new {name}...`?"),
+        TypeErrorType::NoPropOnEval(eval, name) => format!("No property '{name}' on '{eval}'"),
+        TypeErrorType::AttributeAccessOnConstructor { model, attribute_name } => format!("Cannot access an attribute on a model blueprint. Did you mean (new {model}(...)).{attribute_name}?"),
+        TypeErrorType::ConstructorNonStaticMethodAccess { model_name, method_name } => format!("{method_name} is not a static method on {model_name}, but it is being used in a static context."),
+        TypeErrorType::PrivatePropertyLeak { model_name, property_name } => format!("{property_name} exists on {model_name}, but it cannot be accessed publicly."),
+        TypeErrorType::UnknownProperty { model_name, property } => format!("No property '{property}' exists on {model_name}."),
+        TypeErrorType::AccessingOnTrait { trait_ } => format!("{trait_} refers to a trait, thus its methods cannot be directly accessed. Consider implementing them on models instead."),
+        TypeErrorType::TypeAsValue { type_ } => format!("{type_} refers to an abstract type or a type alias, but it is being used as a value here."),
+        TypeErrorType::InstanceStaticMethodAccess { model_name, method_name } => format!("{method_name} refers a static function, so it cannot be called by instances of {model_name}."),
         
         
     }

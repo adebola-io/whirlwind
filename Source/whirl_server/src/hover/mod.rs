@@ -1,5 +1,5 @@
 use tower_lsp::lsp_types::{Hover, HoverContents, LanguageString, MarkedString};
-use whirl_analyzer::type_utils::evaluate_discrete_type;
+
 use whirl_ast::{
     ASTVisitorNoArgs, Block, ModelPropertyType, ModuleAmbience, Parameter, PublicSignatureContext,
     Signature, Span, ThreeTierContext, TraitPropertyType, Type, TypeExpression, TypedValueContext,
@@ -294,11 +294,11 @@ impl HoverFinder<'_> {
                 TypeExpression::Discrete(discrete_type) => {
                     // Hovering over a discrete type name.
                     if discrete_type.name.span.contains(self.pos) {
-                        let type_eval =
-                            evaluate_discrete_type(&self.module_ambience, discrete_type, scope_id);
-                        if let Ok(eval) = type_eval {
-                            return Some(HoverInfo::from(&(self.module_ambience, eval)));
-                        }
+                        // let type_eval =
+                        //     evaluate_discrete_type(&self.module_ambience, discrete_type, scope_id);
+                        // if let Ok(eval) = type_eval {
+                        //     return Some(HoverInfo::from(&(self.module_ambience, eval)));
+                        // }
                     } else {
                         // Hovering over a discrete type generic argument.
                         if let Some(ref generic_args) = discrete_type.generic_args {

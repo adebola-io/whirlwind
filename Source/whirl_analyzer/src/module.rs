@@ -8,7 +8,6 @@ use whirl_errors::{LexError, ParseError, ProgramError, TypeError};
 #[derive(Debug)]
 pub struct Module {
     pub name: Option<String>,
-    built: bool,
     _line_lens: Vec<u32>,
     statements: Vec<Statement>,
     lexical_errors: Vec<LexError>,
@@ -43,9 +42,6 @@ pub enum FilePathSync {
 impl Module {
     /// Build a module from its source.
     pub fn build(&mut self, source: ModuleSource) {
-        if self.built {
-            return;
-        }
         match source {
             ModuleSource::PlainText(source_code) => {
                 let mut inferrer = analyze_text(&source_code);
@@ -53,7 +49,6 @@ impl Module {
                 // cursed (totally safe) code.
                 *self = Module {
                     name: inferrer.ambience().get_module_name().map(|x| x.to_string()),
-                    built: true,
                     _line_lens: inferrer.line_lengths,
                     statements: inferrer.statements,
                     lexical_errors: inferrer.lexical_errors,
@@ -72,7 +67,6 @@ impl Module {
         inferrer.infer();
         Module {
             name: inferrer.ambience().get_module_name().map(|x| x.to_string()),
-            built: true,
             _line_lens: inferrer.line_lengths,
             statements: inferrer.statements,
             lexical_errors: inferrer.lexical_errors,

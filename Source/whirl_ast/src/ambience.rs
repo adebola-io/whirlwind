@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use crate::{Identifier, Scope, ScopeAddress, ScopeEntry, ScopeSearch, ScopeType};
+use crate::{Identifier, Scope, ScopeEntry, ScopeSearch, ScopeType, SymbolAddress};
+
+pub struct DirectoryAmbience {}
 
 /// ### The Environment of a Module.
 /// This struct provides a hierarchical data structure that stores info in related, ordered "depths".
@@ -9,6 +11,7 @@ use crate::{Identifier, Scope, ScopeAddress, ScopeEntry, ScopeSearch, ScopeType}
 /// a project.
 #[derive(Debug)]
 pub struct ModuleAmbience {
+    module_id: usize,
     module_name: Option<Identifier>,
     scopes: Vec<Scope>,
     current_scope: usize,
@@ -23,22 +26,24 @@ pub struct ModuleAmbienceShadow<'a> {
 
 impl Default for ModuleAmbience {
     fn default() -> Self {
-        ModuleAmbience::new()
+        ModuleAmbience::new(0)
     }
 }
 
 impl ModuleAmbience {
     /// Create a new module ambience.
-    pub fn new() -> Self {
+    pub fn new(module_id: usize) -> Self {
         ModuleAmbience {
+            module_id,
             module_name: None,
             scopes: vec![Scope::global()],
             current_scope: 0,
         }
     }
     /// Create a module ambience for a module.
-    pub fn for_module(module_name: Identifier) -> Self {
+    pub fn for_module(module_name: Identifier, module_id: usize) -> Self {
         ModuleAmbience {
+            module_id,
             module_name: Some(module_name),
             scopes: vec![Scope::global()],
             current_scope: 0,
@@ -247,7 +252,7 @@ impl ModuleAmbience {
     }
     /// Returns an entry using a scope address without checks.
     /// Panics if the scope or entry is not found.
-    pub fn get_entry_unguarded(&self, address: ScopeAddress) -> &ScopeEntry {
+    pub fn get_entry_unguarded(&self, address: SymbolAddress) -> &ScopeEntry {
         match self.get_scope(address.scope_id) {
             Some(scope) => match scope.get_entry(address.entry_no) {
                 Some(entry) => entry,
@@ -258,7 +263,7 @@ impl ModuleAmbience {
     }
     /// Returns a **mutable** entry using a scope address without checks.
     /// Panics if the scope or entry is not found.
-    pub fn get_entry_unguarded_mut(&mut self, address: ScopeAddress) -> &mut ScopeEntry {
+    pub fn get_entry_unguarded_mut(&mut self, address: SymbolAddress) -> &mut ScopeEntry {
         match self.get_scope_mut(address.scope_id) {
             Some(scope) => match scope.get_entry_mut(address.entry_no) {
                 Some(entry) => entry,
@@ -266,6 +271,10 @@ impl ModuleAmbience {
             },
             None => panic!("Could not find scope with id {}", address.scope_id),
         }
+    }
+    /// Returns the id of the module.
+    pub fn id(&self) -> usize {
+        self.module_id
     }
 }
 
@@ -317,6 +326,7 @@ fn remove_scope_in_place(manager: &mut ModuleAmbience, scope_id: usize) -> Modul
     let children_index = std::mem::take(&mut scope.children_index);
 
     let mut sub_manager = ModuleAmbience {
+        module_id: manager.module_id,
         module_name: None,
         scopes: vec![scope],
         current_scope: 0,
@@ -336,7 +346,7 @@ mod tests {
 
     #[test]
     fn test_depth() {
-        let mut ambience = ModuleAmbience::new();
+        let mut ambience = ModuleAmbience::new(0);
 
         assert_eq!(ambience.current_scope_depth(), 0);
 
@@ -358,7 +368,7 @@ mod tests {
 
     #[test]
     fn test_removal() {
-        let mut module_ambience = ModuleAmbience::new();
+        let mut module_ambience = ModuleAmbience::new(0);
 
         module_ambience.enter(ScopeType::Local); // create scope 1 as child of 0
         module_ambience.enter(ScopeType::Method); // create scope 2 as child of 1

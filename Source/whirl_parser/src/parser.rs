@@ -7,7 +7,7 @@ use whirl_ast::{
     GenericParameter, Identifier, IfExpression, IndexExpr, Keyword::*, LogicExpr, MemberType,
     MethodSignature, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType, ModelSignature,
     ModuleAmbience, ModuleDeclaration, NewExpr, Operator::*, Parameter, ReturnStatement,
-    ScopeAddress, ScopeEntry, ScopeType, ShorthandVariableDeclaration, Span, Spannable, Statement,
+    ScopeEntry, ScopeType, ShorthandVariableDeclaration, Span, Spannable, Statement, SymbolAddress,
     TestDeclaration, ThisExpr, Token, TokenType, TraitBody, TraitDeclaration, TraitProperty,
     TraitPropertyType, TraitSignature, Type, TypeDeclaration, TypeExpression, TypeSignature,
     UnaryExpr, UnionType, UseDeclaration, UsePath, UseTarget, VariableSignature, WhileStatement,
@@ -87,9 +87,10 @@ macro_rules! ended {
 impl<L: Lexer> Parser<L> {
     /// Creates a parser from a lexer.
     pub fn from_lexer(lexer: L) -> Self {
+        let module_id = lexer.module_id();
         Self {
             lexer: RefCell::new(lexer),
-            module_ambience: RefCell::new(ModuleAmbience::new()),
+            module_ambience: RefCell::new(ModuleAmbience::new(module_id)),
             present: RefCell::new(None),
             past: RefCell::new(None),
             future: RefCell::new(None),
@@ -910,7 +911,8 @@ impl<L: Lexer> Parser<L> {
             .register(ScopeEntry::Function(signature));
 
         let function = FunctionDeclaration {
-            address: ScopeAddress {
+            address: SymbolAddress {
+                module_id: self.module_ambience().id(),
                 scope_id: self.module_ambience().current_scope(),
                 entry_no,
             },
@@ -1021,7 +1023,8 @@ impl<L: Lexer> Parser<L> {
         };
         let entry_no = self.module_ambience().register(ScopeEntry::Type(signature));
         let type_ = TypeDeclaration {
-            address: ScopeAddress {
+            address: SymbolAddress {
+                module_id: self.module_ambience().id(),
                 scope_id: self.module_ambience().current_scope(),
                 entry_no,
             },
@@ -1164,7 +1167,8 @@ impl<L: Lexer> Parser<L> {
             variants,
         };
         let entry_no = self.module_ambience().register(ScopeEntry::Enum(signature));
-        let address = ScopeAddress {
+        let address = SymbolAddress {
+            module_id: self.module_ambience().id(),
             scope_id: self.module_ambience().current_scope(),
             entry_no,
         };
@@ -1312,7 +1316,8 @@ impl<L: Lexer> Parser<L> {
         let entry_no = self
             .module_ambience()
             .register(ScopeEntry::Model(signature));
-        let address = ScopeAddress {
+        let address = SymbolAddress {
+            module_id: self.module_ambience().id(),
             scope_id: self.module_ambience().current_scope(),
             entry_no,
         };
@@ -1691,7 +1696,8 @@ impl<L: Lexer> Parser<L> {
         let entry_no = self
             .module_ambience()
             .register(ScopeEntry::Trait(signature));
-        let address = ScopeAddress {
+        let address = SymbolAddress {
+            module_id: self.module_ambience().id(),
             scope_id: self.module_ambience().current_scope(),
             entry_no,
         };
@@ -2226,7 +2232,12 @@ impl<L: Lexer> Parser<L> {
         };
 
         let statement = Statement::ShorthandVariableDeclaration(ShorthandVariableDeclaration {
-            address: [self.module_ambience().current_scope(), entry_no].into(),
+            address: [
+                self.module_ambience().id(),
+                self.module_ambience().current_scope(),
+                entry_no,
+            ]
+            .into(),
             value,
             span: Span::from([start, end]),
         });

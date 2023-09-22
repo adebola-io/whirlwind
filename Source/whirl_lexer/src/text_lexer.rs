@@ -17,6 +17,7 @@ pub struct TextLexer<I: Iterator<Item = char>> {
     /// It is useful for recomputing the number of characters in the string.
     /// It does not contain the terminators at the end of the line.
     pub line_lengths: Vec<u32>,
+    module_id: usize,
     saved: Option<Token>,
 }
 
@@ -31,6 +32,7 @@ impl<I: Iterator<Item = char>> From<I> for TextLexer<I> {
             stash: None,
             line_lengths: vec![],
             saved: None,
+            module_id: 0,
         }
     }
 }
@@ -98,6 +100,10 @@ impl<I: Iterator<Item = char>> Lexer for TextLexer<I> {
     fn errors(&mut self) -> &mut Vec<LexError> {
         &mut self.errors
     }
+
+    fn module_id(&self) -> usize {
+        self.module_id
+    }
 }
 
 impl<I: Iterator<Item = char>> Iterator for TextLexer<I> {
@@ -118,5 +124,6 @@ pub fn lex_text(input: &str) -> TextLexer<Chars> {
         stash: None,
         line_lengths: vec![],
         saved: None,
+        module_id: 0,
     }
 }
