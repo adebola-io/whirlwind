@@ -1,7 +1,7 @@
 // !::no-prelude::!
 module Internals;
 
-use Abstract;
+use Abstract.Abstract;
 
 
 public function Invoke(
@@ -19,7 +19,7 @@ public function Invoke(
     // Compiler built-in.
 }
 
-/// List of variants that can be called with Invoke().
+/// List of variants that can be called with `Invoke()`.
 public enum Invocation {
     // Strings.
     StrAt,
@@ -42,4 +42,7 @@ public enum Invocation {
     StrPrepend,
     StrUppercase,
     StrLowercase,
+    StrAdd,
+    StrCapitalCase,
+    StrBytes,
 }

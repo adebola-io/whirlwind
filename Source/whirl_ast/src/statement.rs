@@ -1,5 +1,6 @@
 use crate::{
-    Expression, Identifier, Positioning, Span, Spannable, SymbolAddress, Type, TypeExpression,
+    DiscreteType, Expression, Identifier, Positioning, Span, Spannable, SymbolAddress,
+    TypeExpression,
 };
 
 #[derive(Debug, PartialEq)]
@@ -104,7 +105,10 @@ pub enum ModelPropertyType {
     /// Node for a method.
     Method { body: Block },
     /// Node for a trait implementation.
-    TraitImpl { owner_trait: Type, body: Block },
+    TraitImpl {
+        trait_target: Vec<DiscreteType>,
+        body: Block,
+    },
 }
 
 /// A node for a test block.

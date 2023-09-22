@@ -10,8 +10,17 @@ use Range.Range;
 use UnsignedInteger.UnsignedInteger; 
 
 /// Model for creating, manipulating and formatting text sequences.
-public model String implements Addition<This> {
+public model String implements Addition {
     var bytes: Arrayof<CharSpace>;
+    /// Adds two strings together.
+    /// ## Usage
+    /// ```
+    /// str := "Hello" + ", world!";
+    /// Assert(str).Equals("Hello, world!");
+    /// ```
+    public function [Addition.Add](other: This): This {
+        Invoke(Invocation.StrAdd, this, other)
+    }
     /// Returns a `Maybe` with the character at a zero based index in the string.
     ///
     /// It also supports negative indexes, which will return values in reverse from the end of the string.
@@ -46,6 +55,18 @@ public model String implements Addition<This> {
     public function Append(suffix: String) {
         Invoke(Invocation.StrAppend, this, suffix)
     }
+    /// Returns an iterator over the bytes in the string.
+    /// ## Usage
+    /// ```
+    /// str := "adebola.xyz";
+    /// 
+    /// for byte in str.Bytes() {
+    ///     Core.Io.Println(byte)
+    /// }
+    /// ```
+    public function Bytes(): Bytes {
+        Invoke(Invocation.StrBytes, this)
+    }
     /// Returns an iterator over the valid characters in the string.
     /// ## Usage
     /// ```
@@ -59,7 +80,7 @@ public model String implements Addition<This> {
         Invoke(Invocation.StrChars, this)
     }
     /// Empties the string of its characters.
-    /// ### Usage
+    /// ## Usage
     /// ```
     /// str := "tralalalalaleeday";
     /// 
@@ -73,7 +94,7 @@ public model String implements Addition<This> {
         Invoke(Invocation.StrClear, this)
     }
     /// Returns true if a substring is contained within the string.
-    /// ### Usage
+    /// ## Usage
     /// ```
     /// str := "This is a world premiere.";
     /// 
@@ -83,8 +104,20 @@ public model String implements Addition<This> {
     public function Contains(substr: String): Boolean {
         Invoke(Invocation.StrContains, this, substr)
     }
+    /// Returns true if the string has no characters.
+    /// ## Usage
+    /// ```
+    /// str := "";
+    /// AssertThat(str.IsEmpty());
+    /// 
+    /// str.Append("Hello");
+    /// AssertThat(!str.IsEmpty());
+    /// ```
+    public function IsEmpty() : Boolean {
+        this.Length() == 0
+    }
     /// Returns the number of characters in the string.
-    /// ### Usage
+    /// ## Usage
     /// ```
     /// str := "Hello";
     /// 
@@ -93,8 +126,83 @@ public model String implements Addition<This> {
     public function Length(): Integer {
         Invoke(Invocation.StrLength, this)
     }
+     /// Returns a version of the string with padding on both sides.
+    /// ## Usage
+    /// ```
+    /// str := "Alright";
+    /// str2 := str.Pad(3);
+    /// 
+    /// Assert(str2).Equals("   Alright   "); // 3 spaces before and after.
+    /// ```
+    public function Pad(count: UnsignedInteger): String {
+        Invoke(Invocation.StrPad, this, count)
+    }
+    /// Returns a version of the string with left padding.
+    /// ## Usage
+    /// ```
+    /// str := "Alright";
+    /// str2 := str.PadLeft(3);
+    /// 
+    /// Assert(str2).Equals("   Alright"); // 3 spaces before.
+    /// ```
+    public function PadLeft(count: UnsignedInteger): String {
+        Invoke(Invocation.StrPadLeft, this, count)
+    }
+    /// Returns a version of the string with left padding.
+    /// ## Usage
+    /// ```
+    /// str := "Alright";
+    /// str2 := str.PadLeft(3);
+    /// 
+    /// Assert(str2).Equals("   Alright"); // 3 spaces before.
+    /// ```
+    public function PadRight(count: UnsignedInteger): String {
+        Invoke(Invocation.StrPadRight, this, count)
+    }
+    /// Pads the string in place with whitespace on the left and right sides.
+    /// ## Usage
+    /// ```
+    /// str := "Hello, world!";
+    /// str.PadInPlace(3);
+    /// 
+    /// Assert(str).Equals("   Hello, world!   ");
+    /// ```
+    // !::mutable::!
+    public function PadInPlace(count: UnsignedInteger): String {
+        Invoke(Invocation.StrPadInPlace, this, count)
+    }
+    /// Adds text to the start of the string.
+    /// ## Usage
+    /// ```
+    /// str := "world!"
+    /// str.Prepend("Hello, ");
+    /// 
+    /// Assert(str).Equals("Hello, world!");
+    /// ```
+    // !::mutable::!
+    public function Prepend(prefix: String) {
+        Invoke(Invocation.StrPrepend, this, prefix)
+    }
+    /// Returns a String value that is made from a number of copies of the original string.
+    /// If count is 0, the empty string is returned.
+    /// ## Usage
+    /// ```
+    /// str := "Whirl";
+    /// 
+    /// str2 := str.Repeat(3);
+    /// Assert(str2).Equals("WhirlWhirlWhirl"); // 3 copies.
+    /// 
+    /// str3 := str.Repeat(1);
+    /// Assert(str3).Equals("Whirl"); // One copy.
+    /// 
+    /// str3 := str.Repeat(0);
+    /// AssertThat(str2.IsEmpty()); // No copies.
+    /// ```
+    public function Repeat(count: Integer): String {
+        Invoke(Invocation.StrRepeat, this, count)
+    }
     /// Replaces all instances of a substring and returns the new string.
-    /// ### Usage
+    /// ## Usage
     /// ```
     /// str := "John goes to school. John buys a book.";
     /// 
@@ -106,7 +214,7 @@ public model String implements Addition<This> {
         Invoke(Invocation.StrReplace, this, substr, newstr)
     }
     /// Returns a reversed version of the string.
-    /// ### Usage
+    /// ## Usage
     /// ```
     /// str := "pandemonium";
     /// 
@@ -119,7 +227,7 @@ public model String implements Addition<This> {
     }
     /// Returns a section of the string.
     /// The range argument is exclusive, meaning it goes from the left index all the way to one before the right.
-    /// ### Usage
+    /// ## Usage
     /// ```
     /// str := "Hello, world!";
     /// 
@@ -129,7 +237,7 @@ public model String implements Addition<This> {
         Invoke(Invocation.StrSlice, this, bounds)
     }
     /// Divides the string into a list of substrings based on a delimeter.
-    /// ### Usage
+    /// ## Usage
     /// ```
     /// str := "Ring around the rosy";
     /// words := str.Split(" ");
@@ -139,8 +247,19 @@ public model String implements Addition<This> {
     public function Split(delim: String): Arrayof<String> {
         Invoke(Invocation.StrSplit, this, delim)
     }
+    /// Changes the first character in the string to upper case.
+    /// ## Usage
+    /// ```
+    /// str := "jonathan";
+    /// str2 := str.ToCapitalCase();
+    /// 
+    /// Assert(str2).Equals("Jonathan");
+    /// ```
+    public function ToCapitalCase(): String {
+        Invoke(Invocation.StrCapitalCase, this)
+    }
     /// Changes the case of all letters in the string to upper case.
-    /// ### Usage
+    /// ## Usage
     /// ```
     /// str := "hello, world!";
     /// str2 := str.ToUpperCase();
@@ -151,7 +270,7 @@ public model String implements Addition<This> {
         Invoke(Invocation.StrUppercase, this)
     }
     /// Changes the case of all letters in the string to lower case.
-    /// ### Usage
+    /// ## Usage
     /// ```
     /// str := "HELLO, WORLD!";
     /// str2 := str.ToLowerCase();
@@ -162,7 +281,7 @@ public model String implements Addition<This> {
         Invoke(Invocation.StrLowercase, this)
     }
     /// Returns a version of the string without left or right whitespace padding.
-    /// ### Usage
+    /// ## Usage
     /// ```
     /// str := "\n\n\nWhat then shall we say?  \n\n\n\r\t";
     /// 
@@ -172,7 +291,7 @@ public model String implements Addition<This> {
         Invoke(Invocation.StrTrim, this)
     }  
     /// Mutates the string in place and removes left or right whitespace padding.
-    /// ### Usage
+    /// ## Usage
     /// ```
     /// str := "\n\n\nWhat then shall we say?  \n\n\n\r\t";
     /// 
@@ -185,7 +304,7 @@ public model String implements Addition<This> {
         Invoke(Invocation.StrTrimInPlace, this)
     }   
     /// Returns a version of the string without left whitespace padding.
-    /// ### Usage
+    /// ## Usage
     /// ```
     /// str := "\n\n\nWhat then shall we say?\n";
     /// 
@@ -195,7 +314,7 @@ public model String implements Addition<This> {
         Invoke(Invocation.StrTrimLeft, this)
     } 
     /// Returns a version of the string without right whitespace padding.
-    /// ### Usage
+    /// ## Usage
     /// ```
     /// str := "\nWhat then shall we say?\n\n\n";
     /// 
@@ -204,63 +323,17 @@ public model String implements Addition<This> {
     public function TrimRight(): String {
         Invoke(Invocation.TrimRight, this)
     }
-    /// Returns a version of the string with padding on both sides.
-    /// ### Usage
-    /// ```
-    /// str := "Alright";
-    /// str2 := str.Pad(3);
-    /// 
-    /// Assert(str2).Equals("   Alright   "); // 3 spaces before and after.
-    /// ```
-    public function Pad(count: UnsignedInteger): String {
-        Invoke(Invocation.StrPad, this, count)
-    }
-    /// Returns a version of the string with left padding.
-    /// ### Usage
-    /// ```
-    /// str := "Alright";
-    /// str2 := str.PadLeft(3);
-    /// 
-    /// Assert(str2).Equals("   Alright"); // 3 spaces before.
-    /// ```
-    public function PadLeft(count: UnsignedInteger): String {
-        Invoke(Invocation.StrPadLeft, this, count)
-    }
-    /// Returns a version of the string with left padding.
-    /// ### Usage
-    /// ```
-    /// str := "Alright";
-    /// str2 := str.PadLeft(3);
-    /// 
-    /// Assert(str2).Equals("   Alright"); // 3 spaces before.
-    /// ```
-    public function PadRight(count: UnsignedInteger): String {
-        Invoke(Invocation.StrPadRight, this, count)
-    }
-    /// Pads the string in place with whitespace on the left and right sides.
-    /// ### Usage
-    /// ```
-    /// str := "Hello, world!";
-    /// str.PadInPlace(3);
-    /// 
-    /// Assert(str).Equals("   Hello, world!   ");
-    /// ```
-    // !::mutable::!
-    public function PadInPlace(count: UnsignedInteger): String {
-        Invoke(Invocation.StrPadInPlace, this, count)
-    }
-    /// Adds text to the start of the string.
-    /// ### Usage
-    /// ```
-    /// str := "world!"
-    /// str.Prepend("Hello, ");
-    /// 
-    /// Assert(str).Equals("Hello, world!");
-    /// ```
-    // !::mutable::!
-    public function Prepend(prefix: String) {
-        Invoke(Invocation.StrPrepend, this, prefix)
+}
+
+public model Chars implements Iteratable<String> {
+    var idx: UnsignedInteger;
+
+    function [Iteratable.Next](): Maybe<String> {
+        //todo.
     }
 }
 
-
+/// Calculates the edit distance between two strings using the [Levenshtein's Algorithm](http://example.com)
+public function LevenshteinEditRatio(str1: String, str2: String): Integer {
+    // todo.
+}

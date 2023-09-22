@@ -1670,7 +1670,7 @@ impl<L: Lexer> Parser<L> {
         let token = self.token().unwrap();
         // If [ is the next token, parse a trait impl.
         if token._type == TokenType::Bracket(LSquare) {
-            return self.trait_impl_method(is_public, is_static, is_async);
+            return self.trait_impl_method(is_public, is_static, is_async, info, model_address);
         }
         // else parse normal function.
         let name = check!(self.identifier());
@@ -1703,13 +1703,83 @@ impl<L: Lexer> Parser<L> {
         }
     }
 
+    /// Parses a trait implementation.
     fn trait_impl_method(
         &self,
-        _is_public: bool,
-        _is_static: bool,
-        _is_async: bool,
+        is_public: bool,
+        is_static: bool,
+        is_async: bool,
+        info: Option<Vec<String>>,
+        model_address: &SymbolAddress,
     ) -> Imperfect<(MethodSignature, ModelPropertyType)> {
-        todo!()
+        expect_or_return!(TokenType::Bracket(LSquare), self);
+        self.advance(); // Move past [
+        let mut trait_target = vec![];
+        let mut errors = vec![];
+        while self
+            .token()
+            .is_some_and(|token| token._type != TokenType::Bracket(RSquare))
+        {
+            let target = check!(self.type_expression());
+            match target {
+                TypeExpression::Union(_)
+                | TypeExpression::Functional(_)
+                | TypeExpression::This { .. }
+                | TypeExpression::Invalid => errors.push(errors::type_in_trait_position(target)),
+                TypeExpression::Member(membertype) => match unroll_to_discrete_types(membertype) {
+                    Ok(mut types) => trait_target.append(&mut types),
+                    Err(error) => errors.push(error),
+                },
+                TypeExpression::Discrete(discretetype) => {
+                    trait_target.push(discretetype);
+                }
+            }
+            if self
+                .token()
+                .is_some_and(|t| t._type == TokenType::Operator(Dot))
+            {
+                self.advance(); // move past .
+                continue;
+            }
+            break;
+        }
+        expect_or_return!(TokenType::Bracket(RSquare), self);
+        if trait_target.len() == 0 {
+            errors.push(errors::identifier_expected(self.token().unwrap().span));
+            return Partial::from_errors(errors);
+        }
+        // println!("{:?}\n\n\n", trait_target);
+        self.advance(); // Move past ]
+        let generic_params = check!(self.maybe_generic_params());
+        let params = check!(self.parameters());
+        let return_type = check!(self.maybe_type_label());
+        let (body, mut body_errors) = self
+            .block(ScopeType::ModelMethodOf {
+                model: *model_address,
+            })
+            .to_tuple();
+        errors.append(&mut body_errors);
+        if body.is_none() {
+            return Partial::from_errors(errors);
+        }
+        let body = body.unwrap();
+        let tuple = (
+            MethodSignature {
+                name: trait_target.last().unwrap().name.clone(),
+                info,
+                is_static,
+                is_async,
+                is_public,
+                generic_params,
+                params,
+                return_type,
+            },
+            ModelPropertyType::TraitImpl { trait_target, body },
+        );
+        Partial {
+            value: Some(tuple),
+            errors,
+        }
     }
 
     /// Parses a trait declaration. Assumes that `trait` is the current token.
@@ -2029,6 +2099,7 @@ impl<L: Lexer> Parser<L> {
         let statement = Statement::ReturnStatement(return_);
         Partial::from_tuple((Some(statement), errors))
     }
+
     /// Parses an identifier and advances. It assumes that the identifier is the current token.
     fn identifier(&self) -> Fallible<Identifier> {
         self.ended(errors::identifier_expected(self.last_token_end()))?;
@@ -2528,4 +2599,29 @@ impl<L: Lexer> Iterator for Parser<L> {
         self.token()?;
         Some(self.statement())
     }
+}
+
+fn unroll_to_discrete_types(membertype: MemberType) -> Result<Vec<DiscreteType>, ParseError> {
+    let mut types = vec![];
+    match *membertype.namespace {
+        TypeExpression::Member(membertype) => {
+            types.append(&mut unroll_to_discrete_types(membertype)?)
+        }
+        TypeExpression::Discrete(discretetype) => types.push(discretetype),
+        type_ @ (TypeExpression::Union(_)
+        | TypeExpression::Functional(_)
+        | TypeExpression::This { .. }
+        | TypeExpression::Invalid) => return Err(errors::type_in_trait_position(type_)),
+    }
+    match *membertype.property {
+        TypeExpression::Member(membertype) => {
+            types.append(&mut unroll_to_discrete_types(membertype)?)
+        }
+        TypeExpression::Discrete(discretetype) => types.push(discretetype),
+        type_ @ (TypeExpression::Union(_)
+        | TypeExpression::Functional(_)
+        | TypeExpression::This { .. }
+        | TypeExpression::Invalid) => return Err(errors::type_in_trait_position(type_)),
+    }
+    Ok(types)
 }

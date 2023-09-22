@@ -1822,3 +1822,55 @@ fn parse_return_statement() {
         })))
     )
 }
+
+#[test]
+fn parse_model_with_trait_impl() {
+    let mut parser = parse_text(
+        "
+    public model Person implements Greeting {
+        function [Greeting.SayHello]() {
+            // Code.
+        }
+    }    ",
+    );
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::ModelDeclaration(ModelDeclaration {
+            address: [0, 0, 0].into(),
+            body: ModelBody {
+                properties: vec![ModelProperty {
+                    index: 0,
+                    _type: ModelPropertyType::TraitImpl {
+                        trait_target: vec![
+                            DiscreteType {
+                                name: Identifier {
+                                    name: format!("Greeting"),
+                                    span: [3, 19, 3, 27].into()
+                                },
+                                generic_args: None,
+                                span: [3, 19, 3, 27].into()
+                            },
+                            DiscreteType {
+                                name: Identifier {
+                                    name: format!("SayHello"),
+                                    span: [3, 28, 3, 36].into()
+                                },
+                                generic_args: None,
+                                span: [3, 28, 3, 36].into()
+                            }
+                        ],
+                        body: Block {
+                            scope_id: 1,
+                            statements: vec![],
+                            span: [3, 40, 5, 10].into()
+                        }
+                    },
+                    span: [3, 9, 5, 10].into()
+                }],
+                constructor: None,
+                span: [2, 45, 6, 6].into()
+            },
+            span: [2, 5, 6, 6].into()
+        })
+    )
+}
