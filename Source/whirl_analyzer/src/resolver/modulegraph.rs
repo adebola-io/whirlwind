@@ -6,11 +6,12 @@ use std::{
 
 use whirl_errors::ResolveError;
 
-use crate::Module;
+use crate::{resolver::get_parent_dir, Module};
 
 /// Representation of all imports and the files and modules they represent.
 #[derive(Debug)]
 pub struct ModuleGraph {
+    root_folder: Option<PathBuf>,
     paths: RefCell<HashMap<PathBuf, usize>>,
     directories: HashMap<PathBuf, HashMap<String, usize>>,
     modules: Vec<Module>,
@@ -21,6 +22,7 @@ impl ModuleGraph {
     /// Create a new module graph.
     pub fn new() -> Self {
         ModuleGraph {
+            root_folder: None,
             paths: RefCell::new(HashMap::new()),
             directories: HashMap::new(),
             modules: vec![],
@@ -28,14 +30,14 @@ impl ModuleGraph {
         }
     }
     /// Add a module to the graph and returns its module number.
-    pub fn add_module(&mut self, module: Module) -> Option<usize> {
+    fn add_module(&mut self, module: Module) -> Option<usize> {
         let module_number = module.module_id;
         let module_path = module.module_path.as_ref()?.to_owned();
         let module_name = module.name.as_ref()?.to_string();
-        let module_directory = get_dir_folder(&module_path)?;
+        let module_directory = get_parent_dir(&module_path)?;
         let directories = &mut self.directories;
 
-        // println!("Adding module {module_number}, {module_name}");
+        println!("Adding module {module_number}, {module_name}");
 
         // Mark directory module.
         let dir_map = match directories.get_mut(module_directory) {
@@ -68,28 +70,32 @@ impl ModuleGraph {
     /// Build the graph, starting from the entry.
     pub fn unravel(&mut self) -> Option<()> {
         let enclosing_directory =
-            get_dir_folder(self.modules.first()?.module_path.as_ref()?)?.to_path_buf();
-
+            get_parent_dir(self.modules.first()?.module_path.as_ref()?)?.to_path_buf();
+        // Skip over the entry module instead of parsing twice.
         let skip = Some(self.modules.first()?.module_path.as_ref()?.to_owned());
-        self.add_modules_in_dir(&enclosing_directory, skip);
-        let entry_module = self.modules.first()?;
-        let imports = entry_module.get_use_imports();
-        // println!(
-        //     "In directory, {:?}, {:?}",
-        //     enclosing_directory,
-        //     self.directories.get(&enclosing_directory)
-        // );
-        for import in imports {
-            let module = self.get_module_in_dir(&enclosing_directory, &import.target.name.name);
-            println!("Module {}: {:#?}\n\n", import.target.name.name, module)
+        // Add modules downwards the module tree.
+        self.traverse_dir(&enclosing_directory, skip);
+
+        let module = self.modules.get(15)?;
+
+        for import in module.get_use_imports() {
+            let module = self.get_module_in_dir(
+                get_parent_dir(module.module_path.as_ref()?)?,
+                &import.target.name.name,
+            );
+            println!(
+                "Module {}: {:#?}\n\n",
+                import.target.name.name,
+                module.map(|m| &m.ambience)
+            )
         }
-        // println!("{:#?}", self.directories);
         Some(())
     }
-    /// Returns a list of the ids of the modules in a particular directory.
+    /// Dives into a directory and traverses all files and folders at all sub levels.
     /// If there are modules in the directory that have not been traversed,
     /// they will be added to the graph.
-    pub fn add_modules_in_dir(&mut self, dir: &Path, skipover: Option<PathBuf>) -> Vec<usize> {
+    /// Returns a list of the ids of the modules one level deep in a particular directory.
+    pub fn traverse_dir(&mut self, dir: &Path, skipover: Option<PathBuf>) -> Vec<usize> {
         let mut module_ids = vec![];
         let read_dir = dir.read_dir();
         if read_dir.is_err() {
@@ -131,16 +137,12 @@ impl ModuleGraph {
                     continue;
                 }
                 let base_name = base_name.unwrap();
-                if let Some(id) = self
-                    .add_modules_in_dir(&path, None)
-                    .iter()
-                    .find(|module_id| {
-                        self.modules[**module_id]
-                            .name
-                            .as_ref()
-                            .is_some_and(|name| name.as_str() == base_name)
-                    })
-                {
+                if let Some(id) = self.traverse_dir(&path, None).iter().find(|module_id| {
+                    self.modules[**module_id]
+                        .name
+                        .as_ref()
+                        .is_some_and(|name| name.as_str() == base_name)
+                }) {
                     module_ids.push(*id);
                 }
             }
@@ -149,7 +151,21 @@ impl ModuleGraph {
     }
     /// Return a module in a directory, only if it has been traversed.
     pub fn get_module_in_dir(&self, dir: &Path, name: &str) -> Option<&Module> {
-        let module_id = self.directories.get(dir)?.get(name).or_else(|| {
+        // Look one level up for super.
+        let (directory, name) = if name == "Super" {
+            let parent_dir = get_parent_dir(dir)?;
+            // Returning the package itself from a Super.
+            if parent_dir == self.root_folder.as_ref()? {
+                return self.modules.first();
+            }
+            (parent_dir, dir.file_stem()?.to_str()?)
+        } else if name == "Package" {
+            // Returning the start module.
+            return self.modules.first();
+        } else {
+            (dir, name)
+        };
+        let module_id = self.directories.get(directory)?.get(name).or_else(|| {
             // Find name in the module/name directory
             let mut nested = dir.to_path_buf();
             nested.push(name);
@@ -157,8 +173,15 @@ impl ModuleGraph {
         })?;
         self.modules.get(*module_id)
     }
-}
 
-fn get_dir_folder(module_path: &PathBuf) -> Option<&Path> {
-    module_path.ancestors().nth(1)
+    /// Set the entry module.
+    pub fn set_start(&mut self, module: Module) {
+        self.root_folder = module
+            .module_path
+            .as_ref()
+            .and_then(|path| get_parent_dir(path))
+            .map(|path| path.to_path_buf());
+
+        self.add_module(module);
+    }
 }

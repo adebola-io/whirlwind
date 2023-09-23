@@ -2,10 +2,9 @@
 module String;
 
 use Boolean.Boolean;
-use Super.Prelude.{Maybe, Iteratable, Range };
-use Package.{Internals.{Invoke, Invocation}, Memory.CharSpace, Ops.Addition};
-use Range.Range;
-use Numeric.{Integer, UnsignedInteger};
+use Super.Prelude.{ Maybe, Iteratable, Range };
+use Package.{ Internals.{ Invoke, Invocation }, Memory.CharSpace, Ops.Addition };
+use Numeric.{ Integer, UnsignedInteger };
 
 /// Model for creating, manipulating and formatting text sequences.
 public model String implements Addition {
