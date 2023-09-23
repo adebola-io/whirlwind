@@ -17,6 +17,8 @@ pub struct TextLexer<I: Iterator<Item = char>> {
     /// It is useful for recomputing the number of characters in the string.
     /// It does not contain the terminators at the end of the line.
     pub line_lengths: Vec<u32>,
+    /// Whether or not the core library prelude is included.
+    disable_prelude: bool,
     module_id: usize,
     saved: Option<Token>,
 }
@@ -24,6 +26,7 @@ pub struct TextLexer<I: Iterator<Item = char>> {
 impl<I: Iterator<Item = char>> From<I> for TextLexer<I> {
     fn from(value: I) -> Self {
         TextLexer {
+            module_id: 0,
             chars: value,
             position: 1,
             line: 1,
@@ -32,7 +35,7 @@ impl<I: Iterator<Item = char>> From<I> for TextLexer<I> {
             stash: None,
             line_lengths: vec![],
             saved: None,
-            module_id: 0,
+            disable_prelude: false,
         }
     }
 }
@@ -94,6 +97,10 @@ impl<I: Iterator<Item = char>> LexerInner for TextLexer<I> {
     fn remove_saved(&mut self) -> Option<Token> {
         self.saved.take()
     }
+
+    fn disable_prelude(&mut self) {
+        self.disable_prelude = true;
+    }
 }
 
 impl<I: Iterator<Item = char>> Lexer for TextLexer<I> {
@@ -103,6 +110,10 @@ impl<I: Iterator<Item = char>> Lexer for TextLexer<I> {
 
     fn module_id(&self) -> usize {
         self.module_id
+    }
+
+    fn allows_prelude(&self) -> bool {
+        !self.disable_prelude
     }
 }
 
@@ -125,5 +136,6 @@ pub fn lex_text(input: &str) -> TextLexer<Chars> {
         line_lengths: vec![],
         saved: None,
         module_id: 0,
+        disable_prelude: false,
     }
 }

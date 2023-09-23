@@ -1,12 +1,15 @@
-use crate::analyze_text;
 use std::path::PathBuf;
-use whirl_ast::{ModuleAmbience, Spannable, Statement};
-use whirl_errors::{LexError, ParseError, ProgramError, TypeError};
+use whirl_ast::{ModuleAmbience, Spannable, Statement, UseDeclaration};
+use whirl_errors::{LexError, ParseError, ProgramError, ResolveError, TypeError};
+
+use super::program::Program;
 
 /// A completely parsed program.
 /// This struct presents higher level operations for the frontend representation of source code.
 #[derive(Debug)]
 pub struct Module {
+    pub module_path: Option<PathBuf>,
+    pub module_id: usize,
     pub name: Option<String>,
     _line_lens: Vec<u32>,
     statements: Vec<Statement>,
@@ -14,65 +17,47 @@ pub struct Module {
     syntax_errors: Vec<ParseError>,
     type_errors: Vec<TypeError>,
     pub ambience: ModuleAmbience,
-}
-
-#[derive(Debug)]
-/// The origin of a module.
-pub enum ModuleSource {
-    PlainText(String),
-    FilePath {
-        /// Whether or not the current representation is a 1:1 match with the source file.
-        sync: FilePathSync,
-        /// Path to the source file.
-        path: PathBuf,
-    },
-}
-
-/// Values representing states of the module in regards to its source file.
-#[derive(Debug)]
-pub enum FilePathSync {
-    /// The module is more current than the source file.
-    Forward,
-    /// The module is less current than the source file.
-    Backward,
-    /// The module is a 1:1 match with the source file.
-    Stable,
+    pub allow_prelude: bool,
 }
 
 impl Module {
-    /// Build a module from its source.
-    pub fn build(&mut self, source: ModuleSource) {
-        match source {
-            ModuleSource::PlainText(source_code) => {
-                let mut inferrer = analyze_text(&source_code);
-                inferrer.infer();
-                // cursed (totally safe) code.
-                *self = Module {
-                    name: inferrer.ambience().get_module_name().map(|x| x.to_string()),
-                    _line_lens: inferrer.line_lengths,
-                    statements: inferrer.statements,
-                    lexical_errors: inferrer.lexical_errors,
-                    syntax_errors: inferrer.syntax_errors,
-                    type_errors: inferrer.type_errors.take(),
-                    ambience: inferrer.ambience.take(),
-                };
-            }
-            ModuleSource::FilePath { .. } => todo!(),
+    pub fn from_program(program: Program, module_id: usize, module_path: Option<PathBuf>) -> Self {
+        Module {
+            module_id,
+            module_path,
+            name: program.ambience().get_module_name().map(|x| x.to_string()),
+            _line_lens: program.line_lengths,
+            statements: program.statements,
+            lexical_errors: program.lexical_errors,
+            syntax_errors: program.syntax_errors,
+            type_errors: vec![],
+            ambience: program.ambience.take(),
+            allow_prelude: program.allow_prelude,
         }
     }
 
     /// Creates a module from Whirl source code text.
     pub fn from_text(value: String) -> Self {
-        let mut inferrer = analyze_text(&value);
-        inferrer.infer();
-        Module {
-            name: inferrer.ambience().get_module_name().map(|x| x.to_string()),
-            _line_lens: inferrer.line_lengths,
-            statements: inferrer.statements,
-            lexical_errors: inferrer.lexical_errors,
-            syntax_errors: inferrer.syntax_errors,
-            type_errors: inferrer.type_errors.take(),
-            ambience: inferrer.ambience.take(),
+        let program = Program::from_text(&value);
+        Module::from_program(program, 0, None)
+    }
+
+    /// Read a Whirl file and build a module from its contents.
+    pub fn from_path(path: PathBuf, module_id: usize) -> Result<Self, ResolveError> {
+        match path.extension() {
+            Some(ext) => {
+                if ext != "wrl" {
+                    return Err(whirl_errors::unknown_file_type(path));
+                }
+                // Todo: File::open blah blah blah
+                let entry_source = match std::fs::read_to_string(&path) {
+                    Ok(content) => content,
+                    Err(error) => return Err(whirl_errors::error_reading_entry_file(error)),
+                };
+                let program = Program::from_text(&entry_source);
+                Ok(Module::from_program(program, module_id, Some(path)))
+            }
+            None => return Err(whirl_errors::unknown_file_type(path)),
         }
     }
 
@@ -99,7 +84,22 @@ impl Module {
     }
 
     pub fn refresh_with_text(&mut self, new_text: String) {
-        self.build(ModuleSource::PlainText(new_text));
+        // cursed (totally safe) code.
+        *self = Module::from_program(
+            Program::from_text(&new_text),
+            self.module_id,
+            self.module_path.take(),
+        );
+    }
+
+    /// Returns an iterator over the imports in the module.
+    pub fn get_use_imports(&self) -> impl Iterator<Item = &UseDeclaration> {
+        self.statements()
+            .filter(|statement| statement.is_import())
+            .map(|statement| match statement {
+                Statement::UseDeclaration(usedecl) => usedecl,
+                _ => unreachable!(),
+            })
     }
 
     // /// Change parts of the module without rebuilding the entire representation.
@@ -186,3 +186,9 @@ pub fn _get_affected_scopes(nodes: Vec<&Statement>) -> Vec<usize> {
     }
     affected_scopes
 }
+
+// #[cfg(test)]
+// mod tests {
+//     use std::path::PathBuf;
+
+// }

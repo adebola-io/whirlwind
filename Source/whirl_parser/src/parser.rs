@@ -2037,13 +2037,13 @@ impl<L: Lexer> Parser<L> {
         if condition.is_none() {
             return Partial::from_errors(errors);
         }
-        let condition = condition.unwrap();
+        let condition = condition.value.unwrap();
         let mut body = self.block(ScopeType::Local);
         errors.append(&mut body.errors);
         if body.is_none() {
             return Partial::from_errors(errors);
         }
-        let body = body.unwrap();
+        let body = body.value.unwrap();
         let span = Span::from([start, body.span.end]);
         let while_statement = Statement::WhileStatement(WhileStatement {
             condition,

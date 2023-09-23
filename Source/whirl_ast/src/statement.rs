@@ -224,6 +224,10 @@ impl Statement {
     pub fn is_variable_declaration(&self) -> bool {
         matches!(self, Statement::VariableDeclaration)
     }
+
+    pub fn is_import(&self) -> bool {
+        matches!(self, Statement::UseDeclaration(_))
+    }
 }
 
 impl Positioning for Statement {

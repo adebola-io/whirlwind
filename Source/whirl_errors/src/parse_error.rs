@@ -26,6 +26,7 @@ pub enum ParserErrorType {
     NonGlobalModuleDeclaration,
     InvalidReturn,
     DuplicateConstructor,
+    EmptyPathList,
 }
 
 pub fn public_shorthand_var(span: Span) -> ParseError {

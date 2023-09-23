@@ -108,6 +108,8 @@ pub fn stringify_parse_error(error: &ParserErrorType) -> String {
             format!("Return statements can only be used within a function or method.")
         }
         ParserErrorType::DuplicateConstructor => format!("A model can only have at most one constructor function."),
+        ParserErrorType::EmptyPathList => format!("Empty list of items to use. Remove the '{{}}' to import the whole module."),
+        
         
     }
 }

@@ -1,13 +1,5 @@
-mod module;
-mod primitive;
+mod resolver;
 mod typechecker;
 
-use primitive::Primitives;
+pub use resolver::{resolve, Module, ModuleGraph};
 pub use typechecker::*;
-
-pub use module::Module;
-
-/// Parses and typechecks text input.
-pub fn analyze_text(input: &str) -> TypeInferrer {
-    TypeInferrer::from_text(input, Primitives::create())
-}

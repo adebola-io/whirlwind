@@ -1,13 +1,11 @@
 // !::no-prelude::!
 module String;
 
-use Integer.Integer;
 use Boolean.Boolean;
-use Iteratable.Iteratable;
-use Maybe.Maybe; 
+use Super.Prelude.{Maybe, Iteratable, Range };
 use Package.{Internals.{Invoke, Invocation}, Memory.CharSpace, Ops.Addition};
 use Range.Range;
-use UnsignedInteger.UnsignedInteger; 
+use Numeric.{Integer, UnsignedInteger};
 
 /// Model for creating, manipulating and formatting text sequences.
 public model String implements Addition {
@@ -308,20 +306,20 @@ public model String implements Addition {
     /// ```
     /// str := "\n\n\nWhat then shall we say?\n";
     /// 
-    /// Assert(str.TrimLeft()).Equals("What then shall we say?\n");
+    /// Assert(str.TrimStart()).Equals("What then shall we say?\n");
     /// ```
-    public function TrimLeft(): String {
-        Invoke(Invocation.StrTrimLeft, this)
+    public function TrimStart(): String {
+        Invoke(Invocation.StrTrimStart, this)
     } 
     /// Returns a version of the string without right whitespace padding.
     /// ## Usage
     /// ```
     /// str := "\nWhat then shall we say?\n\n\n";
     /// 
-    /// Assert(str.TrimRight()).Equals("\nWhat then shall we say?");
+    /// Assert(str.TrimEnd()).Equals("\nWhat then shall we say?");
     /// ```
-    public function TrimRight(): String {
-        Invoke(Invocation.TrimRight, this)
+    public function TrimEnd(): String {
+        Invoke(Invocation.TrimEnd, this)
     }
 }
 

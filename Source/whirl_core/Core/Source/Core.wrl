@@ -4,3 +4,5 @@ module Core;
 
 public use Prelude;
 public use Internals;
+public use Memory;
+public use Fs;

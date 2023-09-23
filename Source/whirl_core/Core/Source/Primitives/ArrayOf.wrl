@@ -1,0 +1,16 @@
+module ArrayOf;
+
+use Numeric.Integer;
+
+
+/// A contiguous, growable list of items.
+public model ArrayOf<T> {
+
+}
+
+/// A fixed-size list of items.
+public model StaticArrayOf<T> {
+    new(size: Integer) {
+
+    }
+}

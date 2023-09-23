@@ -60,10 +60,21 @@ fn is_valid_identifier_start(ch: char) -> bool {
 
 pub trait LexerInner {
     fn next_token_inner(&mut self) -> Option<Token> {
-        self.remove_saved().or_else(|| match self.remove_stashed() {
-            Some(ch) => self.token(ch),
-            None => self.next_char().map(|ch| self.token(ch)).flatten(),
-        })
+        self.remove_saved()
+            .or_else(|| match self.remove_stashed() {
+                Some(ch) => self.token(ch),
+                None => self.next_char().map(|ch| self.token(ch)).flatten(),
+            })
+            .map(|token| {
+                if let TokenType::Comment(Comment::LineComment(ref comment_text)) = token._type {
+                    if comment_text.trim_start() == " !::no-prelude::!"
+                        && self.line_lengths().len() > 2
+                    {
+                        self.disable_prelude();
+                    }
+                }
+                token
+            })
     }
 
     /// Scans a token.
@@ -148,6 +159,9 @@ pub trait LexerInner {
     fn save_token(&mut self, token: Token);
     /// Remove the saved token.
     fn remove_saved(&mut self) -> Option<Token>;
+
+    /// Disables the core library.
+    fn disable_prelude(&mut self);
 
     /// Gets the next character from the text while advancing the cursor.
     fn next_char(&mut self) -> Option<char>;

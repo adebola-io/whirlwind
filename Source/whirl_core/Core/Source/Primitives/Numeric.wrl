@@ -1,0 +1,18 @@
+// !::no-prelude::!
+module Numeric;
+
+/// An unsigned 8 bit integer.
+public model U8Integer {
+    
+}
+
+public model SignedInteger {
+    
+}
+
+/// An union data type to represent different unsigned integer values.
+public type UnsignedInteger = U8Integer;
+
+public type Integer = UnsignedInteger | SignedInteger;
+
+public type Number = Integer | Float | BigInt;

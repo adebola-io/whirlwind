@@ -1,7 +1,7 @@
 // !::no-prelude::!
 module Memory;
 
-use Prelude.{U8Integer, Iteratable};
+use Package.Prelude.{U8Integer, Iteratable};
 
 
 public model Bytes implements Iteratable<U8Integer> {

@@ -1,7 +1,0 @@
-// !::no-prelude::!
-module Prelude;
-
-public use Iteratable;
-public use Default;
-public use String;
-public use Maybe;
