@@ -718,7 +718,7 @@ impl<L: Lexer> Parser<L> {
                 errors,
             };
         }
-        let right = partial.unwrap();
+        let right = partial.value.unwrap();
         self.precedence_stack.borrow_mut().pop();
         let end = right.span().end;
         let span = Span::from([start, end]);
@@ -758,7 +758,7 @@ impl<L: Lexer> Parser<L> {
                 errors,
             };
         }
-        let right = partial.unwrap();
+        let right = partial.value.unwrap();
         self.precedence_stack.borrow_mut().pop();
         let end = right.span().end;
         let span = Span::from([start, end]);
@@ -1021,7 +1021,9 @@ impl<L: Lexer> Parser<L> {
             TokenType::Ident(_) => {
                 let statement = self.statement();
                 return if statement.exists_and(|s| s.is_variable_declaration()) {
-                    Partial::from_error(errors::public_shorthand_var(statement.unwrap().span()))
+                    Partial::from_error(errors::public_shorthand_var(
+                        statement.value.unwrap().span(),
+                    ))
                 } else {
                     Partial::from_error(errors::declaration_expected(Span::from([start, start])))
                 };
@@ -1146,9 +1148,16 @@ impl<L: Lexer> Parser<L> {
                     }))),
                     // Importing a list of items.
                     TokenType::Bracket(LCurly) => {
+                        let start = self.token().unwrap().span.start;
                         self.advance(); // Move past {
                         let use_path = self.use_path_list()?;
                         expect!(TokenType::Bracket(RCurly), self);
+                        let end = self.token().unwrap().span.end;
+                        if let UsePath::List(items) = &use_path {
+                            if items.len() == 0 {
+                                return Err(errors::empty_path_list(Span::from([start, end])));
+                            }
+                        }
                         self.advance(); // Move past }
                         Ok(use_path)
                     }
@@ -1509,17 +1518,17 @@ impl<L: Lexer> Parser<L> {
                         continue;
                     }
                     if !has_constructor {
-                        parameters = partial.unwrap();
+                        parameters = partial.value.unwrap();
                     }
                     let mut bloc_partial = self.block(ScopeType::ModelConstructorOf {
                         model: *model_address,
                     });
+                    body_errors.append(&mut bloc_partial.errors);
                     if bloc_partial.is_none() {
-                        body_errors.append(&mut bloc_partial.errors);
                         self.advance();
                         continue;
                     }
-                    constructor = Some(bloc_partial.unwrap());
+                    constructor = Some(bloc_partial.value.unwrap());
                     has_constructor = true
                 }
                 // parse public property.
