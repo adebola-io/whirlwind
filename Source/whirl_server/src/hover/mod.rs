@@ -1,9 +1,12 @@
+use std::cell::RefCell;
+
 use tower_lsp::lsp_types::{Hover, HoverContents, LanguageString, MarkedString};
 
 use whirl_analyzer::{Module, ModuleGraph};
 use whirl_ast::{
-    ASTVisitorNoArgs, Block, ModelPropertyType, Parameter, Positioning, PublicSignatureContext,
-    Signature, Span, ThreeTierContext, TraitPropertyType, Type, TypeExpression, TypedValueContext,
+    ASTVisitorNoArgs, Block, Identifier, ModelPropertyType, Parameter, Positioning,
+    PublicSignatureContext, Signature, Span, Spannable, ThreeTierContext, TraitPropertyType, Type,
+    TypeExpression, TypedValueContext,
 };
 use whirl_printer::HoverFormatter;
 use whirl_utils::get_parent_dir;
@@ -112,11 +115,17 @@ pub struct HoverFinder<'a> {
     module: &'a Module,
     graph: &'a ModuleGraph,
     pos: [u32; 2],
+    current_scope: RefCell<usize>,
 }
 
 impl<'a> HoverFinder<'a> {
     pub fn new(module: &'a Module, graph: &'a ModuleGraph, pos: [u32; 2]) -> Self {
-        Self { graph, module, pos }
+        Self {
+            graph,
+            module,
+            pos,
+            current_scope: RefCell::new(0),
+        }
     }
 
     fn use_target_hover(&self, target: &whirl_ast::UseTarget) -> Option<HoverInfo> {
@@ -134,12 +143,12 @@ impl<'a> HoverFinder<'a> {
             // same as hover over target name.
             whirl_ast::UsePath::Me => return None, // technically unreachable.
             whirl_ast::UsePath::Item(sub_target) => {
-                return self.use_sub_target_hover(target_module, sub_target);
+                return self.use_sub_target_hover(target_module, sub_target)
             }
             whirl_ast::UsePath::List(list) => {
                 for sub_target in list.iter() {
-                    if sub_target.name.span.contains(self.pos) {
-                        return self.use_sub_target_hover(target_module, sub_target);
+                    if let Some(hover) = self.use_sub_target_hover(target_module, sub_target) {
+                        return Some(hover);
                     }
                 }
             }
@@ -201,8 +210,10 @@ impl<'a> HoverFinder<'a> {
             }
             whirl_ast::UsePath::List(sub_list) => {
                 for sub_sub_target in sub_list.iter() {
-                    if sub_sub_target.name.span.contains(self.pos) {
-                        return self.use_sub_target_hover(sub_target_module, sub_sub_target);
+                    if let Some(hover) =
+                        self.use_sub_target_hover(sub_target_module, sub_sub_target)
+                    {
+                        return Some(hover);
                     }
                 }
             }
@@ -224,74 +235,7 @@ impl<'a> ASTVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
         }
         return None;
     }
-
-    /// Hover over a shorthand variable declaration.
-    fn shorthand_var_decl(
-        &self,
-        var_decl: &whirl_ast::ShorthandVariableDeclaration,
-    ) -> Option<HoverInfo> {
-        let scope = self.module.ambience.get_scope(var_decl.address.scope_id)?;
-        let signature = scope.get_variable(var_decl.address.entry_no)?;
-        // hover over variable name.
-        if signature.name.span.contains(self.pos) {
-            return Some(HoverInfo::from(&(&self.module.ambience, signature)));
-        }
-        // hover over type.
-        type_hover!(signature.var_type, scope, self);
-        // hover over value.
-        return self.expr(&var_decl.value);
-    }
-
-    /// Hover over a model.
-    fn model_decl(&self, model_decl: &whirl_ast::ModelDeclaration) -> Option<HoverInfo> {
-        let module_ambience = &self.module.ambience;
-        let scope = module_ambience.get_scope(model_decl.address.scope_id)?;
-        let model = scope.get_model(model_decl.address.entry_no)?;
-        // hover over model name.
-        name_hover!(model, scope, self);
-        // hover over trait impl.
-        for implentation in &model.implementations {
-            type_hover!(implentation, scope, self);
-        }
-        // hover over an attribute, method or implementation.
-        for property in &model_decl.body.properties {
-            if property.span.contains(self.pos) {
-                match &property._type {
-                    ModelPropertyType::Attribute => {
-                        let attribute = model.attributes.get(property.index)?;
-                        // hover over attribute name.
-                        sub_name_hover!(
-                            attribute,
-                            model,
-                            scope,
-                            &TypedValueContext {
-                                module_ambience,
-                                atom: attribute
-                            },
-                            self
-                        );
-                        // hover over attribute type.
-                        type_hover!(attribute.var_type, scope, self);
-                    }
-                    ModelPropertyType::Method { body } => {
-                        let method = model.methods.get(property.index)?;
-                        // Hovering over a method name.
-                        sub_name_hover!(method, model, scope, method, self);
-                        // Other hovers.
-                        return self.fn_parts_hover(
-                            &method.params,
-                            &method.return_type,
-                            &body,
-                            scope.id,
-                        );
-                    }
-                    ModelPropertyType::TraitImpl { .. } => return None,
-                }
-            }
-        }
-        return None;
-    }
-
+    /// Hover over a trait declaration.
     fn trait_declaraion(&self, trait_decl: &whirl_ast::TraitDeclaration) -> Option<HoverInfo> {
         let module_ambience = &self.module.ambience;
         let scope = module_ambience.get_scope(trait_decl.address.scope_id)?;
@@ -336,7 +280,31 @@ impl<'a> ASTVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
         }
         return None;
     }
-
+    /// Hover over a type declaration.:
+    fn type_decl(&self, type_decl: &whirl_ast::TypeDeclaration) -> Option<HoverInfo> {
+        let scope = self.module.ambience.get_scope(type_decl.address.scope_id)?;
+        let signature = scope.get_type(type_decl.address.entry_no)?;
+        // hover over type name.
+        name_hover!(signature, scope, self);
+        // hover over type value.
+        return self.type_hover(&signature.value, scope.id);
+    }
+    /// Hover over a shorthand variable declaration.
+    fn shorthand_var_decl(
+        &self,
+        var_decl: &whirl_ast::ShorthandVariableDeclaration,
+    ) -> Option<HoverInfo> {
+        let scope = self.module.ambience.get_scope(var_decl.address.scope_id)?;
+        let signature = scope.get_variable(var_decl.address.entry_no)?;
+        // hover over variable name.
+        if signature.name.span.contains(self.pos) {
+            return Some(HoverInfo::from(&(&self.module.ambience, signature)));
+        }
+        // hover over type.
+        type_hover!(signature.var_type, scope, self);
+        // hover over value.
+        return self.expr(&var_decl.value);
+    }
     /// Hover over a function.
     fn function(&self, function: &whirl_ast::FunctionDeclaration) -> Option<HoverInfo> {
         let scope = self.module.ambience.get_scope(function.address.scope_id)?;
@@ -347,17 +315,6 @@ impl<'a> ASTVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
         // hover over function parts.
         return self.fn_parts_hover(&signature.params, &signature.return_type, body, scope.id);
     }
-
-    /// Hover over a type declaration.:
-    fn type_decl(&self, type_decl: &whirl_ast::TypeDeclaration) -> Option<HoverInfo> {
-        let scope = self.module.ambience.get_scope(type_decl.address.scope_id)?;
-        let signature = scope.get_type(type_decl.address.entry_no)?;
-        // hover over type name.
-        name_hover!(signature, scope, self);
-        // hover over type value.
-        return self.type_hover(&signature.value, scope.id);
-    }
-
     /// Hover over an enum declaration.
     fn enum_decl(&self, enum_decl: &whirl_ast::EnumDeclaration) -> Option<HoverInfo> {
         let scope = self.module.ambience.get_scope(enum_decl.address.scope_id)?;
@@ -377,6 +334,138 @@ impl<'a> ASTVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
                 return Some(HoverInfo::from(&(&signature.name, variant)));
             }
         }
+        return None;
+    }
+    /// Hover over a model.
+    fn model_decl(&self, model_decl: &whirl_ast::ModelDeclaration) -> Option<HoverInfo> {
+        let module_ambience = &self.module.ambience;
+        let scope = module_ambience.get_scope(model_decl.address.scope_id)?;
+        let model = scope.get_model(model_decl.address.entry_no)?;
+        // hover over model name.
+        name_hover!(model, scope, self);
+        // hover over trait impl.
+        for implentation in &model.implementations {
+            type_hover!(implentation, scope, self);
+        }
+        // hover over an attribute, method or implementation.
+        for property in &model_decl.body.properties {
+            if property.span.contains(self.pos) {
+                match &property._type {
+                    ModelPropertyType::Attribute => {
+                        let attribute = model.attributes.get(property.index)?;
+                        // hover over attribute name.
+                        sub_name_hover!(
+                            attribute,
+                            model,
+                            scope,
+                            &TypedValueContext {
+                                module_ambience,
+                                atom: attribute
+                            },
+                            self
+                        );
+                        // hover over attribute type.
+                        type_hover!(attribute.var_type, scope, self);
+                    }
+                    ModelPropertyType::Method { body } => {
+                        let method = model.methods.get(property.index)?;
+                        // Hovering over a method name.
+                        sub_name_hover!(method, model, scope, method, self);
+                        // Other hovers.
+                        return self.fn_parts_hover(
+                            &method.params,
+                            &method.return_type,
+                            &body,
+                            scope.id,
+                        );
+                    }
+                    ModelPropertyType::TraitImpl { body, .. } => {
+                        let method = model.methods.get(property.index)?;
+                        sub_name_hover!(method, model, scope, method, self);
+
+                        // Hover over name.
+                        // Other hovers
+                        return self.fn_parts_hover(
+                            &method.params,
+                            &method.return_type,
+                            &body,
+                            scope.id,
+                        );
+                    }
+                }
+            }
+        }
+        return None;
+    }
+    /// Hover over a call expression.
+    fn call_expr(&self, call: &whirl_ast::CallExpr) -> Option<HoverInfo> {
+        if call.caller.span().contains(self.pos) {
+            return self.expr(&call.caller);
+        }
+        for argument in call.arguments.iter() {
+            if argument.span().contains(self.pos) {
+                return self.expr(argument);
+            }
+        }
+        return None;
+    }
+    /// Hover over `this`.
+    fn this_expr(&self, _this: &whirl_ast::ThisExpr) -> Option<HoverInfo> {
+        let current_scope = self.current_scope.borrow().clone();
+        let shadow = self.module.ambience.create_shadow(current_scope);
+        let method_parent = shadow.get_method_context()?;
+
+        let hvfinder =
+            self.create_mock_hover_over(method_parent.entry.ident()?, method_parent.scope.id);
+
+        match method_parent.entry {
+            whirl_ast::ScopeEntry::Model(model) => {
+                name_hover!(model, method_parent.scope, hvfinder)
+            }
+            whirl_ast::ScopeEntry::Trait(trait_) => {
+                name_hover!(trait_, method_parent.scope, hvfinder)
+            }
+            _ => unreachable!(),
+        }
+        return None;
+    }
+    /// Hover over an identifier.
+    fn identifier(&self, ident: &whirl_ast::Identifier) -> Option<HoverInfo> {
+        let current_scope = self.current_scope.borrow().clone();
+        let shadow = self.module.ambience.create_shadow(current_scope);
+        let search = shadow.lookup(&ident.name)?;
+        let scope = search.scope;
+
+        // Mock hover over the actual atom.
+        let ident = search.entry.ident()?;
+        let span = ident.span;
+        let pos = span.start;
+        let hvfinder = HoverFinder {
+            module: self.module,
+            graph: self.graph,
+            pos,
+            current_scope: RefCell::new(scope.id),
+        };
+
+        match &search.entry {
+            whirl_ast::ScopeEntry::Function(f) => name_hover!(f, scope, hvfinder),
+            whirl_ast::ScopeEntry::Type(t) => name_hover!(t, scope, hvfinder),
+            whirl_ast::ScopeEntry::Model(m) => name_hover!(m, scope, hvfinder),
+            whirl_ast::ScopeEntry::Enum(e) => name_hover!(e, scope, hvfinder),
+            whirl_ast::ScopeEntry::Variable(_) => {}
+            whirl_ast::ScopeEntry::Parameter(param) => return Some(param.into()),
+            whirl_ast::ScopeEntry::Trait(t) => name_hover!(t, scope, hvfinder),
+            whirl_ast::ScopeEntry::UseImport(u) => {
+                let declaration = self
+                    .module
+                    .statements()
+                    .map(|statement| statement.closest_nodes_to(u.name.span))
+                    .flatten()
+                    .next()?;
+                return hvfinder.statement(declaration);
+            }
+            whirl_ast::ScopeEntry::ReservedSpace => {}
+        };
         return None;
     }
 }
@@ -455,12 +544,27 @@ impl HoverFinder<'_> {
         if !body.span.contains(self.pos) {
             return None;
         }
+        let current_scope = *self.current_scope.borrow();
+        *self.current_scope.borrow_mut() = body.scope_id;
         for statement in &body.statements {
             let hover_info = self.statement(statement);
             if hover_info.is_some() {
                 return hover_info;
             }
         }
+        *self.current_scope.borrow_mut() = current_scope;
         return None;
+    }
+
+    /// Create a hover with its position set over an identifier.
+    fn create_mock_hover_over(&self, ident: &Identifier, current_scope: usize) -> HoverFinder {
+        let span = ident.span;
+        let pos = span.start;
+        HoverFinder {
+            module: self.module,
+            graph: self.graph,
+            pos,
+            current_scope: RefCell::new(current_scope),
+        }
     }
 }

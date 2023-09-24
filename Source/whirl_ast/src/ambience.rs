@@ -261,6 +261,33 @@ impl ModuleAmbience {
     pub fn set_module_name(&mut self, name: Identifier) {
         self.module_name = Some(name);
     }
+    /// Checks up the scope tree to retrieve the meaning of `this`,
+    /// which could either be a trait or a model.
+    pub fn get_method_context(&self) -> Option<ScopeSearch> {
+        let mut current_scope = self.current_scope;
+        loop {
+            let scope = &self.scopes[current_scope];
+            match scope._type {
+                ScopeType::ModelConstructorOf { model: address }
+                | ScopeType::ModelMethodOf { model: address }
+                | ScopeType::TraitMethodOf { _trait: address } => {
+                    let entry = self.get_entry_unguarded(address);
+                    return Some(ScopeSearch {
+                        index: address.entry_no,
+                        entry,
+                        scope,
+                    });
+                }
+                _ => {
+                    if let Some(parent) = scope.parent_index {
+                        current_scope = parent;
+                    } else {
+                        return None;
+                    }
+                }
+            }
+        }
+    }
     /// Returns an entry using a scope address without checks.
     /// Panics if the scope or entry is not found.
     pub fn get_entry_unguarded(&self, address: SymbolAddress) -> &ScopeEntry {
@@ -329,6 +356,33 @@ impl<'a> ModuleAmbienceShadow<'a> {
                     Some(parent_index) => current_scope = parent_index,
                     None => return None,
                 },
+            }
+        }
+    }
+    /// Checks up the scope tree to retrieve the meaining of `this`,
+    /// which could either be a trait or a model.
+    pub fn get_method_context(&self) -> Option<ScopeSearch> {
+        let mut current_scope = self.current_scope;
+        loop {
+            let scope = &self.base.scopes[current_scope];
+            match scope._type {
+                ScopeType::ModelConstructorOf { model: address }
+                | ScopeType::ModelMethodOf { model: address }
+                | ScopeType::TraitMethodOf { _trait: address } => {
+                    let entry = self.base.get_entry_unguarded(address);
+                    return Some(ScopeSearch {
+                        index: address.entry_no,
+                        entry,
+                        scope,
+                    });
+                }
+                _ => {
+                    if let Some(parent) = scope.parent_index {
+                        current_scope = parent;
+                    } else {
+                        return None;
+                    }
+                }
             }
         }
     }

@@ -3,4 +3,4 @@
 module Abstract;
 
 
-// public type Abstract = Compiler built-in.
+public type Abstract = Abstract;

@@ -2,18 +2,19 @@
 /// skdfi
 module String;
 
-use Boolean;
+use Boolean.Boolean;
 use Package.{ 
-    Internals.{ Invoke, Invocation }, 
-    Memory.CharSpace, 
+    Internals.{Invoke, Invocation}, 
+    Memory.{CharSpace, Bytes}, 
     Ops.Addition, 
     Prelude.{ Maybe, Iteratable, Range } 
 };
 use Numeric.{ Integer, UnsignedInteger };
+use ArrayOf.ArrayOf;
 
 /// Model for creating, manipulating and formatting text sequences.
 public model String implements Addition {
-    var bytes: Arrayof<CharSpace>;
+    var bytes: ArrayOf<CharSpace>;
     /// Adds two strings together.
     /// ## Usage
     /// ```
@@ -330,7 +331,7 @@ public model String implements Addition {
 public model Chars implements Iteratable<String> {
     var idx: UnsignedInteger;
 
-    function [Iteratable.Next](): Maybe<String> {
+    public function [Iteratable.Next](): Maybe<String> {
         //todo.
     }
 }

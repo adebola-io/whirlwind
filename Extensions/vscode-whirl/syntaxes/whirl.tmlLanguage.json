@@ -217,6 +217,7 @@
             }
          },
          "patterns": [
+            { "include": "#comment" },
             { "include": "#injunction" },
             {
                "name": "entity.name.class support.class",

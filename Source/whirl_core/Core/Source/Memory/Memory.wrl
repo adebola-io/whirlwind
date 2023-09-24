@@ -3,7 +3,7 @@ module Memory;
 
 use Package.Prelude.{U8Integer, Iteratable};
 
-
+/// An iterator that produces bytes.
 public model Bytes implements Iteratable<U8Integer> {
 
     // todo
