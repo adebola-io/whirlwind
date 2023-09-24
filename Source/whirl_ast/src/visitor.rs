@@ -1,3 +1,4 @@
+
 use crate::{
     AccessExpr, ArrayExpr, AssignmentExpr, BinaryExpr, Block, CallExpr, EnumDeclaration,
     Expression, FunctionDeclaration, FunctionExpr, Identifier, IfExpression, IndexExpr, LogicExpr,
@@ -187,8 +188,12 @@ pub trait ASTVisitorNoArgs<Output: Default = ()> {
             Statement::FreeExpression(e) => self.free_expr(e),
             Statement::TraitDeclaration(t) => self.trait_declaraion(t),
             Statement::ModuleDeclaration(m) => self.module_declaration(m),
+            Statement::UseDeclaration(u) => self.use_declaration(u),
             _ => Output::default(),
         }
+    }
+    fn use_declaration(&self, use_decl: &UseDeclaration) -> Output {
+        Output::default()
     }
     fn module_declaration(&self, module: &ModuleDeclaration) -> Output {
         Output::default()

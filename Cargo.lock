@@ -804,10 +804,12 @@ version = "0.1.0"
 dependencies = [
  "tokio",
  "tower-lsp",
+ "url",
  "whirl_analyzer",
  "whirl_ast",
  "whirl_errors",
  "whirl_printer",
+ "whirl_utils",
 ]
 
 [[package]]

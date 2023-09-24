@@ -1,10 +1,12 @@
 use tower_lsp::lsp_types::{Hover, HoverContents, LanguageString, MarkedString};
 
+use whirl_analyzer::{Module, ModuleGraph};
 use whirl_ast::{
-    ASTVisitorNoArgs, Block, ModelPropertyType, ModuleAmbience, Parameter, PublicSignatureContext,
-    Signature, Span, ThreeTierContext, TraitPropertyType, Type, TypeExpression, TypedValueContext,
+    ASTVisitorNoArgs, Block, ModelPropertyType, Parameter, PublicSignatureContext, Signature, Span,
+    ThreeTierContext, TraitPropertyType, Type, TypeExpression, TypedValueContext,
 };
 use whirl_printer::HoverFormatter;
+use whirl_utils::get_parent_dir;
 
 /// I can only write it so many times.
 /// Generates a hover over signatures.
@@ -14,7 +16,7 @@ macro_rules! name_hover {
             if $scope.is_global() && $signature.is_public {
                 let global_model_hover = PublicSignatureContext {
                     signature: $signature,
-                    module_ambience: $hvfinder.module_ambience,
+                    module_ambience: &$hvfinder.module.ambience,
                 };
                 return Some((&global_model_hover).into());
             }
@@ -42,11 +44,11 @@ macro_rules! sub_name_hover {
             let hover_over = ThreeTierContext {
                 signature: $sgn2,
                 parent: $parent,
-                module_ambience: $self.module_ambience,
+                module_ambience: &$self.module.ambience,
             };
             if $scope.is_global() && $parent.is_public && $sgn1.is_public {
                 let global_hover = PublicSignatureContext {
-                    module_ambience: $self.module_ambience,
+                    module_ambience: &$self.module.ambience,
                     signature: &hover_over,
                 };
                 return Some((&global_hover).into());
@@ -60,16 +62,17 @@ macro_rules! sub_name_hover {
 pub struct HoverInfo {
     pub contents: HoverContents,
 }
-impl HoverInfo {
-    fn from_str(value: &str) -> HoverInfo {
-        HoverInfo {
-            contents: HoverContents::Array(vec![MarkedString::LanguageString(LanguageString {
-                language: format!("wrl"),
-                value: value.to_owned(),
-            })]),
-        }
-    }
-}
+
+// impl HoverInfo {
+//     fn from_str(value: &str) -> HoverInfo {
+//         HoverInfo {
+//             contents: HoverContents::Array(vec![MarkedString::LanguageString(LanguageString {
+//                 language: format!("wrl"),
+//                 value: value.to_owned(),
+//             })]),
+//         }
+//     }
+// }
 
 impl<T: Signature + HoverFormatter> From<&T> for HoverInfo {
     fn from(value: &T) -> Self {
@@ -106,26 +109,87 @@ impl From<HoverInfo> for Hover {
 }
 
 pub struct HoverFinder<'a> {
-    module_ambience: &'a ModuleAmbience,
+    module: &'a Module,
+    graph: &'a ModuleGraph,
     pos: [u32; 2],
 }
 
 impl<'a> HoverFinder<'a> {
-    pub fn new(module_ambience: &'a ModuleAmbience, pos: [u32; 2]) -> Self {
-        Self {
-            module_ambience,
-            pos,
+    pub fn new(module: &'a Module, graph: &'a ModuleGraph, pos: [u32; 2]) -> Self {
+        Self { graph, module, pos }
+    }
+
+    fn use_target_hover(&self, target: &whirl_ast::UseTarget) -> Option<HoverInfo> {
+        let parent_folder = get_parent_dir(self.module.module_path.as_ref()?)?;
+        let target_module = self
+            .graph
+            .get_module_in_dir(parent_folder, &target.name.name);
+        // hover over target name.
+        if target.name.span.contains(self.pos) {
+            // todo: change main module to package name.
+            return Some((&target_module?.ambience).into());
         }
+        // hover over any other.
+        match &target.path {
+            // same as hover over target name.
+            whirl_ast::UsePath::Me => return None, // technically unreachable.
+            whirl_ast::UsePath::Item(sub_target) => {
+                if sub_target.name.span.contains(self.pos) {
+                    return self.use_sub_target_hover(target_module?, sub_target);
+                }
+            }
+            whirl_ast::UsePath::List(list) => {
+                for sub_target in list.iter() {
+                    if sub_target.name.span.contains(self.pos) {
+                        return self.use_sub_target_hover(target_module?, sub_target);
+                    }
+                }
+            }
+        }
+        return None;
+    }
+
+    /// Hovering over an atom of the target.
+    fn use_sub_target_hover(
+        &self,
+        target_module: &Module,
+        sub_target: &whirl_ast::UseTarget,
+    ) -> Option<HoverInfo> {
+        // Create mock hover over the contents of the actual declaration.
+        let ambience = target_module.ambience.create_shadow(0);
+        let target_decl = ambience.lookaround(&sub_target.name.name)?;
+        let target_decl_ident = target_decl.entry.ident()?;
+        let span = target_decl_ident.span;
+        let original_position = [span.start[0], span.start[1]];
+        let hover_finder = HoverFinder::new(target_module, self.graph, original_position);
+        let scope = target_decl.scope;
+
+        match target_decl.entry {
+            whirl_ast::ScopeEntry::Function(f) => name_hover!(f, scope, hover_finder),
+            whirl_ast::ScopeEntry::Type(t) => name_hover!(t, scope, hover_finder),
+            whirl_ast::ScopeEntry::Model(m) => name_hover!(m, scope, hover_finder),
+            whirl_ast::ScopeEntry::Enum(e) => name_hover!(e, scope, hover_finder),
+            whirl_ast::ScopeEntry::Variable(v) => {
+                return Some(HoverInfo::from(&(&target_module.ambience, v)))
+            }
+            whirl_ast::ScopeEntry::Trait(t) => name_hover!(t, scope, hover_finder),
+            whirl_ast::ScopeEntry::Parameter(_) | whirl_ast::ScopeEntry::ReservedSpace => {
+                return None
+            } // technically unreachable
+        }
+        return None;
     }
 }
 
 impl<'a> ASTVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
+    /// Hover over a use import.
+    fn use_declaration(&self, use_decl: &whirl_ast::UseDeclaration) -> Option<HoverInfo> {
+        return self.use_target_hover(&use_decl.target);
+    }
     /// Hover over the module declaration.
     fn module_declaration(&self, _module: &whirl_ast::ModuleDeclaration) -> Option<HoverInfo> {
         if _module.span.contains(self.pos) {
-            return Some(HoverInfo::from_str(
-                format!("module {}", self.module_ambience.get_module_name()?).as_str(),
-            ));
+            return Some((&self.module.ambience).into());
         }
         return None;
     }
@@ -135,11 +199,11 @@ impl<'a> ASTVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
         &self,
         var_decl: &whirl_ast::ShorthandVariableDeclaration,
     ) -> Option<HoverInfo> {
-        let scope = self.module_ambience.get_scope(var_decl.address.scope_id)?;
+        let scope = self.module.ambience.get_scope(var_decl.address.scope_id)?;
         let signature = scope.get_variable(var_decl.address.entry_no)?;
         // hover over variable name.
         if signature.name.span.contains(self.pos) {
-            return Some(HoverInfo::from(&(self.module_ambience, signature)));
+            return Some(HoverInfo::from(&(&self.module.ambience, signature)));
         }
         // hover over type.
         type_hover!(signature.var_type, scope, self);
@@ -149,7 +213,7 @@ impl<'a> ASTVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
 
     /// Hover over a model.
     fn model_decl(&self, model_decl: &whirl_ast::ModelDeclaration) -> Option<HoverInfo> {
-        let module_ambience = self.module_ambience;
+        let module_ambience = &self.module.ambience;
         let scope = module_ambience.get_scope(model_decl.address.scope_id)?;
         let model = scope.get_model(model_decl.address.entry_no)?;
         // hover over model name.
@@ -198,7 +262,7 @@ impl<'a> ASTVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
     }
 
     fn trait_declaraion(&self, trait_decl: &whirl_ast::TraitDeclaration) -> Option<HoverInfo> {
-        let module_ambience = self.module_ambience;
+        let module_ambience = &self.module.ambience;
         let scope = module_ambience.get_scope(trait_decl.address.scope_id)?;
         let trait_ = scope.get_trait(trait_decl.address.entry_no)?;
         // hover over model name.
@@ -244,7 +308,7 @@ impl<'a> ASTVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
 
     /// Hover over a function.
     fn function(&self, function: &whirl_ast::FunctionDeclaration) -> Option<HoverInfo> {
-        let scope = self.module_ambience.get_scope(function.address.scope_id)?;
+        let scope = self.module.ambience.get_scope(function.address.scope_id)?;
         let signature = scope.get_function(function.address.entry_no)?;
         let body = &function.body;
         // hover over function name.
@@ -255,7 +319,7 @@ impl<'a> ASTVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
 
     /// Hover over a type declaration.:
     fn type_decl(&self, type_decl: &whirl_ast::TypeDeclaration) -> Option<HoverInfo> {
-        let scope = self.module_ambience.get_scope(type_decl.address.scope_id)?;
+        let scope = self.module.ambience.get_scope(type_decl.address.scope_id)?;
         let signature = scope.get_type(type_decl.address.entry_no)?;
         // hover over type name.
         name_hover!(signature, scope, self);
@@ -265,7 +329,7 @@ impl<'a> ASTVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
 
     /// Hover over an enum declaration.
     fn enum_decl(&self, enum_decl: &whirl_ast::EnumDeclaration) -> Option<HoverInfo> {
-        let scope = self.module_ambience.get_scope(enum_decl.address.scope_id)?;
+        let scope = self.module.ambience.get_scope(enum_decl.address.scope_id)?;
         let signature = scope.get_enum(enum_decl.address.entry_no)?;
         // hover over enum name.
         name_hover!(signature, scope, self);
@@ -274,7 +338,7 @@ impl<'a> ASTVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
             if variant.span.contains(self.pos) {
                 if scope.is_global() && signature.is_public {
                     let global_hover = PublicSignatureContext {
-                        module_ambience: self.module_ambience,
+                        module_ambience: &self.module.ambience,
                         signature: &(&signature.name, variant),
                     };
                     return Some((&global_hover).into());
@@ -295,9 +359,9 @@ impl HoverFinder<'_> {
                     // Hovering over a discrete type name.
                     if discrete_type.name.span.contains(self.pos) {
                         // let type_eval =
-                        //     evaluate_discrete_type(&self.module_ambience, discrete_type, scope_id);
+                        //     evaluate_discrete_type(&self.module.ambience, discrete_type, scope_id);
                         // if let Ok(eval) = type_eval {
-                        //     return Some(HoverInfo::from(&(self.module_ambience, eval)));
+                        //     return Some(HoverInfo::from(&(self.module.ambience, eval)));
                         // }
                     } else {
                         // Hovering over a discrete type generic argument.

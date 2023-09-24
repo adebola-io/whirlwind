@@ -5,7 +5,7 @@ public use Iteratable.Iteratable;
 public use Default.Default;
 public use Maybe.Maybe;
 public use Package;
-public use Primitives.{
+public use Package.Primitives.{
     U8Integer,
     U16Integer,
     U32Integer,

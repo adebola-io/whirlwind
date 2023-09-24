@@ -91,6 +91,20 @@ impl ScopeEntry {
         }
     }
 
+    /// Returns the identifier of an entry.
+    pub fn ident(&self) -> Option<&crate::Identifier> {
+        match self {
+            ScopeEntry::Function(FunctionSignature { name, .. })
+            | ScopeEntry::Type(TypeSignature { name, .. })
+            | ScopeEntry::Model(ModelSignature { name, .. })
+            | ScopeEntry::Enum(EnumSignature { name, .. })
+            | ScopeEntry::Variable(VariableSignature { name, .. })
+            | ScopeEntry::Trait(TraitSignature { name, .. })
+            | ScopeEntry::Parameter(Parameter { name, .. }) => Some(&name),
+            ScopeEntry::ReservedSpace => None,
+        }
+    }
+
     /// Returns an entry as a variable signature. Panics if the entry is not a variable variant.
     pub fn var(&self) -> &VariableSignature {
         match self {

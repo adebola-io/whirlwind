@@ -1,0 +1,11 @@
+module Primitives;
+
+public use String.String;
+public use ArrayOf.ArrayOf;
+public use Numeric.{
+    U8Integer,
+    SignedInteger,
+    UnsignedInteger,
+    Integer,
+    Number,
+};

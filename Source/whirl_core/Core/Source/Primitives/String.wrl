@@ -1,9 +1,14 @@
 // !::no-prelude::!
+/// skdfi
 module String;
 
 use Boolean.Boolean;
-use Super.Prelude.{ Maybe, Iteratable, Range };
-use Package.{ Internals.{ Invoke, Invocation }, Memory.CharSpace, Ops.Addition };
+use Package.{ 
+    Internals.{ Invoke, Invocation }, 
+    Memory.CharSpace, 
+    Ops.Addition, 
+    Prelude.{ Maybe, Iteratable, Range } 
+};
 use Numeric.{ Integer, UnsignedInteger };
 
 /// Model for creating, manipulating and formatting text sequences.
@@ -330,7 +335,7 @@ public model Chars implements Iteratable<String> {
     }
 }
 
-/// Calculates the edit distance between two strings using the [Levenshtein's Algorithm](http://example.com)
+/// Calculates the edit distance between two strings using the [Levenshtein's Algorithm](http://example.com).
 public function LevenshteinEditRatio(str1: String, str2: String): Integer {
     // todo.
 }

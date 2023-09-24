@@ -1,8 +1,11 @@
 // !::no-prelude::!
-module Core;
+/// ## The Whirl Core Library
+/// 
+module Main;
 
 
 public use Prelude;
 public use Internals;
 public use Memory;
 public use Fs;
+public use Primitives;

@@ -13,6 +13,7 @@ pub struct DirectoryAmbience {}
 pub struct ModuleAmbience {
     module_id: usize,
     module_name: Option<Identifier>,
+    pub module_info: Option<Vec<String>>,
     scopes: Vec<Scope>,
     current_scope: usize,
 }
@@ -36,6 +37,7 @@ impl ModuleAmbience {
         ModuleAmbience {
             module_id,
             module_name: None,
+            module_info: None,
             scopes: vec![Scope::global()],
             current_scope: 0,
         }
@@ -45,6 +47,7 @@ impl ModuleAmbience {
         ModuleAmbience {
             module_id,
             module_name: Some(module_name),
+            module_info: None,
             scopes: vec![Scope::global()],
             current_scope: 0,
         }
@@ -348,6 +351,7 @@ fn remove_scope_in_place(manager: &mut ModuleAmbience, scope_id: usize) -> Modul
 
     let mut sub_manager = ModuleAmbience {
         module_id: manager.module_id,
+        module_info: None,
         module_name: None,
         scopes: vec![scope],
         current_scope: 0,

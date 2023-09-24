@@ -187,6 +187,12 @@ impl Signature for (&Identifier, &EnumVariant) {
     }
 }
 
+impl Signature for ModuleAmbience {
+    fn info(&self) -> Option<&Vec<String>> {
+        self.module_info.as_ref()
+    }
+}
+
 impl Signature for (&ModuleAmbience, &VariableSignature) {
     fn info(&self) -> Option<&Vec<String>> {
         self.1.info.as_ref()

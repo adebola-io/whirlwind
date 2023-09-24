@@ -30,7 +30,7 @@
       },
       "injunction": {
          "name": "meta.injunction keyword.storage.injunction",
-         "match": "\\b(use|module|enum|public|static|test|var|new|const|model|async|record|trait|type|extends|implements|not|and|or|is|Package)\\b"
+         "match": "\\b(use|module|enum|public|static|test|var|new|const|model|async|record|trait|type|extends|implements|not|and|or|is|Package|Super)\\b"
       },
       "comment": {
          "patterns": [
@@ -344,7 +344,7 @@
       "type_label": {
          "begin": "\\:\\s*",
          "patterns": [{ "include": "#type_expression" }],
-         "end": "(?=[^A-Za-z0-9_\\.\\<\\>\\,])|(,(?=\\s*([A-Za-z0-9]|_)+\\s*\\??\\s*(\\:|\\))))"
+         "end": "(,(?=\\s*([A-Za-z0-9]|_)+\\s*\\??\\s*(\\:|\\))))|(?=[^A-Za-z0-9\\_\\.\\<\\>\\,\\s])"
       },
       "discrete_type": {
          "patterns": [
@@ -354,7 +354,7 @@
       },
       "type_name": {
          "name": "support.type entity.name.type",
-         "match": "\\b[A-Za-z0-9]+\\b"
+         "match": "\\b[A-Za-z0-9_]+\\b"
       },
       "type_expression": {
          "patterns": [

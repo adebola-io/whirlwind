@@ -1,3 +1,5 @@
+module Main;
+
 /// A last-in first-out data structure.
 public model Stack<T> {
     var items: ArrayOf<T>;
@@ -11,7 +13,7 @@ public model Stack<T> {
     /// Dynamically change the number of items in the stack.
     ///
     /// If there are currently more items that the new capacity, then the stack will be truncated.
-    /// # Examples
+    /// ## Usage
     /// ```wrl
     /// use Structures.Stack;
     /// stack: Stack<Integer> := new Stack();

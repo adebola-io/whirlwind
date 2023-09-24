@@ -4,7 +4,7 @@ mod program;
 
 pub use module::Module;
 pub use modulegraph::ModuleGraph;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 /// Takes in a path to a Whirl source file and builds a graph of all modules it connects to.
 pub fn resolve(entry: PathBuf) -> ModuleGraph {
@@ -24,10 +24,6 @@ pub fn resolve(entry: PathBuf) -> ModuleGraph {
     graph.errors.append(&mut errors);
     graph.unravel();
     graph
-}
-
-fn get_parent_dir(module_path: &Path) -> Option<&Path> {
-    module_path.ancestors().nth(1)
 }
 
 #[cfg(test)]

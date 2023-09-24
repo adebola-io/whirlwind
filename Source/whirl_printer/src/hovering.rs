@@ -10,6 +10,18 @@ pub trait HoverFormatter {
     fn to_formatted(&self) -> String;
 }
 
+impl HoverFormatter for ModuleAmbience {
+    fn to_formatted(&self) -> String {
+        let mut string = String::new();
+        string.push_str("module ");
+        match self.get_module_name() {
+            Some(name) => string.push_str(name),
+            None => string.push_str("{unknown}"),
+        }
+        string
+    }
+}
+
 impl<'a, T: Signature + HoverFormatter> HoverFormatter for PublicSignatureContext<'a, T> {
     fn to_formatted(&self) -> String {
         let mut string = String::new();

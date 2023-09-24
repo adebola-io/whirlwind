@@ -1290,6 +1290,7 @@ impl<L: Lexer> Parser<L> {
     /// Parses a module declaration. Assumes that `module` is the current token.
     fn module_declaration(&self) -> Imperfect<ModuleDeclaration> {
         expect_or_return!(TokenType::Keyword(Module), self);
+        let info = self.get_doc_comment();
         let start = self.token().unwrap().span.start;
         self.advance(); // Move past module.
         let name = check!(self.identifier());
@@ -1323,8 +1324,8 @@ impl<L: Lexer> Parser<L> {
             errors.push(errors::module_declaration_not_global(module.span))
         } else {
             self.module_ambience().set_module_name(name);
+            self.module_ambience().module_info = info;
         }
-
         Partial {
             value: Some(module),
             errors,
