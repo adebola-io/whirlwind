@@ -2,6 +2,7 @@ module Primitives;
 
 public use String.String;
 public use ArrayOf.ArrayOf;
+public use Boolean;
 public use Numeric.{
     U8Integer,
     SignedInteger,

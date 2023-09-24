@@ -1,6 +1,6 @@
 // !::no-prelude::!
 /// ## The Whirl Core Library
-/// 
+/// The core library contains 
 module Main;
 
 
@@ -9,3 +9,4 @@ public use Internals;
 public use Memory;
 public use Fs;
 public use Primitives;
+public use Collections;

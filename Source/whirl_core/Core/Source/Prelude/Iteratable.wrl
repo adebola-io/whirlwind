@@ -1,6 +1,9 @@
 // !::no-prelude::!
 module Iteratable;
 
+use Super.Primitives.ArrayOf;
+use Maybe.Maybe;
+
 /// ## The Iteratable trait
 /// The Iteratable trait is a common abstraction that allows different types of collections to be traversed in a uniform way. 
 /// It defines a set of methods that can be used to access and manipulate the elements of a collection, such as arrays, lists, sets, maps, etc.

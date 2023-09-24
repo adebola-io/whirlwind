@@ -37,6 +37,7 @@ pub struct ModuleDeclaration {
 /// A node for a use declaration in the AST.
 #[derive(Debug, PartialEq)]
 pub struct UseDeclaration {
+    pub addresses: Vec<SymbolAddress>,
     pub target: UseTarget,
     pub is_public: bool,
     pub span: Span,
@@ -59,7 +60,24 @@ pub struct UseTarget {
     /// Items imported.
     pub path: UsePath,
 }
+impl UseTarget {
+    /// Returns the ends of the target.
+    pub fn leaves(&self) -> Vec<Identifier> {
+        let mut leaves = vec![];
+        match &self.path {
+            UsePath::Me => leaves.push(self.name.clone()),
+            UsePath::Item(target) => leaves.append(&mut target.leaves()),
+            UsePath::List(list) => {
+                for target in list {
+                    leaves.append(&mut target.leaves())
+                }
+            }
+        }
+        leaves
+    }
+}
 
+#[derive(Debug)]
 /// Entry for a use import target.
 pub struct UseTargetSignature {
     /// Name of the import target.

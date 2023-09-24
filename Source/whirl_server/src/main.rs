@@ -76,9 +76,6 @@ impl LanguageServer for Backend {
     }
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
-        // self.client
-        //     .log_message(MessageType::INFO, "Hovering...")
-        //     .await;
         Ok(self.docs.get_hover_info(params).map(|h| h.into()))
     }
 

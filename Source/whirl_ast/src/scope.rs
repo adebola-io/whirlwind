@@ -1,6 +1,6 @@
 use crate::{
     EnumSignature, FunctionSignature, ModelSignature, Parameter, TraitSignature, TypeSignature,
-    VariableSignature,
+    UseTargetSignature, VariableSignature,
 };
 
 /// An entry to the symbol table of a scope.
@@ -13,6 +13,7 @@ pub enum ScopeEntry {
     Variable(VariableSignature),
     Trait(TraitSignature),
     Parameter(Parameter),
+    UseImport(UseTargetSignature),
     // Entry reserved for a not yet parsed atom.
     ReservedSpace,
 }
@@ -86,7 +87,8 @@ impl ScopeEntry {
             | ScopeEntry::Enum(EnumSignature { name, .. })
             | ScopeEntry::Variable(VariableSignature { name, .. })
             | ScopeEntry::Trait(TraitSignature { name, .. })
-            | ScopeEntry::Parameter(Parameter { name, .. }) => &name.name,
+            | ScopeEntry::Parameter(Parameter { name, .. })
+            | ScopeEntry::UseImport(UseTargetSignature { name, .. }) => &name.name,
             ScopeEntry::ReservedSpace => "",
         }
     }
@@ -100,7 +102,8 @@ impl ScopeEntry {
             | ScopeEntry::Enum(EnumSignature { name, .. })
             | ScopeEntry::Variable(VariableSignature { name, .. })
             | ScopeEntry::Trait(TraitSignature { name, .. })
-            | ScopeEntry::Parameter(Parameter { name, .. }) => Some(&name),
+            | ScopeEntry::Parameter(Parameter { name, .. })
+            | ScopeEntry::UseImport(UseTargetSignature { name, .. }) => Some(&name),
             ScopeEntry::ReservedSpace => None,
         }
     }

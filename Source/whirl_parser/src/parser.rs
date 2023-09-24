@@ -10,8 +10,8 @@ use whirl_ast::{
     ScopeEntry, ScopeType, ShorthandVariableDeclaration, Span, Spannable, Statement, SymbolAddress,
     TestDeclaration, ThisExpr, Token, TokenType, TraitBody, TraitDeclaration, TraitProperty,
     TraitPropertyType, TraitSignature, Type, TypeDeclaration, TypeExpression, TypeSignature,
-    UnaryExpr, UnionType, UpdateExpr, UseDeclaration, UsePath, UseTarget, VariableSignature,
-    WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
+    UnaryExpr, UnionType, UpdateExpr, UseDeclaration, UsePath, UseTarget, UseTargetSignature,
+    VariableSignature, WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
 };
 use whirl_errors::{self as errors, ParseError};
 use whirl_lexer::Lexer;
@@ -1119,7 +1119,21 @@ impl<L: Lexer> Parser<L> {
         self.advance(); // Move past ;
         let span = Span::from([start, end]);
         let target = UseTarget { name, path };
+        // Collect addresses for each nested import.
+        let mut addresses = vec![];
+        for name in target.leaves() {
+            let signature = UseTargetSignature { name, is_public };
+            let entry_no = self
+                .module_ambience()
+                .register(ScopeEntry::UseImport(signature));
+            addresses.push(SymbolAddress {
+                module_id: self.module_ambience().id(),
+                scope_id: self.module_ambience().current_scope(),
+                entry_no,
+            })
+        }
         let use_decl = UseDeclaration {
+            addresses,
             target,
             is_public,
             span,

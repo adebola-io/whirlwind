@@ -2,8 +2,8 @@ use tower_lsp::lsp_types::{Hover, HoverContents, LanguageString, MarkedString};
 
 use whirl_analyzer::{Module, ModuleGraph};
 use whirl_ast::{
-    ASTVisitorNoArgs, Block, ModelPropertyType, Parameter, PublicSignatureContext, Signature, Span,
-    ThreeTierContext, TraitPropertyType, Type, TypeExpression, TypedValueContext,
+    ASTVisitorNoArgs, Block, ModelPropertyType, Parameter, Positioning, PublicSignatureContext,
+    Signature, Span, ThreeTierContext, TraitPropertyType, Type, TypeExpression, TypedValueContext,
 };
 use whirl_printer::HoverFormatter;
 use whirl_utils::get_parent_dir;
@@ -123,25 +123,23 @@ impl<'a> HoverFinder<'a> {
         let parent_folder = get_parent_dir(self.module.module_path.as_ref()?)?;
         let target_module = self
             .graph
-            .get_module_in_dir(parent_folder, &target.name.name);
+            .get_module_in_dir(parent_folder, &target.name.name)?;
         // hover over target name.
         if target.name.span.contains(self.pos) {
             // todo: change main module to package name.
-            return Some((&target_module?.ambience).into());
+            return Some((&target_module.ambience).into());
         }
         // hover over any other.
         match &target.path {
             // same as hover over target name.
             whirl_ast::UsePath::Me => return None, // technically unreachable.
             whirl_ast::UsePath::Item(sub_target) => {
-                if sub_target.name.span.contains(self.pos) {
-                    return self.use_sub_target_hover(target_module?, sub_target);
-                }
+                return self.use_sub_target_hover(target_module, sub_target);
             }
             whirl_ast::UsePath::List(list) => {
                 for sub_target in list.iter() {
                     if sub_target.name.span.contains(self.pos) {
-                        return self.use_sub_target_hover(target_module?, sub_target);
+                        return self.use_sub_target_hover(target_module, sub_target);
                     }
                 }
             }
@@ -164,19 +162,52 @@ impl<'a> HoverFinder<'a> {
         let hover_finder = HoverFinder::new(target_module, self.graph, original_position);
         let scope = target_decl.scope;
 
-        match target_decl.entry {
-            whirl_ast::ScopeEntry::Function(f) => name_hover!(f, scope, hover_finder),
-            whirl_ast::ScopeEntry::Type(t) => name_hover!(t, scope, hover_finder),
-            whirl_ast::ScopeEntry::Model(m) => name_hover!(m, scope, hover_finder),
-            whirl_ast::ScopeEntry::Enum(e) => name_hover!(e, scope, hover_finder),
-            whirl_ast::ScopeEntry::Variable(v) => {
-                return Some(HoverInfo::from(&(&target_module.ambience, v)))
+        // hover over name.
+        if sub_target.name.span.contains(self.pos) {
+            match target_decl.entry {
+                whirl_ast::ScopeEntry::Function(f) => name_hover!(f, scope, hover_finder),
+                whirl_ast::ScopeEntry::Type(t) => name_hover!(t, scope, hover_finder),
+                whirl_ast::ScopeEntry::Model(m) => name_hover!(m, scope, hover_finder),
+                whirl_ast::ScopeEntry::Enum(e) => name_hover!(e, scope, hover_finder),
+                whirl_ast::ScopeEntry::Variable(v) => {
+                    return Some(HoverInfo::from(&(&target_module.ambience, v)))
+                }
+                whirl_ast::ScopeEntry::Trait(t) => name_hover!(t, scope, hover_finder),
+                whirl_ast::ScopeEntry::Parameter(_) | whirl_ast::ScopeEntry::ReservedSpace => {
+                    return None
+                }
+                whirl_ast::ScopeEntry::UseImport(u) => {
+                    let declaration = target_module
+                        .statements()
+                        .map(|statement| statement.closest_nodes_to(u.name.span))
+                        .flatten()
+                        .next()?;
+                    return hover_finder.statement(declaration);
+                } // technically unreachable
             }
-            whirl_ast::ScopeEntry::Trait(t) => name_hover!(t, scope, hover_finder),
-            whirl_ast::ScopeEntry::Parameter(_) | whirl_ast::ScopeEntry::ReservedSpace => {
-                return None
-            } // technically unreachable
         }
+
+        let parent_folder = get_parent_dir(target_module.module_path.as_ref()?)?;
+        let sub_target_module = self
+            .graph
+            .get_module_in_dir(parent_folder, &sub_target.name.name)?;
+
+        // hover over any other.
+        match &sub_target.path {
+            // same as hover over target name.
+            whirl_ast::UsePath::Me => return None, // technically unreachable.
+            whirl_ast::UsePath::Item(sub_sub_target) => {
+                return self.use_sub_target_hover(sub_target_module, sub_sub_target);
+            }
+            whirl_ast::UsePath::List(sub_list) => {
+                for sub_sub_target in sub_list.iter() {
+                    if sub_sub_target.name.span.contains(self.pos) {
+                        return self.use_sub_target_hover(sub_target_module, sub_sub_target);
+                    }
+                }
+            }
+        }
+
         return None;
     }
 }

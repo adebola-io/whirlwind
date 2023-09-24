@@ -2,7 +2,7 @@
 /// skdfi
 module String;
 
-use Boolean.Boolean;
+use Boolean;
 use Package.{ 
     Internals.{ Invoke, Invocation }, 
     Memory.CharSpace, 

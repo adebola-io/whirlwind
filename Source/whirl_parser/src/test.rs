@@ -509,6 +509,7 @@ fn parses_use_import() {
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::UseDeclaration(UseDeclaration {
+            addresses: vec![[0, 0, 0].into()],
             target: UseTarget {
                 name: Identifier {
                     name: format!("OtherModule"),
@@ -526,6 +527,7 @@ fn parses_use_import() {
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::UseDeclaration(UseDeclaration {
+            addresses: vec![[0, 0, 0].into()],
             target: UseTarget {
                 name: Identifier {
                     name: format!("OtherModule"),
@@ -543,6 +545,7 @@ fn parses_use_import() {
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::UseDeclaration(UseDeclaration {
+            addresses: vec![[0, 0, 0].into()],
             target: UseTarget {
                 name: Identifier {
                     name: format!("Core"),
@@ -568,6 +571,7 @@ fn parse_nested_use_item() {
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::UseDeclaration(UseDeclaration {
+            addresses: vec![[0, 0, 0].into()],
             target: UseTarget {
                 name: Identifier {
                     name: format!("Components"),
@@ -606,6 +610,7 @@ fn parse_group_use_import() {
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::UseDeclaration(UseDeclaration {
+            addresses: vec![[0, 0, 0].into(), [0, 0, 1].into()],
             target: UseTarget {
                 name: Identifier {
                     name: format!("Components"),
