@@ -327,6 +327,33 @@ fn parsing_async_functions() {
 }
 
 #[test]
+fn parse_function_with_nested_generics() {
+    let mut parser = parse_text("function Collect<T: Collectible<Item>>(): T {}");
+
+    let statement = parser.next().unwrap().unwrap();
+    let module_ambience = parser.module_ambience();
+
+    assert!(module_ambience
+        .lookaround("Collect")
+        .is_some_and(|search| matches!(search.entry, whirl_ast::ScopeEntry::Function(_))));
+
+    // println!("{:#?}", module_ambience);
+
+    assert_eq!(
+        statement,
+        Statement::FunctionDeclaration(FunctionDeclaration {
+            address: SymbolAddress::from([0, 0, 0]),
+            body: Block {
+                scope_id: 1,
+                statements: vec![],
+                span: Span::from([1, 45, 1, 47])
+            },
+            span: Span::from([1, 1, 1, 47])
+        })
+    );
+}
+
+#[test]
 fn parsing_type_declarations() {
     let mut parser = parse_text("public type Number = SignedInteger | UnsignedInteger | Float;");
 

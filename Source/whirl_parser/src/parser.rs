@@ -1114,9 +1114,22 @@ impl<L: Lexer> Parser<L> {
         self.advance(); // Move past use.
         let name = check!(self.identifier());
         let path = check!(self.use_path());
-        expect_or_return!(TokenType::Operator(SemiColon), self);
-        let end = self.token().unwrap().span.end;
-        self.advance(); // Move past ;
+
+        let mut errors = vec![];
+        let end;
+        if self
+            .token()
+            .is_some_and(|token| token._type == TokenType::Operator(SemiColon))
+        {
+            end = self.token().unwrap().span.end;
+            self.advance(); //
+        } else {
+            end = self.last_token_end().end;
+            errors.push(errors::expected(
+                TokenType::Operator(SemiColon),
+                self.last_token_end(),
+            ));
+        }
         let span = Span::from([start, end]);
         let target = UseTarget { name, path };
         // Collect addresses for each nested import.
@@ -1138,7 +1151,10 @@ impl<L: Lexer> Parser<L> {
             is_public,
             span,
         };
-        Partial::from_value(use_decl)
+        Partial {
+            value: Some(use_decl),
+            errors,
+        }
     }
 
     /// Parses a use path.
@@ -2168,8 +2184,16 @@ impl<L: Lexer> Parser<L> {
             }
             break;
         }
-        expect!(TokenType::Operator(GreaterThan), self);
-        self.advance(); // Move past >
+        if self
+            .token()
+            .is_some_and(|token| token._type == TokenType::Operator(RightShift))
+            && !generic_params.is_empty()
+        {
+            self.advance(); // Move past >>
+        } else {
+            expect!(TokenType::Operator(GreaterThan), self);
+            self.advance(); // Move past >
+        }
         Ok(Some(generic_params))
     }
 
