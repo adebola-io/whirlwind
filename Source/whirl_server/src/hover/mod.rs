@@ -16,14 +16,46 @@ use whirl_utils::get_parent_dir;
 macro_rules! name_hover {
     ($signature: expr, $scope: expr, $hvfinder: expr) => {{
         if $signature.name.span.contains($hvfinder.pos) {
+            let mut contents = vec![];
+            let mut string = String::new();
             if $scope.is_global() && $signature.is_public {
-                let global_model_hover = PublicSignatureContext {
-                    signature: $signature,
-                    module_ambience: &$hvfinder.module.ambience,
-                };
-                return Some((&global_model_hover).into());
+                string.push_str("module ");
+                // connect dots.
+                let mut pathway = vec![];
+                $hvfinder.graph.draw_line_to($hvfinder.module, &mut pathway);
+                for (idx, module_id) in pathway.iter().enumerate() {
+                    string.push_str(
+                        $hvfinder
+                            .graph
+                            .get_module_with_id(*module_id)
+                            .unwrap()
+                            .name
+                            .as_ref()
+                            .unwrap(),
+                    );
+                    if idx + 1 != pathway.len() {
+                        string.push('.');
+                    }
+                }
+                string.push('\n');
             }
-            return Some($signature.into());
+            string.push_str(&$signature.to_formatted());
+            contents.push(MarkedString::LanguageString(LanguageString {
+                language: String::from("wrl"),
+                value: string,
+            }));
+            // Documentation?
+            if let Some(ref docs) = $signature.info() {
+                let mut documentation = String::new();
+                for line in docs.iter() {
+                    documentation.push_str(line);
+                    documentation.push('\n')
+                }
+                contents.push(MarkedString::String(documentation))
+            }
+            return Some(HoverInfo {
+                contents: HoverContents::Array(contents),
+            });
         }
     }};
 }
@@ -126,6 +158,45 @@ impl<'a> HoverFinder<'a> {
         }
     }
 
+    /// Create a hover over this module itself.
+    fn create_module_self_hover(&self) -> HoverInfo {
+        let mut contents = vec![];
+        let mut string = String::new();
+        string.push_str("module ");
+        // connect dots.
+        let mut pathway = vec![];
+        self.graph.draw_line_to(self.module, &mut pathway);
+        for (idx, module_id) in pathway.iter().enumerate() {
+            string.push_str(
+                self.graph
+                    .get_module_with_id(*module_id)
+                    .unwrap()
+                    .name
+                    .as_ref()
+                    .unwrap(),
+            );
+            if idx + 1 != pathway.len() {
+                string.push('.');
+            }
+        }
+        contents.push(MarkedString::LanguageString(LanguageString {
+            language: String::from("wrl"),
+            value: string,
+        }));
+        // Documentation?
+        if let Some(ref docs) = self.module.ambience.info() {
+            let mut documentation = String::new();
+            for line in docs.iter() {
+                documentation.push_str(line);
+                documentation.push('\n')
+            }
+            contents.push(MarkedString::String(documentation))
+        }
+        return HoverInfo {
+            contents: HoverContents::Array(contents),
+        };
+    }
+
     fn use_target_hover(&self, target: &whirl_ast::UseTarget) -> Option<HoverInfo> {
         let parent_folder = get_parent_dir(self.module.module_path.as_ref()?)?;
         let target_module = self
@@ -133,8 +204,8 @@ impl<'a> HoverFinder<'a> {
             .get_module_in_dir(parent_folder, &target.name.name)?;
         // hover over target name.
         if target.name.span.contains(self.pos) {
-            // todo: change main module to package name.
-            return Some((&target_module.ambience).into());
+            let hvfinder = HoverFinder::new(target_module, self.graph, self.pos);
+            return Some(hvfinder.create_module_self_hover());
         }
         // hover over any other.
         match &target.path {
@@ -151,6 +222,7 @@ impl<'a> HoverFinder<'a> {
                 }
             }
         }
+
         return None;
     }
 
@@ -229,7 +301,7 @@ impl<'a> ASTVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
     /// Hover over the module declaration.
     fn module_declaration(&self, _module: &whirl_ast::ModuleDeclaration) -> Option<HoverInfo> {
         if _module.span.contains(self.pos) {
-            return Some((&self.module.ambience).into());
+            return Some(self.create_module_self_hover());
         }
         return None;
     }

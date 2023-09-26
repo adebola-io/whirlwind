@@ -1,4 +1,4 @@
-// !::no-prelude::!
+// !::no-core::!
 module Maybe;
 
 use Package.{

@@ -1,4 +1,4 @@
-// !::no-prelude::!
+// !::no-core::!
 module Default;
 
 /// This is a language level trait to be implemented by types that have default values when they are not initialized.

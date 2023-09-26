@@ -1,4 +1,4 @@
-// !::no-prelude::!
+// !::no-core::!
 module Iteratable;
 
 use Super.Primitives.ArrayOf;

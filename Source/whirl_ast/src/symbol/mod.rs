@@ -85,6 +85,7 @@ pub struct SemanticSymbolDeclaration<'a> {
 #[derive(Debug)]
 pub enum SemanticSymbolKind {
     Module {
+        parent_module: SymbolIndex,
         imports: Vec<SymbolIndex>,
         exports: Vec<SymbolIndex>,
     },

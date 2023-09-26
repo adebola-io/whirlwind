@@ -198,7 +198,7 @@
       },
 
       "module_declaration": {
-         "match": "(\\bmodule\\b\\s+)([A-Za-z0-9]+)",
+         "match": "(\\bmodule\\b\\s+)([A-Za-z0-9\\.\\_]+)",
          "captures": {
             "1": {
                "name": "keyword"

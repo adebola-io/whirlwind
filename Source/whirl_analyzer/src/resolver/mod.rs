@@ -18,7 +18,7 @@ pub fn resolve_modules(entry: PathBuf) -> ModuleGraph {
     match entry.canonicalize() {
         Ok(absolute_path) => match Module::from_path(absolute_path, 0) {
             Ok(module) => {
-                graph.set_start(module);
+                graph.set_entry_module(module);
             }
             Err(error) => errors.push(error),
         },
@@ -39,6 +39,7 @@ mod tests {
     #[test]
     fn check_imports() {
         let _graph = resolve_modules(PathBuf::from("../whirl_core/Core/Source/Core.wrl"));
-        // println!("{:#?}", _graph)
+        let mut pathway = vec![];
+        _graph.draw_line_to(_graph.get_module_with_id(14).unwrap(), &mut pathway);
     }
 }

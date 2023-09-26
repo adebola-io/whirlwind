@@ -1,18 +1,18 @@
-// !::no-prelude::!
+// !::no-core::!
 /// ## The Whirl Core Library
 /// The core library is the cornerstone of all development in Whirl.
 /// It provides a foundational framework that underpins countless aspects of the language's funcionality.
 /// 
 /// The Core library is made up of utility functions and methods that streamline common programming tasks,
 /// ranging from string manipulation and arrays to networking and file system handling.
-module Main;
+module Core;
 
 
-public use Prelude;
+public use Primitives;
+public use Fs;
 public use Internals;
 public use Memory;
-public use Fs;
-public use Primitives;
-public use Collections; 
 public use Ops;
+public use Collections;
+public use Prelude;
 public use Process;

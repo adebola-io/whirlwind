@@ -1,8 +1,8 @@
-// !::no-prelude::!
+// !::no-core::!
 module String;
 
 use Boolean.Boolean;
-use Package.{ 
+use Package.Core.{ 
     Internals.{Invoke, Invocation}, 
     Memory.{CharSpace, Bytes}, 
     Ops.Addition, 

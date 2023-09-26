@@ -69,7 +69,12 @@ impl DocumentManager {
                     }
                 })
                 .filter_map(|file| Module::from_path(file, 0).ok())
-                .find(|module| module.name.as_ref().is_some_and(|name| name == "Main"));
+                .find(|module| {
+                    module
+                        .name
+                        .as_ref()
+                        .is_some_and(|name| name == "Main" || name == "Lib")
+                });
             if main_module.is_none() {
                 root_folder = get_parent_dir(root_folder)
                     .ok_or_else(|| DocumentError::NoParentFolder(root_folder.to_path_buf()))?;
@@ -90,7 +95,7 @@ impl DocumentManager {
                     return Ok(());
                 }
             }
-            graph.set_start(main_module.unwrap());
+            graph.set_entry_module(main_module.unwrap());
 
             // Todo: read whirl.yaml to find source module instead.
             break;

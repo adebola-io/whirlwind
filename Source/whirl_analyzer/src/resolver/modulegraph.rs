@@ -97,11 +97,10 @@ impl ModuleGraph {
             Some(imported_module) => {
                 // Block importing a module into itself.
                 if std::ptr::eq(imported_module, start_module) {
-                    match &start_module.name {
-                        Some(name) => errors
-                            .push(whirl_errors::self_import(name.to_owned(), target.name.span)),
-                        None => {}
-                    };
+                    errors.push(whirl_errors::self_import(
+                        target.name.name.to_owned(),
+                        target.name.span,
+                    ))
                 }
                 // Check descendant imports.
                 self.audit_import_paths(errors, imported_module, start_module, &target.path);
@@ -263,8 +262,37 @@ impl ModuleGraph {
     pub fn get_mut_module_at_path(&mut self, path: &Path) -> Option<&mut Module> {
         self.modules.get_mut(*(self.paths.get(path)?))
     }
+    /// Returns a mutable reference to a module with a given id.
+    pub fn get_module_with_id(&self, id: usize) -> Option<&Module> {
+        self.modules.get(id)
+    }
+    /// Create a pathway of modules from a global directory module to this module,
+    /// and then store the line in a vector.
+    pub fn draw_line_to(&self, module: &Module, pathway: &mut Vec<usize>) {
+        // println!("{:?}, {:?}", module.module_id, module.name);
+        // Add this module.
+        pathway.insert(0, module.module_id);
+        // Add the directory above.
+        let directory_above = (|| -> Option<(&Path, &str)> {
+            let mut parent_directory = get_parent_dir(module.module_path.as_ref()?)?;
+            let mut parent_module_name = parent_directory.file_stem()?.to_str()?;
+            // prevent infinite loop for current dir;
+            if module.name.as_ref()? == parent_module_name {
+                parent_directory = get_parent_dir(parent_directory)?;
+                parent_module_name = parent_directory.file_stem()?.to_str()?;
+            }
+            Some((parent_directory, parent_module_name))
+        })();
+        if let Some(directory_above) = directory_above {
+            if let Some(parent_module) =
+                self.get_module_in_dir(directory_above.0, directory_above.1)
+            {
+                self.draw_line_to(parent_module, pathway);
+            }
+        }
+    }
     /// Set the entry module.
-    pub fn set_start(&mut self, module: Module) {
+    pub fn set_entry_module(&mut self, module: Module) {
         self.root_folder = module
             .module_path
             .as_ref()
@@ -323,6 +351,33 @@ impl ModuleGraph {
     /// Refresh the graph.
     pub fn refresh(&mut self) {
         let mut errors = vec![];
+        // Hanlde module renaming.
+        self.modules.iter_mut().for_each(|module| {
+            if module.module_path.is_none() || module.name.is_none() {
+                return;
+            }
+            let module_name = module.name.as_ref().unwrap();
+            get_parent_dir(module.module_path.as_ref().unwrap())
+                .and_then(|directory| self.directories.get_mut(directory))
+                .map(|dir_map| {
+                    if !dir_map
+                        .get(module_name)
+                        .is_some_and(|id| *id == module.module_id)
+                    {
+                        let mut old_name = None;
+                        // find the old name.
+                        for (name, id) in dir_map.iter() {
+                            if *id == module.module_id {
+                                old_name = Some(name.to_owned());
+                                break;
+                            }
+                        }
+                        dir_map.remove(&old_name.unwrap());
+                        // add new name.
+                        dir_map.insert(module_name.to_string(), module.module_id);
+                    }
+                });
+        });
         self.modules.iter().for_each(|module| {
             errors.push(self.audit_module(module));
         });

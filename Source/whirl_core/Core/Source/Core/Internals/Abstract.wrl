@@ -1,4 +1,4 @@
-// !::no-prelude::!
+// !::no-core::!
 /// This module contains the abstract data type.
 module Abstract;
 

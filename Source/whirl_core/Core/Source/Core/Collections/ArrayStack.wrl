@@ -1,6 +1,6 @@
 module ArrayStack;
 
-use Package.Primitives.ArrayOf;
+use Package.Core.Primitives.ArrayOf;
 
 /// An implementation of a stack using an array.
 /// 
