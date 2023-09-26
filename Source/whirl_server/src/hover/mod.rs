@@ -262,7 +262,9 @@ impl<'a> HoverFinder<'a> {
                         .flatten()
                         .next()?;
                     return hover_finder.statement(declaration);
-                } // technically unreachable
+                }
+                whirl_ast::ScopeEntry::Constant(c) => name_hover!(c, scope, hover_finder),
+                // technically unreachable
             }
         }
 
@@ -528,6 +530,7 @@ impl<'a> ASTVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
                 return hvfinder.statement(declaration);
             }
             whirl_ast::ScopeEntry::ReservedSpace => {}
+            whirl_ast::ScopeEntry::Constant(c) => name_hover!(c, scope, hvfinder),
         };
         return None;
     }

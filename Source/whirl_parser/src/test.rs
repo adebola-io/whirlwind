@@ -1,13 +1,13 @@
 #![cfg(test)]
 
 use whirl_ast::{
-    AccessExpr, ArrayExpr, AssignmentExpr, BinaryExpr, Block, CallExpr, DiscreteType, Else,
-    EnumDeclaration, Expression, FunctionDeclaration, FunctionExpr, Identifier, IfExpression,
-    IndexExpr, LogicExpr, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType,
-    ModuleDeclaration, NewExpr, Parameter, ReturnStatement, ScopeAddress, ScopeEntry, Span,
-    Statement, TestDeclaration, ThisExpr, TraitBody, TraitDeclaration, TraitProperty,
-    TypeDeclaration, TypeExpression, UnaryExpr, UpdateExpr, UpdateOperator, UseDeclaration,
-    UsePath, UseTarget, WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
+    AccessExpr, ArrayExpr, AssignmentExpr, BinaryExpr, Block, CallExpr, ConstantDeclaration,
+    DiscreteType, Else, EnumDeclaration, Expression, FunctionDeclaration, FunctionExpr, Identifier,
+    IfExpression, IndexExpr, LogicExpr, ModelBody, ModelDeclaration, ModelProperty,
+    ModelPropertyType, ModuleDeclaration, NewExpr, Parameter, ReturnStatement, ScopeAddress,
+    ScopeEntry, Span, Statement, TestDeclaration, ThisExpr, TraitBody, TraitDeclaration,
+    TraitProperty, TypeDeclaration, TypeExpression, UnaryExpr, UpdateExpr, UpdateOperator,
+    UseDeclaration, UsePath, UseTarget, WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
 };
 
 use crate::parse_text;
@@ -928,6 +928,24 @@ fn parse_shorthand_variables() {
                 span: [1, 27, 1, 38].into()
             })),
             span: [1, 1, 1, 39].into()
+        })
+    );
+}
+
+#[test]
+fn parse_constants() {
+    let mut parser = parse_text("const NAME: String = \"Sefunmi\";");
+    // parser.debug_allow_global_expressions = true;
+
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::ConstantDeclaration(ConstantDeclaration {
+            address: [0, 0, 0].into(),
+            value: Expression::StringLiteral(WhirlString {
+                value: format!("Sefunmi"),
+                span: [1, 22, 1, 31].into()
+            }),
+            span: [1, 1, 1, 32].into()
         })
     );
 }

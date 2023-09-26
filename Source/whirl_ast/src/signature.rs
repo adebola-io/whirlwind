@@ -1,4 +1,6 @@
-use crate::{EnumVariant, GenericParameter, Identifier, ModuleAmbience, TypeExpression};
+use crate::{
+    EnumVariant, Expression, GenericParameter, Identifier, ModuleAmbience, TypeExpression,
+};
 
 use whirl_macros::Signature;
 
@@ -101,6 +103,19 @@ pub struct VariableSignature {
     pub is_public: bool,
     /// The variable's assigned type.
     pub var_type: Option<TypeExpression>,
+}
+
+/// Entry to mark a constant.
+#[derive(Debug, Signature)]
+pub struct ConstantSignature {
+    /// Name of the constant.
+    pub name: Identifier,
+    /// Documentation about the constant, if any.
+    pub info: Option<Vec<String>>,
+    /// Whether or not the constant is denoted by `public`.
+    pub is_public: bool,
+    /// The constant's assigned type.
+    pub var_type: TypeExpression,
 }
 
 /// An entry to mark a function.

@@ -1,7 +1,7 @@
 use whirl_ast::{
-    EnumSignature, EnumVariant, FunctionSignature, GenericParameter, Identifier, MethodSignature,
-    ModelSignature, ModuleAmbience, Parameter, PublicSignatureContext, Signature, ThreeTierContext,
-    TraitSignature, TypeExpression, TypeSignature, VariableSignature,
+    ConstantSignature, EnumSignature, EnumVariant, FunctionSignature, GenericParameter, Identifier,
+    MethodSignature, ModelSignature, ModuleAmbience, Parameter, PublicSignatureContext, Signature,
+    ThreeTierContext, TraitSignature, TypeExpression, TypeSignature, VariableSignature,
 };
 
 /// Generator trait for how symbols are illustrated in a hover card.
@@ -270,6 +270,18 @@ impl HoverFormatter for (&ModuleAmbience, &VariableSignature) {
             None => format!("unknown"),
         };
         string.push_str(&var_type);
+        string
+    }
+}
+
+impl HoverFormatter for ConstantSignature {
+    fn to_formatted(&self) -> String {
+        let mut string = String::new();
+        maybe_print_public(&mut string, self);
+        string.push_str("var ");
+        string.push_str(&self.name.name);
+        string.push_str(": ");
+        string.push_str(&self.var_type.to_formatted());
         string
     }
 }

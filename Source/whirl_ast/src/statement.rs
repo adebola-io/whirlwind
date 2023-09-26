@@ -10,7 +10,7 @@ pub enum Statement {
     UseDeclaration(UseDeclaration),
     VariableDeclaration,
     ShorthandVariableDeclaration(ShorthandVariableDeclaration),
-    ConstantDeclaration,
+    ConstantDeclaration(ConstantDeclaration),
     ModelDeclaration(ModelDeclaration),
     ModuleDeclaration(ModuleDeclaration),
     FunctionDeclaration(FunctionDeclaration),
@@ -90,6 +90,15 @@ pub struct UseTargetSignature {
 #[derive(Debug, PartialEq)]
 pub struct ShorthandVariableDeclaration {
     pub address: ScopeAddress,
+    pub value: Expression,
+    pub span: Span,
+}
+
+/// A node in the AST for a constant variable declaration.
+#[derive(Debug, PartialEq)]
+pub struct ConstantDeclaration {
+    pub address: ScopeAddress,
+    /// The constant's assigned value.
     pub value: Expression,
     pub span: Span,
 }
@@ -349,7 +358,7 @@ impl Spannable for Statement {
             Statement::TestDeclaration(t) => t.span,
             Statement::UseDeclaration(u) => u.span,
             Statement::VariableDeclaration => todo!(),
-            Statement::ConstantDeclaration => todo!(),
+            Statement::ConstantDeclaration(c) => c.span,
             Statement::ModelDeclaration(c) => c.span,
             Statement::FunctionDeclaration(f) => f.span,
             Statement::RecordDeclaration => todo!(),
@@ -369,7 +378,7 @@ impl Spannable for Statement {
             Statement::TestDeclaration(t) => t.span.start = start,
             Statement::UseDeclaration(u) => u.span.start = start,
             Statement::VariableDeclaration => todo!(),
-            Statement::ConstantDeclaration => todo!(),
+            Statement::ConstantDeclaration(c) => c.span.start = start,
             Statement::ModelDeclaration(c) => c.span.start = start,
             Statement::FunctionDeclaration(f) => f.span.start = start,
             Statement::RecordDeclaration => todo!(),

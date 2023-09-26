@@ -2,16 +2,17 @@ use std::cell::RefCell;
 
 use whirl_ast::{
     AccessExpr, ArrayExpr, AssignmentExpr, AttributeSignature, BinaryExpr, Block, Bracket::*,
-    CallExpr, Comment, DiscreteType, EnumDeclaration, EnumSignature, EnumVariant, Expression,
-    ExpressionPrecedence, FunctionDeclaration, FunctionExpr, FunctionSignature, FunctionalType,
-    GenericParameter, Identifier, IfExpression, IndexExpr, Keyword::*, LogicExpr, MemberType,
-    MethodSignature, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType, ModelSignature,
-    ModuleAmbience, ModuleDeclaration, NewExpr, Operator::*, Parameter, ReturnStatement,
-    ScopeAddress, ScopeEntry, ScopeType, ShorthandVariableDeclaration, Span, Spannable, Statement,
-    TestDeclaration, ThisExpr, Token, TokenType, TraitBody, TraitDeclaration, TraitProperty,
-    TraitPropertyType, TraitSignature, TypeDeclaration, TypeExpression, TypeSignature, UnaryExpr,
-    UnionType, UpdateExpr, UseDeclaration, UsePath, UseTarget, UseTargetSignature,
-    VariableSignature, WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
+    CallExpr, Comment, ConstantDeclaration, ConstantSignature, DiscreteType, EnumDeclaration,
+    EnumSignature, EnumVariant, Expression, ExpressionPrecedence, FunctionDeclaration,
+    FunctionExpr, FunctionSignature, FunctionalType, GenericParameter, Identifier, IfExpression,
+    IndexExpr, Keyword::*, LogicExpr, MemberType, MethodSignature, ModelBody, ModelDeclaration,
+    ModelProperty, ModelPropertyType, ModelSignature, ModuleAmbience, ModuleDeclaration, NewExpr,
+    Operator::*, Parameter, ReturnStatement, ScopeAddress, ScopeEntry, ScopeType,
+    ShorthandVariableDeclaration, Span, Spannable, Statement, TestDeclaration, ThisExpr, Token,
+    TokenType, TraitBody, TraitDeclaration, TraitProperty, TraitPropertyType, TraitSignature,
+    TypeDeclaration, TypeExpression, TypeSignature, UnaryExpr, UnionType, UpdateExpr,
+    UseDeclaration, UsePath, UseTarget, UseTargetSignature, VariableSignature, WhileStatement,
+    WhirlBoolean, WhirlNumber, WhirlString,
 };
 use whirl_errors::{self as errors, ParseError};
 use whirl_lexer::Lexer;
@@ -895,6 +896,10 @@ impl<L: Lexer> Parser<L> {
             TokenType::Keyword(Trait) => self
                 .trait_declaration(false)
                 .map(|t| Statement::TraitDeclaration(t)),
+            // // const..
+            TokenType::Keyword(Const) => self
+                .constant_declaration(false)
+                .map(|c| Statement::ConstantDeclaration(c)),
             TokenType::Keyword(While) => self.while_statement(),
             TokenType::Keyword(Return) => self.return_statement(),
             // unimplemented!(
@@ -2452,6 +2457,75 @@ impl<L: Lexer> Parser<L> {
         });
 
         Partial::from_tuple((Some(statement), expr_errors))
+    }
+
+    fn constant_declaration(&self, is_public: bool) -> Imperfect<ConstantDeclaration> {
+        expect_or_return!(TokenType::Keyword(Const), self);
+        let start = self.token().unwrap().span.start;
+        let info = self.get_doc_comment();
+        self.advance(); // Move past const.
+        let name = check!(self.identifier());
+        let var_type = check!(self.type_label());
+        let mut errors = vec![];
+
+        let signature = ConstantSignature {
+            name,
+            info,
+            is_public,
+            var_type,
+        };
+        let entry_no = self
+            .module_ambience()
+            .register(ScopeEntry::Constant(signature));
+
+        let address = ScopeAddress {
+            module_id: self.module_ambience().module_id,
+            scope_id: self.module_ambience().current_scope(),
+            entry_no,
+        };
+
+        let end;
+        let partial = if !self
+            .token()
+            .is_some_and(|token| token._type == TokenType::Operator(Assign))
+        {
+            errors.push(errors::expected(
+                TokenType::Operator(Assign),
+                self.last_token_end(),
+            ));
+            Partial::from_errors(errors)
+        } else {
+            self.advance(); // Move past =
+            let (value_value, mut value_errors) = self.expression().to_tuple();
+            errors.append(&mut value_errors);
+            if value_value.is_none() {
+                return Partial::from_errors(errors);
+            }
+            let value = value_value.unwrap();
+            if self
+                .token()
+                .is_some_and(|token| token._type == TokenType::Operator(SemiColon))
+            {
+                end = self.token().unwrap().span.end;
+                self.advance();
+            } else {
+                errors.push(errors::expected(
+                    TokenType::Operator(SemiColon),
+                    self.last_token_end(),
+                ));
+                end = self.last_token_end().end;
+            }
+            Partial {
+                value: Some(ConstantDeclaration {
+                    address,
+                    value,
+                    span: Span { start, end },
+                }),
+                errors,
+            }
+        };
+
+        partial
     }
 }
 
