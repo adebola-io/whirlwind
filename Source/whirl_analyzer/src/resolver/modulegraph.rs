@@ -146,10 +146,12 @@ impl ModuleGraph {
                     }
                 }
             } else {
-                errors.push(whirl_errors::no_such_symbol_in_module(
-                    imported_module.name.clone().unwrap(),
-                    target.name.to_owned(),
-                ))
+                if imported_module.name.is_some() {
+                    errors.push(whirl_errors::no_such_symbol_in_module(
+                        imported_module.name.clone().unwrap(),
+                        target.name.to_owned(),
+                    ))
+                }
             }
         }
     }

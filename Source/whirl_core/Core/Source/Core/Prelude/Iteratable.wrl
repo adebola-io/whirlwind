@@ -1,7 +1,7 @@
 // !::no-core::!
 module Iteratable;
 
-use Super.Primitives.ArrayOf;
+use Package.Core.Primitives.ArrayOf;
 use Maybe.Maybe;
 
 /// ## The Iteratable trait

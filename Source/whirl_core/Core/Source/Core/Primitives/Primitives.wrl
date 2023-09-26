@@ -3,10 +3,11 @@ module Primitives;
 public use String.{String, Chars};
 public use ArrayOf.ArrayOf;
 public use Boolean;
+public use Numeric;
 public use Numeric.{
-    U8Integer,
-    SignedInteger,
-    UnsignedInteger,
+    UInt8,
+    SignedInt,
+    UnsignedInt,
     Integer,
     Number,
 }; 

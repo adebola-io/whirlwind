@@ -67,7 +67,7 @@ pub trait LexerInner {
             })
             .map(|token| {
                 if let TokenType::Comment(Comment::LineComment(ref comment_text)) = token._type {
-                    if comment_text.trim_start() == " !::no-prelude::!"
+                    if comment_text.trim_start() == " !::no-core::!"
                         && self.line_lengths().len() > 2
                     {
                         self.disable_prelude();

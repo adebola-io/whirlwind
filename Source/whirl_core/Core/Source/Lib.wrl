@@ -1,4 +1,5 @@
+// !::no-core::!
+// !::no-core-global::!
 module Lib;
-
 
 public use Core;

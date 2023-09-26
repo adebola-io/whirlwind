@@ -1,0 +1,7 @@
+module Json;
+
+
+/// Serialize an object into a JSON string.
+public function Stringify<T: Serializable>(data: T): String {
+    
+}

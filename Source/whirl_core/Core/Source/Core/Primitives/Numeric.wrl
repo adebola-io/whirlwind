@@ -1,18 +1,19 @@
 // !::no-core::!
 module Numeric;
 
-/// An unsigned 8 bit integer.
-public model U8Integer {
-    
-}
 
-public model SignedInteger {
-    
-}
+/// An unsigned 8-bit integer.
+public model UInt8 {} // TODO
+/// An integer value with a magnitude sign.
+public model SignedInt {} // TODO
+/// A union data type to represent different unsigned integer values.
+public type UnsignedInt = UInt8 | UInt16 | UInt32 | UInt64;
+/// A union data type to represent different integer values.
+public type Integer = UnsignedInt | SignedInt;
+/// An arbitrarily large integer value.
+public model BigInt {} // TODO
+/// A union data type to represent a number.
+public type Number = Integer | Float; // | BigInt;
 
-/// An union data type to represent different unsigned integer values.
-public type UnsignedInteger = U8Integer;
 
-public type Integer = UnsignedInteger | SignedInteger;
-
-public type Number = Integer | Float | BigInt;
+// public const MAX_SAFE_INTEGER: Integer = 0;

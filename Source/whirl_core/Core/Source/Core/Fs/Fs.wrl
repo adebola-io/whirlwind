@@ -1,3 +1,11 @@
 // !::no-core::!
 module Fs;
 
+public model File {
+
+}
+
+/// Read a file's contents into a string.
+public async function ReadFile(path: PathBuffer): Outcome<String, Io.Error> {
+
+}
