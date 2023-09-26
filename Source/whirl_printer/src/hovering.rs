@@ -1,8 +1,7 @@
 use whirl_ast::{
     EnumSignature, EnumVariant, FunctionSignature, GenericParameter, Identifier, MethodSignature,
     ModelSignature, ModuleAmbience, Parameter, PublicSignatureContext, Signature, ThreeTierContext,
-    TraitSignature, TypeEval, TypeExpression, TypeSignature, TypedValue, TypedValueContext,
-    VariableSignature,
+    TraitSignature, TypeExpression, TypeSignature, VariableSignature,
 };
 
 /// Generator trait for how symbols are illustrated in a hover card.
@@ -48,7 +47,7 @@ impl HoverFormatter for FunctionSignature {
         string.push_str(&self.name.name);
         maybe_print_generic_params(&mut string, self.generic_params.as_ref());
         print_parameters(&mut string, &self.params);
-        maybe_print_return_type(&mut string, &self.return_type);
+        maybe_print_return_type(&mut string, self.return_type.as_ref());
         string
     }
 }
@@ -106,7 +105,7 @@ impl HoverFormatter for MethodSignature {
         string.push_str(&self.name.name);
         maybe_print_generic_params(&mut string, self.generic_params.as_ref());
         print_parameters(&mut string, &self.params);
-        maybe_print_return_type(&mut string, &self.return_type);
+        maybe_print_return_type(&mut string, self.return_type.as_ref());
         string
     }
 }
@@ -125,25 +124,6 @@ impl HoverFormatter for TraitSignature {
     }
 }
 
-impl<T: TypedValue + Signature> HoverFormatter for TypedValueContext<'_, T> {
-    fn to_formatted(&self) -> String {
-        let mut string = String::new();
-        maybe_print_public(&mut string, self.atom);
-        string.push_str("var ");
-        string.push_str(&self.atom.name());
-        string.push_str(": ");
-        let var_type = match self.atom.evaluated_type() {
-            Some(ref _type_eval) => todo!(),
-            None => match self.atom.declared_type() {
-                Some(ref t) => t.to_formatted(),
-                None => format!("unknown"),
-            },
-        };
-        string.push_str(&var_type);
-        string
-    }
-}
-
 impl HoverFormatter for Parameter {
     fn to_formatted(&self) -> String {
         let mut string = String::new();
@@ -154,7 +134,7 @@ impl HoverFormatter for Parameter {
         // Display given or inferred type.
         string.push_str(": ");
 
-        let param_type_str = match self.type_label.declared {
+        let param_type_str = match self.type_label {
             Some(ref declared) => declared.to_formatted(),
             None => format!("invalid"),
         };
@@ -169,7 +149,12 @@ impl HoverFormatter for GenericParameter {
         string.push_str(&self.name.name);
         if self.traits.len() > 0 {
             string.push_str(": ");
-            // TODO: Traits.
+            for (idx, trait_) in self.traits.iter().enumerate() {
+                string.push_str(&trait_.to_formatted());
+                if idx + 1 != self.traits.len() {
+                    string.push_str(" + ");
+                }
+            }
         }
         if let Some(ref default) = self.default {
             string.push_str(" = ");
@@ -280,40 +265,12 @@ impl HoverFormatter for (&ModuleAmbience, &VariableSignature) {
         string.push_str("var ");
         string.push_str(&signature.name.name);
         string.push_str(": ");
-        let var_type = match signature.var_type.inferred {
+        let var_type = match signature.var_type {
             Some(ref _type_eval) => todo!(),
-            None => match signature.var_type.declared {
-                Some(ref t) => t.to_formatted(),
-                None => format!("unknown"),
-            },
+            None => format!("unknown"),
         };
         string.push_str(&var_type);
         string
-    }
-}
-
-impl HoverFormatter for (&ModuleAmbience, TypeEval) {
-    fn to_formatted(&self) -> String {
-        match self.1 {
-            TypeEval::ModelInstance {
-                model_address: address,
-                ..
-            }
-            | TypeEval::EnumConstructor { address }
-            | TypeEval::ModelConstructor { address }
-            | TypeEval::TraitConstructor { address }
-            | TypeEval::TypeAlias { address } => match self.0.get_entry_unguarded(address) {
-                whirl_ast::ScopeEntry::Type(typ) => typ.to_formatted(),
-                whirl_ast::ScopeEntry::Enum(e) => e.to_formatted(),
-                whirl_ast::ScopeEntry::Model(c) => c.to_formatted(),
-                whirl_ast::ScopeEntry::Parameter(p) => p.to_formatted(),
-
-                _ => String::new(),
-            },
-            TypeEval::Invalid => String::new(),
-            TypeEval::Unknown => String::from("unknown"),
-            _ => String::new(),
-        }
     }
 }
 
@@ -341,8 +298,8 @@ fn print_parameters(string: &mut String, params: &Vec<Parameter>) {
 }
 
 /// Print a function's return type if it is available.
-fn maybe_print_return_type(string: &mut String, return_type: &whirl_ast::Type) {
-    if let Some(ref rettype) = return_type.declared {
+fn maybe_print_return_type(string: &mut String, return_type: Option<&whirl_ast::TypeExpression>) {
+    if let Some(ref rettype) = return_type {
         string.push_str(": ");
         string.push_str(&rettype.to_formatted())
     }
@@ -371,7 +328,7 @@ fn maybe_print_public<T: Signature>(string: &mut String, signature: &T) {
 #[cfg(test)]
 mod tests {
     use whirl_ast::{
-        DiscreteType, FunctionSignature, Identifier, Span, Type, TypeExpression, TypeSignature,
+        DiscreteType, FunctionSignature, Identifier, Span, TypeExpression, TypeSignature,
     };
 
     use crate::HoverFormatter;
@@ -388,17 +345,14 @@ mod tests {
             is_public: true,
             generic_params: None,
             params: vec![],
-            return_type: Type {
-                declared: Some(TypeExpression::Discrete(DiscreteType {
-                    name: Identifier {
-                        name: String::from("Deferred"),
-                        span: Span::default(),
-                    },
-                    generic_args: None,
+            return_type: Some(TypeExpression::Discrete(DiscreteType {
+                name: Identifier {
+                    name: String::from("Deferred"),
                     span: Span::default(),
-                })),
-                inferred: None,
-            },
+                },
+                generic_args: None,
+                span: Span::default(),
+            })),
         };
         assert_eq!(
             function.to_formatted(),

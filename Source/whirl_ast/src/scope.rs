@@ -24,13 +24,13 @@ pub enum ScopeType {
     Test,
     Functional,
     ModelConstructorOf {
-        model: SymbolAddress,
+        model: ScopeAddress,
     },
     ModelMethodOf {
-        model: SymbolAddress,
+        model: ScopeAddress,
     },
     TraitMethodOf {
-        _trait: SymbolAddress,
+        _trait: ScopeAddress,
     },
     Global,
     /// A placeholder scope.
@@ -40,7 +40,7 @@ pub enum ScopeType {
 
 /// The location of a symbol in the whole project.
 #[derive(Debug, Default, PartialEq, Clone, Copy)]
-pub struct SymbolAddress {
+pub struct ScopeAddress {
     pub module_id: usize,
     /// The entry in which it is declared.
     pub scope_id: usize,
@@ -67,9 +67,9 @@ pub struct ScopeSearch<'a> {
     pub scope: &'a Scope,
 }
 
-impl From<[usize; 3]> for SymbolAddress {
+impl From<[usize; 3]> for ScopeAddress {
     fn from(value: [usize; 3]) -> Self {
-        SymbolAddress {
+        ScopeAddress {
             module_id: value[0],
             scope_id: value[1],
             entry_no: value[2],
@@ -105,6 +105,19 @@ impl ScopeEntry {
             | ScopeEntry::Parameter(Parameter { name, .. })
             | ScopeEntry::UseImport(UseTargetSignature { name, .. }) => Some(&name),
             ScopeEntry::ReservedSpace => None,
+        }
+    }
+    /// Returns true if the entry is marked as public.
+    pub fn is_public(&self) -> bool {
+        match self {
+            ScopeEntry::Function(f) => f.is_public,
+            ScopeEntry::Type(t) => t.is_public,
+            ScopeEntry::Model(m) => m.is_public,
+            ScopeEntry::Enum(e) => e.is_public,
+            ScopeEntry::Variable(v) => v.is_public,
+            ScopeEntry::Trait(t) => t.is_public,
+            ScopeEntry::UseImport(u) => u.is_public,
+            _ => false,
         }
     }
 

@@ -19,6 +19,14 @@ public function Invoke(
     // Compiler built-in.
 }
 
+public function IsNull(value: Abstract): Boolean {
+    // Compiler built-in.
+}
+
+public model NullPtr {
+    
+}
+
 /// List of variants that can be called with `Invoke()`.
 public enum Invocation {
     // Strings.

@@ -25,6 +25,17 @@ impl LanguageServer for Backend {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(
                     TextDocumentSyncKind::FULL,
                 )),
+                completion_provider: Some(CompletionOptions {
+                    resolve_provider: Some(true),
+                    trigger_characters: Some(vec![format!("."), format!("use ")]),
+                    all_commit_characters: None,
+                    work_done_progress_options: WorkDoneProgressOptions {
+                        work_done_progress: Some(true),
+                    },
+                    completion_item: Some(CompletionOptionsCompletionItem {
+                        label_details_support: Some(true),
+                    }),
+                }),
                 diagnostic_provider: Some(DiagnosticServerCapabilities::Options(
                     DiagnosticOptions {
                         identifier: None,
@@ -38,6 +49,16 @@ impl LanguageServer for Backend {
                 ..ServerCapabilities::default()
             },
         })
+    }
+
+    async fn initialized(&self, _: InitializedParams) {
+        self.client
+            .log_message(MessageType::INFO, "server initialized!")
+            .await;
+    }
+
+    async fn shutdown(&self) -> Result<()> {
+        Ok(())
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
@@ -65,18 +86,12 @@ impl LanguageServer for Backend {
         self.docs.handle_change(params);
     }
 
-    async fn initialized(&self, _: InitializedParams) {
-        self.client
-            .log_message(MessageType::INFO, "server initialized!")
-            .await;
-    }
-
-    async fn shutdown(&self) -> Result<()> {
-        Ok(())
-    }
-
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
         Ok(self.docs.get_hover_info(params).map(|h| h.into()))
+    }
+
+    async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
+        Ok(self.docs.completion(params))
     }
 
     async fn diagnostic(

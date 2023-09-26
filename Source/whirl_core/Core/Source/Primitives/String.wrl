@@ -1,5 +1,4 @@
 // !::no-prelude::!
-/// skdfi
 module String;
 
 use Boolean.Boolean;

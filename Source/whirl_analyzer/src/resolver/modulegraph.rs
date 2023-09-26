@@ -3,7 +3,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use whirl_errors::ResolveError;
+use whirl_ast::{UsePath, UseTarget};
+use whirl_errors::ImportError;
 
 use crate::Module;
 use whirl_utils::get_parent_dir;
@@ -15,7 +16,8 @@ pub struct ModuleGraph {
     paths: HashMap<PathBuf, usize>,
     directories: HashMap<PathBuf, HashMap<String, usize>>,
     modules: Vec<Module>,
-    pub errors: Vec<ResolveError>,
+    holes: Vec<usize>,
+    pub errors: Vec<ImportError>,
 }
 
 impl ModuleGraph {
@@ -27,16 +29,15 @@ impl ModuleGraph {
             directories: HashMap::new(),
             modules: vec![],
             errors: vec![],
+            holes: vec![],
         }
     }
     /// Add a module to the graph and returns its module number.
     pub fn add_module(&mut self, module: Module) -> Option<usize> {
         let module_number = module.module_id;
         let module_path = module.module_path.as_ref()?.to_owned();
-        let module_name = module.name.as_ref()?.to_string();
         let module_directory = get_parent_dir(&module_path)?;
         let directories = &mut self.directories;
-
         // // Mark directory module.
         let dir_map = match directories.get_mut(module_directory) {
             Some(dir_map) => dir_map,
@@ -45,22 +46,122 @@ impl ModuleGraph {
                 directories.get_mut(module_directory).unwrap()
             }
         };
+        // Give module an anonymous name so it can remain tracked.
+        let module_name = match module.name {
+            Some(ref name) => name.to_string(),
+            None => {
+                let mut anonymous_name = module_path.file_stem()?.to_str()?.to_string();
+                while dir_map.get(&anonymous_name).is_some() {
+                    anonymous_name.push_str("_x")
+                }
+                anonymous_name
+            }
+        };
         dir_map.insert(module_name, module_number);
         // // Mark global path.
         self.paths.insert(module_path, module_number);
-        self.modules.push(module);
-
+        if module_number < self.modules.len() {
+            self.modules[module_number] = module;
+        } else {
+            self.modules.push(module);
+        }
         return Some(module_number);
     }
+    /// Check a module to confirm that all its imports are valid.
+    pub fn audit_module(&self, module: &Module) -> Option<Vec<ImportError>> {
+        let imports = module.get_use_imports();
+        let parent_dir = get_parent_dir(module.module_path.as_ref()?)?;
+        let mut errors = vec![];
+        // Module has no name.
+        if module.name.is_none() {
+            errors.push(whirl_errors::nameless_module());
+        }
+        for import in imports {
+            self.audit_import_target(&mut errors, module, parent_dir, &import.target);
+        }
+        Some(errors)
+    }
+    fn audit_import_target(
+        &self,
+        errors: &mut Vec<ImportError>,
+        start_module: &Module,
+        dir: &Path,
+        target: &UseTarget,
+    ) {
+        // Check that module import exists.
+        match self.get_module_in_dir(dir, &target.name.name) {
+            None => errors.push(whirl_errors::cannot_find_module(
+                target.name.name.to_owned(),
+                target.name.span,
+            )),
+            Some(imported_module) => {
+                // Block importing a module into itself.
+                if std::ptr::eq(imported_module, start_module) {
+                    match &start_module.name {
+                        Some(name) => errors
+                            .push(whirl_errors::self_import(name.to_owned(), target.name.span)),
+                        None => {}
+                    };
+                }
+                // Check descendant imports.
+                self.audit_import_paths(errors, imported_module, start_module, &target.path);
+            }
+        }
+    }
+    /// Check that the sub imports are correct.
+    fn audit_import_paths(
+        &self,
+        errors: &mut Vec<ImportError>,
+        imported_module: &Module,
+        start_module: &Module,
+        path: &UsePath,
+    ) {
+        let targets = match path {
+            // Module has already been checked.
+            UsePath::Me => return,
+            UsePath::Item(target) => vec![target.as_ref()],
+            UsePath::List(targets) => targets.iter().collect(),
+        };
+        for target in targets {
+            // Search global scope for item.
+            let shadow = imported_module.ambience.create_shadow(0);
+            if let Some(search) = shadow.lookaround(&target.name.name) {
+                // Importing non public symbol.
+                if !search.entry.is_public() {
+                    errors.push(whirl_errors::private_symbol_leak(
+                        imported_module.name.clone().unwrap(),
+                        target.name.to_owned(),
+                    ))
+                }
+                if let whirl_ast::ScopeEntry::UseImport(_) = search.entry {
+                    // import indirection.
+                    if !matches!(target.path, UsePath::Me) {
+                        let parent_dir =
+                            get_parent_dir(imported_module.module_path.as_ref().unwrap()).unwrap(); // todo: when will this panic?
+                        self.audit_import_target(errors, start_module, parent_dir, target);
+                    }
+                } else {
+                    // If path is still going, return error.
+                    if !matches!(target.path, UsePath::Me) {
+                        errors.push(whirl_errors::symbol_not_a_module(target.name.to_owned()))
+                    }
+                }
+            } else {
+                errors.push(whirl_errors::no_such_symbol_in_module(
+                    imported_module.name.clone().unwrap(),
+                    target.name.to_owned(),
+                ))
+            }
+        }
+    }
     /// Add an error to the graph.
-    pub fn add_error(&mut self, error: ResolveError) {
+    pub fn add_error(&mut self, error: ImportError) {
         self.errors.push(error)
     }
     /// Returns true if there are no modules in the graph.
     pub fn is_empty(&self) -> bool {
         self.modules.len() == 0
     }
-
     /// Build the graph, starting from the entry.
     pub fn unravel(&mut self) -> Option<()> {
         let enclosing_directory =
@@ -69,6 +170,7 @@ impl ModuleGraph {
         let skip = Some(self.modules.first()?.module_path.as_ref()?.to_owned());
         // Add modules downwards the module tree.
         self.traverse_dir(&enclosing_directory, skip);
+        self.refresh();
         Some(())
     }
     /// Dives into a directory and traverses all files and folders at all sub levels.
@@ -102,7 +204,7 @@ impl ModuleGraph {
                     module_ids.push(*id);
                     continue;
                 }
-                let id = self.modules.len();
+                let id = self.holes.pop().unwrap_or(self.modules.len());
                 match Module::from_path(path, id) {
                     Ok(module) => {
                         if let Some(id) = self.add_module(module) {
@@ -182,5 +284,72 @@ impl ModuleGraph {
     /// Returns the number of modules in the graph.
     pub fn len(&self) -> usize {
         self.modules.len()
+    }
+    /// Return an iterator over the modules.
+    pub fn modules(&self) -> impl Iterator<Item = &Module> {
+        self.modules.iter()
+    }
+    /// Return a mutable iterator over the modules.
+    pub fn modules_mut(&mut self) -> std::slice::IterMut<Module> {
+        self.modules.iter_mut()
+    }
+    /// Removes a folder and all its modules.
+    pub fn remove_folder(&mut self, path: &Path) -> Option<()> {
+        let folder = self.directories.get(path)?;
+        let affected_modules_idx = folder.iter().map(|tuple| *tuple.1);
+
+        for module_idx in affected_modules_idx {
+            self.paths
+                .remove::<PathBuf>(self.modules.get(module_idx)?.module_path.as_ref()?);
+            // Empty placeholder module.
+            let mut module = Module::default();
+            module.module_id = module_idx;
+            module.ambience.module_id = module_idx;
+            self.modules[module_idx] = module;
+            self.holes.push(module_idx);
+        }
+        self.directories.remove(path);
+        if self
+            .root_folder
+            .as_ref()
+            .is_some_and(|ref folder| *folder == path)
+        {
+            self.root_folder = None;
+        }
+        // Refresh graph.
+        self.refresh();
+        Some(())
+    }
+    /// Refresh the graph.
+    pub fn refresh(&mut self) {
+        let mut errors = vec![];
+        self.modules.iter().for_each(|module| {
+            errors.push(self.audit_module(module));
+        });
+        self.modules.iter_mut().rev().for_each(|module| {
+            module.set_resolve_errors(errors.pop().unwrap());
+        });
+    }
+    /// Removes a module from the program.
+    pub fn remove_module_at_path(&mut self, path: &Path) -> Option<()> {
+        let parent_dir = get_parent_dir(path)?;
+        let module_idx = *self.paths.get(path)?;
+        let module_name = self.modules[module_idx].name.as_ref()?;
+
+        // Remove from directory map.
+        let directory_map = &mut self.directories;
+        let directory = directory_map.get_mut(parent_dir)?;
+        directory.remove(module_name);
+
+        self.paths.remove(path);
+        // Empty placeholder module.
+        let mut module = Module::default();
+        module.module_id = module_idx;
+        module.ambience.module_id = module_idx;
+        self.modules[module_idx] = module;
+        self.holes.push(module_idx);
+
+        self.refresh();
+        Some(())
     }
 }

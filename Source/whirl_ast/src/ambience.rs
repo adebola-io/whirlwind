@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{Identifier, Scope, ScopeEntry, ScopeSearch, ScopeType, SymbolAddress};
+use crate::{Identifier, Scope, ScopeAddress, ScopeEntry, ScopeSearch, ScopeType};
 
 pub struct DirectoryAmbience {}
 
@@ -11,7 +11,7 @@ pub struct DirectoryAmbience {}
 /// a project.
 #[derive(Debug)]
 pub struct ModuleAmbience {
-    module_id: usize,
+    pub module_id: usize,
     module_name: Option<Identifier>,
     pub module_info: Option<Vec<String>>,
     scopes: Vec<Scope>,
@@ -290,7 +290,7 @@ impl ModuleAmbience {
     }
     /// Returns an entry using a scope address without checks.
     /// Panics if the scope or entry is not found.
-    pub fn get_entry_unguarded(&self, address: SymbolAddress) -> &ScopeEntry {
+    pub fn get_entry_unguarded(&self, address: ScopeAddress) -> &ScopeEntry {
         match self.get_scope(address.scope_id) {
             Some(scope) => match scope.get_entry(address.entry_no) {
                 Some(entry) => entry,
@@ -301,7 +301,7 @@ impl ModuleAmbience {
     }
     /// Returns a **mutable** entry using a scope address without checks.
     /// Panics if the scope or entry is not found.
-    pub fn get_entry_unguarded_mut(&mut self, address: SymbolAddress) -> &mut ScopeEntry {
+    pub fn get_entry_unguarded_mut(&mut self, address: ScopeAddress) -> &mut ScopeEntry {
         match self.get_scope_mut(address.scope_id) {
             Some(scope) => match scope.get_entry_mut(address.entry_no) {
                 Some(entry) => entry,

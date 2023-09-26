@@ -7,10 +7,10 @@ use whirl_ast::{
     GenericParameter, Identifier, IfExpression, IndexExpr, Keyword::*, LogicExpr, MemberType,
     MethodSignature, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType, ModelSignature,
     ModuleAmbience, ModuleDeclaration, NewExpr, Operator::*, Parameter, ReturnStatement,
-    ScopeEntry, ScopeType, ShorthandVariableDeclaration, Span, Spannable, Statement, SymbolAddress,
+    ScopeAddress, ScopeEntry, ScopeType, ShorthandVariableDeclaration, Span, Spannable, Statement,
     TestDeclaration, ThisExpr, Token, TokenType, TraitBody, TraitDeclaration, TraitProperty,
-    TraitPropertyType, TraitSignature, Type, TypeDeclaration, TypeExpression, TypeSignature,
-    UnaryExpr, UnionType, UpdateExpr, UseDeclaration, UsePath, UseTarget, UseTargetSignature,
+    TraitPropertyType, TraitSignature, TypeDeclaration, TypeExpression, TypeSignature, UnaryExpr,
+    UnionType, UpdateExpr, UseDeclaration, UsePath, UseTarget, UseTargetSignature,
     VariableSignature, WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
 };
 use whirl_errors::{self as errors, ParseError};
@@ -29,6 +29,7 @@ pub struct Parser<L: Lexer> {
     precedence_stack: RefCell<Vec<ExpressionPrecedence>>,
     /// Handles ambiguity caused by nested generic arguments conflicting with bit right shift.
     waiting_for_second_angular_bracket: RefCell<bool>,
+    pub debug_allow_global_expressions: bool,
 }
 
 type Fallible<T> = Result<T, ParseError>;
@@ -97,6 +98,7 @@ impl<L: Lexer> Parser<L> {
             doc_comments: RefCell::new(vec![]),
             precedence_stack: RefCell::new(vec![]),
             waiting_for_second_angular_bracket: RefCell::new(false),
+            debug_allow_global_expressions: false,
         }
     }
 
@@ -197,7 +199,7 @@ impl<L: Lexer> Parser<L> {
         // Parse a variable declaration instead if:
         // - the current token is an identifier, and
         // - the next token is a colon or a colon-assign.
-        let partial = if let Some(token) = self.token() {
+        let mut partial = if let Some(token) = self.token() {
             if matches!(token._type, TokenType::Ident(_)) {
                 let name = check!(self.identifier());
                 match self.token() {
@@ -217,6 +219,15 @@ impl<L: Lexer> Parser<L> {
         } else {
             self.expression()
         };
+
+        if partial.is_some()
+            && self.module_ambience().is_in_global_scope()
+            && !self.debug_allow_global_expressions
+        {
+            partial.errors.push(whirl_errors::global_control(
+                partial.value.as_ref().unwrap().span(),
+            ))
+        }
 
         match self.token() {
             Some(t) => match t._type {
@@ -949,7 +960,7 @@ impl<L: Lexer> Parser<L> {
             .register(ScopeEntry::Function(signature));
 
         let function = FunctionDeclaration {
-            address: SymbolAddress {
+            address: ScopeAddress {
                 module_id: self.module_ambience().id(),
                 scope_id: self.module_ambience().current_scope(),
                 entry_no,
@@ -1035,6 +1046,12 @@ impl<L: Lexer> Parser<L> {
             statement.set_start(start);
         }
 
+        if !self.module_ambience().is_in_global_scope() && partial.is_some() {
+            partial.errors.push(errors::public_in_non_global_scope(
+                partial.value.as_ref().unwrap().span(),
+            ))
+        }
+
         partial
     }
 
@@ -1063,7 +1080,7 @@ impl<L: Lexer> Parser<L> {
         };
         let entry_no = self.module_ambience().register(ScopeEntry::Type(signature));
         let type_ = TypeDeclaration {
-            address: SymbolAddress {
+            address: ScopeAddress {
                 module_id: self.module_ambience().id(),
                 scope_id: self.module_ambience().current_scope(),
                 entry_no,
@@ -1082,7 +1099,7 @@ impl<L: Lexer> Parser<L> {
         ended!(errors::string_expected(self.last_token_end()), self);
         let token = self.token().unwrap();
 
-        match token._type {
+        let mut partial = match token._type {
             TokenType::String(ref mut name) => {
                 let name_span = token.span;
                 let name = std::mem::take(name);
@@ -1104,7 +1121,14 @@ impl<L: Lexer> Parser<L> {
                 Partial::from_tuple((Some(test_decl), errors))
             }
             _ => Partial::from_error(errors::string_expected(token.span)),
+        };
+        // Flag non global test.
+        if partial.value.is_some() && !self.module_ambience().is_in_global_scope() {
+            partial.errors.push(whirl_errors::test_in_non_global_scope(
+                partial.value.as_ref().unwrap().span,
+            ));
         }
+        partial
     }
 
     /// Parses a use import. Assumes that `use` is the current token.
@@ -1139,7 +1163,7 @@ impl<L: Lexer> Parser<L> {
             let entry_no = self
                 .module_ambience()
                 .register(ScopeEntry::UseImport(signature));
-            addresses.push(SymbolAddress {
+            addresses.push(ScopeAddress {
                 module_id: self.module_ambience().id(),
                 scope_id: self.module_ambience().current_scope(),
                 entry_no,
@@ -1151,6 +1175,12 @@ impl<L: Lexer> Parser<L> {
             is_public,
             span,
         };
+
+        if !(self.module_ambience().is_in_global_scope()
+            || self.module_ambience().is_in_test_scope())
+        {
+            errors.push(errors::non_global_use(span));
+        }
         Partial {
             value: Some(use_decl),
             errors,
@@ -1244,7 +1274,7 @@ impl<L: Lexer> Parser<L> {
             variants,
         };
         let entry_no = self.module_ambience().register(ScopeEntry::Enum(signature));
-        let address = SymbolAddress {
+        let address = ScopeAddress {
             module_id: self.module_ambience().id(),
             scope_id: self.module_ambience().current_scope(),
             entry_no,
@@ -1376,7 +1406,7 @@ impl<L: Lexer> Parser<L> {
         );
         let implementations = check!(self.maybe_trait_implementations());
         let entry_no = self.module_ambience().reserve_entry_space();
-        let address = SymbolAddress {
+        let address = ScopeAddress {
             module_id: self.module_ambience().id(),
             scope_id: self.module_ambience().current_scope(),
             entry_no,
@@ -1412,7 +1442,7 @@ impl<L: Lexer> Parser<L> {
     }
 
     /// Maybe parses a list of trait implementations.
-    fn maybe_trait_implementations(&self) -> Fallible<Vec<Type>> {
+    fn maybe_trait_implementations(&self) -> Fallible<Vec<TypeExpression>> {
         let mut traits = vec![];
         self.ended(errors::expected(
             TokenType::Bracket(LCurly),
@@ -1433,10 +1463,7 @@ impl<L: Lexer> Parser<L> {
                     }
                     _ => {}
                 }
-                traits.push(Type {
-                    declared: Some(trait_),
-                    inferred: None,
-                });
+                traits.push(trait_);
                 if self
                     .token()
                     .is_some_and(|t| t._type == TokenType::Operator(Comma))
@@ -1453,7 +1480,7 @@ impl<L: Lexer> Parser<L> {
     /// Rambly function to parse a model body.
     fn model_body(
         &self,
-        model_address: &SymbolAddress,
+        model_address: &ScopeAddress,
     ) -> Imperfect<(
         ModelBody,
         Vec<AttributeSignature>,
@@ -1701,7 +1728,7 @@ impl<L: Lexer> Parser<L> {
         is_public: bool,
         is_static: bool,
         is_async: bool,
-        model_address: &SymbolAddress,
+        model_address: &ScopeAddress,
     ) -> Imperfect<(MethodSignature, ModelPropertyType)> {
         expect_or_return!(TokenType::Keyword(Function), self);
         self.advance(); // Move past function.
@@ -1750,7 +1777,7 @@ impl<L: Lexer> Parser<L> {
         is_static: bool,
         is_async: bool,
         info: Option<Vec<String>>,
-        model_address: &SymbolAddress,
+        model_address: &ScopeAddress,
     ) -> Imperfect<(MethodSignature, ModelPropertyType)> {
         expect_or_return!(TokenType::Bracket(LSquare), self);
         self.advance(); // Move past [
@@ -1835,7 +1862,7 @@ impl<L: Lexer> Parser<L> {
             self
         );
         let entry_no = self.module_ambience().reserve_entry_space();
-        let address = SymbolAddress {
+        let address = ScopeAddress {
             module_id: self.module_ambience().id(),
             scope_id: self.module_ambience().current_scope(),
             entry_no,
@@ -1872,7 +1899,7 @@ impl<L: Lexer> Parser<L> {
     /// Parses a trait body.
     fn trait_body(
         &self,
-        trait_address: &SymbolAddress,
+        trait_address: &ScopeAddress,
     ) -> Imperfect<(TraitBody, Vec<MethodSignature>)> {
         expect_or_return!(TokenType::Bracket(LCurly), self);
         let start = self.token().unwrap().span.start;
@@ -2010,7 +2037,7 @@ impl<L: Lexer> Parser<L> {
         is_public: bool,
         is_static: bool,
         is_async: bool,
-        trait_address: &SymbolAddress,
+        trait_address: &ScopeAddress,
     ) -> Imperfect<(MethodSignature, TraitPropertyType)> {
         expect_or_return!(TokenType::Keyword(Function), self);
         self.advance(); // Move past function.
@@ -2095,49 +2122,58 @@ impl<L: Lexer> Parser<L> {
         self.advance(); // move past return
         let mut errors = vec![];
 
-        if self
+        let mut partial = if self
             .token()
             .is_some_and(|t| t._type == TokenType::Operator(SemiColon))
         {
             let end = self.token().unwrap().span.end;
             self.advance(); // move past ;
-            return Partial::from_value(Statement::ReturnStatement(ReturnStatement {
+            Partial::from_value(Statement::ReturnStatement(ReturnStatement {
                 value: None,
                 span: Span { start, end },
-            }));
-        }
-        let mut expression = self.expression();
-        errors.append(&mut expression.errors);
-
-        let end = if !self
-            .token()
-            .is_some_and(|t| t._type == TokenType::Operator(SemiColon))
-        {
-            errors.push(errors::expected(
-                TokenType::Operator(SemiColon),
-                self.last_token_span(),
-            ));
-            expression
-                .value
-                .as_ref()
-                .map(|v| v.span().end)
-                .unwrap_or(ret_end)
+            }))
         } else {
-            let end = self.token().unwrap().span.end;
-            self.advance(); // move past
-            end
+            let mut expression = self.expression();
+            errors.append(&mut expression.errors);
+
+            let end = if !self
+                .token()
+                .is_some_and(|t| t._type == TokenType::Operator(SemiColon))
+            {
+                errors.push(errors::expected(
+                    TokenType::Operator(SemiColon),
+                    self.last_token_span(),
+                ));
+                expression
+                    .value
+                    .as_ref()
+                    .map(|v| v.span().end)
+                    .unwrap_or(ret_end)
+            } else {
+                let end = self.token().unwrap().span.end;
+                self.advance(); // move past
+                end
+            };
+
+            let return_ = ReturnStatement {
+                value: expression.value,
+                span: Span { start, end },
+            };
+
+            let statement = Statement::ReturnStatement(return_);
+            Partial::from_tuple((Some(statement), errors))
         };
 
-        let return_ = ReturnStatement {
-            value: expression.value,
-            span: Span { start, end },
-        };
-        if !self.module_ambience().is_in_function_context() {
-            errors.push(errors::invalid_return(return_.span));
+        if !self.module_ambience().is_in_function_context()
+            && partial.is_some()
+            && !self.debug_allow_global_expressions
+        {
+            partial.errors.push(errors::invalid_return(
+                partial.value.as_ref().unwrap().span(),
+            ));
         }
 
-        let statement = Statement::ReturnStatement(return_);
-        Partial::from_tuple((Some(statement), errors))
+        partial
     }
 
     /// Parses an identifier and advances. It assumes that the identifier is the current token.
@@ -2270,14 +2306,14 @@ impl<L: Lexer> Parser<L> {
     }
 
     /// Parses a type label. It assumes that `:` is maybe the current token.
-    fn maybe_type_label(&self) -> Fallible<Type> {
+    fn maybe_type_label(&self) -> Fallible<Option<TypeExpression>> {
         if !self
             .token()
             .is_some_and(|t| t._type == TokenType::Operator(Colon))
         {
-            return Ok(whirl_ast::Type::empty());
+            return Ok(None);
         }
-        self.type_label()
+        Ok(Some(self.type_label()?))
     }
 
     /// Parses a block of statements. It assumes that `{` is the current token.
@@ -2343,9 +2379,9 @@ impl<L: Lexer> Parser<L> {
             .token()
             .is_some_and(|t| t._type == TokenType::Operator(Colon))
         {
-            self.type_label()?
+            Some(self.type_label()?)
         } else {
-            Type::empty()
+            None
         };
 
         let parameter = Parameter {
@@ -2422,11 +2458,11 @@ impl<L: Lexer> Parser<L> {
 // TYPES.
 impl<L: Lexer> Parser<L> {
     /// Parses a type label. Assumes that `:` is unconditionally the current token.
-    fn type_label(&self) -> Fallible<whirl_ast::Type> {
+    fn type_label(&self) -> Fallible<whirl_ast::TypeExpression> {
         expect!(TokenType::Operator(Colon), self);
         self.advance(); // Move past :
         let expression = self.type_expression()?;
-        Ok(Type::from_expression(expression))
+        Ok(expression)
     }
 
     /// Parses a type expression. Assumes that the first identifier or the function keyword is the current token.
@@ -2462,7 +2498,7 @@ impl<L: Lexer> Parser<L> {
         self.advance(); // Move past fn.
         let generic_params = self.maybe_generic_params()?;
         let params = self.parameters()?;
-        let return_type = self.maybe_type_label()?.declared.map(|exp| Box::new(exp));
+        let return_type = self.maybe_type_label()?.map(|exp| Box::new(exp));
         let span = Span::from([start, self.last_token_span().end]);
 
         let functype = TypeExpression::Functional(FunctionalType {

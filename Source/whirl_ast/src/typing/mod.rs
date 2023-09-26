@@ -1,85 +1,62 @@
-use crate::{Identifier, Parameter, Span, SymbolAddress};
+use crate::{Identifier, Parameter, ScopeAddress, Span};
 
 /// Stores the address of a symbol in relation to an entire workspace.
 #[derive(Debug, PartialEq)]
 pub struct ModuleAddress {
     pub module_id: usize,
-    pub scope_address: SymbolAddress,
+    pub scope_address: ScopeAddress,
 }
 
-/// The first representation of a type.
-#[derive(Debug, Default, Clone, PartialEq)]
-pub struct Type {
-    pub declared: Option<TypeExpression>,
-    pub inferred: Option<TypeEval>,
-}
+// /// Result of a type evaluation.
+// #[derive(Default, PartialEq, Debug, Clone)]
+// pub enum TypeEval {
+//     /// An address of a scope entry within the module ambience.
+//     ModelInstance {
+//         model_address: SymbolAddress,
+//         args: Option<Vec<TypeEval>>,
+//     },
+//     /// A type error.
+//     #[default]
+//     Invalid,
+//     Unknown,
+//     ModelConstructor {
+//         address: SymbolAddress,
+//     },
+//     TraitConstructor {
+//         address: SymbolAddress,
+//     },
+//     EnumConstructor {
+//         address: SymbolAddress,
+//     },
+//     TypeAlias {
+//         address: SymbolAddress,
+//     },
+//     MethodOfInstance {
+//         model_address: SymbolAddress,
+//         method_no: usize,
+//         generic_args: Option<Vec<TypeEval>>,
+//     },
+// }
+// impl TypeEval {
+//     pub fn is_invalid(&self) -> bool {
+//         matches!(self, TypeEval::Invalid)
+//     }
+//     /// returns true if one tyoe is an instance of the other.
+//     pub fn is_instance_of(&self, other: TypeEval) -> bool {
+//         matches!(self, TypeEval::ModelInstance { model_address: a1, .. }
+//             if matches!(other, TypeEval::ModelConstructor { address: a2, .. }
+//                 if *a1 == a2
+//             )
+//         )
+//     }
+// }
 
-impl Type {
-    /// Create a nothing type.
-    pub fn empty() -> Self {
-        Type {
-            declared: None,
-            inferred: None,
-        }
-    }
-    pub fn from_expression(expression: TypeExpression) -> Self {
-        Type {
-            declared: Some(expression),
-            inferred: None,
-        }
-    }
-}
-
-/// Result of a type evaluation.
-#[derive(Default, PartialEq, Debug, Clone)]
-pub enum TypeEval {
-    /// An address of a scope entry within the module ambience.
-    ModelInstance {
-        model_address: SymbolAddress,
-        args: Option<Vec<TypeEval>>,
-    },
-    /// A type error.
-    #[default]
-    Invalid,
-    Unknown,
-    ModelConstructor {
-        address: SymbolAddress,
-    },
-    TraitConstructor {
-        address: SymbolAddress,
-    },
-    EnumConstructor {
-        address: SymbolAddress,
-    },
-    TypeAlias {
-        address: SymbolAddress,
-    },
-    MethodOfInstance {
-        model_address: SymbolAddress,
-        method_no: usize,
-        generic_args: Option<Vec<TypeEval>>,
-    },
-}
-impl TypeEval {
-    pub fn is_invalid(&self) -> bool {
-        matches!(self, TypeEval::Invalid)
-    }
-    /// returns true if one tyoe is an instance of the other.
-    pub fn is_instance_of(&self, other: TypeEval) -> bool {
-        matches!(self, TypeEval::ModelInstance { model_address: a1, .. }
-            if matches!(other, TypeEval::ModelConstructor { address: a2, .. }
-                if *a1 == a2
-            )
-        )
-    }
-}
-
-pub trait TypedValue {
-    /// Returns the type evaluated for the value.
-    fn evaluated_type(&self) -> Option<&TypeEval>;
-    /// Returns the type declared for the value.
-    fn declared_type(&self) -> Option<&TypeExpression>;
-}
+// pub trait TypedValue {
+//     /// Returns the type evaluated for the value.
+//     fn evaluated_type(&self) -> Option<&TypeEval>;
+//     /// Returns the type declared for the value.
+//     fn declared_type(&self) -> Option<&TypeExpression>;
+// }
 
 #[derive(PartialEq, Clone)]
 pub enum TypeExpression {
@@ -147,10 +124,6 @@ impl TypeExpression {
             TypeExpression::This { span } => span.clone(),
             TypeExpression::Invalid => Span::default(),
         }
-    }
-
-    pub fn as_eval(&self) -> TypeEval {
-        todo!()
     }
 }
 

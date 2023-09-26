@@ -1,6 +1,6 @@
 module Primitives;
 
-public use String.String;
+public use String.{String, Chars};
 public use ArrayOf.ArrayOf;
 public use Boolean;
 public use Numeric.{
@@ -9,4 +9,4 @@ public use Numeric.{
     UnsignedInteger,
     Integer,
     Number,
-};
+}; 

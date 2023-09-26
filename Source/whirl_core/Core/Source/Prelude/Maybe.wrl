@@ -18,7 +18,7 @@ public function Some<T>(value: T): Maybe<T> {
 }
 
 /// A value that may or may not exist.
-public model Maybe<T> implements Assertable {
+public model Maybe<T> implements Assertable<T>, TryFrom<T> {
     var value: T;
 
     new(value: T) {
@@ -42,6 +42,14 @@ public model Maybe<T> implements Assertable {
     }
     /// Ignores the maybe and returns the internal value. 
     /// It will throw an error if no value is present.
+    /// ### Usage
+    /// ```
+    /// numValue := Some(89);
+    /// Assert(numValue.Unwrap()).Equals(89);
+    /// 
+    /// noValue: Maybe<Number> = None();
+    /// noValue.Unwrap(); // Will throw an error.
+    /// ```
     public function Unwrap(): T {
         if this.IsNone() {
             PanicOnCaller(new Error("Called Unwrap on a None Value"))
@@ -53,5 +61,6 @@ public model Maybe<T> implements Assertable {
     public function UnwrapOr(value: T): T {
         if this.IsNone() { value } else { this.value }
     }
+
     
 }

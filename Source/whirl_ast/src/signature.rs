@@ -1,7 +1,4 @@
-use crate::{
-    EnumVariant, GenericParameter, Identifier, ModuleAmbience, ScopeEntry, Type, TypeEval,
-    TypeExpression, TypedValue,
-};
+use crate::{EnumVariant, GenericParameter, Identifier, ModuleAmbience, TypeExpression};
 
 use whirl_macros::Signature;
 
@@ -32,7 +29,7 @@ pub struct ModelSignature {
     /// The constructor parameters, if there is a constructor.
     pub parameters: Option<Vec<Parameter>>,
     /// Implemented Traits.
-    pub implementations: Vec<Type>,
+    pub implementations: Vec<TypeExpression>,
     /// The properties of the model.
     pub attributes: Vec<AttributeSignature>,
     /// The methods of the model.
@@ -44,7 +41,7 @@ pub struct Parameter {
     /// Name of the parameter.
     pub name: Identifier,
     /// Parameter type label.
-    pub type_label: Type,
+    pub type_label: Option<TypeExpression>,
     /// Whether or not the parameter is optional.
     pub is_optional: bool,
     /// Doc comments annotating the parameter, if any.
@@ -67,7 +64,7 @@ pub struct AttributeSignature {
     /// Whether or not it is denoted by public.
     pub is_public: bool,
     /// The variable type.
-    pub var_type: Type,
+    pub var_type: TypeExpression,
 }
 
 /// Entry to mark a method.
@@ -88,7 +85,7 @@ pub struct MethodSignature {
     /// The parameters of the function, if any.
     pub params: Vec<Parameter>,
     /// Optional return type.
-    pub return_type: Type,
+    pub return_type: Option<TypeExpression>,
 }
 
 /// Entry to mark a variable.
@@ -103,7 +100,7 @@ pub struct VariableSignature {
     /// Whether or not the variable is denoted by `public`.
     pub is_public: bool,
     /// The variable's assigned type.
-    pub var_type: Type,
+    pub var_type: Option<TypeExpression>,
 }
 
 /// An entry to mark a function.
@@ -122,7 +119,7 @@ pub struct FunctionSignature {
     /// The parameters of the function, if any.
     pub params: Vec<Parameter>,
     /// Optional return type.
-    pub return_type: Type,
+    pub return_type: Option<TypeExpression>,
 }
 
 /// An entry to mark a trait declaration.
@@ -139,7 +136,7 @@ pub struct TraitSignature {
     /// Methods on the trait.
     pub methods: Vec<MethodSignature>,
     /// Implemented Traits.
-    pub implementations: Vec<Type>,
+    pub implementations: Vec<TypeExpression>,
 }
 
 /// Entry to mark a type.
@@ -171,16 +168,6 @@ pub struct EnumSignature {
     pub variants: Vec<EnumVariant>,
 }
 
-impl TypedValue for AttributeSignature {
-    fn evaluated_type(&self) -> Option<&TypeEval> {
-        self.var_type.inferred.as_ref()
-    }
-
-    fn declared_type(&self) -> Option<&TypeExpression> {
-        self.var_type.declared.as_ref()
-    }
-}
-
 impl Signature for (&Identifier, &EnumVariant) {
     fn info(&self) -> Option<&Vec<String>> {
         self.1.info.as_ref()
@@ -196,31 +183,5 @@ impl Signature for ModuleAmbience {
 impl Signature for (&ModuleAmbience, &VariableSignature) {
     fn info(&self) -> Option<&Vec<String>> {
         self.1.info.as_ref()
-    }
-}
-
-impl Signature for (&ModuleAmbience, TypeEval) {
-    fn info(&self) -> Option<&Vec<String>> {
-        match self.1 {
-            TypeEval::ModelInstance {
-                model_address: address,
-                ..
-            }
-            | TypeEval::EnumConstructor { address }
-            | TypeEval::ModelConstructor { address }
-            | TypeEval::TraitConstructor { address }
-            | TypeEval::TypeAlias { address } => match self.0.get_entry_unguarded(address) {
-                ScopeEntry::Type(typ) => typ.info(),
-                ScopeEntry::Enum(e) => e.info(),
-                ScopeEntry::Model(c) => c.info(),
-                _ => None,
-            },
-            TypeEval::Unknown | TypeEval::Invalid => None,
-            TypeEval::MethodOfInstance {
-                model_address: address,
-                method_no,
-                ..
-            } => self.0.get_entry_unguarded(address).model().methods[method_no].info(),
-        }
     }
 }

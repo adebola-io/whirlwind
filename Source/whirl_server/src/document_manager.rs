@@ -1,19 +1,18 @@
 use std::{path::PathBuf, sync::RwLock};
 
-use tower_lsp::lsp_types::{
-    Diagnostic, DidChangeTextDocumentParams, DidOpenTextDocumentParams, DocumentDiagnosticParams,
-    DocumentDiagnosticReport, FullDocumentDiagnosticReport, HoverParams, Position,
-    RelatedFullDocumentDiagnosticReport, Url,
-};
-use whirl_analyzer::{Module, ModuleGraph};
-use whirl_ast::ASTVisitorNoArgs;
-use whirl_utils::get_parent_dir;
-
 use crate::{
     diagnostic::to_diagnostic,
     error::DocumentError,
     hover::{HoverFinder, HoverInfo},
 };
+use tower_lsp::lsp_types::{
+    CompletionItem, CompletionParams, CompletionResponse, Diagnostic, DidChangeTextDocumentParams,
+    DidOpenTextDocumentParams, DocumentDiagnosticParams, DocumentDiagnosticReport,
+    FullDocumentDiagnosticReport, HoverParams, Position, RelatedFullDocumentDiagnosticReport, Url,
+};
+use whirl_analyzer::{Module, ModuleGraph};
+use whirl_ast::{ASTVisitorNoArgs, Positioning, Span};
+use whirl_utils::get_parent_dir;
 
 #[derive(Debug)]
 pub struct DocumentManager {
@@ -22,9 +21,10 @@ pub struct DocumentManager {
 
 impl DocumentManager {
     pub fn new() -> Self {
-        DocumentManager {
+        let manager = DocumentManager {
             graphs: RwLock::new(vec![]),
-        }
+        };
+        manager
     }
     /// Add a new document to be tracked.
     pub fn add_document(&self, params: DidOpenTextDocumentParams) -> Result<(), DocumentError> {
@@ -40,6 +40,7 @@ impl DocumentManager {
                 match Module::from_path(path_buf, graph.len()) {
                     Ok(module) => {
                         graph.add_module(module);
+                        graph.unravel();
                     }
                     Err(error) => {
                         graph.add_error(error);
@@ -74,9 +75,25 @@ impl DocumentManager {
                     .ok_or_else(|| DocumentError::NoParentFolder(root_folder.to_path_buf()))?;
                 continue;
             }
+            // Check again to see if there is already a graph with this module.
+            for graph in graphs.iter_mut() {
+                if graph.contains_folder(root_folder) {
+                    match Module::from_path(path_buf, graph.len()) {
+                        Ok(module) => {
+                            graph.add_module(module);
+                            graph.unravel();
+                        }
+                        Err(error) => {
+                            graph.add_error(error);
+                        }
+                    }
+                    return Ok(());
+                }
+            }
             graph.set_start(main_module.unwrap());
-            break;
+
             // Todo: read whirl.yaml to find source module instead.
+            break;
         }
         // Root not found, skip project altogether.
         if graph.is_empty() {
@@ -86,6 +103,7 @@ impl DocumentManager {
         graphs.push(graph);
         Ok(())
     }
+
     /// Hover over support.
     pub fn get_hover_info(&self, params: HoverParams) -> Option<HoverInfo> {
         let uri = params.text_document_position_params.text_document.uri;
@@ -114,27 +132,50 @@ impl DocumentManager {
         }
         return false;
     }
+
+    pub fn completion(&self, params: CompletionParams) -> Option<CompletionResponse> {
+        let graphs = self.graphs.read().unwrap();
+
+        let path = uri_to_absolute_path(params.text_document_position.text_document.uri).ok()?;
+        let graph = graphs.iter().find(|graph| graph.contains_file(&path))?;
+        let module = graph.get_module_at_path(&path)?;
+
+        let position = params.text_document_position.position;
+        let completion_context = params.context?;
+
+        let position = [position.line + 1, position.character + 1];
+        let statement = module
+            .statements()
+            .map(|statement| statement.closest_nodes_to(Span::at(position)))
+            .flatten()
+            .next()?;
+        let label = match statement {
+            whirl_ast::Statement::UseDeclaration(u) => format!("Use"),
+            _ => format!("Else"),
+        };
+        Some(CompletionResponse::Array(vec![CompletionItem {
+            label,
+            ..Default::default()
+        }]))
+        // None
+    }
+
     /// Handles didChange event
-    pub fn handle_change(&self, mut params: DidChangeTextDocumentParams) {
+    pub fn handle_change(&self, mut params: DidChangeTextDocumentParams) -> Option<()> {
         let uri = params.text_document.uri;
-        let path_buf = uri_to_absolute_path(uri).ok();
-        if path_buf.is_none() {
-            return;
-        }
-        let path_buf = path_buf.unwrap();
+        let path_buf = uri_to_absolute_path(uri).ok()?;
         let mut graphs = self.graphs.write().unwrap();
-        graphs
+        let graph = graphs
             .iter_mut()
-            .find_map(|graph| match graph.contains_file(&path_buf) {
-                true => graph.get_mut_module_at_path(&path_buf),
-                false => None,
-            })
-            .map(|module| {
-                let last = params.content_changes.len() - 1;
-                let most_current = std::mem::take(&mut params.content_changes[last].text);
-                module.refresh_with_text(most_current);
-                // module.version = params.text_document.version;
-            });
+            .find(|graph| graph.contains_file(&path_buf))?;
+        let last = params.content_changes.len() - 1;
+        let most_current = std::mem::take(&mut params.content_changes[last].text);
+        graph
+            .get_mut_module_at_path(&path_buf)?
+            .refresh_with_text(most_current);
+        // Audit all modules in the graph. // todo: find more performant way to update imports.
+        graph.refresh();
+        Some(())
     }
     /// Get diagnostics.
     pub fn get_diagnostics(

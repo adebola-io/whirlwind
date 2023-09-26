@@ -4,8 +4,8 @@ use whirl_ast::{
     AccessExpr, ArrayExpr, AssignmentExpr, BinaryExpr, Block, CallExpr, DiscreteType, Else,
     EnumDeclaration, Expression, FunctionDeclaration, FunctionExpr, Identifier, IfExpression,
     IndexExpr, LogicExpr, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType,
-    ModuleDeclaration, NewExpr, Parameter, ReturnStatement, ScopeEntry, Span, Statement,
-    SymbolAddress, TestDeclaration, ThisExpr, TraitBody, TraitDeclaration, TraitProperty, Type,
+    ModuleDeclaration, NewExpr, Parameter, ReturnStatement, ScopeAddress, ScopeEntry, Span,
+    Statement, TestDeclaration, ThisExpr, TraitBody, TraitDeclaration, TraitProperty,
     TypeDeclaration, TypeExpression, UnaryExpr, UpdateExpr, UpdateOperator, UseDeclaration,
     UsePath, UseTarget, WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
 };
@@ -41,11 +41,11 @@ fn parsing_functions_with_types() {
             search.entry,
             ScopeEntry::Function(f) if matches!
             (
-                &f.params[0].type_label.declared,
+                &f.params[0].type_label,
                 Some(TypeExpression::Discrete(d)) if d.name.name == "String"
             ) && matches!
             (
-                &f.params[1].type_label.declared,
+                &f.params[1].type_label,
                 Some(TypeExpression::Discrete(d)) if d.name.name == "Integer"
             )
         )));
@@ -72,7 +72,7 @@ fn parsing_functions_with_member_types() {
             search.entry,
             ScopeEntry::Function(f) if matches!
             (
-                &f.params[0].type_label.declared,
+                &f.params[0].type_label,
                 Some(TypeExpression::Member(m)) if matches!(
                     &*m.namespace, TypeExpression::Member(_)
                 )
@@ -101,7 +101,7 @@ fn parsing_functions_with_generic_types() {
             search.entry,
             ScopeEntry::Function(f) if matches!
             (
-                &f.params[0].type_label.declared,
+                &f.params[0].type_label,
                 Some(TypeExpression::Discrete(d)) if
                     d.name.name == "ArrayOf" &&
                     d.generic_args.as_ref().unwrap().len() == 1
@@ -129,7 +129,7 @@ fn parsing_functions_with_generic_types() {
             ScopeEntry::Function(f)
             if matches!
             (
-                &f.params[0].type_label.declared,
+                &f.params[0].type_label,
                 Some(TypeExpression::Discrete(d)) if
                     d.name.name == "ArrayOf" &&
                     d.generic_args.as_ref().unwrap().len() == 1
@@ -163,10 +163,10 @@ fn parsing_functional_types() {
             search.entry,
             ScopeEntry::Function(f) if matches!
             (
-                &f.params[0].type_label.declared,
+                &f.params[0].type_label,
                 Some(TypeExpression::Functional(f)) if matches!
                 {
-                    f.params[0].type_label.declared,
+                    f.params[0].type_label,
                     Some(TypeExpression::Discrete(_))
                 } && f.return_type.is_some()
             )
@@ -214,7 +214,7 @@ fn parsing_union_types() {
             search.entry,
             ScopeEntry::Function(f) if matches!
             (
-                &f.params[0].type_label.declared,
+                &f.params[0].type_label,
                 Some(TypeExpression::Union(u)) if u.types.len() == 6
             )
         )));
@@ -237,7 +237,7 @@ fn parsing_functions() {
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::FunctionDeclaration(FunctionDeclaration {
-            address: SymbolAddress::from([0, 0, 0]),
+            address: ScopeAddress::from([0, 0, 0]),
             body: Block::empty(1, Span::from([1, 20, 1, 22])),
             span: Span::from([1, 1, 1, 22])
         })
@@ -264,11 +264,11 @@ fn parsing_functions() {
     assert_eq!(
         statement,
         Statement::FunctionDeclaration(FunctionDeclaration {
-            address: SymbolAddress::from([0, 0, 0]),
+            address: ScopeAddress::from([0, 0, 0]),
             body: Block {
                 scope_id: 1,
                 statements: vec![Statement::FunctionDeclaration(FunctionDeclaration {
-                    address: SymbolAddress::from([0, 1, 0]),
+                    address: ScopeAddress::from([0, 1, 0]),
                     body: Block::empty(2, Span::from([3, 34, 5, 10])),
                     span: Span::from([3, 9, 5, 10])
                 })],
@@ -289,7 +289,7 @@ fn parsing_functions() {
     assert_eq!(
         statement,
         Statement::FunctionDeclaration(FunctionDeclaration {
-            address: SymbolAddress::from([0, 0, 0]),
+            address: ScopeAddress::from([0, 0, 0]),
             body: Block {
                 scope_id: 1,
                 statements: vec![],
@@ -315,7 +315,7 @@ fn parsing_async_functions() {
     assert_eq!(
         statement,
         Statement::FunctionDeclaration(FunctionDeclaration {
-            address: SymbolAddress::from([0, 0, 0]),
+            address: ScopeAddress::from([0, 0, 0]),
             body: Block {
                 scope_id: 1,
                 statements: vec![],
@@ -342,7 +342,7 @@ fn parse_function_with_nested_generics() {
     assert_eq!(
         statement,
         Statement::FunctionDeclaration(FunctionDeclaration {
-            address: SymbolAddress::from([0, 0, 0]),
+            address: ScopeAddress::from([0, 0, 0]),
             body: Block {
                 scope_id: 1,
                 statements: vec![],
@@ -367,7 +367,7 @@ fn parsing_type_declarations() {
     assert_eq!(
         statement,
         Statement::TypeDeclaration(TypeDeclaration {
-            address: SymbolAddress::from([0, 0, 0]),
+            address: ScopeAddress::from([0, 0, 0]),
             span: Span::from([1, 1, 1, 61])
         })
     );
@@ -442,7 +442,7 @@ fn parsing_this_type() {
     assert_eq!(
         statement,
         Statement::TypeDeclaration(TypeDeclaration {
-            address: SymbolAddress::from([0, 0, 0]),
+            address: ScopeAddress::from([0, 0, 0]),
             span: Span::from([1, 1, 1, 17])
         })
     );
@@ -676,6 +676,7 @@ fn parse_group_use_import() {
 fn parse_call_expressions() {
     // One argument
     let mut parser = parse_text("Calculate(A)");
+    parser.debug_allow_global_expressions = true;
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::FreeExpression(Expression::CallExpr(Box::new(CallExpr {
@@ -693,6 +694,7 @@ fn parse_call_expressions() {
 
     // Many arguments
     parser = parse_text("Calculate(A, B, C, D)");
+    parser.debug_allow_global_expressions = true;
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::FreeExpression(Expression::CallExpr(Box::new(CallExpr {
@@ -724,6 +726,7 @@ fn parse_call_expressions() {
 
     // Nested
     parser = parse_text("Calculate(Calculate(Calculate(A)))");
+    parser.debug_allow_global_expressions = true;
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::FreeExpression(Expression::CallExpr(Box::new(CallExpr {
@@ -757,6 +760,7 @@ fn parse_call_expressions() {
 #[test]
 fn parse_string_literal() {
     let mut parser = parse_text("\"Hello, world!\"");
+    parser.debug_allow_global_expressions = true;
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::FreeExpression(Expression::StringLiteral(whirl_ast::WhirlString {
@@ -769,6 +773,7 @@ fn parse_string_literal() {
 #[test]
 fn parse_fn_expressions() {
     let mut parser = parse_text("fn (a: Number): Number a");
+    parser.debug_allow_global_expressions = true;
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::FreeExpression(Expression::FnExpr(Box::new(FunctionExpr {
@@ -779,30 +784,24 @@ fn parse_fn_expressions() {
                     span: [1, 5, 1, 6].into()
                 },
                 info: None,
-                type_label: Type {
-                    declared: Some(TypeExpression::Discrete(DiscreteType {
-                        name: Identifier {
-                            name: format!("Number"),
-                            span: [1, 8, 1, 14].into()
-                        },
-                        generic_args: None,
-                        span: [1, 8, 1, 14].into()
-                    })),
-                    inferred: None
-                },
-                is_optional: false
-            }],
-            return_type: Type {
-                declared: Some(TypeExpression::Discrete(DiscreteType {
+                type_label: Some(TypeExpression::Discrete(DiscreteType {
                     name: Identifier {
                         name: format!("Number"),
-                        span: [1, 17, 1, 23].into()
+                        span: [1, 8, 1, 14].into()
                     },
                     generic_args: None,
-                    span: [1, 17, 1, 23].into()
+                    span: [1, 8, 1, 14].into()
                 })),
-                inferred: None
-            },
+                is_optional: false
+            }],
+            return_type: Some(TypeExpression::Discrete(DiscreteType {
+                name: Identifier {
+                    name: format!("Number"),
+                    span: [1, 17, 1, 23].into()
+                },
+                generic_args: None,
+                span: [1, 17, 1, 23].into()
+            })),
             body: Expression::Identifier(Identifier {
                 name: format!("a"),
                 span: [1, 24, 1, 25].into()
@@ -816,6 +815,7 @@ fn parse_fn_expressions() {
 fn parse_if_expressions() {
     // Without else.
     let mut parser = parse_text("if IsLegal() { \"Come on in\" }");
+    parser.debug_allow_global_expressions = true;
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::FreeExpression(Expression::IfExpr(Box::new(IfExpression {
@@ -844,6 +844,7 @@ fn parse_if_expressions() {
 
     // With else.
     parser = parse_text("if IsLegal() { \"Come on in\" } else { \"You are not eligible.\" }");
+    parser.debug_allow_global_expressions = true;
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::FreeExpression(Expression::IfExpr(Box::new(IfExpression {
@@ -887,6 +888,7 @@ fn parse_if_expressions() {
 fn parse_shorthand_variables() {
     // Simple.
     let mut parser = parse_text("message := GetMessage();");
+    parser.debug_allow_global_expressions = true;
 
     assert_eq!(
         parser.next().unwrap().unwrap(),
@@ -912,6 +914,7 @@ fn parse_shorthand_variables() {
 
     // With type
     parser = parse_text("array: ArrayOf<String> := MakeArray();");
+    parser.debug_allow_global_expressions = true;
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::ShorthandVariableDeclaration(whirl_ast::ShorthandVariableDeclaration {
@@ -932,6 +935,7 @@ fn parse_shorthand_variables() {
 #[test]
 fn parse_arrays() {
     let mut parser = parse_text("[a, b, c, d]");
+    parser.debug_allow_global_expressions = true;
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::FreeExpression(Expression::ArrayExpr(ArrayExpr {
@@ -961,6 +965,7 @@ fn parse_arrays() {
 #[test]
 fn parse_index_expression() {
     let mut parser = parse_text("a[b]");
+    parser.debug_allow_global_expressions = true;
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::FreeExpression(Expression::IndexExpr(Box::new(IndexExpr {
@@ -980,6 +985,7 @@ fn parse_index_expression() {
 #[test]
 fn parse_new_expression() {
     let mut parser = parse_text("new Stack()");
+    parser.debug_allow_global_expressions = true;
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::FreeExpression(Expression::NewExpr(Box::new(NewExpr {
@@ -999,6 +1005,7 @@ fn parse_new_expression() {
 #[test]
 fn parse_this_expression() {
     let mut parser = parse_text("this");
+    parser.debug_allow_global_expressions = true;
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::FreeExpression(Expression::ThisExpr(ThisExpr {
@@ -1011,6 +1018,7 @@ fn parse_this_expression() {
 fn parse_binary_expression() {
     // Same operator.
     let mut parser = parse_text("2 + 2 + 2");
+    parser.debug_allow_global_expressions = true;
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::FreeExpression(Expression::BinaryExpr(Box::new(BinaryExpr {
@@ -1037,6 +1045,7 @@ fn parse_binary_expression() {
 
     // Different operators.
     parser = parse_text("2 + 3 * 4");
+    parser.debug_allow_global_expressions = true;
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::FreeExpression(Expression::BinaryExpr(Box::new(BinaryExpr {
@@ -1063,6 +1072,7 @@ fn parse_binary_expression() {
 
     // Raised to operator.
     parser = parse_text("2 ^ 3 ^ 4");
+    parser.debug_allow_global_expressions = true;
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::FreeExpression(Expression::BinaryExpr(Box::new(BinaryExpr {
@@ -1092,6 +1102,7 @@ fn parse_binary_expression() {
 fn parse_logical_expression() {
     // Logical
     let mut parser = parse_text("isTrue || isFalse");
+    parser.debug_allow_global_expressions = true;
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::FreeExpression(Expression::LogicExpr(Box::new(LogicExpr {
@@ -1110,6 +1121,7 @@ fn parse_logical_expression() {
 
     // literal and multiple.
     parser = parse_text("isTrue || isFalse and isTrue");
+    parser.debug_allow_global_expressions = true;
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::FreeExpression(Expression::LogicExpr(Box::new(LogicExpr {
@@ -1139,6 +1151,7 @@ fn parse_logical_expression() {
 fn parse_dot_expression() {
     // Simple
     let mut parser = parse_text("Core.Fmt");
+    parser.debug_allow_global_expressions = true;
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::FreeExpression(Expression::AccessExpr(Box::new(AccessExpr {
@@ -1156,6 +1169,7 @@ fn parse_dot_expression() {
 
     // nested
     parser = parse_text("Core.Fmt.Println()");
+    parser.debug_allow_global_expressions = true;
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::FreeExpression(Expression::CallExpr(Box::new(CallExpr {
@@ -1187,6 +1201,7 @@ fn parse_dot_expression() {
 fn parse_assignment_expression() {
     // simple.
     let mut parser = parse_text("a = b");
+    parser.debug_allow_global_expressions = true;
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::FreeExpression(Expression::AssignmentExpr(Box::new(AssignmentExpr {
@@ -1205,6 +1220,7 @@ fn parse_assignment_expression() {
 
     // nested.
     let mut parser = parse_text("a = b = c");
+    parser.debug_allow_global_expressions = true;
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::FreeExpression(Expression::AssignmentExpr(Box::new(AssignmentExpr {
@@ -1233,6 +1249,7 @@ fn parse_assignment_expression() {
 #[test]
 fn parse_unary_expression() {
     let mut parser = parse_text("!a");
+    parser.debug_allow_global_expressions = true;
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::FreeExpression(Expression::UnaryExpr(Box::new(UnaryExpr {
@@ -1249,6 +1266,7 @@ fn parse_unary_expression() {
 #[test]
 fn parse_update_expression() {
     let mut parser = parse_text("a! + a?");
+    parser.debug_allow_global_expressions = true;
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::FreeExpression(Expression::BinaryExpr(Box::new(BinaryExpr {
@@ -1537,7 +1555,7 @@ fn parse_generic_params() {
     assert_eq!(
         statement,
         Statement::FunctionDeclaration(FunctionDeclaration {
-            address: SymbolAddress {
+            address: ScopeAddress {
                 module_id: 0,
                 scope_id: 0,
                 entry_no: 0
@@ -1820,6 +1838,7 @@ fn parse_module_declaration() {
 fn parse_return_statement() {
     // Without expression.
     let mut parser = parse_text("return;");
+    parser.debug_allow_global_expressions = true;
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::ReturnStatement(ReturnStatement {
@@ -1830,15 +1849,13 @@ fn parse_return_statement() {
 
     // With expression.
     let mut parser = parse_text("fn () {return a;}");
+    parser.debug_allow_global_expressions = true;
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::FreeExpression(Expression::FnExpr(Box::new(FunctionExpr {
             generic_params: None,
             params: vec![],
-            return_type: Type {
-                declared: None,
-                inferred: None
-            },
+            return_type: None,
             body: Expression::BlockExpr(Block {
                 scope_id: 1,
                 statements: vec![Statement::ReturnStatement(ReturnStatement {

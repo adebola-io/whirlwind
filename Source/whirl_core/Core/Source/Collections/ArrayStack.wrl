@@ -7,4 +7,5 @@ use Package.Primitives.ArrayOf;
 /// A stack is a LIFO (Last-in-First-out) data structure that stores items in one direction.
 public model ArrayStack {
     var items: ArrayOf<T>;
+    
 }

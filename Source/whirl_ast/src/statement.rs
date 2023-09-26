@@ -1,5 +1,5 @@
 use crate::{
-    DiscreteType, Expression, Identifier, Positioning, Span, Spannable, SymbolAddress,
+    DiscreteType, Expression, Identifier, Positioning, ScopeAddress, Span, Spannable,
     TypeExpression,
 };
 
@@ -37,7 +37,7 @@ pub struct ModuleDeclaration {
 /// A node for a use declaration in the AST.
 #[derive(Debug, PartialEq)]
 pub struct UseDeclaration {
-    pub addresses: Vec<SymbolAddress>,
+    pub addresses: Vec<ScopeAddress>,
     pub target: UseTarget,
     pub is_public: bool,
     pub span: Span,
@@ -89,7 +89,7 @@ pub struct UseTargetSignature {
 /// A node in the AST for a shorthand `:=` variable declaration.
 #[derive(Debug, PartialEq)]
 pub struct ShorthandVariableDeclaration {
-    pub address: SymbolAddress,
+    pub address: ScopeAddress,
     pub value: Expression,
     pub span: Span,
 }
@@ -97,7 +97,7 @@ pub struct ShorthandVariableDeclaration {
 #[derive(Debug, PartialEq)]
 /// Node in the AST for a model declaration.
 pub struct ModelDeclaration {
-    pub address: SymbolAddress,
+    pub address: ScopeAddress,
     pub body: ModelBody,
     pub span: Span,
 }
@@ -142,7 +142,7 @@ pub struct TestDeclaration {
 /// For efficiency most of its details are stored in the module ambience.
 #[derive(Debug, PartialEq)]
 pub struct FunctionDeclaration {
-    pub address: SymbolAddress,
+    pub address: ScopeAddress,
     pub body: Block,
     pub span: Span,
 }
@@ -150,7 +150,7 @@ pub struct FunctionDeclaration {
 /// A node for a trait declaration in the AST.
 #[derive(Debug, PartialEq)]
 pub struct TraitDeclaration {
-    pub address: SymbolAddress,
+    pub address: ScopeAddress,
     pub body: TraitBody,
     pub span: Span,
 }
@@ -193,7 +193,7 @@ pub struct Block {
 /// As wih functions, most of its info is in the module ambience.
 #[derive(Debug, PartialEq)]
 pub struct TypeDeclaration {
-    pub address: SymbolAddress,
+    pub address: ScopeAddress,
     pub span: Span,
 }
 
@@ -213,7 +213,7 @@ pub struct ReturnStatement {
 /// Node for an enumerated type.
 #[derive(Debug, PartialEq)]
 pub struct EnumDeclaration {
-    pub address: SymbolAddress,
+    pub address: ScopeAddress,
     pub span: Span,
 }
 

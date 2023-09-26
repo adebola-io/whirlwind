@@ -1,5 +1,3 @@
 mod resolver;
-mod typechecker;
 
-pub use resolver::{resolve, Module, ModuleGraph};
-pub use typechecker::*;
+pub use resolver::{resolve_modules, Module, ModuleGraph};

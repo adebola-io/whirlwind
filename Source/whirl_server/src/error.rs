@@ -8,7 +8,7 @@ pub enum DocumentError {
     NoParentFolder(PathBuf),
     WhattheHellHappened,
     CouldNotConvert(Url),
-    CouldNotDetermineMain,
+    CouldNotDetermineMain,   
 }
 
 impl From<IOError> for DocumentError {

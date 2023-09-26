@@ -1,17 +1,19 @@
 // !::no-prelude::!
 module Prelude;
 
+
 public use Iteratable.Iteratable;
 public use Default.Default;
 public use Maybe.Maybe;
+public use Range;
 public use Package;
 public use Package.Primitives.{
-    U8Integer,
-    U16Integer,
-    U32Integer,
-    U64Integer,
+    U8Integer, 
+    // U16Integer,
+    // U32Integer,
+    // U64Integer,
     UnsignedInteger,
     Number,
     String,
     Chars,
-};
+}; 

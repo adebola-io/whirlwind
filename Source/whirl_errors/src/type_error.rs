@@ -43,14 +43,7 @@ pub enum TypeErrorType {
     TraitAsType {
         name: String,
     },
-    /// Using a variable that does not exist.
-    UnknownVariableInScope {
-        name: String,
-    },
-    /// Global control flow statements.
-    GlobalControl,
-    /// Writing a test in a local scope.
-    TestInNonGlobalScope,
+
     EnumInModelPlace {
         name: String,
     },
@@ -64,9 +57,7 @@ pub enum TypeErrorType {
         assigned: usize,
     },
     UninferrableParameter(String),
-    NamelessModule,
     ConstructorAssigntoInstance(String),
-    NoPropOnEval(String, String),
     AttributeAccessOnConstructor {
         model: String,
         attribute_name: String,
@@ -78,10 +69,6 @@ pub enum TypeErrorType {
     PrivatePropertyLeak {
         model_name: String,
         property_name: String,
-    },
-    UnknownProperty {
-        model_name: String,
-        property: String,
     },
     AccessingOnTrait {
         trait_: String,
@@ -185,34 +172,6 @@ pub fn expected_model_got_abstract(name: String, span: Span) -> TypeError {
     }
 }
 
-pub fn unknown_variable_in_scope(name: String, span: whirl_ast::Span) -> TypeError {
-    TypeError {
-        _type: TypeErrorType::UnknownVariableInScope { name },
-        span,
-    }
-}
-
-pub fn global_control(span: whirl_ast::Span) -> TypeError {
-    TypeError {
-        _type: TypeErrorType::GlobalControl,
-        span,
-    }
-}
-
-pub fn nameless_module() -> TypeError {
-    TypeError {
-        _type: TypeErrorType::NamelessModule,
-        span: Span::default(),
-    }
-}
-
-pub fn test_in_non_global_scope(span: whirl_ast::Span) -> TypeError {
-    TypeError {
-        _type: TypeErrorType::TestInNonGlobalScope,
-        span,
-    }
-}
-
 pub fn invalid_new_expression(span: whirl_ast::Span) -> TypeError {
     TypeError {
         _type: TypeErrorType::InvalidNewExpression,
@@ -257,13 +216,6 @@ pub fn using_constructor_as_value_in_assign(left: String, span: Span) -> TypeErr
     }
 }
 
-pub fn no_type_on_eval(object: String, prop: String, span: Span) -> TypeError {
-    TypeError {
-        _type: TypeErrorType::NoPropOnEval(object, prop),
-        span,
-    }
-}
-
 pub fn attribute_access_on_contructor(
     model: String,
     attribute_name: String,
@@ -297,16 +249,6 @@ pub fn private_property_leak(model_name: String, property_name: String, span: Sp
         _type: TypeErrorType::PrivatePropertyLeak {
             model_name,
             property_name,
-        },
-        span,
-    }
-}
-
-pub fn unknown_property(model_name: String, property: String, span: Span) -> TypeError {
-    TypeError {
-        _type: TypeErrorType::UnknownProperty {
-            model_name,
-            property,
         },
         span,
     }

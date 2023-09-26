@@ -24,8 +24,8 @@ use Maybe.Maybe;
 public trait Iteratable<Item> {
     /// Returns the next item in the iteration.
     public function Next(): Maybe<Item>;
-
-    public function Collect(): ArrayOf<Item> {
+    /// Gathers all the items left in the iterator into an array.
+    public function Collect<T: Collectible<Item>>(): T {
         array := [];
         // for item in this {
         //     array.Push(item);

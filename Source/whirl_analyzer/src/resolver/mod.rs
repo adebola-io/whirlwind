@@ -1,13 +1,18 @@
+mod binding;
+mod context;
+mod expr;
 mod module;
 mod modulegraph;
 mod program;
 
+pub use binding::*;
+pub use context::FullProgramContext;
 pub use module::Module;
 pub use modulegraph::ModuleGraph;
 use std::path::PathBuf;
 
 /// Takes in a path to a Whirl source file and builds a graph of all modules it connects to.
-pub fn resolve(entry: PathBuf) -> ModuleGraph {
+pub fn resolve_modules(entry: PathBuf) -> ModuleGraph {
     let mut graph = ModuleGraph::new();
     let mut errors = vec![];
     match entry.canonicalize() {
@@ -28,12 +33,12 @@ pub fn resolve(entry: PathBuf) -> ModuleGraph {
 
 #[cfg(test)]
 mod tests {
-    use crate::resolve;
+    use crate::resolve_modules;
     use std::path::PathBuf;
 
     #[test]
     fn check_imports() {
-        let _graph = resolve(PathBuf::from("../whirl_core/Core/Source/Core.wrl"));
+        let _graph = resolve_modules(PathBuf::from("../whirl_core/Core/Source/Core.wrl"));
         // println!("{:#?}", _graph)
     }
 }

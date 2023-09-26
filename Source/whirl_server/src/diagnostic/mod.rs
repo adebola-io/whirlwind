@@ -1,7 +1,9 @@
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range};
 use whirl_ast::Span;
 use whirl_errors::{LexErrorPos, ProgramError};
-use whirl_printer::{stringify_lex_error, stringify_parse_error, stringify_type_error};
+use whirl_printer::{
+    stringify_import_error, stringify_lex_error, stringify_parse_error, stringify_type_error,
+};
 
 /// Convert a program error to a diagnostic.
 pub fn to_diagnostic(error: &ProgramError) -> Diagnostic {
@@ -14,12 +16,16 @@ pub fn to_diagnostic(error: &ProgramError) -> Diagnostic {
             }),
         ),
         ProgramError::ParserError(parse_error) => (
-            stringify_parse_error(&parse_error.error_type),
+            stringify_parse_error(&parse_error._type),
             to_range(parse_error.span),
         ),
         ProgramError::TypeError(type_error) => (
             stringify_type_error(&type_error._type),
             to_range(type_error.span),
+        ),
+        ProgramError::ImportError(resolve_error) => (
+            stringify_import_error(&resolve_error._type),
+            to_range(resolve_error.span.unwrap_or_default()),
         ),
     };
     Diagnostic {

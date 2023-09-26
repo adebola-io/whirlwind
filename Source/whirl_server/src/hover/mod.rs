@@ -5,8 +5,8 @@ use tower_lsp::lsp_types::{Hover, HoverContents, LanguageString, MarkedString};
 use whirl_analyzer::{Module, ModuleGraph};
 use whirl_ast::{
     ASTVisitorNoArgs, Block, Identifier, ModelPropertyType, Parameter, Positioning,
-    PublicSignatureContext, Signature, Span, Spannable, ThreeTierContext, TraitPropertyType, Type,
-    TypeExpression, TypedValueContext,
+    PublicSignatureContext, Signature, Span, Spannable, ThreeTierContext, TraitPropertyType,
+    TypeExpression,
 };
 use whirl_printer::HoverFormatter;
 use whirl_utils::get_parent_dir;
@@ -31,10 +31,8 @@ macro_rules! name_hover {
 /// Generates hover for types.
 macro_rules! type_hover {
     ($typ: expr, $scope: expr, $self: expr) => {
-        if let Some(ref expression) = $typ.declared {
-            if let Some(hover) = $self.type_hover(expression, $scope.id) {
-                return Some(hover);
-            }
+        if let Some(hover) = $self.type_hover(&$typ, $scope.id) {
+            return Some(hover);
         }
     };
 }
@@ -54,9 +52,9 @@ macro_rules! sub_name_hover {
                     module_ambience: &$self.module.ambience,
                     signature: &hover_over,
                 };
-                return Some((&global_hover).into());
+                return None;
             }
-            return Some((&hover_over).into());
+            return None;
         }
     };};
 }
@@ -301,7 +299,9 @@ impl<'a> ASTVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
             return Some(HoverInfo::from(&(&self.module.ambience, signature)));
         }
         // hover over type.
-        type_hover!(signature.var_type, scope, self);
+        if let Some(ref _type) = signature.var_type {
+            type_hover!(_type, scope, self);
+        }
         // hover over value.
         return self.expr(&var_decl.value);
     }
@@ -354,18 +354,9 @@ impl<'a> ASTVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
                     ModelPropertyType::Attribute => {
                         let attribute = model.attributes.get(property.index)?;
                         // hover over attribute name.
-                        sub_name_hover!(
-                            attribute,
-                            model,
-                            scope,
-                            &TypedValueContext {
-                                module_ambience,
-                                atom: attribute
-                            },
-                            self
-                        );
+                        sub_name_hover!(attribute, model, scope, attribute, self);
                         // hover over attribute type.
-                        type_hover!(attribute.var_type, scope, self);
+                        type_hover!(&attribute.var_type, scope, self);
                     }
                     ModelPropertyType::Method { body } => {
                         let method = model.methods.get(property.index)?;
@@ -516,7 +507,7 @@ impl HoverFinder<'_> {
     fn fn_parts_hover(
         &self,
         params: &Vec<Parameter>,
-        return_type: &Type,
+        return_type: &Option<TypeExpression>,
         body: &Block,
 
         scope_id: usize,
@@ -528,14 +519,14 @@ impl HoverFinder<'_> {
                 return Some(parameter.into());
             }
             // Hovering over parameter type.
-            if let Some(ref expression) = parameter.type_label.declared {
+            if let Some(ref expression) = parameter.type_label {
                 if let Some(hover) = self.type_hover(expression, scope_id) {
                     return Some(hover);
                 }
             }
         }
         // Hovering over return type.
-        if let Some(ref expression) = return_type.declared {
+        if let Some(ref expression) = return_type {
             if let Some(hover) = self.type_hover(expression, scope_id) {
                 return Some(hover);
             }

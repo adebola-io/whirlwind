@@ -8,3 +8,7 @@ public model Bytes implements Iteratable<U8Integer> {
 
     // todo
 }
+
+public model CharSpace {
+    
+}

@@ -1,12 +1,12 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, slice::Iter};
 use whirl_ast::{ModuleAmbience, Spannable, Statement, UseDeclaration};
-use whirl_errors::{LexError, ParseError, ProgramError, ResolveError, TypeError};
+use whirl_errors::{ImportError, LexError, ParseError, ProgramError, TypeError};
 
 use super::program::Program;
 
 /// A completely parsed program.
 /// This struct presents higher level operations for the frontend representation of source code.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Module {
     pub module_path: Option<PathBuf>,
     pub module_id: usize,
@@ -16,6 +16,7 @@ pub struct Module {
     lexical_errors: Vec<LexError>,
     syntax_errors: Vec<ParseError>,
     type_errors: Vec<TypeError>,
+    resolve_errors: Vec<ImportError>,
     pub ambience: ModuleAmbience,
     pub allow_prelude: bool,
 }
@@ -31,6 +32,7 @@ impl Module {
             lexical_errors: program.lexical_errors,
             syntax_errors: program.syntax_errors,
             type_errors: vec![],
+            resolve_errors: vec![],
             ambience: program.ambience.take(),
             allow_prelude: program.allow_prelude,
         }
@@ -43,7 +45,7 @@ impl Module {
     }
 
     /// Read a Whirl file and build a module from its contents.
-    pub fn from_path(path: PathBuf, module_id: usize) -> Result<Self, ResolveError> {
+    pub fn from_path(path: PathBuf, module_id: usize) -> Result<Self, ImportError> {
         match path.extension() {
             Some(ext) => {
                 if ext != "wrl" {
@@ -72,6 +74,11 @@ impl Module {
                     .map(|error| ProgramError::ParserError(error)),
             )
             .chain(
+                self.resolve_errors
+                    .iter()
+                    .map(|error| ProgramError::ImportError(error)),
+            )
+            .chain(
                 self.type_errors
                     .iter()
                     .map(|error| ProgramError::TypeError(error)),
@@ -94,12 +101,14 @@ impl Module {
 
     /// Returns an iterator over the imports in the module.
     pub fn get_use_imports(&self) -> impl Iterator<Item = &UseDeclaration> {
-        self.statements()
-            .filter(|statement| statement.is_import())
-            .map(|statement| match statement {
-                Statement::UseDeclaration(usedecl) => usedecl,
-                _ => unreachable!(),
-            })
+        get_use_imports_in_statement(&self.statements).into_iter()
+    }
+    /// Add resolution errors to the modules.
+    pub fn set_resolve_errors(&mut self, errors: Option<Vec<ImportError>>) {
+        if errors.is_none() {
+            return;
+        }
+        self.resolve_errors = errors.unwrap();
     }
 
     // /// Change parts of the module without rebuilding the entire representation.
@@ -177,6 +186,18 @@ impl Module {
     //         ModuleSource::FilePath { .. } => todo!(),
     //     };
     // }
+}
+
+fn get_use_imports_in_statement(statements: &[Statement]) -> Vec<&UseDeclaration> {
+    let mut use_imports = vec![];
+    statements.iter().for_each(|statement| match statement {
+        Statement::UseDeclaration(usedecl) => use_imports.push(usedecl),
+        Statement::TestDeclaration(test) => {
+            use_imports.append(&mut get_use_imports_in_statement(&test.body.statements))
+        }
+        _ => {}
+    });
+    use_imports
 }
 
 pub fn _get_affected_scopes(nodes: Vec<&Statement>) -> Vec<usize> {

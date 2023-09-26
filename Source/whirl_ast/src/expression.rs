@@ -1,4 +1,4 @@
-use crate::{Block, GenericParameter, Parameter, Span, Spannable, Type};
+use crate::{Block, GenericParameter, Parameter, Span, Spannable, TypeExpression};
 
 #[derive(Debug, PartialEq)]
 pub enum Expression {
@@ -72,7 +72,7 @@ pub struct CallExpr {
 pub struct FunctionExpr {
     pub generic_params: Option<Vec<GenericParameter>>,
     pub params: Vec<Parameter>,
-    pub return_type: Type,
+    pub return_type: Option<TypeExpression>,
     pub body: Expression,
     pub span: Span,
 }
