@@ -154,5 +154,8 @@ pub fn stringify_context_error(error: &ContextErrorType) -> String {
     match error {
         ContextErrorType::UnknownVariableInScope { name } => format!("Use of undeclared variable {name}"),
         ContextErrorType::UnknownProperty { model_name, property } => format!("No property '{property}' exists on {model_name}."),
+        ContextErrorType::AlreadyDeclaredInScope { name } => format!("Cannot redeclare block scoped value '{name}'."),
+        ContextErrorType::UseBeforeDeclare { name } => format!("Use of block scoped value '{name}' before its declaration."),
+        
     }
 }

@@ -39,7 +39,7 @@ pub struct WhirlBoolean {
     pub value: bool,
     pub span: Span,
 }
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 pub struct Identifier {
     pub name: String,
     pub span: Span,

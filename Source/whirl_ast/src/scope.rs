@@ -1,10 +1,12 @@
+use std::hash::Hash;
+
 use crate::{
     ConstantSignature, EnumSignature, FunctionSignature, ModelSignature, Parameter, TraitSignature,
     TypeSignature, UseTargetSignature, VariableSignature,
 };
 
 /// An entry to the symbol table of a scope.
-#[derive(Debug)]
+#[derive(Debug, Hash)]
 pub enum ScopeEntry {
     Function(FunctionSignature),
     Type(TypeSignature),
@@ -120,6 +122,7 @@ impl ScopeEntry {
             ScopeEntry::Variable(v) => v.is_public,
             ScopeEntry::Trait(t) => t.is_public,
             ScopeEntry::UseImport(u) => u.is_public,
+            ScopeEntry::Constant(c) => c.is_public,
             _ => false,
         }
     }
@@ -172,7 +175,22 @@ impl ScopeEntry {
     pub fn is_reserved(&self) -> bool {
         matches!(self, ScopeEntry::ReservedSpace)
     }
+
+    pub fn _const(&self) -> &ConstantSignature {
+        match self {
+            ScopeEntry::Constant(c) => c,
+            _ => panic!("{} is not a constant!", self.name()),
+        }
+    }
 }
+
+impl PartialEq<Self> for &ScopeEntry {
+    fn eq(&self, other: &Self) -> bool {
+        std::ptr::eq(self, other)
+    }
+}
+
+impl Eq for &ScopeEntry {}
 
 impl Scope {
     /// Creates a global scope.
@@ -197,7 +215,7 @@ impl Scope {
     }
     /// Find an item inside the current scope.
     pub fn find(&self, name: &str) -> Option<(usize, &ScopeEntry)> {
-        for (index, entry) in self.entries.iter().enumerate().rev() {
+        for (index, entry) in self.entries.iter().enumerate() {
             if entry.name() == name {
                 return Some((index, entry));
             }

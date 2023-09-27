@@ -23,7 +23,7 @@ pub trait Spannable {
 
 /// Represents a range in input text.
 /// It consists of a start and end, which are each made up of an array of two numbers, representing the source line and character.
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy, Hash, Eq)]
 pub struct Span {
     pub start: [u32; 2],
     pub end: [u32; 2],

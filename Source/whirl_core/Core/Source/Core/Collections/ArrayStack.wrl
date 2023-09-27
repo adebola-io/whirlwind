@@ -4,8 +4,9 @@ use Package.Core.{
     Primitives.{
         ArrayOf,
         UnsignedInt,
+        // Numeric.MAX_SAFE_INTEGER
     },
-    Math.Infinity,
+    // Math.Infinity,
 };
 
 

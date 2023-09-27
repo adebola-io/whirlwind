@@ -1033,6 +1033,9 @@ impl<L: Lexer> Parser<L> {
             TokenType::Keyword(Trait) => self
                 .trait_declaration(true)
                 .map(|t| Statement::TraitDeclaration(t)),
+            TokenType::Keyword(Const) => self
+                .constant_declaration(true)
+                .map(|c| Statement::ConstantDeclaration(c)),
             // Parse public shorthand variable declaration as syntax error.
             TokenType::Ident(_) => {
                 let statement = self.statement();
@@ -1044,6 +1047,7 @@ impl<L: Lexer> Parser<L> {
                     Partial::from_error(errors::declaration_expected(Span::from([start, start])))
                 };
             }
+
             _ => Partial::from_error(errors::declaration_expected(token.span)),
         };
 
@@ -2278,6 +2282,7 @@ impl<L: Lexer> Parser<L> {
         } else {
             None
         };
+
         let generic_param = GenericParameter {
             name,
             traits,
@@ -2455,10 +2460,10 @@ impl<L: Lexer> Parser<L> {
             value,
             span: Span::from([start, end]),
         });
-
         Partial::from_tuple((Some(statement), expr_errors))
     }
 
+    /// Parse a constant declaration.
     fn constant_declaration(&self, is_public: bool) -> Imperfect<ConstantDeclaration> {
         expect_or_return!(TokenType::Keyword(Const), self);
         let start = self.token().unwrap().span.start;

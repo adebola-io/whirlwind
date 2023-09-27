@@ -77,7 +77,7 @@ impl UseTarget {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Hash)]
 /// Entry for a use import target.
 pub struct UseTargetSignature {
     /// Name of the import target.
@@ -227,7 +227,7 @@ pub struct EnumDeclaration {
 }
 
 /// Entry to mark an enum variant.
-#[derive(Debug)]
+#[derive(Debug, Hash)]
 pub struct EnumVariant {
     /// variant name.
     pub name: Identifier,
@@ -331,11 +331,20 @@ impl Positioning for Statement {
                         ))
                     }
                 }
+                // Within a shorthand variable declaration.
+                Statement::ConstantDeclaration(const_decl) => {
+                    let expression = &const_decl.value;
+                    if expression.span().encloses(span) {
+                        // span is within the expression value of the node.
+                        nodes.append(&mut collect_closest_within_expression(
+                            self, expression, span,
+                        ))
+                    }
+                }
                 Statement::ExpressionStatement(expression)
                 | Statement::FreeExpression(expression) => nodes.append(
                     &mut collect_closest_within_expression(self, expression, span),
                 ),
-                // Statement::ConstantDeclaration => todo!(),
                 // Statement::RecordDeclaration => todo!(),
                 // Statement::VariableDeclaration => todo!(),
                 // Statement::ForStatement => todo!(),
@@ -407,11 +416,13 @@ impl Spannable for Statement {
                 value: expression,
                 ..
             })
+            | Statement::ConstantDeclaration(ConstantDeclaration {
+                value: expression, ..
+            })
             | Statement::ExpressionStatement(expression)
             | Statement::FreeExpression(expression) => {
                 nested.append(&mut expression.captured_scopes())
             }
-            // Statement::ConstantDeclaration => todo!(),
             // Statement::RecordDeclaration => todo!(),
             // Statement::VariableDeclaration => todo!(),
             // Statement::ForStatement => todo!(),

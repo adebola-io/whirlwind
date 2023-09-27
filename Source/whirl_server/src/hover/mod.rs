@@ -80,7 +80,7 @@ macro_rules! sub_name_hover {
                 module_ambience: &$self.module.ambience,
             };
             if $scope.is_global() && $parent.is_public && $sgn1.is_public {
-                let global_hover = PublicSignatureContext {
+                let _global_hover = PublicSignatureContext {
                     module_ambience: &$self.module.ambience,
                     signature: &hover_over,
                 };

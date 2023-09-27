@@ -6,7 +6,7 @@ mod scope;
 mod signature;
 mod span;
 mod statement;
-mod symbol;
+
 mod token;
 mod typing;
 mod visitor;
@@ -19,7 +19,6 @@ pub use scope::*;
 pub use signature::*;
 pub use span::*;
 pub use statement::*;
-pub use symbol::*;
 pub use token::*;
 pub use typing::*;
 pub use visitor::*;

@@ -58,25 +58,28 @@ pub struct ModuleAddress {
 //     fn declared_type(&self) -> Option<&TypeExpression>;
 // }
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Default, Clone, Hash)]
 pub enum TypeExpression {
     Union(UnionType),
     Functional(FunctionalType),
     Member(MemberType),
     Discrete(DiscreteType),
-    This { span: Span },
+    This {
+        span: Span,
+    },
+    #[default]
     Invalid,
 }
 
 /// A complex union type e.g. `type Animal = Cat | Dog | Parrot; `
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Hash)]
 pub struct UnionType {
     pub types: Vec<TypeExpression>,
     pub span: Span,
 }
 
 /// A function type e.g. `type Predicate<T> = fn(value: T): Boolean;`
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Hash)]
 pub struct FunctionalType {
     pub params: Vec<Parameter>,
     pub generic_params: Option<Vec<GenericParameter>>,
@@ -85,7 +88,7 @@ pub struct FunctionalType {
 }
 
 /// A type that is part of an member expression. e.g. `type Error = Core.Io.Error`;
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Hash)]
 pub struct MemberType {
     pub namespace: Box<TypeExpression>,
     pub property: Box<TypeExpression>,
@@ -93,7 +96,7 @@ pub struct MemberType {
 }
 
 /// A simple type. e.g. `type SignalValue = Number;`
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Hash)]
 pub struct DiscreteType {
     pub name: Identifier,
     pub generic_args: Option<Vec<TypeExpression>>,
@@ -107,7 +110,7 @@ impl std::fmt::Display for TypeExpression {
 }
 
 /// A type parameter on a function, model or type.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Hash)]
 pub struct GenericParameter {
     pub name: Identifier,
     pub traits: Vec<TypeExpression>,

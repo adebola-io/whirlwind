@@ -12,10 +12,10 @@ use whirl_utils::get_parent_dir;
 /// Representation of all imports and the files and modules they represent.
 #[derive(Debug)]
 pub struct ModuleGraph {
-    root_folder: Option<PathBuf>,
-    paths: HashMap<PathBuf, usize>,
-    directories: HashMap<PathBuf, HashMap<String, usize>>,
-    modules: Vec<Module>,
+    pub root_folder: Option<PathBuf>,
+    pub paths: HashMap<PathBuf, usize>,
+    pub directories: HashMap<PathBuf, HashMap<String, usize>>,
+    pub modules: Vec<Module>,
     holes: Vec<usize>,
     pub errors: Vec<ImportError>,
 }
@@ -255,6 +255,30 @@ impl ModuleGraph {
             self.directories.get(&nested)?.get(name)
         })?;
         self.modules.get(*module_id)
+    }
+    /// Returns the index of the module in a directory, only if it has been traversed.
+    pub fn get_module_id_in_dir(&self, dir: &Path, name: &str) -> Option<usize> {
+        // Look one level up for super.
+        let (directory, name) = if name == "Super" {
+            let parent_dir = get_parent_dir(dir)?;
+            // Returning the package itself from a Super.
+            if parent_dir == self.root_folder.as_ref()? {
+                return Some(0);
+            }
+            (parent_dir, dir.file_stem()?.to_str()?)
+        } else if name == "Package" {
+            // Returning the start module.
+            return Some(0);
+        } else {
+            (dir, name)
+        };
+        let module_id = self.directories.get(directory)?.get(name).or_else(|| {
+            // Find name in the module/name directory
+            let mut nested = dir.to_path_buf();
+            nested.push(name);
+            self.directories.get(&nested)?.get(name)
+        })?;
+        Some(*module_id)
     }
     /// Returns a module at a specified path.
     pub fn get_module_at_path(&self, path: &Path) -> Option<&Module> {

@@ -386,6 +386,19 @@ impl<'a> ModuleAmbienceShadow<'a> {
             }
         }
     }
+    /// Returns true if the current scope is nested within another.
+    pub fn is_inclusive_child_of(&self, parent: usize) -> bool {
+        if parent == self.current_scope {
+            return true;
+        }
+        let possible_ancestor = &self.base.scopes[parent];
+        for child_idx in &possible_ancestor.children_index {
+            if self.is_inclusive_child_of(*child_idx) {
+                return true;
+            }
+        }
+        return false;
+    }
 }
 
 /// Removes a scope and all its children.

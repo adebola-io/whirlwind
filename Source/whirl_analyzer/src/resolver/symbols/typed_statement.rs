@@ -1,0 +1,97 @@
+use whirl_ast::Span;
+
+use crate::{EvaluatedType, IntermediateType, LiteralIndex, SymbolLocator, TypedExpr};
+
+#[derive(Debug, PartialEq)]
+pub enum TypedStmnt {
+    // Declarations.
+    TestDeclaration(TypedTestDeclaration),
+    UseDeclaration(TypedUseDeclaration),
+    ShorthandVariableDeclaration(TypedShorthandVariableDeclaration),
+    ConstantDeclaration(TypedConstantDeclaration),
+    ModelDeclaration(TypedModelDeclaration),
+    ExpressionStatement(TypedExpr),
+    FreeExpression(TypedExpr),
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TypedUseDeclaration {
+    pub is_public: bool,
+    pub target: TypedUseTarget,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TypedUseTarget {
+    pub name: SymbolLocator,
+    pub path: TypedUsePath,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum TypedUsePath {
+    Me,
+    Item(Box<TypedUseTarget>),
+    List(Vec<TypedUseTarget>),
+}
+
+/// Node for a test block.
+#[derive(Debug, PartialEq)]
+pub struct TypedTestDeclaration {
+    pub name: LiteralIndex,
+    pub body: TypedBlock,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TypedBlock {
+    pub statements: Vec<TypedStmnt>,
+    pub return_type: EvaluatedType,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TypedShorthandVariableDeclaration {
+    pub name: SymbolLocator,
+    pub value: TypedExpr,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TypedConstantDeclaration {
+    pub name: SymbolLocator,
+    pub value: TypedExpr,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TypedModelDeclaration {
+    pub name: SymbolLocator,
+    pub body: TypedModelBody,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TypedModelBody {
+    pub properties: Vec<TypedModelProperty>,
+    pub constructor: Option<TypedBlock>,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TypedModelProperty {
+    pub name: SymbolLocator,
+    pub _type: TypedModelPropertyType,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum TypedModelPropertyType {
+    TypedAttribute,
+    TypedMethod {
+        body: TypedBlock,
+    },
+    TraitImpl {
+        trait_target: Vec<IntermediateType>,
+        body: TypedBlock,
+    },
+}

@@ -1,15 +1,16 @@
 mod binding;
 mod context;
-mod expr;
 mod module;
 mod modulegraph;
 mod program;
+mod symbols;
 
 pub use binding::*;
-pub use context::FullProgramContext;
+pub use context::*;
 pub use module::Module;
 pub use modulegraph::ModuleGraph;
 use std::path::PathBuf;
+pub use symbols::*;
 
 /// Takes in a path to a Whirl source file and builds a graph of all modules it connects to.
 pub fn resolve_modules(entry: PathBuf) -> ModuleGraph {
@@ -38,7 +39,7 @@ mod tests {
 
     #[test]
     fn check_imports() {
-        let _graph = resolve_modules(PathBuf::from("../whirl_core/Core/Source/Core.wrl"));
+        let _graph = resolve_modules(PathBuf::from("../whirl_core/Core/Source/Lib.wrl"));
         let mut pathway = vec![];
         _graph.draw_line_to(_graph.get_module_with_id(14).unwrap(), &mut pathway);
     }

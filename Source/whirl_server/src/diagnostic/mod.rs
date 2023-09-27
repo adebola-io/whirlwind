@@ -1,29 +1,29 @@
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range};
 use whirl_ast::Span;
-use whirl_errors::{LexErrorPos, ProgramError};
+use whirl_errors::{LexErrorPos, ModuleError};
 use whirl_printer::{
     stringify_import_error, stringify_lex_error, stringify_parse_error, stringify_type_error,
 };
 
 /// Convert a program error to a diagnostic.
-pub fn to_diagnostic(error: &ProgramError) -> Diagnostic {
+pub fn to_diagnostic(error: &ModuleError) -> Diagnostic {
     let (message, range) = match error {
-        ProgramError::LexerError(lex_error) => (
+        ModuleError::LexerError(lex_error) => (
             stringify_lex_error(&lex_error.error_type),
             to_range(match lex_error.position {
                 LexErrorPos::Point(pos) => Span::at(pos),
                 LexErrorPos::Span(span) => span,
             }),
         ),
-        ProgramError::ParserError(parse_error) => (
+        ModuleError::ParserError(parse_error) => (
             stringify_parse_error(&parse_error._type),
             to_range(parse_error.span),
         ),
-        ProgramError::TypeError(type_error) => (
+        ModuleError::TypeError(type_error) => (
             stringify_type_error(&type_error._type),
             to_range(type_error.span),
         ),
-        ProgramError::ImportError(resolve_error) => (
+        ModuleError::ImportError(resolve_error) => (
             stringify_import_error(&resolve_error._type),
             to_range(resolve_error.span.unwrap_or_default()),
         ),

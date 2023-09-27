@@ -220,6 +220,10 @@
             { "include": "#comment" },
             { "include": "#injunction" },
             {
+               "name": "meta.definition.variable variable.other.constant",
+               "match": "\\b[[:upper:][:digit:]_]+\\b"
+            },
+            {
                "name": "entity.name.class support.class",
                "match": "(\\b[A-Za-z0-9]+\\b)"
             },

@@ -10,4 +10,5 @@ public use Numeric.{
     UnsignedInt,
     Integer,
     Number,
+    MAX_SAFE_INTEGER
 }; 

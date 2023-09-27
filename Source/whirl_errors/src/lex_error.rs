@@ -1,6 +1,6 @@
 use whirl_ast::Span;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct LexError {
     pub error_type: LexErrorType,
     pub position: LexErrorPos,
@@ -21,14 +21,14 @@ impl LexError {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 /// The point to mark in an error.
 pub enum LexErrorPos {
     Point([u32; 2]),
     Span(Span),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum LexErrorType {
     UnexpectedEndOfInput,
     UnterminatedString,

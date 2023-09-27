@@ -12,8 +12,9 @@ pub use lex_error::*;
 pub use parse_error::*;
 pub use type_error::*;
 
+/// An error within a module.
 #[derive(Debug)]
-pub enum ProgramError<'a> {
+pub enum ModuleError<'a> {
     ParserError(&'a ParseError),
     LexerError(&'a LexError),
     TypeError(&'a TypeError),
@@ -139,6 +140,20 @@ pub fn nameless_module() -> ImportError {
 pub fn non_global_use(span: whirl_ast::Span) -> ParseError {
     ParseError {
         _type: ParserErrorType::UseImportInNonGlobalScope,
+        span,
+    }
+}
+
+pub fn already_declared_in_scope(name: String, span: whirl_ast::Span) -> ContextError {
+    ContextError {
+        _type: ContextErrorType::AlreadyDeclaredInScope { name },
+        span,
+    }
+}
+
+pub fn use_before_declare(name: String, span: whirl_ast::Span) -> ContextError {
+    ContextError {
+        _type: ContextErrorType::UseBeforeDeclare { name },
         span,
     }
 }

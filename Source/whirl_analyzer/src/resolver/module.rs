@@ -1,6 +1,6 @@
-use std::{path::PathBuf, slice::Iter};
+use std::path::PathBuf;
 use whirl_ast::{ModuleAmbience, Spannable, Statement, UseDeclaration};
-use whirl_errors::{ImportError, LexError, ParseError, ProgramError, TypeError};
+use whirl_errors::{ImportError, LexError, ModuleError, ParseError};
 
 use super::program::Program;
 
@@ -11,12 +11,11 @@ pub struct Module {
     pub module_path: Option<PathBuf>,
     pub module_id: usize,
     pub name: Option<String>,
-    _line_lens: Vec<u32>,
-    statements: Vec<Statement>,
-    lexical_errors: Vec<LexError>,
-    syntax_errors: Vec<ParseError>,
-    type_errors: Vec<TypeError>,
-    resolve_errors: Vec<ImportError>,
+    pub(crate) _line_lens: Vec<u32>,
+    pub(crate) statements: Vec<Statement>,
+    pub(crate) lexical_errors: Vec<LexError>,
+    pub(crate) syntax_errors: Vec<ParseError>,
+    pub(crate) import_errors: Vec<ImportError>,
     pub ambience: ModuleAmbience,
     pub allow_prelude: bool,
 }
@@ -31,10 +30,9 @@ impl Module {
             statements: program.statements,
             lexical_errors: program.lexical_errors,
             syntax_errors: program.syntax_errors,
-            type_errors: vec![],
-            resolve_errors: vec![],
             ambience: program.ambience.take(),
             allow_prelude: program.allow_prelude,
+            import_errors: vec![],
         }
     }
 
@@ -64,24 +62,19 @@ impl Module {
     }
 
     /// Returns the errors found in the module.
-    pub fn errors(&self) -> impl Iterator<Item = ProgramError> {
+    pub fn errors(&self) -> impl Iterator<Item = ModuleError> {
         self.lexical_errors
             .iter()
-            .map(|error| ProgramError::LexerError(error))
+            .map(|error| ModuleError::LexerError(error))
             .chain(
                 self.syntax_errors
                     .iter()
-                    .map(|error| ProgramError::ParserError(error)),
+                    .map(|error| ModuleError::ParserError(error)),
             )
             .chain(
-                self.resolve_errors
+                self.import_errors
                     .iter()
-                    .map(|error| ProgramError::ImportError(error)),
-            )
-            .chain(
-                self.type_errors
-                    .iter()
-                    .map(|error| ProgramError::TypeError(error)),
+                    .map(|error| ModuleError::ImportError(error)),
             )
     }
 
@@ -108,7 +101,11 @@ impl Module {
         if errors.is_none() {
             return;
         }
-        self.resolve_errors = errors.unwrap();
+        self.import_errors = errors.unwrap();
+    }
+
+    pub fn empty() -> Module {
+        Default::default()
     }
 
     // /// Change parts of the module without rebuilding the entire representation.

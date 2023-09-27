@@ -40,7 +40,7 @@ impl LanguageServer for Backend {
                     DiagnosticOptions {
                         identifier: None,
                         inter_file_dependencies: true,
-                        workspace_diagnostics: false,
+                        workspace_diagnostics: true,
                         work_done_progress_options: WorkDoneProgressOptions {
                             work_done_progress: Some(true),
                         },
@@ -110,11 +110,21 @@ impl LanguageServer for Backend {
             }),
         ))
     }
+
+    async fn workspace_diagnostic(
+        &self,
+        params: WorkspaceDiagnosticParams,
+    ) -> Result<WorkspaceDiagnosticReportResult> {
+        self.log_message(params).await;
+        Err(tower_lsp::jsonrpc::Error::method_not_found())
+    }
 }
 
 impl Backend {
-    async fn log_message(&self, message: &str) {
-        self.client.log_message(MessageType::INFO, message).await
+    async fn log_message<T: std::fmt::Debug>(&self, message: T) {
+        self.client
+            .log_message(MessageType::INFO, format!("{:?}", message))
+            .await
     }
 }
 

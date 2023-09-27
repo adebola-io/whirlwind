@@ -278,7 +278,7 @@ impl HoverFormatter for ConstantSignature {
     fn to_formatted(&self) -> String {
         let mut string = String::new();
         maybe_print_public(&mut string, self);
-        string.push_str("var ");
+        string.push_str("const ");
         string.push_str(&self.name.name);
         string.push_str(": ");
         string.push_str(&self.var_type.to_formatted());

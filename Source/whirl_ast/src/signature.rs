@@ -1,6 +1,4 @@
-use crate::{
-    EnumVariant, Expression, GenericParameter, Identifier, ModuleAmbience, TypeExpression,
-};
+use crate::{EnumVariant, GenericParameter, Identifier, ModuleAmbience, TypeExpression};
 
 use whirl_macros::Signature;
 
@@ -18,7 +16,7 @@ pub trait Signature {
     }
 }
 
-#[derive(Debug, Signature)]
+#[derive(Debug, Signature, Hash)]
 pub struct ModelSignature {
     /// Name of the model.
     pub name: Identifier,
@@ -38,7 +36,7 @@ pub struct ModelSignature {
     pub methods: Vec<MethodSignature>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 pub struct Parameter {
     /// Name of the parameter.
     pub name: Identifier,
@@ -57,7 +55,7 @@ impl Signature for Parameter {
 }
 
 /// Entry to mark an attribute.
-#[derive(Debug, Signature)]
+#[derive(Debug, Signature, Hash)]
 pub struct AttributeSignature {
     /// Name of the attribute.
     pub name: Identifier,
@@ -70,7 +68,7 @@ pub struct AttributeSignature {
 }
 
 /// Entry to mark a method.
-#[derive(Debug, Signature)]
+#[derive(Debug, Signature, Hash)]
 pub struct MethodSignature {
     /// Name of the method.
     pub name: Identifier,
@@ -91,7 +89,7 @@ pub struct MethodSignature {
 }
 
 /// Entry to mark a variable.
-#[derive(Debug, Signature)]
+#[derive(Debug, Signature, Hash)]
 pub struct VariableSignature {
     /// Name of the variable.
     pub name: Identifier,
@@ -106,7 +104,7 @@ pub struct VariableSignature {
 }
 
 /// Entry to mark a constant.
-#[derive(Debug, Signature)]
+#[derive(Debug, Signature, Hash)]
 pub struct ConstantSignature {
     /// Name of the constant.
     pub name: Identifier,
@@ -119,7 +117,7 @@ pub struct ConstantSignature {
 }
 
 /// An entry to mark a function.
-#[derive(Debug, Signature)]
+#[derive(Debug, Signature, Hash)]
 pub struct FunctionSignature {
     /// Name of the function.
     pub name: Identifier,
@@ -138,7 +136,7 @@ pub struct FunctionSignature {
 }
 
 /// An entry to mark a trait declaration.
-#[derive(Debug, Signature)]
+#[derive(Debug, Signature, Hash)]
 pub struct TraitSignature {
     /// Name of the trait.
     pub name: Identifier,
@@ -155,7 +153,7 @@ pub struct TraitSignature {
 }
 
 /// Entry to mark a type.
-#[derive(Debug, Signature)]
+#[derive(Debug, Signature, Hash)]
 pub struct TypeSignature {
     /// Type name.
     pub name: Identifier,
@@ -169,7 +167,7 @@ pub struct TypeSignature {
 }
 
 /// Entry to mark an enum.
-#[derive(Debug, Signature)]
+#[derive(Debug, Signature, Hash)]
 pub struct EnumSignature {
     /// enum name.
     pub name: Identifier,

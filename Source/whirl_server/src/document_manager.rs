@@ -6,12 +6,12 @@ use crate::{
     hover::{HoverFinder, HoverInfo},
 };
 use tower_lsp::lsp_types::{
-    CompletionItem, CompletionParams, CompletionResponse, Diagnostic, DidChangeTextDocumentParams,
+    CompletionParams, CompletionResponse, Diagnostic, DidChangeTextDocumentParams,
     DidOpenTextDocumentParams, DocumentDiagnosticParams, DocumentDiagnosticReport,
     FullDocumentDiagnosticReport, HoverParams, Position, RelatedFullDocumentDiagnosticReport, Url,
 };
 use whirl_analyzer::{Module, ModuleGraph};
-use whirl_ast::{ASTVisitorNoArgs, Positioning, Span};
+use whirl_ast::ASTVisitorNoArgs;
 use whirl_utils::get_parent_dir;
 
 #[derive(Debug)]
@@ -96,7 +96,6 @@ impl DocumentManager {
                 }
             }
             graph.set_entry_module(main_module.unwrap());
-
             // Todo: read whirl.yaml to find source module instead.
             break;
         }
@@ -138,31 +137,31 @@ impl DocumentManager {
         return false;
     }
 
-    pub fn completion(&self, params: CompletionParams) -> Option<CompletionResponse> {
-        let graphs = self.graphs.read().unwrap();
+    pub fn completion(&self, _params: CompletionParams) -> Option<CompletionResponse> {
+        // let graphs = self.graphs.read().unwrap();
 
-        let path = uri_to_absolute_path(params.text_document_position.text_document.uri).ok()?;
-        let graph = graphs.iter().find(|graph| graph.contains_file(&path))?;
-        let module = graph.get_module_at_path(&path)?;
+        // let path = uri_to_absolute_path(params.text_document_position.text_document.uri).ok()?;
+        // let graph = graphs.iter().find(|graph| graph.contains_file(&path))?;
+        // let module = graph.get_module_at_path(&path)?;
 
-        let position = params.text_document_position.position;
-        let completion_context = params.context?;
+        // let position = params.text_document_position.position;
+        // let completion_context = params.context?;
 
-        let position = [position.line + 1, position.character + 1];
-        let statement = module
-            .statements()
-            .map(|statement| statement.closest_nodes_to(Span::at(position)))
-            .flatten()
-            .next()?;
-        let label = match statement {
-            whirl_ast::Statement::UseDeclaration(u) => format!("Use"),
-            _ => format!("Else"),
-        };
-        Some(CompletionResponse::Array(vec![CompletionItem {
-            label,
-            ..Default::default()
-        }]))
-        // None
+        // let position = [position.line + 1, position.character + 1];
+        // let statement = module
+        //     .statements()
+        //     .map(|statement| statement.closest_nodes_to(Span::at(position)))
+        //     .flatten()
+        //     .next()?;
+        // let label = match statement {
+        //     whirl_ast::Statement::UseDeclaration(u) => format!("Use"),
+        //     _ => format!("Else"),
+        // };
+        // Some(CompletionResponse::Array(vec![CompletionItem {
+        //     label,
+        //     ..Default::default()
+        // }]))
+        None
     }
 
     /// Handles didChange event
@@ -229,16 +228,10 @@ fn get_hover_for_position(
     return None;
 }
 
+/// Convert a uri to an absolute path.
 pub fn uri_to_absolute_path(uri: Url) -> Result<PathBuf, DocumentError> {
     Ok(uri
         .to_file_path()
         .or_else(|_| Err(DocumentError::CouldNotConvert(uri)))?
         .canonicalize()?)
 }
-
-// /// Refresh a document with a set of changes to the text.
-// fn refresh(&mut self, version: i32, changes: Vec<TextDocumentContentChangeEvent>) {
-//     self.version = version as usize;
-//     let handler = ChangeHandler::from_module(&mut self.module);
-//     handler.update(changes);
-// }

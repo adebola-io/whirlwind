@@ -14,6 +14,4 @@ public type Integer = UnsignedInt | SignedInt;
 public model BigInt {} // TODO
 /// A union data type to represent a number.
 public type Number = Integer | Float; // | BigInt;
-
-
-// public const MAX_SAFE_INTEGER: Integer = 0;
+public const MAX_SAFE_INTEGER: Integer = "";

@@ -1,12 +1,12 @@
 use whirl_ast::{Span, TokenType};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Default, PartialEq)]
 pub struct ParseError {
     pub _type: ParserErrorType,
     pub span: Span,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Default, PartialEq)]
 pub enum ParserErrorType {
     DeclarationOrStatementExpected,
     PublicShorthandVariable,
@@ -16,6 +16,7 @@ pub enum ParserErrorType {
     AsyncType,
     PublicAccessTypeOnTest,
     GenericArgsInNamespace,
+    #[default]
     UnexpectedToken,
     StringExpected,
     ExpressionExpected,
