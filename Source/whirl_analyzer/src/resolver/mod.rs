@@ -9,11 +9,12 @@ pub use binding::*;
 pub use context::*;
 pub use module::Module;
 pub use modulegraph::ModuleGraph;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 pub use symbols::*;
 
 /// Takes in a path to a Whirl source file and builds a graph of all modules it connects to.
-pub fn resolve_modules(entry: PathBuf) -> ModuleGraph {
+pub fn resolve_modules<P: AsRef<Path>>(entry: P) -> ModuleGraph {
+    let entry = PathBuf::from(entry.as_ref());
     let mut graph = ModuleGraph::new();
     let mut errors = vec![];
     match entry.canonicalize() {

@@ -325,6 +325,17 @@ impl SymbolTable {
             SymbolEntry::Symbol(symbol) => Some(symbol),
         }
     }
+    /// Returns a list of the symbols in a module.
+    pub fn in_module(&self, path_index: PathIndex) -> impl Iterator<Item = &SemanticSymbol> {
+        self.symbols
+            .iter()
+            .filter(|symbolentry| matches!(symbolentry, SymbolEntry::Symbol(_)))
+            .map(|symbolentry| match symbolentry {
+                SymbolEntry::Symbol(symbol) => symbol,
+                _ => unreachable!(),
+            })
+            .filter(move |symbol| symbol.references.first().unwrap().module_path == path_index)
+    }
     /// Get a symbol mutably using its index.
     pub fn get_mut(&mut self, index: SymbolIndex) -> Option<&mut SemanticSymbol> {
         match self.symbols.get_mut(index.0)? {

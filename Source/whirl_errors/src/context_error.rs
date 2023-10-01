@@ -14,11 +14,18 @@ pub enum ContextErrorType {
         property: String,
     },
     /// Using a variable that does not exist.
-    UnknownVariableInScope { name: String },
+    UnknownVariableInScope {
+        name: String,
+    },
     /// Redeclaring a block scoped variable.
-    AlreadyDeclaredInScope { name: String },
+    AlreadyDeclaredInScope {
+        name: String,
+    },
     /// Variable is used in its scope before it exists.
-    UseBeforeDeclare { name: String },
+    UseBeforeDeclare {
+        name: String,
+    },
+    ThisOutsideMethod,
 }
 
 pub fn unknown_value(name: String, span: whirl_ast::Span) -> ContextError {

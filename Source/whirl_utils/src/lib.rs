@@ -1,8 +1,12 @@
+mod container;
+mod fs;
 mod partial;
 mod stringmutator;
 
 use std::path::Path;
 
+pub use container::*;
+pub use fs::*;
 pub use partial::*;
 pub use stringmutator::*;
 

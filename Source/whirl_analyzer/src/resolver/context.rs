@@ -89,15 +89,12 @@ impl FullProgramContext {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
-
-    use whirl_errors::{ContextError, ContextErrorType};
-
     use crate::{resolve_modules, FullProgramContext, PathIndex, ProgramError, SymbolIndex};
+    use whirl_errors::{ContextError, ContextErrorType};
 
     #[test]
     fn test_shorthand_variable_context() {
-        let graph = resolve_modules(PathBuf::from("../../Tests/binding/variables.wrl"));
+        let graph = resolve_modules("../../Tests/binding/variables.wrl");
         let context = FullProgramContext::build_from_graph(graph);
         assert_eq!(
             context.symbol_table.get(SymbolIndex(0)).unwrap().name,
@@ -124,5 +121,19 @@ mod tests {
                 }
             )
         )
+    }
+
+    #[test]
+    fn test_call_expression_bind() {
+        let graph = resolve_modules("../../Tests/binding/this_and_call.wrl");
+        let context = FullProgramContext::build_from_graph(graph);
+        println!(
+            "{:#?}",
+            context
+                .symbol_table
+                .in_module(PathIndex(0))
+                .map(|symbol| &symbol.name)
+                .collect::<Vec<_>>()
+        );
     }
 }

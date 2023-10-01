@@ -156,6 +156,6 @@ pub fn stringify_context_error(error: &ContextErrorType) -> String {
         ContextErrorType::UnknownProperty { model_name, property } => format!("No property '{property}' exists on {model_name}."),
         ContextErrorType::AlreadyDeclaredInScope { name } => format!("Cannot redeclare block scoped value '{name}'."),
         ContextErrorType::UseBeforeDeclare { name } => format!("Use of block scoped value '{name}' before its declaration."),
-        
+        ContextErrorType::ThisOutsideMethod => format!("The `this` value can only be used in model or trait methods."),   
     }
 }

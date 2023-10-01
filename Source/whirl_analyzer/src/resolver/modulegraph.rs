@@ -79,6 +79,7 @@ impl ModuleGraph {
         for import in imports {
             self.audit_import_target(&mut errors, module, parent_dir, &import.target);
         }
+
         Some(errors)
     }
     fn audit_import_target(

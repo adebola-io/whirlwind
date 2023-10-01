@@ -1,14 +1,13 @@
 mod programerror;
 
-use std::{cell::RefCell, collections::HashMap, mem::take, path::PathBuf};
-
 use crate::{
     IntermediateType, Literal, LiteralIndex, Module, ModuleGraph, PathIndex, SemanticSymbol,
     SemanticSymbolKind, SemanticSymbolReferenceList, SymbolIndex, SymbolLocator, SymbolTable,
-    TypedConstantDeclaration, TypedExpr, TypedIdent, TypedModule,
-    TypedShorthandVariableDeclaration, TypedStmnt,
+    TypedCallExpr, TypedConstantDeclaration, TypedExpr, TypedIdent, TypedModule, TypedNewExpr,
+    TypedShorthandVariableDeclaration, TypedStmnt, TypedThisExpr,
 };
 pub use programerror::*;
+use std::{cell::RefCell, collections::HashMap, mem::take, path::PathBuf};
 use whirl_ast::{
     ConstantDeclaration, Expression, Identifier, ScopeEntry, ScopeSearch,
     ShorthandVariableDeclaration, Span, Statement, TypeExpression,
@@ -163,7 +162,7 @@ impl<'ctx> Binder<'ctx> {
                     }
                     // Entry exists but it has not been added to the symbol table yet.
                     // Pause the current binding and jump to bind that symbol.
-                    // It binds the symbol with a placeholder declaration range
+                    // It binds the symbol with a placeholder declaration range,
                     // that will be overwritten when the actual declaration is encountered.
                     // If the symbol is a constant or a variable, then this process will result in a context error later on.
                     None => self.bind_signature(entry, Span::default()),
@@ -188,6 +187,7 @@ impl<'ctx> Binder<'ctx> {
                     doc_info_range: None,
                     origin_span: name.span,
                 };
+                // Add the first reference to this symbol.
                 new_symbol.add_reference(self.path_idx(), name.span);
                 let index = self.symbol_table().add(new_symbol);
                 unknown_values.insert((name.name.to_owned(), self.scope()), index);
@@ -286,7 +286,7 @@ impl<'ctx> Binder<'ctx> {
         }
         return None;
     }
-
+    /// Add an error for a duplicate declaration, and return the symbol index of the first declaration symbol.
     fn error_and_return_first_instance(
         &'ctx self,
         entry_1: &ScopeEntry,
@@ -374,8 +374,7 @@ impl<'ctx> Binder<'ctx> {
             Statement::WhileStatement(_) => todo!(),
             Statement::ReturnStatement(_) => todo!(),
             Statement::ForStatement => todo!(),
-            Statement::ExpressionStatement(_) => todo!(),
-            Statement::FreeExpression(expression) => {
+            Statement::ExpressionStatement(expression) | Statement::FreeExpression(expression) => {
                 TypedStmnt::FreeExpression(self.expression(expression))
             }
         }
@@ -462,9 +461,11 @@ impl<'ctx> Binder<'ctx> {
             Expression::StringLiteral(string) => TypedExpr::Literal(self.string(string)),
             Expression::NumberLiteral(number) => TypedExpr::Literal(self.number(number)),
             Expression::BooleanLiteral(boolean) => TypedExpr::Literal(self.boolean(boolean)),
-            Expression::NewExpr(_) => todo!(),
-            Expression::ThisExpr(_) => todo!(),
-            Expression::CallExpr(_) => todo!(),
+            Expression::NewExpr(new_expr) => {
+                TypedExpr::NewExpr(Box::new(self.new_expression(new_expr)))
+            }
+            Expression::ThisExpr(this) => TypedExpr::ThisExpr(self.this_expression(this)),
+            Expression::CallExpr(call) => TypedExpr::CallExpr(Box::new(self.call_expression(call))),
             Expression::FnExpr(_) => todo!(),
             Expression::IfExpr(_) => todo!(),
             Expression::ArrayExpr(_) => todo!(),
@@ -487,6 +488,42 @@ impl<'ctx> Binder<'ctx> {
                 symbol_idx: symbol_index,
                 ref_number,
             },
+        }
+    }
+    /// Bind a new expression.
+    fn new_expression(&'ctx self, new_expr: Box<whirl_ast::NewExpr>) -> TypedNewExpr {
+        TypedNewExpr {
+            value: self.expression(new_expr.value),
+            span: new_expr.span,
+        }
+    }
+    /// Bind a `this` expression to its meaning.
+    fn this_expression(&'ctx self, this: whirl_ast::ThisExpr) -> TypedThisExpr {
+        let shadow = self.module().ambience.create_shadow(self.scope());
+        let symbol_index = match shadow.get_method_context() {
+            // find the referenced model or trait.
+            Some(search) => Some(self.find_or_create(search.entry.ident().unwrap())),
+            // 'this' is being used outside of a model or trait.
+            None => {
+                self.add_ctx_error(whirl_errors::this_outside_method(this.span));
+                None
+            }
+        };
+        TypedThisExpr {
+            model_or_trait: symbol_index,
+            start_line: this.span.start[0],
+            start_character: this.span.start[1],
+        }
+    }
+    /// Bind a call expression.
+    fn call_expression(&'ctx self, call: Box<whirl_ast::CallExpr>) -> TypedCallExpr {
+        TypedCallExpr {
+            caller: self.expression(call.caller),
+            arguments: call
+                .arguments
+                .into_iter()
+                .map(|argument| self.expression(argument))
+                .collect(),
         }
     }
 }

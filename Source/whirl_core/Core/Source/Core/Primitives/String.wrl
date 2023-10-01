@@ -3,8 +3,8 @@ module String;
 
 use Boolean.Boolean;
 use Package.Core.{ 
-    Internals.{Invoke, Invocation}, 
-    Memory.{CharSpace, Bytes}, 
+    Internals.{ Invoke, Invocation }, 
+    Memory.{ CharSpace, Bytes }, 
     Ops.Addition, 
     Prelude.{ Maybe, Iteratable, Range } 
 };

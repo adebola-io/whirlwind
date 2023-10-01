@@ -1,3 +1,5 @@
+use crate::SymbolIndex;
+
 use super::{LiteralIndex, SymbolLocator};
 use whirl_ast::Span;
 
@@ -5,9 +7,9 @@ use whirl_ast::Span;
 pub enum TypedExpr {
     Ident(TypedIdent),
     Literal(LiteralIndex),
-    NewExpr(TypedNewExpr),
-    ThisExpr(TypedIdent),
-    CallExpr(TypedCallExpr),
+    NewExpr(Box<TypedNewExpr>),
+    ThisExpr(TypedThisExpr),
+    CallExpr(Box<TypedCallExpr>),
 }
 
 #[derive(Debug, PartialEq)]
@@ -17,17 +19,19 @@ pub struct TypedIdent {
 
 #[derive(Debug, PartialEq)]
 pub struct TypedNewExpr {
-    pub value: Box<TypedExpr>,
+    pub value: TypedExpr,
     pub span: Span,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct TypedThisExpr {
-    pub id: SymbolLocator,
+    pub model_or_trait: Option<SymbolIndex>,
+    pub start_line: u32,
+    pub start_character: u32,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct TypedCallExpr {
-    pub caller: Box<TypedExpr>,
+    pub caller: TypedExpr,
     pub arguments: Vec<TypedExpr>,
 }

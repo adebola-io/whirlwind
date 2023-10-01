@@ -157,3 +157,10 @@ pub fn use_before_declare(name: String, span: whirl_ast::Span) -> ContextError {
         span,
     }
 }
+
+pub fn this_outside_method(span: whirl_ast::Span) -> ContextError {
+    ContextError {
+        _type: ContextErrorType::ThisOutsideMethod,
+        span,
+    }
+}

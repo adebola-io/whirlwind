@@ -1,0 +1,4 @@
+name := "Sefunmi";
+age := 21;
+
+Func(name, age);
