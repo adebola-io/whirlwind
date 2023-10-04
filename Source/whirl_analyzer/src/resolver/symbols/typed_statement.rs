@@ -12,6 +12,8 @@ pub enum TypedStmnt {
     ModelDeclaration(TypedModelDeclaration),
     ExpressionStatement(TypedExpr),
     FreeExpression(TypedExpr),
+    ModuleDeclaration(TypedModuleDeclaration),
+    ReturnStatement(TypedReturnStatement),
 }
 
 #[derive(Debug, PartialEq)]
@@ -100,4 +102,15 @@ pub enum TypedModelPropertyType {
         trait_target: Vec<IntermediateType>,
         body: TypedBlock,
     },
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TypedModuleDeclaration {
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TypedReturnStatement {
+    pub value: Option<TypedExpr>,
+    pub span: Span,
 }

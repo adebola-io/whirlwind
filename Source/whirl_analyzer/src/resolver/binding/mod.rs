@@ -5,8 +5,8 @@ use crate::{
     SemanticSymbol, SemanticSymbolKind, SymbolIndex, SymbolLocator, SymbolReferenceList,
     SymbolTable, TypedBlock, TypedCallExpr, TypedConstantDeclaration, TypedExpr, TypedIdent,
     TypedModelBody, TypedModelConstructor, TypedModelDeclaration, TypedModelProperty,
-    TypedModelPropertyType, TypedModule, TypedNewExpr, TypedShorthandVariableDeclaration,
-    TypedStmnt, TypedThisExpr,
+    TypedModelPropertyType, TypedModule, TypedModuleDeclaration, TypedNewExpr,
+    TypedReturnStatement, TypedShorthandVariableDeclaration, TypedStmnt, TypedThisExpr,
 };
 pub use programerror::*;
 use std::{cell::RefCell, collections::HashMap, mem::take, path::PathBuf, vec};
@@ -493,18 +493,35 @@ impl<'ctx> Binder<'ctx> {
             Statement::ModelDeclaration(model) => {
                 TypedStmnt::ModelDeclaration(self.model_declaration(model))
             }
-            Statement::ModuleDeclaration(_) => todo!(),
+            Statement::ModuleDeclaration(module) => {
+                TypedStmnt::ModuleDeclaration(TypedModuleDeclaration { span: module.span })
+            }
             Statement::FunctionDeclaration(_) => todo!(),
             Statement::RecordDeclaration => todo!(),
             Statement::TraitDeclaration(_) => todo!(),
             Statement::EnumDeclaration(_) => todo!(),
             Statement::TypeDeclaration(_) => todo!(),
             Statement::WhileStatement(_) => todo!(),
-            Statement::ReturnStatement(_) => todo!(),
+            Statement::ReturnStatement(returnstmnt) => {
+                TypedStmnt::ReturnStatement(self.return_statement(returnstmnt))
+            }
             Statement::ForStatement => todo!(),
             Statement::ExpressionStatement(expression) | Statement::FreeExpression(expression) => {
                 TypedStmnt::FreeExpression(self.expression(expression))
             }
+        }
+    }
+
+    /// Binds a return statement.
+    fn return_statement(
+        &'ctx self,
+        returnstmnt: whirl_ast::ReturnStatement,
+    ) -> TypedReturnStatement {
+        TypedReturnStatement {
+            value: returnstmnt
+                .value
+                .map(|expression| self.expression(expression)),
+            span: returnstmnt.span,
         }
     }
 }
