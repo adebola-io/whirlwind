@@ -2,16 +2,16 @@
 module Numeric;
 
 
-/// An unsigned 8-bit integer.
+/// An unsigned 8-bit Int.
 public model UInt8 {} // TODO
-/// An integer value with a magnitude sign.
+/// An Int value with a magnitude sign.
 public model SignedInt {} // TODO
-/// A union data type to represent different unsigned integer values.
+/// A union data type to represent different unsigned Int values.
 public type UnsignedInt = UInt8 | UInt16 | UInt32 | UInt64;
-/// A union data type to represent different integer values.
-public type Integer = UnsignedInt | SignedInt;
-/// An arbitrarily large integer value.
+/// A union data type to represent different Int values.
+public type Int = UnsignedInt | SignedInt;
+/// An arbitrarily large Int value.
 public model BigInt {} // TODO
 /// A union data type to represent a number.
-public type Number = Integer | Float; // | BigInt;
-public const MAX_SAFE_INTEGER: Integer = Invocation.MAX_SAFE_INTEGER;
+public type Number = Int | Float; // | BigInt;
+public const MAX_SAFE_Int: Int = Invocation.MAX_SAFE_Int;

@@ -31,7 +31,7 @@ fn parsing_public_functions() {
 #[test]
 fn parsing_functions_with_types() {
     // Normal types.
-    let mut parser = parse_text("function GenerateHash(name: String, id: Integer) {}");
+    let mut parser = parse_text("function GenerateHash(name: String, id: Int) {}");
     let statement = parser.next().unwrap().unwrap();
 
     assert!(parser
@@ -46,7 +46,7 @@ fn parsing_functions_with_types() {
             ) && matches!
             (
                 &f.params[1].type_label,
-                Some(TypeExpression::Discrete(d)) if d.name.name == "Integer"
+                Some(TypeExpression::Discrete(d)) if d.name.name == "Int"
             )
         )));
 
@@ -54,8 +54,8 @@ fn parsing_functions_with_types() {
         statement,
         Statement::FunctionDeclaration(FunctionDeclaration {
             address: [0, 0, 0].into(),
-            body: Block::empty(1, [1, 50, 1, 52].into()),
-            span: [1, 1, 1, 52].into()
+            body: Block::empty(1, [1, 46, 1, 48].into()),
+            span: [1, 1, 1, 48].into()
         })
     )
 }
@@ -355,7 +355,7 @@ fn parse_function_with_nested_generics() {
 
 #[test]
 fn parsing_type_declarations() {
-    let mut parser = parse_text("public type Number = SignedInteger | UnsignedInteger | Float;");
+    let mut parser = parse_text("public type Number = SignedInt | UnsignedInt | Float;");
 
     let statement = parser.next().unwrap().unwrap();
     let module_ambience = parser.module_ambience();
@@ -368,7 +368,7 @@ fn parsing_type_declarations() {
         statement,
         Statement::TypeDeclaration(TypeDeclaration {
             address: ScopeAddress::from([0, 0, 0]),
-            span: Span::from([1, 1, 1, 61])
+            span: Span::from([1, 1, 1, 53])
         })
     );
 }
@@ -1622,7 +1622,7 @@ fn parse_generic_params() {
     // With default values.
     parser = parse_text(
         "
-    model Stack<T: Sized + Nullable = Integer> {
+    model Stack<T: Sized + Nullable = Int> {
 
     }
     ",
@@ -1636,7 +1636,7 @@ fn parse_generic_params() {
             let param = &m.generic_params.as_ref().unwrap()[0];
             param.name.name == "T" && param.traits.len() == 2 && matches!(
                 param.default.as_ref().unwrap(),
-                TypeExpression::Discrete(ref d) if d.name.name == "Integer"
+                TypeExpression::Discrete(ref d) if d.name.name == "Int"
             )
         }
     ));
@@ -1648,7 +1648,7 @@ fn parse_generic_params() {
             body: ModelBody {
                 properties: vec![],
                 constructor: None,
-                span: [2, 48, 4, 6].into()
+                span: [2, 44, 4, 6].into()
             },
             span: [2, 5, 4, 6].into()
         })
@@ -1789,16 +1789,16 @@ fn parse_complex_program_2() {
  /// A last-in first-out data structure.
 public model Stack<T> {
     var items: ArrayOf<T>;
-    var capacity: Integer;
+    var capacity: Int;
 
-    new(capacity?: Integer) {
+    new(capacity?: Int) {
         this.items = [];
         this.capacity = capacity.UnwrapOr(Core.Math.INFINITY);
     }
 
     /// Dynamically change the number of items in the stack.
     /// If there are currently more items that the new capacity, then the top items will be removed until it matches the new capacity.
-    public function SetCapacity(value: Integer) {
+    public function SetCapacity(value: Int) {
         while value < this.items.Length() {
             this.items.Pop();
         }
@@ -1827,7 +1827,7 @@ public model Stack<T> {
     }
 
     /// Returns the size of the stack.
-    public function Size(): Integer {
+    public function Size(): Int {
         this.items.Length()
     }
 }",

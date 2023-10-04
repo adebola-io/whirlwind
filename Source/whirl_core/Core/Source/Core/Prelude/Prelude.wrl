@@ -8,11 +8,11 @@ public use Maybe.Maybe;
 public use Range;
 public use Package.Core;
 public use Package.Core.Primitives.{
-    U8Integer, 
-    // U16Integer,
-    // U32Integer,
-    // U64Integer,
-    UnsignedInteger,
+    U8Int, 
+    // U16Int,
+    // U32Int,
+    // U64Int,
+    UnsignedInt,
     Number,
     String,
     Chars,

@@ -3,9 +3,9 @@ module Main;
 /// A last-in first-out data structure.
 public model Stack<T> {
     var items: ArrayOf<T>;
-    var capacity: Integer;
+    var capacity: Int;
 
-    new(capacity?: Integer) {
+    new(capacity?: Int) {
         this.items = [];
         this.capacity = capacity.UnwrapOr(Core.Math.INFINITY);
     }
@@ -16,7 +16,7 @@ public model Stack<T> {
     /// ## Usage
     /// ```wrl
     /// use Structures.Stack;
-    /// stack: Stack<Integer> := new Stack();
+    /// stack: Stack<Int> := new Stack();
     ///
     /// Assert(stack.Capacity() == 0);
     /// stack.SetCapacity(1); // Sets the stack to contain only one item.
@@ -38,7 +38,7 @@ public model Stack<T> {
     /// stack.setCapacity(2); // Shrinks the stack to only two items.
     /// Assert(stack.Size() == 2);
     /// ```
-    public function SetCapacity(value: Integer) {
+    public function SetCapacity(value: Int) {
         while value < this.items.Length() {
             this.items.Pop();
         }
@@ -68,12 +68,12 @@ public model Stack<T> {
     }
 
     /// Returns the capacity of the stack.
-    public function Capacity(): Integer {
+    public function Capacity(): Int {
         this.capacity
     }
 
     /// Returns the size of the stack.
-    public function Size(): Integer {
+    public function Size(): Int {
         this.items.Length()
     }
 }
@@ -83,7 +83,7 @@ public model Stack<T> {
 use Core.Testing.Assert;
 
 test "It tests stack pushing and popping" {
-    stack: Stack<Integer> := new Stack();
+    stack: Stack<Int> := new Stack();
     Assert(stack.Size() == 0);
 
     stack.Push(8);
@@ -92,10 +92,10 @@ test "It tests stack pushing and popping" {
     Assert(stack.Size() == 2);
 }
 
-public type UnsignedInteger = U8Integer | U16Integer | U32Integer;
-public type Integer = UnsignedInteger | SignedInteger;
+public type UnsignedInt = U8Int | U16Int | U32Int;
+public type Int = UnsignedInt | SignedInt;
 public type Float = Float32 | Float64;
-public type Number = SignedInteger | Float | BigInt;
+public type Number = SignedInt | Float | BigInt;
 
 
 public trait PartialEquality {

@@ -8,7 +8,7 @@ public use Numeric.{
     UInt8,
     SignedInt,
     UnsignedInt,
-    Integer,
+    Int,
     Number,
-    MAX_SAFE_INTEGER
+    MAX_SAFE_Int
 }; 

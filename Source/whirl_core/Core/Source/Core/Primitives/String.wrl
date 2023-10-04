@@ -8,7 +8,7 @@ use Package.Core.{
     Ops.Addition, 
     Prelude.{ Maybe, Iteratable, Range } 
 };
-use Numeric.{ Integer, UnsignedInt };
+use Numeric.{ Int, UnsignedInt };
 use ArrayOf.ArrayOf;
 
 /// Model for creating, manipulating and formatting text sequences.
@@ -41,7 +41,7 @@ public model String implements Addition {
     /// Assert(str.At(-3)).Equals(Some("i"));
     /// ```
     /// It will return no value if the length of the string is exceeded.
-    public function At(position: Integer): Maybe<String> {
+    public function At(position: Int): Maybe<String> {
         Invoke(Invocation.StrAt, this, position)
     }
     /// Adds text to the end of the string.
@@ -125,7 +125,7 @@ public model String implements Addition {
     /// 
     /// Assert(str.Length()).Equals(5);
     /// ```
-    public function Length(): Integer {
+    public function Length(): Int {
         Invoke(Invocation.StrLength, this)
     }
      /// Returns a version of the string with padding on both sides.
@@ -200,7 +200,7 @@ public model String implements Addition {
     /// str3 := str.Repeat(0);
     /// AssertThat(str2.IsEmpty()); // No copies.
     /// ```
-    public function Repeat(count: Integer): String {
+    public function Repeat(count: Int): String {
         Invoke(Invocation.StrRepeat, this, count)
     }
     /// Replaces all instances of a substring and returns the new string.
@@ -235,7 +235,7 @@ public model String implements Addition {
     /// 
     /// Assert(str.Slice(0..5)).Equals("Hello"); // index 0 to 4.
     /// ```
-    public function Slice(bounds: Range<Integer>): Maybe<String> {
+    public function Slice(bounds: Range<Int>): Maybe<String> {
         Invoke(Invocation.StrSlice, this, bounds)
     }
     /// Divides the string into a list of substrings based on a delimeter.
@@ -336,6 +336,6 @@ public model Chars implements Iteratable<String> {
 }
 
 /// Calculates the edit distance between two strings using the [Levenshtein's Algorithm](http://example.com).
-public function LevenshteinEditRatio(str1: String, str2: String): Integer {
+public function LevenshteinEditRatio(str1: String, str2: String): Int {
     // todo.
 }

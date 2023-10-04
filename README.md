@@ -1,6 +1,6 @@
-> **THIS PROJECT IS AT THE MOMENT 90% EXPERIMENTAL AND 100% IMCOMPLETE. DO NOT ATTEMPT TO USE.**
+> **THIS PROJECT IS 100% IMCOMPLETE. LOOK AWAY.**
 
-<h1 align=center>Whirl 🌪</h1>
+<h1 align=center>Whirl 🐺</h1>
 
 Whirl is a simple, interpreted programming language for quickly and easily writing maintenable software.
 
@@ -13,18 +13,12 @@ Whirl is a simple, interpreted programming language for quickly and easily writi
 -  Inbuilt Testing capabilities.
 -  Support for modules.
 
-## Getting Started
-
-```
-
-```
-
 ## Syntax
 
 Whirl is inspired heavily by the syntax of languages like Rust and Typescript. An example of Whirl code would be:
 
 ```ts
-function Add(a: Integer, b: Integer): Integer 
+function Add(a: Int, b: Int): Int
 {
   a + b
 }
@@ -32,8 +26,7 @@ function Add(a: Integer, b: Integer): Integer
 function Main() 
 {
   c := Add(2, 3);
-  Core.Fmt.Println(c);
+  Core.Io.Println(c);
 }
 ```
 
-## Contributing

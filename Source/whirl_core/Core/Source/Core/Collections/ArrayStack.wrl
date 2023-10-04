@@ -4,7 +4,7 @@ use Package.Core.{
     Primitives.{
         ArrayOf,
         UnsignedInt,
-        // Numeric.MAX_SAFE_INTEGER
+        // Numeric.MAX_SAFE_Int
     },
     // Math.Infinity,
 };
@@ -18,7 +18,7 @@ public model ArrayStack<T> {
     var items: ArrayOf<T>;
     var capacity: UnsignedInt;
    
-    new(capacity?: Integer) {
+    new(capacity?: Int) {
         this.items = [];
         this.capacity = capacity.UnwrapOr(Infinity);
     }
@@ -29,7 +29,7 @@ public model ArrayStack<T> {
     /// ## Usage
     /// ```wrl
     /// use Core.Collections.ArrayStack;
-    /// stack: ArrayStack<Integer> := new ArrayStack();
+    /// stack: ArrayStack<Int> := new ArrayStack();
     ///
     /// Assert(stack.Capacity() == 0);
     /// stack.SetCapacity(1); // Sets the stack to contain only one item.
@@ -51,7 +51,7 @@ public model ArrayStack<T> {
     /// stack.setCapacity(2); // Shrinks the stack to only two items.
     /// Assert(stack.Size() == 2);
     /// ```
-    public function SetCapacity(value: Integer) {
+    public function SetCapacity(value: Int) {
         while value < this.items.Length() {
             this.items.Pop();
         }
@@ -81,12 +81,12 @@ public model ArrayStack<T> {
     }
 
     /// Returns the capacity of the stack.
-    public function Capacity(): Integer {
+    public function Capacity(): Int {
         this.capacity
     }
 
     /// Returns the size of the stack.
-    public function Size(): Integer {
+    public function Size(): Int {
         this.items.Length()
     }
     
