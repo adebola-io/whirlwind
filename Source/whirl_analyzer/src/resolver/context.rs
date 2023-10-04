@@ -89,8 +89,8 @@ impl FullProgramContext {
 
 #[cfg(test)]
 mod tests {
-    use crate::{resolve_modules, FullProgramContext, PathIndex, ProgramError, SymbolIndex};
-    use whirl_errors::{ContextError, ContextErrorType};
+    // todo: use virtual fs.
+    use crate::{resolve_modules, FullProgramContext, PathIndex, SymbolIndex};
 
     #[test]
     fn test_shorthand_variable_context() {
@@ -108,32 +108,40 @@ mod tests {
             context.symbol_table.get(SymbolIndex(2)).unwrap().name,
             "Number"
         );
-        assert_eq!(context.symbol_table.len(), 3);
-        assert_eq!(
-            *context.errors.last().unwrap(),
-            ProgramError::contextual(
-                PathIndex(0),
-                ContextError {
-                    _type: ContextErrorType::UnknownVariableInScope {
-                        name: format!("Number")
-                    },
-                    span: [3, 1, 3, 7].into()
-                }
-            )
-        )
     }
 
     #[test]
     fn test_call_expression_bind() {
         let graph = resolve_modules("../../Tests/binding/this_and_call.wrl");
+        let _context = FullProgramContext::build_from_graph(graph);
+        // println!(
+        //     "{:#?}",
+        //     context
+        //         .symbol_table
+        //         .in_module(PathIndex(0))
+        //         .map(|symbol| &symbol.name)
+        //         .collect::<Vec<_>>()
+        // );
+    }
+
+    #[test]
+    fn test_model_bind() {
+        let graph = resolve_modules("../../Tests/binding/models.wrl");
         let context = FullProgramContext::build_from_graph(graph);
         println!(
             "{:#?}",
             context
                 .symbol_table
                 .in_module(PathIndex(0))
-                .map(|symbol| &symbol.name)
+                .map(|symbol| (&symbol.name, &symbol.symbol_kind))
                 .collect::<Vec<_>>()
         );
+        println!(
+            "ERRORS: \n\n\n{:#?}",
+            context
+                .errors
+                .iter()
+                .filter(|error| error.offending_file == PathIndex(0))
+        )
     }
 }

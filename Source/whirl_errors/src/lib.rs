@@ -164,3 +164,37 @@ pub fn this_outside_method(span: whirl_ast::Span) -> ContextError {
         span,
     }
 }
+
+pub fn duplicate_property(name: whirl_ast::Identifier) -> ContextError {
+    ContextError {
+        _type: ContextErrorType::DuplicateModelProperty {
+            name: name.name.to_owned(),
+        },
+        span: name.span,
+    }
+}
+
+pub fn duplicate_generic_parameter(name: whirl_ast::Identifier) -> ContextError {
+    ContextError {
+        _type: ContextErrorType::DuplicateGenericParameter {
+            name: name.name.to_owned(),
+        },
+        span: name.span,
+    }
+}
+
+pub fn duplicate_parameter_names(name: whirl_ast::Identifier) -> ContextError {
+    ContextError {
+        _type: ContextErrorType::DuplicateParameterName {
+            name: name.name.to_owned(),
+        },
+        span: name.span,
+    }
+}
+
+pub fn required_parameter_after_optional(span: whirl_ast::Span) -> ContextError {
+    ContextError {
+        _type: ContextErrorType::RequiredAfterOptional,
+        span,
+    }
+}

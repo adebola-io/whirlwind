@@ -2245,6 +2245,7 @@ impl<L: Lexer> Parser<L> {
     /// Parses a generic parameter.
     fn generic_param(&self) -> Fallible<GenericParameter> {
         let name = self.identifier()?;
+        let start = name.span.start;
         let mut traits = vec![];
         // Parse assigned traits.
         if self
@@ -2273,20 +2274,29 @@ impl<L: Lexer> Parser<L> {
             }
         }
         // Parse default value.
-        let default = if self
+        let (default, end) = if self
             .token()
             .is_some_and(|t| t._type == TokenType::Operator(Assign))
         {
             self.advance(); // Move past =
-            Some(self.type_expression()?)
+            let default = self.type_expression()?;
+            let end = default.span().end;
+            (Some(default), end)
         } else {
-            None
+            (
+                None,
+                traits
+                    .last()
+                    .map(|_trait| _trait.span().end)
+                    .unwrap_or(name.span.end),
+            )
         };
 
         let generic_param = GenericParameter {
             name,
             traits,
             default,
+            span: Span { start, end },
         };
         Ok(generic_param)
     }
@@ -2374,11 +2384,13 @@ impl<L: Lexer> Parser<L> {
     fn parameter(&self) -> Fallible<Parameter> {
         let info = self.get_doc_comment();
         let name = self.identifier()?;
-
+        let start = name.span.start;
+        let mut end = None;
         let is_optional = if self
             .token()
             .is_some_and(|t| t._type == TokenType::Operator(QuestionMark))
         {
+            end = Some(self.token().unwrap().span.end);
             self.advance();
             true
         } else {
@@ -2389,16 +2401,26 @@ impl<L: Lexer> Parser<L> {
             .token()
             .is_some_and(|t| t._type == TokenType::Operator(Colon))
         {
-            Some(self.type_label()?)
+            let type_exp = self.type_label()?;
+            end = Some(type_exp.span().end);
+            Some(type_exp)
         } else {
             None
         };
+
+        if end.is_none() {
+            end = Some(name.span.end);
+        }
 
         let parameter = Parameter {
             name,
             info,
             type_label,
             is_optional,
+            span: Span {
+                start,
+                end: end.unwrap(),
+            },
         };
 
         Ok(parameter)

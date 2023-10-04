@@ -1,9 +1,9 @@
 // !::no-core::!
 module Maybe;
 
-use Package.{
+use Package.Core.{
     Internals.{IsNull, NullPtr},
-    Process.PanicOnCaller,
+    // Process.PanicOnCaller,
 };
 
 
@@ -18,11 +18,14 @@ public function Some<T>(value: T): Maybe<T> {
 }
 
 /// A value that may or may not exist.
-public model Maybe<T> implements Assertable<T>, TryFrom<T> {
+public model Maybe<T> implements Assertable<T>, Try<T> {
     var value: T;
 
     new(value: T) {
         this.value = value;
+    }
+    public function [Assertable.Assert](): T {
+        this.Unwrap()
     }
     /// Returns a boolean indicating if the Maybe contains no value.
     /// ### Usage
@@ -61,6 +64,9 @@ public model Maybe<T> implements Assertable<T>, TryFrom<T> {
     public function UnwrapOr(value: T): T {
         if this.IsNone() { value } else { this.value }
     }
-
+    /// Converts a `Maybe<T>` to a `Maybe<E>` by applying a function.
+    public function Map<U>(func: fn(former: T): U): Maybe<U> {
+        
+    }
     
 }

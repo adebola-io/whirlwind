@@ -792,7 +792,8 @@ fn parse_fn_expressions() {
                     generic_args: None,
                     span: [1, 8, 1, 14].into()
                 })),
-                is_optional: false
+                is_optional: false,
+                span: [1, 5, 1, 14].into()
             }],
             return_type: Some(TypeExpression::Discrete(DiscreteType {
                 name: Identifier {

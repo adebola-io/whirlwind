@@ -69,6 +69,16 @@ pub struct ScopeSearch<'a> {
     pub entry: &'a ScopeEntry,
     pub scope: &'a Scope,
 }
+impl<'a> ScopeSearch<'a> {
+    /// Rebuild the scope address from the search.
+    pub fn construct_address(&self, module_id: usize) -> ScopeAddress {
+        ScopeAddress {
+            module_id,
+            scope_id: self.scope.id,
+            entry_no: self.index,
+        }
+    }
+}
 
 impl From<[usize; 3]> for ScopeAddress {
     fn from(value: [usize; 3]) -> Self {
@@ -182,6 +192,14 @@ impl ScopeEntry {
             _ => panic!("{} is not a constant!", self.name()),
         }
     }
+
+    /// Returns `true` if the scope entry is [`Parameter`].
+    ///
+    /// [`Parameter`]: ScopeEntry::Parameter
+    #[must_use]
+    pub fn is_parameter(&self) -> bool {
+        matches!(self, Self::Parameter(..))
+    }
 }
 
 impl PartialEq<Self> for &ScopeEntry {
@@ -215,7 +233,18 @@ impl Scope {
     }
     /// Find an item inside the current scope.
     pub fn find(&self, name: &str) -> Option<(usize, &ScopeEntry)> {
-        for (index, entry) in self.entries.iter().enumerate() {
+        // check for parameters first.
+        let parameters = self
+            .entries
+            .iter()
+            .enumerate()
+            .filter(|entry| entry.1.is_parameter());
+        let other_entries = self
+            .entries
+            .iter()
+            .enumerate()
+            .filter(|entry| !entry.1.is_parameter());
+        for (index, entry) in parameters.chain(other_entries) {
             if entry.name() == name {
                 return Some((index, entry));
             }

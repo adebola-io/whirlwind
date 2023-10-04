@@ -115,6 +115,7 @@ pub struct GenericParameter {
     pub name: Identifier,
     pub traits: Vec<TypeExpression>,
     pub default: Option<TypeExpression>,
+    pub span: Span,
 }
 
 impl TypeExpression {

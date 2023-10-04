@@ -98,6 +98,31 @@ impl Span {
     pub fn is_in_vicinity(&self, span: Span) -> bool {
         self.encloses(span) || self.is_adjacent_to(span.start) || self.is_adjacent_to(span.end)
     }
+    /// Checks if a span exists before another.
+    pub fn is_before(&self, other: Span) -> bool {
+        // other is inside this span.
+        if self.encloses(other) {
+            return false;
+        }
+        if self.start[0] == other.start[0] {
+            if self.start[1] < other.start[1] {
+                // ending on the same line.
+                if self.end[0] == other.end[0] {
+                    return self.end[1] < other.end[1];
+                } else {
+                    return self.end[0] < other.end[0];
+                }
+            }
+        } else if self.start[0] < other.start[0] {
+            // ending on the same line.
+            if self.end[0] == other.end[0] {
+                return self.end[1] < other.end[1];
+            } else {
+                return self.end[0] < other.end[0];
+            }
+        }
+        return false;
+    }
 }
 
 impl std::fmt::Debug for Span {
@@ -189,6 +214,19 @@ mod tests {
 
         assert!(!span.is_adjacent_to([1, 10]));
         assert!(!span.is_adjacent_to([5, 12]));
+    }
+
+    #[test]
+    fn test_positioning() {
+        let span_1 = Span::from([1, 1, 1, 5]);
+        let span_2 = Span::from([1, 6, 1, 8]);
+
+        assert!(span_1.is_before(span_2));
+
+        let span_3 = Span::from([2, 1, 3, 5]);
+        let span_4 = Span::from([4, 1, 8, 2]);
+
+        assert!(span_3.is_before(span_4));
     }
 
     #[test]

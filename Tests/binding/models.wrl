@@ -1,0 +1,73 @@
+
+
+/// An implementation of a stack using an array.
+/// 
+/// A stack is a LIFO (Last-in-First-out) data structure that stores items in one direction.
+public model ArrayStack<T> {
+    var items: ArrayOf<T>;
+    var capacity: UnsignedInt;
+   
+    new(capacity?: Integer) {
+        
+    }
+
+    /// Dynamically change the number of items in the stack.
+    ///
+    /// If there are currently more items that the new capacity, then the stack will be truncated.
+    /// ## Usage
+    /// ```wrl
+    /// use Core.Collections.ArrayStack;
+    /// stack: ArrayStack<Integer> := new ArrayStack();
+    ///
+    /// Assert(stack.Capacity() == 0);
+    /// stack.SetCapacity(1); // Sets the stack to contain only one item.
+    /// 
+    /// stack.Push(10).Unwrap();
+    /// Assert(stack.Push(11).IsErr()); // Cannot push since the stack is full.
+    ///
+    /// // Increasing the capacity.
+    /// stack = new ArrayStack();
+    /// stack.SetCapacity(10);
+    /// for item in 0..9 {
+    ///     stack.Push(item).Unwrap();   
+    /// }
+    /// Assert(stack.Push(99).IsErr())
+    /// stack.SetCapacity(11);
+    /// Assert(stack.Push(99).IsOk());
+    /// 
+    /// // Reducing the capacity
+    /// stack.setCapacity(2); // Shrinks the stack to only two items.
+    /// Assert(stack.Size() == 2);
+    /// ```
+    public function SetCapacity(value: Integer) {
+        
+    }
+
+    /// Returns the top value in the stack without removing it.
+    public function Top(): Maybe<T> {
+        
+    }
+
+    /// Removes the last item from the stack and returns it, if it exists.
+    public function Pop(): Maybe<T> {
+        
+    }
+
+    /// Enter data into the stack.
+    ///
+    /// This method will fail if the size of the stack is already at maximum length.
+    public function Push(data: T): Outcome<_, StackError> {
+        
+    }
+
+    /// Returns the capacity of the stack.
+    public function Capacity(): Integer {
+        
+    }
+
+    /// Returns the size of the stack.
+    public function Size(): Integer {
+        
+    }
+    
+}

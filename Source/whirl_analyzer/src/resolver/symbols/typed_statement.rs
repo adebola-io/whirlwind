@@ -1,6 +1,6 @@
 use whirl_ast::Span;
 
-use crate::{EvaluatedType, IntermediateType, LiteralIndex, SymbolLocator, TypedExpr};
+use crate::{EvaluatedType, IntermediateType, LiteralIndex, SymbolIndex, SymbolLocator, TypedExpr};
 
 #[derive(Debug, PartialEq)]
 pub enum TypedStmnt {
@@ -73,8 +73,14 @@ pub struct TypedModelDeclaration {
 #[derive(Debug, PartialEq)]
 pub struct TypedModelBody {
     pub properties: Vec<TypedModelProperty>,
-    pub constructor: Option<TypedBlock>,
+    pub constructor: Option<TypedModelConstructor>,
     pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TypedModelConstructor {
+    pub parameters: Vec<SymbolIndex>,
+    pub block: TypedBlock,
 }
 
 #[derive(Debug, PartialEq)]

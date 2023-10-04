@@ -1,4 +1,4 @@
-use crate::{EnumVariant, GenericParameter, Identifier, ModuleAmbience, TypeExpression};
+use crate::{EnumVariant, GenericParameter, Identifier, ModuleAmbience, Span, TypeExpression};
 
 use whirl_macros::Signature;
 
@@ -46,6 +46,8 @@ pub struct Parameter {
     pub is_optional: bool,
     /// Doc comments annotating the parameter, if any.
     pub info: Option<Vec<String>>,
+    /// Span of the parameter.
+    pub span: Span,
 }
 
 impl Signature for Parameter {

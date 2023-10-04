@@ -3,7 +3,9 @@ mod typed_expr;
 mod typed_module;
 mod typed_statement;
 
-use whirl_ast::{ConstantSignature, Span, TypeSignature, WhirlNumber, WhirlString};
+use whirl_ast::{
+    ConstantSignature, Span, TypeSignature, VariableSignature, WhirlNumber, WhirlString,
+};
 
 pub use typed_expr::*;
 pub use typed_module::*;
@@ -40,14 +42,14 @@ pub enum SymbolEntry {
 pub struct SemanticSymbol {
     pub name: String,
     pub symbol_kind: SemanticSymbolKind,
-    pub references: Vec<SemanticSymbolReferenceList>,
-    pub doc_info_range: Option<Span>,
+    pub references: Vec<SymbolReferenceList>,
+    pub doc_info: Option<Vec<String>>,
     pub origin_span: Span,
 }
 
 /// A collection of all instances of a symbol inside a file.
 #[derive(Debug)]
-pub struct SemanticSymbolReferenceList {
+pub struct SymbolReferenceList {
     /// Path to file where the references exist.
     pub module_path: PathIndex,
     /// List of the starting position for each reference.
@@ -84,7 +86,8 @@ pub enum SemanticSymbolKind {
     Model {
         is_public: bool,
         is_constructable: bool,
-        implementations: Vec<SymbolIndex>,
+        generic_params: Vec<SymbolIndex>,
+        implementations: Vec<IntermediateType>,
         methods: Vec<SymbolIndex>,
         attributes: Vec<SymbolIndex>,
     },
@@ -108,41 +111,47 @@ pub enum SemanticSymbolKind {
         declared_type: IntermediateType,
         inferred_type: EvaluatedType,
     },
+    /// An attribute in a model.
+    Attribute {
+        owner_model: SymbolIndex,
+        is_public: bool,
+        property_index: usize,
+        declared_type: IntermediateType,
+        inferred_type: EvaluatedType,
+    },
     /// A method of a trait or model.
-    MethodOf {
+    Method {
         is_public: bool,
         is_static: bool,
         is_async: bool,
         owner_model_or_trait: SymbolIndex,
         property_index: usize,
         params: Vec<SymbolIndex>,
-        generic_arguments: Vec<SymbolIndex>,
+        generic_params: Vec<SymbolIndex>,
+        return_type: Option<IntermediateType>,
     },
     /// Parameter of a function.
     Parameter {
         is_optional: bool,
         owner_function: SymbolIndex,
-        param_type: IntermediateType,
+        param_type: Option<IntermediateType>,
     },
     GenericParameter {
         owner_signature: SymbolIndex,
-        traits: Vec<SymbolIndex>,
-        default_value: SymbolIndex,
+        traits: Vec<IntermediateType>,
+        default_value: Option<IntermediateType>,
     },
     Function {
         is_public: bool,
         is_async: bool,
         params: Vec<SymbolIndex>,
         generic_arguments: Vec<SymbolIndex>,
-        return_type: Vec<IntermediateType>,
+        return_type: Option<IntermediateType>,
     },
     TypeName {
         is_public: bool,
         generic_arguments: Vec<SymbolIndex>,
         value: Vec<IntermediateType>,
-    },
-    This {
-        refers_to: SymbolIndex,
     },
     UndeclaredValue,
 }
@@ -241,7 +250,7 @@ impl SemanticSymbol {
             Some(list) => {
                 list.starts.push(span.start);
             }
-            None => self.references.push(SemanticSymbolReferenceList {
+            None => self.references.push(SymbolReferenceList {
                 module_path,
                 starts: vec![span.start],
             }),
@@ -249,37 +258,50 @@ impl SemanticSymbol {
     }
     /// Create a new semantic symbol from a variable.
     pub fn from_variable(
-        variable: &whirl_ast::VariableSignature,
+        variable: &mut VariableSignature,
+        path_to_module: PathIndex,
         origin_span: Span,
     ) -> SemanticSymbol {
         Self {
+            // taking the name makes it un-lookup-able.
             name: variable.name.name.to_owned(),
             symbol_kind: SemanticSymbolKind::Variable {
                 is_public: variable.is_public,
                 declared_type: None,
                 inferred_type: EvaluatedType::unknown(),
             },
-            references: vec![],
-            doc_info_range: None, // todo.
+            references: vec![SymbolReferenceList {
+                module_path: path_to_module,
+                starts: vec![variable.name.span.start],
+            }],
+            doc_info: variable.info.take(), // todo.
             origin_span,
         }
     }
     /// Create a new symbol from a constant.
-    pub fn from_constant(constant: &ConstantSignature, origin_span: Span) -> Self {
+    pub fn from_constant(
+        constant: &mut ConstantSignature,
+        path_to_module: PathIndex,
+        origin_span: Span,
+    ) -> Self {
         Self {
+            // taking the name makes it un-lookup-able.
             name: constant.name.name.to_owned(),
             symbol_kind: SemanticSymbolKind::Constant {
                 is_public: constant.is_public,
                 declared_type: IntermediateType::Placeholder,
                 inferred_type: EvaluatedType::unknown(),
             },
-            references: vec![],
-            doc_info_range: None, // todo.
+            references: vec![SymbolReferenceList {
+                module_path: path_to_module,
+                starts: vec![constant.name.span.start],
+            }],
+            doc_info: constant.info.take(), // todo.
             origin_span,
         }
     }
     /// Create a new symbol from a type.
-    pub fn from_type(_type: &TypeSignature, origin_span: Span) -> Self {
+    pub fn from_type(_type: &mut TypeSignature, origin_span: Span) -> Self {
         Self {
             name: _type.name.name.to_owned(),
             symbol_kind: SemanticSymbolKind::TypeName {
@@ -288,7 +310,7 @@ impl SemanticSymbol {
                 value: vec![],
             },
             references: vec![],
-            doc_info_range: None,
+            doc_info: _type.info.take(),
             origin_span,
         }
     }
@@ -326,7 +348,7 @@ impl SymbolTable {
         }
     }
     /// Returns a list of the symbols in a module.
-    pub fn in_module(&self, path_index: PathIndex) -> impl Iterator<Item = &SemanticSymbol> {
+    pub fn in_module(&self, module_path: PathIndex) -> impl Iterator<Item = &SemanticSymbol> {
         self.symbols
             .iter()
             .filter(|symbolentry| matches!(symbolentry, SymbolEntry::Symbol(_)))
@@ -334,7 +356,12 @@ impl SymbolTable {
                 SymbolEntry::Symbol(symbol) => symbol,
                 _ => unreachable!(),
             })
-            .filter(move |symbol| symbol.references.first().unwrap().module_path == path_index)
+            .filter(move |symbol| {
+                symbol
+                    .references
+                    .first()
+                    .is_some_and(|reference| reference.module_path == module_path)
+            })
     }
     /// Get a symbol mutably using its index.
     pub fn get_mut(&mut self, index: SymbolIndex) -> Option<&mut SemanticSymbol> {
@@ -344,7 +371,7 @@ impl SymbolTable {
         }
     }
     /// Remove a symbol using its index.
-    pub fn remove_symbol(&mut self, index: SymbolIndex) -> Option<SemanticSymbol> {
+    pub fn remove(&mut self, index: SymbolIndex) -> Option<SemanticSymbol> {
         let symbolentry = std::mem::take(self.symbols.get_mut(index.0)?);
         self.holes.push(index.0);
         match symbolentry {
@@ -352,11 +379,8 @@ impl SymbolTable {
             SymbolEntry::Symbol(symbol) => Some(symbol),
         }
     }
-    /// Get a list of at most five related symbols.
-    pub fn get_relations_for_symbol_at_index(
-        &self,
-        _index: SymbolIndex,
-    ) -> Option<Vec<&SemanticSymbol>> {
+    /// Get a list of at most five related symbols for a symbol at an index.
+    pub fn get_relations(&self, _index: SymbolIndex) -> Option<Vec<&SemanticSymbol>> {
         todo!()
     }
     /// Returns the number of symbols in the table.
@@ -432,7 +456,7 @@ mod tests {
                 value: vec![],
             },
             references: vec![],
-            doc_info_range: None,
+            doc_info: None,
             origin_span: Span::default(),
         });
         assert_eq!(symboltable.get(symbol_index).unwrap().name, "newVariable")
@@ -449,13 +473,13 @@ mod tests {
                 value: vec![],
             },
             references: vec![],
-            doc_info_range: None,
+            doc_info: None,
             origin_span: Span::default(),
         });
 
         assert_eq!(symboltable.len(), 1);
 
-        let removed = symboltable.remove_symbol(symbol_index).unwrap();
+        let removed = symboltable.remove(symbol_index).unwrap();
 
         assert_eq!(removed.name, "newVariable");
 
