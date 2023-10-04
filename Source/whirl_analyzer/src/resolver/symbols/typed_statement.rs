@@ -14,6 +14,7 @@ pub enum TypedStmnt {
     FreeExpression(TypedExpr),
     ModuleDeclaration(TypedModuleDeclaration),
     ReturnStatement(TypedReturnStatement),
+    WhileStatement(TypedWhileStatement),
 }
 
 #[derive(Debug, PartialEq)]
@@ -112,5 +113,12 @@ pub struct TypedModuleDeclaration {
 #[derive(Debug, PartialEq)]
 pub struct TypedReturnStatement {
     pub value: Option<TypedExpr>,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TypedWhileStatement {
+    pub condition: TypedExpr,
+    pub body: TypedBlock,
     pub span: Span,
 }

@@ -7,13 +7,15 @@ use crate::{
     TypedModelBody, TypedModelConstructor, TypedModelDeclaration, TypedModelProperty,
     TypedModelPropertyType, TypedModule, TypedModuleDeclaration, TypedNewExpr,
     TypedReturnStatement, TypedShorthandVariableDeclaration, TypedStmnt, TypedThisExpr,
+    TypedWhileStatement,
 };
 pub use programerror::*;
 use std::{cell::RefCell, collections::HashMap, mem::take, path::PathBuf, vec};
 use whirl_ast::{
     Block, ConstantDeclaration, Expression, GenericParameter, Identifier, ModelBody,
-    ModelDeclaration, ModelProperty, ModelPropertyType, ModelSignature, Parameter, ScopeAddress,
-    ScopeEntry, ScopeSearch, ShorthandVariableDeclaration, Span, Statement, TypeExpression,
+    ModelDeclaration, ModelProperty, ModelPropertyType, ModelSignature, Parameter, ReturnStatement,
+    ScopeAddress, ScopeEntry, ScopeSearch, ShorthandVariableDeclaration, Span, Statement,
+    TypeExpression, WhileStatement,
 };
 use whirl_errors::ContextError;
 
@@ -501,7 +503,9 @@ impl<'ctx> Binder<'ctx> {
             Statement::TraitDeclaration(_) => todo!(),
             Statement::EnumDeclaration(_) => todo!(),
             Statement::TypeDeclaration(_) => todo!(),
-            Statement::WhileStatement(_) => todo!(),
+            Statement::WhileStatement(while_statement) => {
+                TypedStmnt::WhileStatement(self.while_statement(while_statement))
+            }
             Statement::ReturnStatement(returnstmnt) => {
                 TypedStmnt::ReturnStatement(self.return_statement(returnstmnt))
             }
@@ -511,17 +515,21 @@ impl<'ctx> Binder<'ctx> {
             }
         }
     }
-
     /// Binds a return statement.
-    fn return_statement(
-        &'ctx self,
-        returnstmnt: whirl_ast::ReturnStatement,
-    ) -> TypedReturnStatement {
+    fn return_statement(&'ctx self, returnstmnt: ReturnStatement) -> TypedReturnStatement {
         TypedReturnStatement {
             value: returnstmnt
                 .value
                 .map(|expression| self.expression(expression)),
             span: returnstmnt.span,
+        }
+    }
+    /// Binds a while statement.
+    fn while_statement(&'ctx self, while_statement: WhileStatement) -> TypedWhileStatement {
+        TypedWhileStatement {
+            condition: self.expression(while_statement.condition),
+            body: self.block(while_statement.body),
+            span: while_statement.span,
         }
     }
 }
