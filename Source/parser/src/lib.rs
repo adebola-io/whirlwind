@@ -2,11 +2,11 @@
 
 use std::str::Chars;
 
-pub use parser::Parser;
+pub use parse::Parser;
 
 use lexer::{lex_text, TextLexer};
 
-mod parser;
+mod parse;
 mod test;
 
 /// Returns an iterable parser for text input.
