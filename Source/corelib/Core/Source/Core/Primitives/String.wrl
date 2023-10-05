@@ -40,7 +40,7 @@ public model String implements Addition {
     /// Assert(str.At(-3)).Equals(Some("i"));
     /// ```
     /// It will return no value if the length of the string is exceeded.
-    public function At(position: Int): Maybe<String> {
+    public function At(position: Int): Maybe<&String> {
         return Invoke(Invocation.StrAt(this, position));
     }
     /// Adds text to the end of the string.
@@ -337,7 +337,7 @@ public model String implements Addition {
     }
 }
 
-public model Chars implements Iteratable<String> {
+public model Chars implements Iteratable<&String> {
     var idx: UnsignedInt;
     var string: String;
     new(string: String) {
@@ -345,7 +345,7 @@ public model Chars implements Iteratable<String> {
         this.string = string;
     }
     /// Returns the next character.
-    public function [Iteratable.Next](): Maybe<String> {
+    public function [Iteratable.Next](): Maybe<&String> {
         nextChar := this.string.At(idx);
         idx += 1;
         return nextChar;
@@ -353,6 +353,6 @@ public model Chars implements Iteratable<String> {
 }
 
 /// Calculates the edit distance between two strings using the [Levenshtein's Algorithm](http://example.com).
-public function LevenshteinEditRatio(str1: String, str2: String): Int {
+public function LevenshteinEditRatio(str1: &String, str2: &String): Int {
     Todo()
 }

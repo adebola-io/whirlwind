@@ -349,7 +349,7 @@
       "type_label": {
          "begin": "\\:\\s*",
          "patterns": [{ "include": "#type_expression" }],
-         "end": "(,(?=\\s*([A-Za-z0-9]|_)+\\s*\\??\\s*(\\:|\\))))|(?=[^A-Za-z0-9\\_\\.\\<\\>\\,\\s])"
+         "end": "(,(?=\\s*([A-Za-z0-9]|_)+\\s*\\??\\s*(\\:|\\))))|(?=[^A-Za-z0-9\\&\\_\\.\\<\\>\\,\\s])"
       },
       "discrete_type": {
          "patterns": [
@@ -363,6 +363,10 @@
       },
       "type_expression": {
          "patterns": [
+            {
+               "name": "punctuation",
+               "match": "\\&"
+            },
             {
                "name": "constant.language",
                "match": "\\s*This\\s*"
@@ -394,6 +398,10 @@
       "generic_params": {
          "begin": "(?<=\\<\\s*)",
          "patterns": [
+            {
+               "name": "punctuation",
+               "match": "\\&"
+            },
             {
                "name": "constant.language",
                "match": "\\bThis\\b"

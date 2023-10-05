@@ -4,7 +4,7 @@ public use Package.Core.Primitives.Bool;
 
 
 public use Invocation.{Invocation, Invoke};
-public function IsNull<T>(value: T): Bool {
+public function IsNull<T>(value: &T): Bool {
     // Compiler built-in.
 }
 public model Nullptr {
