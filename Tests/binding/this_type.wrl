@@ -1,0 +1,11 @@
+public model Node {
+    var parent: This;
+    var children: ArrayOf<This>;
+    public function DoStuff() {
+        model Hello {
+            function h(): This {
+                
+            }
+        }
+    }
+}

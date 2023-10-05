@@ -652,6 +652,7 @@ impl<'ctx> Binder<'ctx> {
             }
             Err(idx) => idx,
         };
+        self.this_model.borrow_mut().push(symbol_idx); // Set meaning of `This`.
         let ref_number = self.last_reference_no(symbol_idx);
         let typed_model_declaration = TypedModelDeclaration {
             name: SymbolLocator {
@@ -662,6 +663,7 @@ impl<'ctx> Binder<'ctx> {
             span: model.span,
         };
         self.pop_generic_pool();
+        self.this_model.borrow_mut().pop(); // Remove meaning of This.
         return typed_model_declaration;
     }
 
@@ -1077,7 +1079,10 @@ impl<'ctx> Binder<'ctx> {
             TypeExpression::Functional(_) => todo!(),
             TypeExpression::Member(_) => todo!(),
             TypeExpression::Discrete(discrete_type) => self.discrete_type(discrete_type),
-            TypeExpression::This { .. } => todo!(),
+            TypeExpression::This { span } => IntermediateType::This {
+                meaning: self.this_model.borrow().last().copied(),
+                span: *span,
+            },
             TypeExpression::Invalid => IntermediateType::Placeholder,
         }
     }
@@ -1128,7 +1133,7 @@ impl<'ctx> Binder<'ctx> {
         let symbol = SemanticSymbol {
             name: parameter.name.name.to_owned(),
             symbol_kind: SemanticSymbolKind::GenericParameter {
-                owner_signature: owner_symbol,
+                owner_symbol,
                 traits: parameter
                     .traits
                     .iter()

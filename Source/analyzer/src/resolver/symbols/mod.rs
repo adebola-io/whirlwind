@@ -127,7 +127,7 @@ pub enum SemanticSymbolKind {
         param_type: Option<IntermediateType>,
     },
     GenericParameter {
-        owner_signature: SymbolIndex,
+        owner_symbol: SymbolIndex,
         traits: Vec<IntermediateType>,
         default_value: Option<IntermediateType>,
     },
@@ -160,6 +160,10 @@ pub enum IntermediateType {
     },
     UnionType {
         types: Vec<IntermediateType>,
+        span: Span,
+    },
+    This {
+        meaning: Option<SymbolIndex>,
         span: Span,
     },
     Placeholder,
