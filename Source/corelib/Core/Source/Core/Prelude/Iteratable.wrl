@@ -1,4 +1,3 @@
-// !::no-core::!
 module Iteratable;
 
 use Package.Core.Primitives.ArrayOf;

@@ -1,3 +1,8 @@
 module Async;
 
 public use Echo.Echo;
+
+/// Delay the execution of the program until an Echo or asynchronous operation has been resolved.
+public function Await<T>(echo: Echo<T>): T {
+    return Halt("Compiler built in.");
+}

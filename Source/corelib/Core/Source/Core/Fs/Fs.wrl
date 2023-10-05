@@ -1,4 +1,3 @@
-// !::no-core::!
 module Fs;
 
 public model File {

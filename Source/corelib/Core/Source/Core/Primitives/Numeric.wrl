@@ -1,4 +1,3 @@
-// !::no-core::!
 module Numeric;
 
 /// An unsigned 8-bit Int.

@@ -1,4 +1,3 @@
-// !::no-core::!
 module Memory;
 
 use Package.Core.Prelude.{U8Int, Iteratable};

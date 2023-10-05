@@ -1,4 +1,5 @@
 name: "Core"
 version: 0.0.0
 info: "The Whirl Core Library."
+no-core: true
 dependencies: []
