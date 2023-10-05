@@ -191,6 +191,9 @@ impl HoverFormatter for TypeExpression {
 
                 string
             }
+            TypeExpression::BorrowedType(borrowedtype) => {
+                format!("&{}", borrowedtype.value.to_formatted())
+            }
             TypeExpression::Functional(function) => {
                 let mut string = String::from("fn(");
 

@@ -180,6 +180,8 @@ pub enum UnaryOperator {
     NegationLiteral, // not a
     Plus,            // +a
     Minus,           // -a
+    Ref,             // &a
+    Deref,           // *a
 }
 
 #[derive(Debug, PartialEq)]
@@ -211,20 +213,21 @@ pub enum ExpressionPrecedence {
     Call = 3,                       // a(b)
     AssertionOrTry = 4,             // a?, a!
     New = 5,                        // new a
-    Negation = 6,                   // !a, not a
-    UnaryPlusOrMinus = 7,           // +a, -a
-    Range = 8,                      // a..b
-    PowerOf = 9,                    // a ^ b
-    MultiplyDivideOrRemainder = 10, // a * b, a / b, a % b
-    AddOrSubtract = 11,             // a + b, a - b
-    BitShift = 12,                  // a << b, a >> b
-    Ordering = 13,                  // a > b, a < b, a >= b, a <= b
-    Equality = 14,                  // a == b, a != b,
-    ReferentialEquality = 15,       // a is b
-    BitLogic = 16,                  // a | b, a & b
-    Logic = 17,                     // a || b, a && b, a and b, a or b
-    Assignment = 18,                // a = b, a += b, a -= b,
-    TypeUnion = 19,                 // A | B
+    Referencing = 6,                // &a, *a
+    Negation = 7,                   // !a, not a
+    UnaryPlusOrMinus = 8,           // +a, -a
+    Range = 9,                      // a..b
+    PowerOf = 10,                   // a ^ b
+    MultiplyDivideOrRemainder = 11, // a * b, a / b, a % b
+    AddOrSubtract = 12,             // a + b, a - b
+    BitShift = 13,                  // a << b, a >> b
+    Ordering = 14,                  // a > b, a < b, a >= b, a <= b
+    Equality = 15,                  // a == b, a != b,
+    ReferentialEquality = 16,       // a is b
+    BitLogic = 17,                  // a | b, a & b
+    Logic = 18,                     // a || b, a && b, a and b, a or b
+    Assignment = 19,                // a = b, a += b, a -= b,
+    TypeUnion = 20,                 // A | B
     Pseudo = 99,                    // placeholder operator.
 }
 

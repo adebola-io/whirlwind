@@ -199,7 +199,7 @@ BooleanLiteral ::= "true " | "false "
 
 BinaryOperator ::= "+" | "-" | "/" | "*" | "%" | "^" | "&" | "|"| ">>" | "<<" | ">" | "<" | " is "
 
-UnaryOperator ::= "!" | "~" | "+" | "-" | " not "
+UnaryOperator ::= "!" | "&" | "*" | "+" | "-" | " not "
 
 AssignableExpression ::= MemberExpression | Identifier | IndexExpression
 

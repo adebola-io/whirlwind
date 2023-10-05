@@ -112,7 +112,7 @@ pub trait LexerInner {
             '|' => token!(Operator::BitOr, ['|', Operator::LogicalOr], self),
             '+' => token!(Operator::Plus, ['=', Operator::PlusAssign], self),
             '-' => token!(Operator::Minus, ['=', Operator::MinusAssign], self),
-            '*' => token!(Operator::Multiply, self),
+            '*' => token!(Operator::Asterisk, self),
             '%' => token!(Operator::Percent, self),
             '^' => token!(Operator::Carat, self),
             '<' => token!(

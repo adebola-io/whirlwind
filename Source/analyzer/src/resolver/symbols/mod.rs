@@ -170,6 +170,10 @@ pub enum IntermediateType {
         meaning: Option<SymbolIndex>,
         span: Span,
     },
+    BorrowedType {
+        value: Box<IntermediateType>,
+        span: Span,
+    },
     Placeholder,
 }
 

@@ -67,6 +67,7 @@ pub enum TypeExpression {
     This {
         span: Span,
     },
+    BorrowedType(BorrowedType),
     #[default]
     Invalid,
 }
@@ -103,6 +104,13 @@ pub struct DiscreteType {
     pub span: Span,
 }
 
+/// A reference to a value of a type. e.g. `type Ref = &SomeRef;`
+#[derive(Debug, PartialEq, Clone, Hash)]
+pub struct BorrowedType {
+    pub value: Box<TypeExpression>,
+    pub span: Span,
+}
+
 impl std::fmt::Display for TypeExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)
@@ -126,6 +134,7 @@ impl TypeExpression {
             TypeExpression::Member(m) => m.span,
             TypeExpression::Discrete(d) => d.span,
             TypeExpression::This { span } => span.clone(),
+            TypeExpression::BorrowedType(b) => b.span,
             TypeExpression::Invalid => Span::default(),
         }
     }
@@ -160,6 +169,11 @@ impl std::fmt::Debug for TypeExpression {
                 .finish(),
             Self::This { span } => f.debug_struct("ThisType").field("span", span).finish(),
             Self::Invalid => f.debug_struct("Invalid").finish(),
+            Self::BorrowedType(arg0) => f
+                .debug_struct("BorrowedType")
+                .field("value", &arg0.value)
+                .field("span", &arg0.span)
+                .finish(),
         }
     }
 }

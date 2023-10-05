@@ -1190,6 +1190,10 @@ impl<'ctx> Binder<'ctx> {
                 meaning: self.this_type.borrow().last().copied(),
                 span: *span,
             },
+            TypeExpression::BorrowedType(borrowedtype) => IntermediateType::BorrowedType {
+                value: Box::new(self.type_expression(&borrowedtype.value)),
+                span: borrowedtype.span,
+            },
             TypeExpression::Invalid => IntermediateType::Placeholder,
         }
     }

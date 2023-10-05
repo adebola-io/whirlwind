@@ -83,7 +83,7 @@ pub enum Operator {
     Minus,              // -
     MinusAssign,        // -=
     Divide,             // /
-    Multiply,           // *
+    Asterisk,           // *
     Percent,            // %
     Carat,              // ^
     LeftShift,          // <<
@@ -109,7 +109,7 @@ impl From<Operator> for ExpressionPrecedence {
             }
             Operator::Plus | Operator::Minus => Self::AddOrSubtract,
             Operator::BitOr | Operator::Ampersand => Self::BitLogic,
-            Operator::Divide | Operator::Multiply | Operator::Percent => {
+            Operator::Divide | Operator::Asterisk | Operator::Percent => {
                 Self::MultiplyDivideOrRemainder
             }
             Operator::Carat => Self::PowerOf,
@@ -127,7 +127,7 @@ impl From<Operator> for ExpressionPrecedence {
 impl From<Operator> for BinOperator {
     fn from(value: Operator) -> Self {
         match value {
-            Operator::Multiply => Self::Multiply,
+            Operator::Asterisk => Self::Multiply,
             Operator::Divide => Self::Divide,
             Operator::Carat => Self::PowerOf,
             Operator::Ampersand => Self::BitAnd,
@@ -166,6 +166,8 @@ impl From<Operator> for UnaryOperator {
             Operator::Not => Self::NegationLiteral,
             Operator::Plus => Self::Plus,
             Operator::Minus => Self::Minus,
+            Operator::Ampersand => Self::Ref,
+            Operator::Asterisk => Self::Deref,
             _ => panic!("Cannot convert {:?} to unary operator!", value),
         }
     }

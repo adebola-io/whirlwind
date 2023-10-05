@@ -1,19 +1,19 @@
 use std::cell::RefCell;
 
 use ast::{
-    AccessExpr, ArrayExpr, AssignmentExpr, AttributeSignature, BinaryExpr, Block, Bracket::*,
-    CallExpr, Comment, ConstantDeclaration, ConstantSignature, DiscreteType, EnumDeclaration,
-    EnumSignature, EnumVariant, Expression, ExpressionPrecedence, FunctionDeclaration,
-    FunctionExpr, FunctionSignature, FunctionalType, GenericParameter, Identifier, IfExpression,
-    IndexExpr, Keyword::*, LogicExpr, MemberType, MethodSignature, ModelBody, ModelDeclaration,
-    ModelProperty, ModelPropertyType, ModelSignature, ModuleAmbience, ModuleDeclaration, NewExpr,
-    Operator::*, Parameter, ReturnStatement, ScopeAddress, ScopeEntry, ScopeType,
-    ShorthandVariableDeclaration, ShorthandVariableSignature, Span, Spannable, Statement,
-    TestDeclaration, ThisExpr, Token, TokenType, TraitBody, TraitDeclaration, TraitProperty,
-    TraitPropertyType, TraitSignature, TypeDeclaration, TypeExpression, TypeSignature, UnaryExpr,
-    UnionType, UpdateExpr, UseDeclaration, UsePath, UseTarget, UseTargetSignature,
-    VariableDeclaration, VariablePattern, VariableSignature, WhileStatement, WhirlBoolean,
-    WhirlNumber, WhirlString,
+    AccessExpr, ArrayExpr, AssignmentExpr, AttributeSignature, BinaryExpr, Block, BorrowedType,
+    Bracket::*, CallExpr, Comment, ConstantDeclaration, ConstantSignature, DiscreteType,
+    EnumDeclaration, EnumSignature, EnumVariant, Expression, ExpressionPrecedence,
+    FunctionDeclaration, FunctionExpr, FunctionSignature, FunctionalType, GenericParameter,
+    Identifier, IfExpression, IndexExpr, Keyword::*, LogicExpr, MemberType, MethodSignature,
+    ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType, ModelSignature, ModuleAmbience,
+    ModuleDeclaration, NewExpr, Operator::*, Parameter, ReturnStatement, ScopeAddress, ScopeEntry,
+    ScopeType, ShorthandVariableDeclaration, ShorthandVariableSignature, Span, Spannable,
+    Statement, TestDeclaration, ThisExpr, Token, TokenType, TraitBody, TraitDeclaration,
+    TraitProperty, TraitPropertyType, TraitSignature, TypeDeclaration, TypeExpression,
+    TypeSignature, UnaryExpr, UnionType, UpdateExpr, UseDeclaration, UsePath, UseTarget,
+    UseTargetSignature, VariableDeclaration, VariablePattern, VariableSignature, WhileStatement,
+    WhirlBoolean, WhirlNumber, WhirlString,
 };
 use errors::{self as errors, expected, ParseError};
 use lexer::Lexer;
@@ -262,7 +262,7 @@ impl<L: Lexer> Parser<L> {
             TokenType::Keyword(New) => self.new_expression(),
             TokenType::Keyword(If) => self.if_expression(),
             TokenType::Keyword(_this) => self.this_expression(),
-            TokenType::Operator(op @ (Exclamation | Not | Plus | Minus)) => {
+            TokenType::Operator(op @ (Exclamation | Not | Plus | Minus | Ampersand | Asterisk)) => {
                 self.unary_expression(op)
             }
             TokenType::Ident(_) => {
@@ -517,7 +517,7 @@ impl<L: Lexer> Parser<L> {
                 TokenType::Bracket(LSquare) => self.index_expression(exp),
                 TokenType::Operator(Dot) => self.access_expression(exp),
                 TokenType::Operator(
-                    op @ (Multiply | Divide | Carat | Ampersand | BitOr | Is | Equal | NotEqual
+                    op @ (Asterisk | Divide | Carat | Ampersand | BitOr | Is | Equal | NotEqual
                     | LesserThan | GreaterThan | LesserThanOrEqual | GreaterThanOrEqual
                     | Percent | Plus | Minus | Range),
                 ) => self.binary_expression(exp, op),
@@ -823,7 +823,12 @@ impl<L: Lexer> Parser<L> {
 
     /// Parses a unary expression.
     fn unary_expression(&self, operator: ast::Operator) -> Imperfect<Expression> {
-        let precedence = operator.into();
+        let precedence = match operator {
+            Exclamation | Not => ExpressionPrecedence::Negation,
+            Plus | Minus => ExpressionPrecedence::UnaryPlusOrMinus,
+            Ampersand | Asterisk => ExpressionPrecedence::Referencing,
+            _ => unreachable!("How did you end up parsing {operator:?} as a unary start?"),
+        };
         expect_or_return!(TokenType::Operator(operator), self);
         let start = self.token().unwrap().span.start;
         self.advance(); // Move past operator.
@@ -1820,10 +1825,6 @@ impl<L: Lexer> Parser<L> {
         {
             let target = check!(self.type_expression());
             match target {
-                TypeExpression::Union(_)
-                | TypeExpression::Functional(_)
-                | TypeExpression::This { .. }
-                | TypeExpression::Invalid => errors.push(errors::type_in_trait_position(target)),
                 TypeExpression::Member(membertype) => match unroll_to_discrete_types(membertype) {
                     Ok(mut types) => trait_target.append(&mut types),
                     Err(error) => errors.push(error),
@@ -1831,6 +1832,7 @@ impl<L: Lexer> Parser<L> {
                 TypeExpression::Discrete(discretetype) => {
                     trait_target.push(discretetype);
                 }
+                _ => errors.push(errors::type_in_trait_position(target)),
             }
             if self
                 .token()
@@ -2776,6 +2778,8 @@ impl<L: Lexer> Parser<L> {
                 union
             }
             TokenType::Ident(_) => self.regular_type_or_union()?,
+            // &borrowed types.
+            TokenType::Operator(Ampersand) => self.borrowed_type()?,
             _ => return Err(errors::identifier_expected(token.span)),
         };
 
@@ -2815,6 +2819,19 @@ impl<L: Lexer> Parser<L> {
         });
 
         Ok(self.type_reparse(discrete)?)
+    }
+
+    /// Parses a borrowed type. Assumes that `&` is the next token.
+    fn borrowed_type(&self) -> Fallible<TypeExpression> {
+        let start = self.token().unwrap().span.start;
+        self.advance(); // Move past &
+        self.push_precedence(ExpressionPrecedence::Referencing);
+        let value = Box::new(self.regular_type_or_union()?);
+        let end = value.span().end;
+        let span = Span { start, end };
+        self.precedence_stack.borrow_mut().pop();
+        let node = TypeExpression::BorrowedType(BorrowedType { value, span });
+        Ok(self.type_reparse(node)?)
     }
 
     /// Looks ahead to determing how to parse type precedence.
@@ -2977,20 +2994,14 @@ fn unroll_to_discrete_types(membertype: MemberType) -> Result<Vec<DiscreteType>,
             types.append(&mut unroll_to_discrete_types(membertype)?)
         }
         TypeExpression::Discrete(discretetype) => types.push(discretetype),
-        type_ @ (TypeExpression::Union(_)
-        | TypeExpression::Functional(_)
-        | TypeExpression::This { .. }
-        | TypeExpression::Invalid) => return Err(errors::type_in_trait_position(type_)),
+        type_ => return Err(errors::type_in_trait_position(type_)),
     }
     match *membertype.property {
         TypeExpression::Member(membertype) => {
             types.append(&mut unroll_to_discrete_types(membertype)?)
         }
         TypeExpression::Discrete(discretetype) => types.push(discretetype),
-        type_ @ (TypeExpression::Union(_)
-        | TypeExpression::Functional(_)
-        | TypeExpression::This { .. }
-        | TypeExpression::Invalid) => return Err(errors::type_in_trait_position(type_)),
+        type_ => return Err(errors::type_in_trait_position(type_)),
     }
     Ok(types)
 }

@@ -253,7 +253,7 @@ impl<'a> HoverFinder<'a> {
                     return hover_finder.statement(declaration);
                 }
                 ast::ScopeEntry::Constant(c) => name_hover!(c, scope, hover_finder),
-                ast::ScopeEntry::Variable(_) => todo!(),
+                ast::ScopeEntry::Variable(_) => {},
                 // technically unreachable
             }
         }
