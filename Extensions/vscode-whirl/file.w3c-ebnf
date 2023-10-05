@@ -155,7 +155,7 @@ OptionalExpression ::= Expression "?"
 
 GenericParameters ::= GenericParameter ("," GenericParameters?)?
 
-EnumVariants ::= Identifier ("(" TypeExpression ")")? ("," EnumVariants?)?
+EnumVariants ::= Identifier ("(" TypeExpression ("," TypeExpression)* ")")? ("," EnumVariants?)?
 
 TypeList ::= (DiscreteType | MemberType) ("," TypeList?)?
 
@@ -167,7 +167,7 @@ RecordMap ::= Literal '=' Literal
 
 TraitProperties ::= "function " Identifier Generic ParameterList? ParameterList TypeLabel? Block? ("," TraitProperties?)?
 
-ForStatement ::= "for " Identifier " in " Expression Block
+ForStatement ::= "for " (Identifier | DestructurePattern) " in " Expression Block
 
 WhileStatement ::= "while " Expression Block
 
