@@ -325,8 +325,9 @@ impl<'ctx> Binder<'ctx> {
                 self.known_values().insert(span, index);
                 index
             }
-            ScopeEntry::Variable(variable) => {
-                let symbol = SemanticSymbol::from_variable(variable, self.path_idx(), origin_span);
+            ScopeEntry::ShorthandVariable(variable) => {
+                let symbol =
+                    SemanticSymbol::from_shorthand_variable(variable, self.path_idx(), origin_span);
                 let index = self.symbol_table().add(symbol);
                 let span = variable.name.span;
                 self.known_values().insert(span, index);
@@ -359,6 +360,7 @@ impl<'ctx> Binder<'ctx> {
                 }
                 index
             }
+            ScopeEntry::Variable(_) => todo!(),
         }
     }
     /// Check if a symbol has been jumped to already.
@@ -505,7 +507,7 @@ impl<'ctx> Binder<'ctx> {
         match statement {
             Statement::TestDeclaration(_) => todo!(),
             Statement::UseDeclaration(_) => todo!(),
-            Statement::VariableDeclaration => todo!(),
+            Statement::VariableDeclaration(_) => todo!(),
             Statement::ShorthandVariableDeclaration(shorthandvariable) => {
                 TypedStmnt::ShorthandVariableDeclaration(
                     self.shorthand_variable_declaration(shorthandvariable),

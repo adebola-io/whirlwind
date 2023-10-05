@@ -8,7 +8,7 @@ pub enum Statement {
     // Declarations.
     TestDeclaration(TestDeclaration),
     UseDeclaration(UseDeclaration),
-    VariableDeclaration,
+    VariableDeclaration(VariableDeclaration),
     ShorthandVariableDeclaration(ShorthandVariableDeclaration),
     ConstantDeclaration(ConstantDeclaration),
     ModelDeclaration(ModelDeclaration),
@@ -100,6 +100,13 @@ pub struct ConstantDeclaration {
     pub address: ScopeAddress,
     /// The constant's assigned value.
     pub value: Expression,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct VariableDeclaration {
+    pub addresses: Vec<ScopeAddress>,
+    pub value: Option<Expression>,
     pub span: Span,
 }
 
@@ -249,7 +256,7 @@ impl Block {
 
 impl Statement {
     pub fn is_variable_declaration(&self) -> bool {
-        matches!(self, Statement::VariableDeclaration)
+        matches!(self, Statement::VariableDeclaration(_))
     }
 
     pub fn is_import(&self) -> bool {
@@ -366,7 +373,7 @@ impl Spannable for Statement {
         match self {
             Statement::TestDeclaration(t) => t.span,
             Statement::UseDeclaration(u) => u.span,
-            Statement::VariableDeclaration => todo!(),
+            Statement::VariableDeclaration(v) => v.span,
             Statement::ConstantDeclaration(c) => c.span,
             Statement::ModelDeclaration(c) => c.span,
             Statement::FunctionDeclaration(f) => f.span,
@@ -386,7 +393,7 @@ impl Spannable for Statement {
         match self {
             Statement::TestDeclaration(t) => t.span.start = start,
             Statement::UseDeclaration(u) => u.span.start = start,
-            Statement::VariableDeclaration => todo!(),
+            Statement::VariableDeclaration(v) => v.span.start = start,
             Statement::ConstantDeclaration(c) => c.span.start = start,
             Statement::ModelDeclaration(c) => c.span.start = start,
             Statement::FunctionDeclaration(f) => f.span.start = start,
@@ -418,6 +425,10 @@ impl Spannable for Statement {
             })
             | Statement::ConstantDeclaration(ConstantDeclaration {
                 value: expression, ..
+            })
+            | Statement::VariableDeclaration(VariableDeclaration {
+                value: Some(expression),
+                ..
             })
             | Statement::ExpressionStatement(expression)
             | Statement::FreeExpression(expression) => {

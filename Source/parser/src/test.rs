@@ -7,7 +7,8 @@ use ast::{
     ModelPropertyType, ModuleDeclaration, NewExpr, Parameter, ReturnStatement, ScopeAddress,
     ScopeEntry, Span, Statement, TestDeclaration, ThisExpr, TraitBody, TraitDeclaration,
     TraitProperty, TypeDeclaration, TypeExpression, UnaryExpr, UpdateExpr, UpdateOperator,
-    UseDeclaration, UsePath, UseTarget, WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
+    UseDeclaration, UsePath, UseTarget, VariableDeclaration, WhileStatement, WhirlBoolean,
+    WhirlNumber, WhirlString,
 };
 
 use crate::parse_text;
@@ -941,7 +942,7 @@ fn parse_shorthand_variables() {
 
     assert!(matches!(
         module_ambience.lookaround("message").unwrap().entry,
-        ScopeEntry::Variable(ast::VariableSignature {name,..}) if name.name == format!("message")));
+        ScopeEntry::ShorthandVariable(ast::ShorthandVariableSignature {name,..}) if name.name == format!("message")));
 
     // With type
     parser = parse_text("array: ArrayOf<String> := MakeArray();");
@@ -1971,4 +1972,72 @@ fn parse_model_with_trait_impl() {
             span: [2, 5, 6, 6].into()
         })
     )
+}
+
+#[test]
+fn parse_variable_declaration() {
+    // simple.
+    let mut parser = parse_text("var name = \"Sefunmi\";");
+    assert_eq!(
+        parser.next().unwrap().expect(|err| format!("{:?}", err)),
+        Statement::VariableDeclaration(VariableDeclaration {
+            addresses: vec![[0, 0, 0].into()],
+            value: Some(Expression::StringLiteral(WhirlString {
+                value: String::from("Sefunmi"),
+                span: [1, 12, 1, 21].into()
+            })),
+            span: [1, 1, 1, 22].into()
+        })
+    );
+    assert!(parser.module_ambience().lookaround("name").is_some());
+
+    // without initializer.
+    let mut parser = parse_text("var something;");
+    assert_eq!(
+        parser.next().unwrap().expect(|err| format!("{:?}", err)),
+        Statement::VariableDeclaration(VariableDeclaration {
+            addresses: vec![[0, 0, 0].into()],
+            value: None,
+            span: [1, 1, 1, 15].into()
+        })
+    );
+    assert!(parser.module_ambience().lookaround("something").is_some());
+
+    // with type.
+    let mut parser = parse_text("var something: SomeType;");
+    assert_eq!(
+        parser.next().unwrap().expect(|err| format!("{:?}", err)),
+        Statement::VariableDeclaration(VariableDeclaration {
+            addresses: vec![[0, 0, 0].into()],
+            value: None,
+            span: [1, 1, 1, 25].into()
+        })
+    );
+    assert!(parser.module_ambience().lookaround("something").is_some());
+
+    // destructured model.
+    let mut parser = parse_text("var { prop1, prop2 as prop3 };");
+    assert_eq!(
+        parser.next().unwrap().expect(|err| format!("{:?}", err)),
+        Statement::VariableDeclaration(VariableDeclaration {
+            addresses: vec![[0, 0, 0].into(), [0, 0, 1].into()],
+            value: None,
+            span: [1, 1, 1, 31].into()
+        })
+    );
+    assert!(parser.module_ambience().lookaround("prop1").is_some());
+    assert!(parser.module_ambience().lookaround("prop3").is_some());
+
+    // destructured array.
+    let mut parser = parse_text("var [ prop1, prop2 ];");
+    assert_eq!(
+        parser.next().unwrap().expect(|err| format!("{:?}", err)),
+        Statement::VariableDeclaration(VariableDeclaration {
+            addresses: vec![[0, 0, 0].into(), [0, 0, 1].into()],
+            value: None,
+            span: [1, 1, 1, 22].into()
+        })
+    );
+    assert!(parser.module_ambience().lookaround("prop1").is_some());
+    assert!(parser.module_ambience().lookaround("prop2").is_some());
 }

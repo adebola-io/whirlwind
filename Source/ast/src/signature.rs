@@ -90,18 +90,36 @@ pub struct MethodSignature {
     pub return_type: Option<TypeExpression>,
 }
 
-/// Entry to mark a variable.
-#[derive(Debug, Signature, Hash)]
-pub struct VariableSignature {
+/// Entry to mark a shorthand variable.
+#[derive(Debug, Hash)]
+pub struct ShorthandVariableSignature {
     /// Name of the variable.
     pub name: Identifier,
     /// Documentation about the variable, if any.
     pub info: Option<Vec<String>>,
-    /// Whether it was declared with shorthand syntax or not.
-    pub is_shorthand: bool,
-    /// Whether or not the variable is denoted by `public`.
-    pub is_public: bool,
     /// The variable's assigned type.
+    pub var_type: Option<TypeExpression>,
+}
+
+#[derive(Debug, Hash)]
+pub enum VariablePattern {
+    Identifier(Identifier),
+    ObjectPattern {
+        real_name: Identifier,
+        alias: Option<Identifier>,
+    },
+    ArrayPattern(Identifier),
+}
+
+/// Entry to mark a variable.
+#[derive(Debug, Hash)]
+pub struct VariableSignature {
+    /// Name of the variable.
+    pub name: VariablePattern,
+    /// Documentation about the constant, if any.
+    pub info: Option<Vec<String>>,
+    pub is_public: bool,
+    /// The variable type.
     pub var_type: Option<TypeExpression>,
 }
 
@@ -189,13 +207,22 @@ impl Signature for (&Identifier, &EnumVariant) {
     }
 }
 
+impl Signature for ShorthandVariableSignature {
+    fn name(&self) -> &str {
+        &self.name.name
+    }
+    fn info(&self) -> Option<&Vec<String>> {
+        self.info.as_ref()
+    }
+}
+
 impl Signature for ModuleAmbience {
     fn info(&self) -> Option<&Vec<String>> {
         self.module_info.as_ref()
     }
 }
 
-impl Signature for (&ModuleAmbience, &VariableSignature) {
+impl Signature for (&ModuleAmbience, &ShorthandVariableSignature) {
     fn info(&self) -> Option<&Vec<String>> {
         self.1.info.as_ref()
     }

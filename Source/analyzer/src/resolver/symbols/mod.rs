@@ -1,5 +1,5 @@
 use ast::{
-    ConstantSignature, EnumSignature, Span, TypeSignature, VariableSignature, WhirlNumber,
+    ConstantSignature, EnumSignature, ShorthandVariableSignature, Span, TypeSignature, WhirlNumber,
     WhirlString,
 };
 use std::path::Path;
@@ -255,8 +255,8 @@ impl SemanticSymbol {
         }
     }
     /// Create a new semantic symbol from a variable.
-    pub fn from_variable(
-        variable: &mut VariableSignature,
+    pub fn from_shorthand_variable(
+        variable: &mut ShorthandVariableSignature,
         path_to_module: PathIndex,
         origin_span: Span,
     ) -> SemanticSymbol {
@@ -264,7 +264,7 @@ impl SemanticSymbol {
             // taking the name makes it un-lookup-able.
             name: variable.name.name.to_owned(),
             symbol_kind: SemanticSymbolKind::Variable {
-                is_public: variable.is_public,
+                is_public: false,
                 declared_type: None,
                 inferred_type: EvaluatedType::unknown(),
             },

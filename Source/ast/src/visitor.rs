@@ -3,8 +3,8 @@ use crate::{
     EnumDeclaration, Expression, FunctionDeclaration, FunctionExpr, Identifier, IfExpression,
     IndexExpr, LogicExpr, ModelDeclaration, ModuleDeclaration, NewExpr, Parameter, ReturnStatement,
     ShorthandVariableDeclaration, Statement, TestDeclaration, ThisExpr, TraitDeclaration,
-    TypeDeclaration, UnaryExpr, UpdateExpr, UseDeclaration, WhileStatement, WhirlBoolean,
-    WhirlNumber, WhirlString,
+    TypeDeclaration, UnaryExpr, UpdateExpr, UseDeclaration, VariableDeclaration, WhileStatement,
+    WhirlBoolean, WhirlNumber, WhirlString,
 };
 
 #[allow(unused_variables)]
@@ -189,6 +189,7 @@ pub trait ASTVisitorNoArgs<Output: Default = ()> {
             Statement::ModuleDeclaration(m) => self.module_declaration(m),
             Statement::UseDeclaration(u) => self.use_declaration(u),
             Statement::ConstantDeclaration(c) => self.constant(c),
+            Statement::VariableDeclaration(v) => self.variable_declaration(v),
             _ => Output::default(),
         }
     }
@@ -320,6 +321,9 @@ pub trait ASTVisitorNoArgs<Output: Default = ()> {
     fn shorthand_var_decl(&self, var_decl: &ShorthandVariableDeclaration) -> Output {
         Output::default()
     }
+    fn variable_declaration(&self, var_decl: &VariableDeclaration) -> Output {
+        Output::default()
+    }
     fn constant(&self, constant: &ConstantDeclaration) -> Output {
         Output::default()
     }
@@ -363,7 +367,7 @@ pub trait MutASTVisitor<Output: Default = ()> {
             Statement::FreeExpression(e) => {
                 self.free_expr(e);
             }
-            Statement::VariableDeclaration => todo!(),
+            Statement::VariableDeclaration(v) => self.variable_declaration(v),
             Statement::ConstantDeclaration(c) => self.constant(c),
             Statement::ModelDeclaration(_) => todo!(),
             Statement::ModuleDeclaration(_) => todo!(),
@@ -395,6 +399,8 @@ pub trait MutASTVisitor<Output: Default = ()> {
 
     fn shorthand_variable_declaration(&mut self, variable_decl: &mut ShorthandVariableDeclaration) {
     }
+
+    fn variable_declaration(&mut self, variable_decl: &mut VariableDeclaration) {}
 
     fn function_declaration(&mut self, function: &mut FunctionDeclaration) {}
 
@@ -451,7 +457,7 @@ pub trait ASTVisitorExprOutputNoArgs<Output: Default = ()> {
             Statement::RecordDeclaration => todo!(),
             Statement::WhileStatement(w) => self.while_statement(w),
             Statement::ReturnStatement(r) => self.return_statement(r),
-            Statement::VariableDeclaration => todo!(),
+            Statement::VariableDeclaration(v) => self.var_decl(v),
             Statement::ConstantDeclaration(c) => self.constant(c),
             Statement::ForStatement => todo!(),
         }
@@ -482,6 +488,8 @@ pub trait ASTVisitorExprOutputNoArgs<Output: Default = ()> {
     fn type_declaration(&self, type_decl: &TypeDeclaration) {}
 
     fn shorthand_var_decl(&self, variable_decl: &ShorthandVariableDeclaration) {}
+
+    fn var_decl(&self, variable_decl: &VariableDeclaration) {}
 
     fn constant(&self, constant: &ConstantDeclaration) {}
 

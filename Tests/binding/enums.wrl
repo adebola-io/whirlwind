@@ -1,6 +1,7 @@
 module Enumerated;
+public model Stuff {
 
-public enum Gender<T> {
-    Male(Gender),
-    Female(T),
+    function Hey(ade?: Ad, ademide: Add) {
+
+    }
 }

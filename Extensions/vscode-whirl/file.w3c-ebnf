@@ -65,7 +65,7 @@ StatementList ::= Statement+
 
 TypeLabel ::= ":" TypeExpression
 
-DestructurePattern ::= "{" IdentifierList "}"
+DestructurePattern ::= "{" IdentifierList "}" | "[" Identifier ("," Identifier)* "]"
 
 Expression ::= "this"
                | Literal

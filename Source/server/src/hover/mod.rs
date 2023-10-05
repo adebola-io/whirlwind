@@ -239,7 +239,7 @@ impl<'a> HoverFinder<'a> {
                 ast::ScopeEntry::Type(t) => name_hover!(t, scope, hover_finder),
                 ast::ScopeEntry::Model(m) => name_hover!(m, scope, hover_finder),
                 ast::ScopeEntry::Enum(e) => name_hover!(e, scope, hover_finder),
-                ast::ScopeEntry::Variable(v) => {
+                ast::ScopeEntry::ShorthandVariable(v) => {
                     return Some(HoverInfo::from(&(&target_module.ambience, v)))
                 }
                 ast::ScopeEntry::Trait(t) => name_hover!(t, scope, hover_finder),
@@ -253,6 +253,7 @@ impl<'a> HoverFinder<'a> {
                     return hover_finder.statement(declaration);
                 }
                 ast::ScopeEntry::Constant(c) => name_hover!(c, scope, hover_finder),
+                ast::ScopeEntry::Variable(_) => todo!(),
                 // technically unreachable
             }
         }
@@ -356,7 +357,7 @@ impl<'a> ASTVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
         var_decl: &ast::ShorthandVariableDeclaration,
     ) -> Option<HoverInfo> {
         let scope = self.module.ambience.get_scope(var_decl.address.scope_id)?;
-        let signature = scope.get_variable(var_decl.address.entry_no)?;
+        let signature = scope.get_shorthand_variable(var_decl.address.entry_no)?;
         // hover over variable name.
         if signature.name.span.contains(self.pos) {
             return Some(HoverInfo::from(&(&self.module.ambience, signature)));
@@ -520,6 +521,7 @@ impl<'a> ASTVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
             }
             ast::ScopeEntry::ReservedSpace => {}
             ast::ScopeEntry::Constant(c) => name_hover!(c, scope, hvfinder),
+            ast::ScopeEntry::ShorthandVariable(_) => {}
         };
         return None;
     }

@@ -8,13 +8,14 @@ use ast::{
     IndexExpr, Keyword::*, LogicExpr, MemberType, MethodSignature, ModelBody, ModelDeclaration,
     ModelProperty, ModelPropertyType, ModelSignature, ModuleAmbience, ModuleDeclaration, NewExpr,
     Operator::*, Parameter, ReturnStatement, ScopeAddress, ScopeEntry, ScopeType,
-    ShorthandVariableDeclaration, Span, Spannable, Statement, TestDeclaration, ThisExpr, Token,
-    TokenType, TraitBody, TraitDeclaration, TraitProperty, TraitPropertyType, TraitSignature,
-    TypeDeclaration, TypeExpression, TypeSignature, UnaryExpr, UnionType, UpdateExpr,
-    UseDeclaration, UsePath, UseTarget, UseTargetSignature, VariableSignature, WhileStatement,
-    WhirlBoolean, WhirlNumber, WhirlString,
+    ShorthandVariableDeclaration, ShorthandVariableSignature, Span, Spannable, Statement,
+    TestDeclaration, ThisExpr, Token, TokenType, TraitBody, TraitDeclaration, TraitProperty,
+    TraitPropertyType, TraitSignature, TypeDeclaration, TypeExpression, TypeSignature, UnaryExpr,
+    UnionType, UpdateExpr, UseDeclaration, UsePath, UseTarget, UseTargetSignature,
+    VariableDeclaration, VariablePattern, VariableSignature, WhileStatement, WhirlBoolean,
+    WhirlNumber, WhirlString,
 };
-use errors::{self as errors, ParseError};
+use errors::{self as errors, expected, ParseError};
 use lexer::Lexer;
 use utils::Partial;
 
@@ -238,7 +239,7 @@ impl<L: Lexer> Parser<L> {
                 }
                 // No derivation produces <ident> <ident>. Add error and return the parsed expression.
                 TokenType::Ident(_) => partial
-                    .with_error(errors::expected(
+                    .with_error(expected(
                         TokenType::Operator(SemiColon),
                         Span::at(t.span.start),
                     ))
@@ -276,7 +277,7 @@ impl<L: Lexer> Parser<L> {
                 self.block(ScopeType::Local)
                     .map(|b| Expression::BlockExpr(b)),
             ),
-            _ => Partial::from_error(errors::expected(TokenType::Operator(SemiColon), token.span)),
+            _ => Partial::from_error(expected(TokenType::Operator(SemiColon), token.span)),
         };
         expression
     }
@@ -892,6 +893,10 @@ impl<L: Lexer> Parser<L> {
             TokenType::Keyword(Model) => self
                 .model_declaration(false)
                 .map(|m| Statement::ModelDeclaration(m)),
+            // // var...
+            TokenType::Keyword(Var) => self
+                .variable_declaration(false)
+                .map(|v| Statement::VariableDeclaration(v)),
             // // trait...
             TokenType::Keyword(Trait) => self
                 .trait_declaration(false)
@@ -1030,6 +1035,9 @@ impl<L: Lexer> Parser<L> {
             TokenType::Keyword(Model) => self
                 .model_declaration(true)
                 .map(|m| Statement::ModelDeclaration(m)),
+            TokenType::Keyword(Var) => self
+                .variable_declaration(true)
+                .map(|v| Statement::VariableDeclaration(v)),
             TokenType::Keyword(Trait) => self
                 .trait_declaration(true)
                 .map(|t| Statement::TraitDeclaration(t)),
@@ -1158,7 +1166,7 @@ impl<L: Lexer> Parser<L> {
             self.advance(); //
         } else {
             end = self.last_token_end().end;
-            errors.push(errors::expected(
+            errors.push(expected(
                 TokenType::Operator(SemiColon),
                 self.last_token_end(),
             ));
@@ -1198,7 +1206,7 @@ impl<L: Lexer> Parser<L> {
 
     /// Parses a use path.
     fn use_path(&self) -> Fallible<UsePath> {
-        self.ended(errors::expected(
+        self.ended(expected(
             TokenType::Operator(SemiColon),
             self.last_token_span(),
         ))?;
@@ -1389,7 +1397,7 @@ impl<L: Lexer> Parser<L> {
                 span.end
             }
             _ => {
-                errors.push(errors::expected(
+                errors.push(expected(
                     TokenType::Operator(SemiColon),
                     self.last_token_end(),
                 ));
@@ -1470,10 +1478,7 @@ impl<L: Lexer> Parser<L> {
     /// Maybe parses a list of trait implementations.
     fn maybe_trait_implementations(&self) -> Fallible<Vec<TypeExpression>> {
         let mut traits = vec![];
-        self.ended(errors::expected(
-            TokenType::Bracket(LCurly),
-            self.last_token_end(),
-        ))?;
+        self.ended(expected(TokenType::Bracket(LCurly), self.last_token_end()))?;
         let token = self.token().unwrap();
         // Parse trait impls if they exist.
         if let TokenType::Keyword(Implements) = token._type {
@@ -1875,6 +1880,181 @@ impl<L: Lexer> Parser<L> {
         }
     }
 
+    /// Parses a variable declaration.
+    fn variable_declaration(&self, is_public: bool) -> Imperfect<VariableDeclaration> {
+        expect_or_return!(TokenType::Keyword(Var), self);
+        let start = self.token().unwrap().span.start;
+        self.advance(); // Move past var.
+
+        let mut errors = vec![];
+
+        ended!(errors::identifier_expected(self.last_token_end()), self);
+        let token = self.token().unwrap();
+        let names = match token._type {
+            // Parse destructured pattern.
+            // Model destructure.
+            TokenType::Bracket(LCurly) => check!(self.object_pattern()),
+            // Array destructure.
+            TokenType::Bracket(LSquare) => check!(self.array_pattern()),
+            // Normal.
+            _ => {
+                vec![(
+                    VariablePattern::Identifier(check!(self.identifier())),
+                    self.get_doc_comment(),
+                )]
+            }
+        };
+
+        let var_type = check!(self.maybe_type_label());
+        let end;
+        let mut value = None;
+
+        // Parse value, if it exists.
+        match self.token() {
+            // value is assigned.
+            Some(Token {
+                _type: TokenType::Operator(Assign),
+                ..
+            }) => {
+                self.advance(); // move past =
+                let (expression_opt, mut expr_errors) = self.expression().to_tuple();
+                errors.append(&mut expr_errors);
+                value = expression_opt;
+                // expect semicolon.
+                match self.token() {
+                    Some(Token {
+                        _type: TokenType::Operator(SemiColon),
+                        ..
+                    }) => {
+                        end = token.span.end;
+                        self.advance(); // move past ;
+                    }
+                    _ => {
+                        errors.push(expected(
+                            TokenType::Operator(SemiColon),
+                            self.last_token_end(),
+                        ));
+                        end = token.span.end;
+                    }
+                }
+            }
+            // values is not assigned.
+            Some(Token {
+                _type: TokenType::Operator(SemiColon),
+                span,
+            }) => {
+                end = span.end;
+            }
+            // Some other variation.
+            _ => {
+                errors.push(expected(
+                    TokenType::Operator(SemiColon),
+                    self.last_token_end(),
+                ));
+                end = self.last_token_span().end;
+            }
+        }
+
+        let mut addresses = vec![];
+
+        for (name, info) in names {
+            let signature = VariableSignature {
+                name,
+                info,
+                is_public,
+                var_type: var_type.to_owned(), // todo. find way to reference all destructured variables without cloning.
+            };
+            let entry_no = self
+                .module_ambience()
+                .register(ScopeEntry::Variable(signature));
+            addresses.push(ScopeAddress {
+                module_id: self.module_ambience().id(),
+                scope_id: self.module_ambience().current_scope(),
+                entry_no,
+            });
+        }
+
+        let declaration = VariableDeclaration {
+            addresses,
+            value,
+            span: Span { start, end },
+        };
+
+        Partial {
+            value: Some(declaration),
+            errors,
+        }
+    }
+
+    /// Parses an object pattern. Assumes that `{` is the current token.
+    fn object_pattern(&self) -> Fallible<Vec<(VariablePattern, Option<Vec<String>>)>> {
+        expect!(TokenType::Bracket(LCurly), self);
+        self.advance(); // Move past {
+        let mut pattern_items = vec![];
+        while self
+            .token()
+            .is_some_and(|t| t._type != TokenType::Bracket(RCurly))
+        {
+            let info = self.get_doc_comment();
+            let pattern_item = self.object_pattern_item()?;
+            pattern_items.push((pattern_item, info));
+            if self
+                .token()
+                .is_some_and(|t| t._type == TokenType::Operator(Comma))
+            {
+                self.advance(); // Move past ,
+                continue;
+            }
+            break;
+        }
+        expect!(TokenType::Bracket(RCurly), self);
+        self.advance(); // Move past }
+        Ok(pattern_items)
+    }
+
+    /// Parses an object pattern item. Assumes that the real name is the first token.
+    fn object_pattern_item(&self) -> Fallible<VariablePattern> {
+        let real_name = self.identifier()?;
+        let alias = match self.token() {
+            Some(Token {
+                _type: TokenType::Keyword(As),
+                ..
+            }) => {
+                self.advance(); // Move past as
+                Some(self.identifier()?)
+            }
+            None => return Err(expected(TokenType::Bracket(RCurly), self.last_token_end())),
+            _ => None,
+        };
+        Ok(VariablePattern::ObjectPattern { real_name, alias })
+    }
+
+    /// Parses an array pattern. Assumes that `[` is the current token.
+    fn array_pattern(&self) -> Fallible<Vec<(VariablePattern, Option<Vec<String>>)>> {
+        expect!(TokenType::Bracket(LSquare), self);
+        self.advance(); // Move past [
+        let mut pattern_items = vec![];
+        while self
+            .token()
+            .is_some_and(|t| t._type != TokenType::Bracket(RSquare))
+        {
+            let info = self.get_doc_comment();
+            let p_item = VariablePattern::ArrayPattern(self.identifier()?);
+            pattern_items.push((p_item, info));
+            if self
+                .token()
+                .is_some_and(|t| t._type == TokenType::Operator(Comma))
+            {
+                self.advance(); // Move past ,
+                continue;
+            }
+            break;
+        }
+        expect!(TokenType::Bracket(RSquare), self);
+        self.advance(); // Move past ]
+        Ok(pattern_items)
+    }
+
     /// Parses a trait declaration. Assumes that `trait` is the current token.
     fn trait_declaration(&self, is_public: bool) -> Imperfect<TraitDeclaration> {
         expect_or_return!(TokenType::Keyword(Trait), self);
@@ -2016,8 +2196,7 @@ impl<L: Lexer> Parser<L> {
                             );
                         }
                         _ => {
-                            body_errors
-                                .push(errors::expected(TokenType::Keyword(Function), token.span));
+                            body_errors.push(expected(TokenType::Keyword(Function), token.span));
                             self.advance();
                         }
                     }
@@ -2041,7 +2220,7 @@ impl<L: Lexer> Parser<L> {
                         .append(&mut generate_method(start, is_public, is_static, is_async).errors);
                 }
                 _ => {
-                    body_errors.push(errors::expected(TokenType::Keyword(Function), token.span));
+                    body_errors.push(expected(TokenType::Keyword(Function), token.span));
                     self.advance();
                 }
             }
@@ -2166,7 +2345,7 @@ impl<L: Lexer> Parser<L> {
                 .token()
                 .is_some_and(|t| t._type == TokenType::Operator(SemiColon))
             {
-                errors.push(errors::expected(
+                errors.push(expected(
                     TokenType::Operator(SemiColon),
                     self.last_token_span(),
                 ));
@@ -2447,8 +2626,7 @@ impl<L: Lexer> Parser<L> {
     fn shorthand_variable_declaration(&self, name: Identifier) -> Imperfect<Statement> {
         let start = name.span.start;
         let info = self.get_doc_comment();
-        let assigned_type = check!(self.maybe_type_label());
-        let is_shorthand = true;
+        let var_type = check!(self.maybe_type_label());
 
         expect_or_return!(TokenType::Operator(ColonAssign), self);
 
@@ -2460,18 +2638,15 @@ impl<L: Lexer> Parser<L> {
         }
         let value = expression.unwrap();
 
-        let signature = VariableSignature {
+        let signature = ShorthandVariableSignature {
             name,
             info,
-            is_shorthand,
-            // Shorthand variable cannot be public.
-            is_public: false,
-            var_type: assigned_type,
+            var_type,
         };
 
         let entry_no = self
             .module_ambience()
-            .register(ScopeEntry::Variable(signature));
+            .register(ScopeEntry::ShorthandVariable(signature));
 
         // Make semicolon error less fatal.
         let end = if self
@@ -2482,7 +2657,7 @@ impl<L: Lexer> Parser<L> {
             self.advance(); // Move past ;
             end
         } else {
-            expr_errors.push(errors::expected(
+            expr_errors.push(expected(
                 TokenType::Operator(SemiColon),
                 self.last_token_end(),
             ));
@@ -2533,10 +2708,7 @@ impl<L: Lexer> Parser<L> {
             .token()
             .is_some_and(|token| token._type == TokenType::Operator(Assign))
         {
-            errors.push(errors::expected(
-                TokenType::Operator(Assign),
-                self.last_token_end(),
-            ));
+            errors.push(expected(TokenType::Operator(Assign), self.last_token_end()));
             Partial::from_errors(errors)
         } else {
             self.advance(); // Move past =
@@ -2553,7 +2725,7 @@ impl<L: Lexer> Parser<L> {
                 end = self.token().unwrap().span.end;
                 self.advance();
             } else {
-                errors.push(errors::expected(
+                errors.push(expected(
                     TokenType::Operator(SemiColon),
                     self.last_token_end(),
                 ));
@@ -2762,7 +2934,7 @@ impl<L: Lexer> Parser<L> {
             }
         }
         if self.token().is_none() {
-            return Err(errors::expected(
+            return Err(expected(
                 TokenType::Operator(GreaterThan),
                 self.last_token_span(),
             ));
@@ -2779,12 +2951,7 @@ impl<L: Lexer> Parser<L> {
                 }
             }
             // Unexpected token.
-            _ => {
-                return Err(errors::expected(
-                    TokenType::Operator(GreaterThan),
-                    token.span,
-                ))
-            }
+            _ => return Err(expected(TokenType::Operator(GreaterThan), token.span)),
         }
         Ok(arguments)
     }

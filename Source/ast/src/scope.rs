@@ -1,8 +1,9 @@
 use std::hash::Hash;
 
 use crate::{
-    ConstantSignature, EnumSignature, FunctionSignature, ModelSignature, Parameter, TraitSignature,
-    TypeSignature, UseTargetSignature, VariableSignature,
+    ConstantSignature, EnumSignature, FunctionSignature, ModelSignature, Parameter,
+    ShorthandVariableSignature, TraitSignature, TypeSignature, UseTargetSignature, VariablePattern,
+    VariableSignature,
 };
 
 /// An entry to the symbol table of a scope.
@@ -12,6 +13,7 @@ pub enum ScopeEntry {
     Type(TypeSignature),
     Model(ModelSignature),
     Enum(EnumSignature),
+    ShorthandVariable(ShorthandVariableSignature),
     Variable(VariableSignature),
     Trait(TraitSignature),
     Parameter(Parameter),
@@ -98,12 +100,32 @@ impl ScopeEntry {
             | ScopeEntry::Type(TypeSignature { name, .. })
             | ScopeEntry::Model(ModelSignature { name, .. })
             | ScopeEntry::Enum(EnumSignature { name, .. })
-            | ScopeEntry::Variable(VariableSignature { name, .. })
+            | ScopeEntry::ShorthandVariable(ShorthandVariableSignature { name, .. })
             | ScopeEntry::Trait(TraitSignature { name, .. })
             | ScopeEntry::Parameter(Parameter { name, .. })
             | ScopeEntry::UseImport(UseTargetSignature { name, .. })
-            | ScopeEntry::Constant(ConstantSignature { name, .. }) => &name.name,
-            ScopeEntry::ReservedSpace => "",
+            | ScopeEntry::Constant(ConstantSignature { name, .. })
+            | ScopeEntry::Variable(VariableSignature {
+                name: VariablePattern::Identifier(name) | VariablePattern::ArrayPattern(name),
+                ..
+            })
+            | ScopeEntry::Variable(VariableSignature {
+                name:
+                    VariablePattern::ObjectPattern {
+                        alias: Some(name), ..
+                    },
+                ..
+            })
+            | ScopeEntry::Variable(VariableSignature {
+                name:
+                    VariablePattern::ObjectPattern {
+                        real_name: name, ..
+                    },
+                ..
+            }) => &name.name,
+            ScopeEntry::ReservedSpace => {
+                unreachable!("Cannot retrieve the name of a reserved space. What are you doing?")
+            }
         }
     }
 
@@ -114,11 +136,29 @@ impl ScopeEntry {
             | ScopeEntry::Type(TypeSignature { name, .. })
             | ScopeEntry::Model(ModelSignature { name, .. })
             | ScopeEntry::Enum(EnumSignature { name, .. })
-            | ScopeEntry::Variable(VariableSignature { name, .. })
+            | ScopeEntry::ShorthandVariable(ShorthandVariableSignature { name, .. })
             | ScopeEntry::Trait(TraitSignature { name, .. })
             | ScopeEntry::Parameter(Parameter { name, .. })
             | ScopeEntry::UseImport(UseTargetSignature { name, .. })
-            | ScopeEntry::Constant(ConstantSignature { name, .. }) => Some(&name),
+            | ScopeEntry::Constant(ConstantSignature { name, .. })
+            | ScopeEntry::Variable(VariableSignature {
+                name: VariablePattern::Identifier(name) | VariablePattern::ArrayPattern(name),
+                ..
+            })
+            | ScopeEntry::Variable(VariableSignature {
+                name:
+                    VariablePattern::ObjectPattern {
+                        alias: Some(name), ..
+                    },
+                ..
+            })
+            | ScopeEntry::Variable(VariableSignature {
+                name:
+                    VariablePattern::ObjectPattern {
+                        real_name: name, ..
+                    },
+                ..
+            }) => Some(&name),
             ScopeEntry::ReservedSpace => None,
         }
     }
@@ -129,26 +169,26 @@ impl ScopeEntry {
             ScopeEntry::Type(t) => t.is_public,
             ScopeEntry::Model(m) => m.is_public,
             ScopeEntry::Enum(e) => e.is_public,
-            ScopeEntry::Variable(v) => v.is_public,
             ScopeEntry::Trait(t) => t.is_public,
             ScopeEntry::UseImport(u) => u.is_public,
             ScopeEntry::Constant(c) => c.is_public,
+            ScopeEntry::Variable(v) => v.is_public,
             _ => false,
         }
     }
 
     /// Returns an entry as a variable signature. Panics if the entry is not a variable variant.
-    pub fn var(&self) -> &VariableSignature {
+    pub fn shortvar(&self) -> &ShorthandVariableSignature {
         match self {
-            ScopeEntry::Variable(v) => v,
+            ScopeEntry::ShorthandVariable(v) => v,
             _ => panic!("{} is not a variable!", self.name()),
         }
     }
 
     /// Returns an entry as a mutable variable signature. Panics if the entry is not a variable variant.
-    pub fn var_mut(&mut self) -> &mut VariableSignature {
+    pub fn shortvar_mut(&mut self) -> &mut ShorthandVariableSignature {
         match self {
-            ScopeEntry::Variable(v) => v,
+            ScopeEntry::ShorthandVariable(v) => v,
             _ => panic!("{} is not a variable!", self.name()),
         }
     }
@@ -315,21 +355,24 @@ impl Scope {
             .flatten()
     }
     /// Get a variable entry by its index.
-    pub fn get_variable(&self, entry_no: usize) -> Option<&VariableSignature> {
+    pub fn get_shorthand_variable(&self, entry_no: usize) -> Option<&ShorthandVariableSignature> {
         self.entries
             .get(entry_no)
             .map(|entry| match entry {
-                ScopeEntry::Variable(v) => Some(v),
+                ScopeEntry::ShorthandVariable(v) => Some(v),
                 _ => None,
             })
             .flatten()
     }
     /// Get a variable entry by its index.
-    pub fn get_variable_mut(&mut self, entry_no: usize) -> Option<&mut VariableSignature> {
+    pub fn get_shorthand_variable_mut(
+        &mut self,
+        entry_no: usize,
+    ) -> Option<&mut ShorthandVariableSignature> {
         self.entries
             .get_mut(entry_no)
             .map(|entry| match entry {
-                ScopeEntry::Variable(v) => Some(v),
+                ScopeEntry::ShorthandVariable(v) => Some(v),
                 _ => None,
             })
             .flatten()

@@ -1,7 +1,8 @@
 use ast::{
     ConstantSignature, EnumSignature, EnumVariant, FunctionSignature, GenericParameter, Identifier,
-    MethodSignature, ModelSignature, ModuleAmbience, Parameter, PublicSignatureContext, Signature,
-    ThreeTierContext, TraitSignature, TypeExpression, TypeSignature, VariableSignature,
+    MethodSignature, ModelSignature, ModuleAmbience, Parameter, PublicSignatureContext,
+    ShorthandVariableSignature, Signature, ThreeTierContext, TraitSignature, TypeExpression,
+    TypeSignature,
 };
 
 /// Generator trait for how symbols are illustrated in a hover card.
@@ -256,7 +257,7 @@ impl HoverFormatter for (&Identifier, &EnumVariant) {
     }
 }
 
-impl HoverFormatter for (&ModuleAmbience, &VariableSignature) {
+impl HoverFormatter for (&ModuleAmbience, &ShorthandVariableSignature) {
     fn to_formatted(&self) -> String {
         let mut string = String::new();
         let signature = self.1;
