@@ -19,3 +19,7 @@ public use Process;
 public use Data;
 public use Math;
 public use Async;
+public use Io;
+public use Time;
+public use Regex;
+public use Media;

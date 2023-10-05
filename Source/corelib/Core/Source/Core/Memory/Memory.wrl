@@ -1,6 +1,6 @@
 module Memory;
 
-use Package.Core.Prelude.{U8Int, Iteratable};
+use Package.Core.Prelude.{UInt8, Iteratable};
 
 /// An iterator that produces bytes.
 public model Bytes implements Iteratable<U8Int> {
