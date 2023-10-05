@@ -19,3 +19,4 @@ public use Prelude;
 public use Process;
 public use Data;
 public use Math;
+public use Async;

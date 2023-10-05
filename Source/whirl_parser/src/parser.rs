@@ -1329,14 +1329,27 @@ impl<L: Lexer> Parser<L> {
         let name = check!(self.identifier());
         let start = name.span.start;
         let end;
-        let mut tagged_type = None;
+        let mut tagged_types = vec![];
         // Parsing a tagged type.
         if self
             .token()
             .is_some_and(|token| token._type == TokenType::Bracket(LParens))
         {
             self.advance(); // Move past (
-            tagged_type = Some(check!(self.type_expression()));
+            while !self
+                .token()
+                .is_some_and(|token| token._type == TokenType::Bracket(RParens))
+            {
+                tagged_types.push(check!(self.type_expression()));
+                if self
+                    .token()
+                    .is_some_and(|token| token._type == TokenType::Operator(Comma))
+                {
+                    self.advance(); // Move past ,
+                    continue;
+                }
+                break;
+            }
             expect_or_return!(TokenType::Bracket(RParens), self);
             end = self.token().unwrap().span.end;
             self.advance(); // Move past )
@@ -1345,15 +1358,19 @@ impl<L: Lexer> Parser<L> {
         }
 
         let span = Span::from([start, end]);
+        let mut errors = vec![];
+        if tagged_types.len() == 0 {
+            errors.push(errors::empty_enum_tag(span));
+        }
 
         let variant = EnumVariant {
             name,
             info,
-            tagged_type,
+            tagged_types,
             span,
         };
 
-        Partial::from_value(variant)
+        Partial::from_tuple((Some(variant), errors))
     }
 
     /// Parses a module declaration. Assumes that `module` is the current token.

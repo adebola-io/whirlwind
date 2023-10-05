@@ -516,7 +516,37 @@ fn parsing_enum_variant() {
             search.entry, whirl_ast::ScopeEntry::Enum(e) if matches!(
                 e.variants[1].name.name.as_str(),
                 "Child"
-            ) && e.variants[1].tagged_type.is_some()
+            ) && e.variants[1].tagged_types.len() == 1
+        )));
+
+    assert_eq!(
+        statement,
+        Statement::EnumDeclaration(EnumDeclaration {
+            address: [0, 0, 0].into(),
+            span: Span::from([2, 6, 5, 6])
+        })
+    );
+
+    // Multi-Tagged Enums.
+    parser = parse_text(
+        "
+     enum Position {
+        TwoDimensional(Int, Int),
+        ThreeDimensional(Int, Int, Int)
+    }",
+    );
+
+    statement = parser.next().unwrap().unwrap();
+
+    module_ambience = parser.module_ambience();
+
+    assert!(module_ambience
+        .lookaround("Position")
+        .is_some_and(|search| matches!(
+            search.entry, whirl_ast::ScopeEntry::Enum(e) if matches!(
+                e.variants[1].name.name.as_str(),
+                "ThreeDimensional"
+            ) && e.variants[1].tagged_types.len() == 3
         )));
 
     assert_eq!(

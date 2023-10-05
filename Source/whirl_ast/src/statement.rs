@@ -233,7 +233,7 @@ pub struct EnumVariant {
     pub name: Identifier,
     /// Doc comments annotating the variant, if any.
     pub info: Option<Vec<String>>,
-    pub tagged_type: Option<TypeExpression>,
+    pub tagged_types: Vec<TypeExpression>,
     pub span: Span,
 }
 

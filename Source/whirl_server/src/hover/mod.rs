@@ -27,11 +27,9 @@ macro_rules! name_hover {
                     string.push_str(
                         $hvfinder
                             .graph
-                            .get_module_with_id(*module_id)
-                            .unwrap()
+                            .get_module_with_id(*module_id)?
                             .name
-                            .as_ref()
-                            .unwrap(),
+                            .as_ref()?,
                     );
                     if idx + 1 != pathway.len() {
                         string.push('.');
@@ -159,7 +157,7 @@ impl<'a> HoverFinder<'a> {
     }
 
     /// Create a hover over this module itself.
-    fn create_module_self_hover(&self) -> HoverInfo {
+    fn create_module_self_hover(&self) -> Option<HoverInfo> {
         let mut contents = vec![];
         let mut string = String::new();
         string.push_str("module ");
@@ -167,14 +165,7 @@ impl<'a> HoverFinder<'a> {
         let mut pathway = vec![];
         self.graph.draw_line_to(self.module, &mut pathway);
         for (idx, module_id) in pathway.iter().enumerate() {
-            string.push_str(
-                self.graph
-                    .get_module_with_id(*module_id)
-                    .unwrap()
-                    .name
-                    .as_ref()
-                    .unwrap(),
-            );
+            string.push_str(self.graph.get_module_with_id(*module_id)?.name.as_ref()?);
             if idx + 1 != pathway.len() {
                 string.push('.');
             }
@@ -192,9 +183,9 @@ impl<'a> HoverFinder<'a> {
             }
             contents.push(MarkedString::String(documentation))
         }
-        return HoverInfo {
+        return Some(HoverInfo {
             contents: HoverContents::Array(contents),
-        };
+        });
     }
 
     fn use_target_hover(&self, target: &whirl_ast::UseTarget) -> Option<HoverInfo> {
@@ -205,7 +196,7 @@ impl<'a> HoverFinder<'a> {
         // hover over target name.
         if target.name.span.contains(self.pos) {
             let hvfinder = HoverFinder::new(target_module, self.graph, self.pos);
-            return Some(hvfinder.create_module_self_hover());
+            return hvfinder.create_module_self_hover();
         }
         // hover over any other.
         match &target.path {
@@ -303,7 +294,7 @@ impl<'a> ASTVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
     /// Hover over the module declaration.
     fn module_declaration(&self, _module: &whirl_ast::ModuleDeclaration) -> Option<HoverInfo> {
         if _module.span.contains(self.pos) {
-            return Some(self.create_module_self_hover());
+            return self.create_module_self_hover();
         }
         return None;
     }

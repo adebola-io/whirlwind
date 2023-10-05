@@ -1,29 +1,13 @@
-use Core.{
-  Http.{Server, Endpoint},
-  Async.Await,
-  Utils.Logger
-};
+module Main;
+
+use Core.Http.Server;
 
 /// This is the entry to the program.
 public function Main() {
-    logger := new Logger();
-    server := new Server();
+    app := new Server();
 
-    endpoints := [
-        new Endpoint(
-            "GET", 
-            "/hello", 
-            fn (req, res) res.Status(200).Json("Hello, world!");
-        )
-    ];
+    app.Get("/hello", fn (req, res) res.Status(200).Json("Hello, world!"));
 
-    server.AddEndpoints(endpoints);
-    server.SetPort(8080);
-
-    outcome := Await(server.Start());
-    
-    outcome
-        .isOkThen(fn () logger.log("Server started successfully."))
-        .isErrThen(fn (error) logger.err("Server could not start. Error: {error.Message}"));
+    app.Listen(8080);
 }
 

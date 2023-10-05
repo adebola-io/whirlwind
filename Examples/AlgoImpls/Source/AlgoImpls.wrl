@@ -99,7 +99,7 @@ public type Number = SignedInt | Float | BigInt;
 
 
 public trait PartialEquality {
-    function Equals(other: This): Boolean;
+    function Equals(other: This): Bool;
 }
 public trait Rangeable {
     function To(other: This): RangeOver<This>;

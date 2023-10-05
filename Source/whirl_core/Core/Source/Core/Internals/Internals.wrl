@@ -1,56 +1,15 @@
 // !::no-core::!
 module Internals;
 
-public use Abstract;
 
-
-public function Invoke(
-    command: Invocation,
-    param1?: Abstract,
-    param2?: Abstract,
-    param3?: Abstract,
-    param4?: Abstract,
-    param5?: Abstract,
-    param6?: Abstract,
-    param7?: Abstract,
-    param8?: Abstract,
-    param9?: Abstract,
-): Abstract {
+public use Invocation.{Invocation, Invoke};
+public function IsNull(value: Abstract): Bool {
     // Compiler built-in.
 }
-
-public function IsNull(value: Abstract): Boolean {
-    // Compiler built-in.
-}
-
 public model NullPtr {
-    
+    // Compiler built-in.   
+}
+public model Never {
+    // Compiler Build in.
 }
 
-/// List of variants that can be called with `Invoke()`.
-public enum Invocation {
-    // Strings.
-    StrAt,
-    StrAppend,
-    StrChars,
-    StrClear,
-    StrContains,
-    StrLength,
-    StrReplace,
-    StrReverse,
-    StrSlice,
-    StrSplit,
-    StrTrim,
-    StrTrimInPlace,
-    StrTrimStart,
-    StrTrimEnd,
-    StrPad,
-    StrPadLeft,
-    StrPadInPlace,
-    StrPrepend,
-    StrUppercase,
-    StrLowercase,
-    StrAdd,
-    StrCapitalCase,
-    StrBytes,
-}

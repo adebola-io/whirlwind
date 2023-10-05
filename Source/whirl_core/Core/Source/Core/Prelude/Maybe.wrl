@@ -27,7 +27,7 @@ public model Maybe<T> implements Assertable<T>, Try<T> {
     public function [Assertable.Assert](): T {
         this.Unwrap()
     }
-    /// Returns a boolean indicating if the Maybe contains no value.
+    /// Returns a Bool indicating if the Maybe contains no value.
     /// ### Usage
     /// ```
     /// noValue: Maybe<String> := None();
@@ -36,11 +36,11 @@ public model Maybe<T> implements Assertable<T>, Try<T> {
     /// stringValue := Some("boy");
     /// AssertThat(!stringValue.IsNone());
     /// ```
-    public function IsNone(): Boolean {
+    public function IsNone(): Bool {
         IsNull(this.value)
     }
-    /// Returns a boolean indicating whether there is a value contained or not.
-    public function IsSome(): Boolean {
+    /// Returns a Bool indicating whether there is a value contained or not.
+    public function IsSome(): Bool {
         !IsNull(this.value)
     }
     /// Ignores the maybe and returns the internal value. 

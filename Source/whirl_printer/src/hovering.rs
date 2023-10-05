@@ -246,11 +246,11 @@ impl HoverFormatter for (&Identifier, &EnumVariant) {
         string.push('.');
         string.push_str(&self.1.name.name);
 
-        if let Some(ref s) = self.1.tagged_type {
-            string.push('(');
-            string.push_str(&s.to_formatted());
-            string.push(')');
-        }
+        // if let Some(ref s) = self.1.tagged_type {
+        //     string.push('(');
+        //     string.push_str(&s.to_formatted());
+        //     string.push(')');
+        // }
 
         string
     }

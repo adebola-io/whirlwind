@@ -1,0 +1,3 @@
+module Sorting;
+
+public use BogoSort;

@@ -198,3 +198,7 @@ pub fn required_parameter_after_optional(span: whirl_ast::Span) -> ContextError 
         span,
     }
 }
+
+pub fn empty_enum_tag(span: whirl_ast::Span) -> ParseError {
+    ParseError { _type: ParserErrorType::EmptyEnumTag, span }
+}

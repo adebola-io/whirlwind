@@ -34,6 +34,8 @@ pub enum ParserErrorType {
     TestInNonGlobalScope,
     /// Global control flow statements.
     GlobalControl,
+    /// Writing a enum variant with an empty list of tagged types.
+    EmptyEnumTag,
 }
 
 pub fn public_shorthand_var(span: Span) -> ParseError {

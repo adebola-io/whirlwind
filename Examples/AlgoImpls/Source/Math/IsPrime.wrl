@@ -1,0 +1,5 @@
+module IsPrime;
+
+public function IsPrime(number: Int): Bool {
+
+}

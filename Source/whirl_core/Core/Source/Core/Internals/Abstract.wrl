@@ -1,6 +1,0 @@
-// !::no-core::!
-/// This module contains the abstract data type.
-module Abstract;
-
-
-public type Abstract = Abstract;

@@ -1,0 +1,35 @@
+module Invocation;
+
+use Package.Core.Process;
+
+/// List of variants that can be called with `Invoke()`.
+public enum Invocation {
+    // Strings.
+    StrAdd(String, String),
+    StrAt(String, Int),
+    StrAppend(String, String),
+    StrBytes(String),
+    StrClear(String),
+    StrContains(String, String),
+    StrLength(String),
+    StrReplace,
+    StrReverse,
+    StrSlice,
+    StrSplit,
+    StrTrim,
+    StrTrimInPlace,
+    StrTrimStart,
+    StrTrimEnd,
+    StrPad(String, UnsignedInt),
+    StrPadLeft,
+    StrPadInPlace,
+    StrPrepend,
+    StrUppercase,
+    StrLowercase,
+    StrCapitalCase,
+}
+
+/// Compile time function to call underlying dynamic libraries.
+public function Invoke(command: Invocation): Never {
+    return Process.Halt("Compiler Built in.");
+}

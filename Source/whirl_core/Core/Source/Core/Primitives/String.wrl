@@ -1,7 +1,7 @@
 // !::no-core::!
 module String;
 
-use Boolean.Boolean;
+use Bool.Bool;
 use Package.Core.{ 
     Internals.{ Invoke, Invocation }, 
     Memory.{ CharSpace, Bytes }, 
@@ -13,7 +13,6 @@ use ArrayOf.ArrayOf;
 
 /// Model for creating, manipulating and formatting text sequences.
 public model String implements Addition {
-    var bytes: ArrayOf<CharSpace>;
     /// Adds two strings together.
     /// ## Usage
     /// ```
@@ -21,7 +20,7 @@ public model String implements Addition {
     /// Assert(str).Equals("Hello, world!");
     /// ```
     public function [Addition.Add](other: This): This {
-        Invoke(Invocation.StrAdd, this, other)
+        return Invoke(Invocation.StrAdd(this, other));
     }
     /// Returns a `Maybe` with the character at a zero based index in the string.
     ///
@@ -42,7 +41,7 @@ public model String implements Addition {
     /// ```
     /// It will return no value if the length of the string is exceeded.
     public function At(position: Int): Maybe<String> {
-        Invoke(Invocation.StrAt, this, position)
+        return Invoke(Invocation.StrAt(this, position));
     }
     /// Adds text to the end of the string.
     /// ## Usage
@@ -55,7 +54,7 @@ public model String implements Addition {
     /// ```
     // !::mutable::!
     public function Append(suffix: String) {
-        Invoke(Invocation.StrAppend, this, suffix)
+        return Invoke(Invocation.StrAppend(this, suffix));
     }
     /// Returns an iterator over the bytes in the string.
     /// ## Usage
@@ -67,7 +66,7 @@ public model String implements Addition {
     /// }
     /// ```
     public function Bytes(): Bytes {
-        Invoke(Invocation.StrBytes, this)
+        return Invoke(Invocation.StrBytes(this));
     }
     /// Returns an iterator over the valid characters in the string.
     /// ## Usage
@@ -79,7 +78,7 @@ public model String implements Addition {
     /// }
     /// ```
     public function Chars(): Chars {
-        Invoke(Invocation.StrChars, this)
+        return new Chars(this);
     }
     /// Empties the string of its characters.
     /// ## Usage
@@ -93,7 +92,7 @@ public model String implements Addition {
     /// ```
     // !::mutable::!
     public function Clear() {
-        Invoke(Invocation.StrClear, this)
+        return Invoke(Invocation.StrClear(this));
     }
     /// Returns true if a substring is contained within the string.
     /// ## Usage
@@ -103,8 +102,8 @@ public model String implements Addition {
     /// AssertThat(str.Contains("world"));
     /// AssertThat(str.Contains("premiere"));
     /// ```
-    public function Contains(substr: String): Boolean {
-        Invoke(Invocation.StrContains, this, substr)
+    public function Contains(substr: String): Bool {
+        return Invoke(Invocation.StrContains(this, substr));
     }
     /// Returns true if the string has no characters.
     /// ## Usage
@@ -115,7 +114,7 @@ public model String implements Addition {
     /// str.Append("Hello");
     /// AssertThat(!str.IsEmpty());
     /// ```
-    public function IsEmpty(): Boolean {
+    public function IsEmpty(): Bool {
         this.Length() == 0
     }
     /// Returns the number of characters in the string.
@@ -126,7 +125,7 @@ public model String implements Addition {
     /// Assert(str.Length()).Equals(5);
     /// ```
     public function Length(): Int {
-        Invoke(Invocation.StrLength, this)
+        return Invoke(Invocation.StrLength(this));
     }
      /// Returns a version of the string with padding on both sides.
     /// ## Usage
@@ -137,7 +136,7 @@ public model String implements Addition {
     /// Assert(str2).Equals("   Alright   "); // 3 spaces before and after.
     /// ```
     public function Pad(count: UnsignedInt): String {
-        Invoke(Invocation.StrPad, this, count)
+        return Invoke(Invocation.StrPad(this, count));
     }
     /// Returns a version of the string with left padding.
     /// ## Usage
@@ -148,7 +147,7 @@ public model String implements Addition {
     /// Assert(str2).Equals("   Alright"); // 3 spaces before.
     /// ```
     public function PadLeft(count: UnsignedInt): String {
-        Invoke(Invocation.StrPadLeft, this, count)
+        return Invoke(Invocation.StrPadLeft(this, count));
     }
     /// Returns a version of the string with left padding.
     /// ## Usage
@@ -159,7 +158,7 @@ public model String implements Addition {
     /// Assert(str2).Equals("   Alright"); // 3 spaces before.
     /// ```
     public function PadRight(count: UnsignedInt): String {
-        Invoke(Invocation.StrPadRight, this, count)
+        return Invoke(Invocation.StrPadRight(this, count));
     }
     /// Pads the string in place with whitespace on the left and right sides.
     /// ## Usage
@@ -171,7 +170,7 @@ public model String implements Addition {
     /// ```
     // !::mutable::!
     public function PadInPlace(count: UnsignedInt): String {
-        Invoke(Invocation.StrPadInPlace, this, count)
+        return Invoke(Invocation.StrPadInPlace(this, count));
     }
     /// Adds text to the start of the string.
     /// ## Usage
@@ -183,7 +182,7 @@ public model String implements Addition {
     /// ```
     // !::mutable::!
     public function Prepend(prefix: String) {
-        Invoke(Invocation.StrPrepend, this, prefix)
+        return Invoke(Invocation.StrPrepend(this, prefix));
     }
     /// Returns a String value that is made from a number of copies of the original string.
     /// If count is 0, the empty string is returned.
@@ -201,7 +200,7 @@ public model String implements Addition {
     /// AssertThat(str2.IsEmpty()); // No copies.
     /// ```
     public function Repeat(count: Int): String {
-        Invoke(Invocation.StrRepeat, this, count)
+        return Invoke(Invocation.StrRepeat(this, count));
     }
     /// Replaces all instances of a substring and returns the new string.
     /// ## Usage
@@ -213,7 +212,7 @@ public model String implements Addition {
     /// Assert(str2).Equals("Mike goes to school. Mike buys a book.")
     /// ```
     public function Replace(substr: String, newstr: String): String {
-        Invoke(Invocation.StrReplace, this, substr, newstr)
+        return Invoke(Invocation.StrReplace(this, substr, newstr));
     }
     /// Returns a reversed version of the string.
     /// ## Usage
@@ -225,7 +224,7 @@ public model String implements Addition {
     /// Assert(str2).Equals("muinomednap");
     /// ```
     public function Reverse(): String {
-        Invoke(Invocation.StrReverse, this)
+        return Invoke(Invocation.StrReverse(this));
     }
     /// Returns a section of the string.
     /// The range argument is exclusive, meaning it goes from the left index all the way to one before the right.
@@ -236,7 +235,7 @@ public model String implements Addition {
     /// Assert(str.Slice(0..5)).Equals("Hello"); // index 0 to 4.
     /// ```
     public function Slice(bounds: Range<Int>): Maybe<String> {
-        Invoke(Invocation.StrSlice, this, bounds)
+        return Invoke(Invocation.StrSlice(this, bounds));
     }
     /// Divides the string into a list of substrings based on a delimeter.
     /// ## Usage
@@ -247,7 +246,7 @@ public model String implements Addition {
     /// Assert(words).Equals(["Ring", "Around", "The", "Rosy"]);
     /// ```
     public function Split(delim: String): Arrayof<String> {
-        Invoke(Invocation.StrSplit, this, delim)
+        return Invoke(Invocation.StrSplit(this, delim));
     }
     /// Changes the first character in the string to upper case.
     /// ## Usage
@@ -258,7 +257,7 @@ public model String implements Addition {
     /// Assert(str2).Equals("Jonathan");
     /// ```
     public function ToCapitalCase(): String {
-        Invoke(Invocation.StrCapitalCase, this)
+        return Invoke(Invocation.StrCapitalCase(this));
     }
     /// Changes the case of all letters in the string to upper case.
     /// ## Usage
@@ -269,7 +268,7 @@ public model String implements Addition {
     /// Assert(str2).Equals("HELLO, WORLD!");
     /// ```
     public function ToUpperCase(): String {
-        Invoke(Invocation.StrUppercase, this)
+        return Invoke(Invocation.StrUppercase(this));
     }
     /// Changes the case of all letters in the string to lower case.
     /// ## Usage
@@ -280,7 +279,7 @@ public model String implements Addition {
     /// Assert(str2).Equals("hello, world!");
     /// ```
     public function ToLowerCase(): String {
-        Invoke(Invocation.StrLowercase, this)
+        return Invoke(Invocation.StrLowercase(this));
     }
     /// Returns a version of the string without left or right whitespace padding.
     /// ## Usage
@@ -290,7 +289,7 @@ public model String implements Addition {
     /// Assert(str.Trim()).Equals("What then shall we say?");
     /// ```
     public function Trim(): String {
-        Invoke(Invocation.StrTrim, this)
+        return Invoke(Invocation.StrTrim(this));
     }  
     /// Mutates the string in place and removes left or right whitespace padding.
     /// ## Usage
@@ -303,7 +302,7 @@ public model String implements Addition {
     /// ```
     // !::mutable::!
     public function TrimInPlace(): String {
-        Invoke(Invocation.StrTrimInPlace, this)
+        return Invoke(Invocation.StrTrimInPlace(this));
     }   
     /// Returns a version of the string without left whitespace padding.
     /// ## Usage
@@ -313,7 +312,7 @@ public model String implements Addition {
     /// Assert(str.TrimStart()).Equals("What then shall we say?\n");
     /// ```
     public function TrimStart(): String {
-        Invoke(Invocation.StrTrimStart, this)
+        return Invoke(Invocation.StrTrimStart(this));
     } 
     /// Returns a version of the string without right whitespace padding.
     /// ## Usage
@@ -323,15 +322,23 @@ public model String implements Addition {
     /// Assert(str.TrimEnd()).Equals("\nWhat then shall we say?");
     /// ```
     public function TrimEnd(): String {
-        Invoke(Invocation.TrimEnd, this)
+        return Invoke(Invocation.TrimEnd(this));
     }
 }
 
 public model Chars implements Iteratable<String> {
     var idx: UnsignedInt;
+    var string: String;
+
+    new(string: String) {
+        this.idx = 0;
+        this.string = string;
+    }
 
     public function [Iteratable.Next](): Maybe<String> {
-        //todo.
+        nextChar := this.string.At(idx);
+        idx += 1;
+        return nextChar;
     }
 }
 
