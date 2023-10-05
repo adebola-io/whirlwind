@@ -1,14 +1,14 @@
 [workspace]
 members = [
-    "Source/whirl_ast", 
-    "Source/whirl_core", 
-    "Source/whirl_errors", 
-    "Source/whirl_lexer", 
-    "Source/whirl_parser",
-    "Source/whirl_printer",
-    "Source/whirl_repl",
-    "Source/whirl_analyzer",
-    "Source/whirl_server",
-    "Source/whirl_utils",
-    "Source/whirl_macros"
+    "Source/ast", 
+    "Source/corelib", 
+    "Source/errors", 
+    "Source/lexer", 
+    "Source/parser",
+    "Source/printer",
+    "Source/repl",
+    "Source/analyzer",
+    "Source/server",
+    "Source/utils",
+    "Source/macros"
     ]
