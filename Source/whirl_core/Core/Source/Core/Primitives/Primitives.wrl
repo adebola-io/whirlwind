@@ -2,13 +2,16 @@ module Primitives;
 
 public use String.{String, Chars};
 public use ArrayOf.ArrayOf;
-public use Bool;
+public use Bool.Bool;
 public use Numeric;
 public use Numeric.{
     UInt8,
+    UInt16,
+    UInt32,
+    UInt64,
     SignedInt,
     UnsignedInt,
     Int,
+    Float,
     Number,
-    MAX_SAFE_Int
 }; 

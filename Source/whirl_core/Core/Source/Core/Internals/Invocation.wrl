@@ -1,6 +1,10 @@
 module Invocation;
 
-use Package.Core.Process;
+use Package.Core.{
+    Process.Halt,
+    Internals.Never,
+    Prelude.Range,
+};
 
 /// List of variants that can be called with `Invoke()`.
 public enum Invocation {
@@ -12,24 +16,27 @@ public enum Invocation {
     StrClear(String),
     StrContains(String, String),
     StrLength(String),
-    StrReplace,
-    StrReverse,
-    StrSlice,
-    StrSplit,
-    StrTrim,
-    StrTrimInPlace,
-    StrTrimStart,
-    StrTrimEnd,
     StrPad(String, UnsignedInt),
-    StrPadLeft,
-    StrPadInPlace,
-    StrPrepend,
-    StrUppercase,
-    StrLowercase,
-    StrCapitalCase,
+    StrPadLeft(String, UnsignedInt),
+    StrPadRight(String, UnsignedInt),
+    StrPadInPlace(String, UnsignedInt),
+    StrPrepend(String, String),
+    StrRepeat(String, UnsignedInt),
+    StrReplace(String, String, String),
+    StrReverse(String),
+    StrSlice(String, Range<Int>),
+    StrSplit(String, String),
+    StrLowercase(String),
+    StrCapitalCase(String),
+    StrSentenceCase(String),
+    StrUppercase(String),
+    StrTrim(String),
+    StrTrimInPlace(String),
+    StrTrimStart(String),
+    StrTrimEnd(String),
 }
 
 /// Compile time function to call underlying dynamic libraries.
 public function Invoke(command: Invocation): Never {
-    return Process.Halt("Compiler Built in.");
+    return Halt("Compiler Built in.");
 }

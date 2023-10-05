@@ -2,7 +2,7 @@
 module Maybe;
 
 use Package.Core.{
-    Internals.{IsNull, NullPtr},
+    Internals.{IsNull, Nullptr},
     // Process.PanicOnCaller,
 };
 

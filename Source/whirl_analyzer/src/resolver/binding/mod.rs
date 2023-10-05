@@ -46,6 +46,8 @@ pub struct Binder<'ctx> {
     literals: RefCell<&'ctx mut Vec<Literal>>,
     /// The current scope in which to search for a match.
     current_scope: RefCell<usize>,
+    /// The model `This` currently refers to.
+    this_model: RefCell<Vec<SymbolIndex>>,
 }
 
 pub struct TemporaryParameterDetails {
@@ -75,6 +77,7 @@ impl<'ctx> Binder<'ctx> {
             generic_pools: RefCell::new(vec![]),
             literals: RefCell::new(literals),
             current_scope: RefCell::new(0),
+            this_model: RefCell::new(vec![]),
         }
     }
     /// Takes a module and converts it to its typed equivalent.
@@ -638,9 +641,10 @@ impl<'ctx> Binder<'ctx> {
                     ..
                 }) = &mut self.symbol_table().get_mut(symbol_idx)
                 {
+                    *is_constructable = model.body.constructor.is_some();
+                    // Generic parameters should always be first.
                     *generic_params =
                         self.generic_parameters(signature.generic_params.as_ref(), symbol_idx);
-                    *is_constructable = model.body.constructor.is_some();
                     *implementations = signature
                         .implementations
                         .iter()

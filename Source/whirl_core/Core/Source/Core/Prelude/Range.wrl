@@ -1,1 +1,8 @@
 module Range;
+
+use Package.Core.Prelude.Iteratable;
+
+public model Range<T> implements Iteratable<T> {
+    public var start: T;
+    public var end: T;
+}

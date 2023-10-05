@@ -6,7 +6,8 @@ use Package.Core.{
     Internals.{ Invoke, Invocation }, 
     Memory.{ CharSpace, Bytes }, 
     Ops.Addition, 
-    Prelude.{ Maybe, Iteratable, Range } 
+    Prelude.{ Maybe, Iteratable, Range },
+    Process.Todo,
 };
 use Numeric.{ Int, UnsignedInt };
 use ArrayOf.ArrayOf;
@@ -115,7 +116,7 @@ public model String implements Addition {
     /// AssertThat(!str.IsEmpty());
     /// ```
     public function IsEmpty(): Bool {
-        this.Length() == 0
+        return this.Length() == 0;
     }
     /// Returns the number of characters in the string.
     /// ## Usage
@@ -124,7 +125,7 @@ public model String implements Addition {
     /// 
     /// Assert(str.Length()).Equals(5);
     /// ```
-    public function Length(): Int {
+    public function Length(): UnsignedInt {
         return Invoke(Invocation.StrLength(this));
     }
      /// Returns a version of the string with padding on both sides.
@@ -199,7 +200,7 @@ public model String implements Addition {
     /// str3 := str.Repeat(0);
     /// AssertThat(str2.IsEmpty()); // No copies.
     /// ```
-    public function Repeat(count: Int): String {
+    public function Repeat(count: UnsignedInt): String {
         return Invoke(Invocation.StrRepeat(this, count));
     }
     /// Replaces all instances of a substring and returns the new string.
@@ -248,27 +249,16 @@ public model String implements Addition {
     public function Split(delim: String): Arrayof<String> {
         return Invoke(Invocation.StrSplit(this, delim));
     }
-    /// Changes the first character in the string to upper case.
+    /// Changes the first character of every word in the string to upper case.
     /// ## Usage
     /// ```
-    /// str := "jonathan";
+    /// str := "jonathan is a boy";
     /// str2 := str.ToCapitalCase();
     /// 
-    /// Assert(str2).Equals("Jonathan");
+    /// Assert(str2).Equals("Jonathan Is A Boy");
     /// ```
     public function ToCapitalCase(): String {
         return Invoke(Invocation.StrCapitalCase(this));
-    }
-    /// Changes the case of all letters in the string to upper case.
-    /// ## Usage
-    /// ```
-    /// str := "hello, world!";
-    /// str2 := str.ToUpperCase();
-    /// 
-    /// Assert(str2).Equals("HELLO, WORLD!");
-    /// ```
-    public function ToUpperCase(): String {
-        return Invoke(Invocation.StrUppercase(this));
     }
     /// Changes the case of all letters in the string to lower case.
     /// ## Usage
@@ -280,6 +270,28 @@ public model String implements Addition {
     /// ```
     public function ToLowerCase(): String {
         return Invoke(Invocation.StrLowercase(this));
+    }
+    /// Changes only the first character in the string to upper case.
+    /// ## Usage
+    /// ```
+    /// str := "nice to meet you, where you been?";
+    /// str2 := str.ToSentenceCase();
+    /// 
+    /// Assert(str2).Equals("Nice to meet you, where you been?");
+    /// ```
+    public function ToSentenceCase(): String {
+        return Invoke(Invocation.StrSentenceCase(this));
+    }
+    /// Changes the case of all letters in the string to upper case.
+    /// ## Usage
+    /// ```
+    /// str := "hello, world!";
+    /// str2 := str.ToUpperCase();
+    /// 
+    /// Assert(str2).Equals("HELLO, WORLD!");
+    /// ```
+    public function ToUpperCase(): String {
+        return Invoke(Invocation.StrUppercase(this));
     }
     /// Returns a version of the string without left or right whitespace padding.
     /// ## Usage
@@ -329,12 +341,11 @@ public model String implements Addition {
 public model Chars implements Iteratable<String> {
     var idx: UnsignedInt;
     var string: String;
-
     new(string: String) {
         this.idx = 0;
         this.string = string;
     }
-
+    /// Returns the next character.
     public function [Iteratable.Next](): Maybe<String> {
         nextChar := this.string.At(idx);
         idx += 1;
@@ -344,5 +355,5 @@ public model Chars implements Iteratable<String> {
 
 /// Calculates the edit distance between two strings using the [Levenshtein's Algorithm](http://example.com).
 public function LevenshteinEditRatio(str1: String, str2: String): Int {
-    // todo.
+    Todo()
 }

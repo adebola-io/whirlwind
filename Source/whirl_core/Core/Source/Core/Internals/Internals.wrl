@@ -1,12 +1,14 @@
 // !::no-core::!
 module Internals;
 
+public use Package.Core.Primitives.Bool;
+
 
 public use Invocation.{Invocation, Invoke};
-public function IsNull(value: Abstract): Bool {
+public function IsNull<T>(value: T): Bool {
     // Compiler built-in.
 }
-public model NullPtr {
+public model Nullptr {
     // Compiler built-in.   
 }
 public model Never {

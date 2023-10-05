@@ -1,3 +1,29 @@
 module Process;
 
+use Package.Core.{
+    Primitives.String,
+};
 
+/// Mock function for panicking.
+public function PanicOnCaller(message: String): Never  {
+    // Compiler built-in.
+    return PanicOnCaller(message);
+}
+
+/// Mock function for compile-time stuff.
+public function Halt(message: String): Never {
+    return Halt(message);
+}
+
+/// Indicates that the current piece of code is unfinished.
+/// 
+/// Developers can use this function as a temporary marker for incomplete work.
+/// It is also useful for satisfying the type system when implementing other functionality.
+/// ## Panic
+/// This function will *always* panic.
+/// ## Usage
+/// ```
+/// ```
+public function Todo(message?: String): Never {
+    return PanicOnCaller(message.UnwrapOr("Entered unfinished code."));
+}

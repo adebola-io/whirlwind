@@ -5,13 +5,13 @@ module Prelude;
 public use Iteratable.Iteratable;
 public use Default.Default;
 public use Maybe.Maybe;
-public use Range;
+public use Range.Range;
 public use Package.Core;
 public use Package.Core.Primitives.{
-    U8Int, 
-    // U16Int,
-    // U32Int,
-    // U64Int,
+    UInt8, 
+    UInt16,
+    UInt32,
+    UInt64,
     UnsignedInt,
     Number,
     String,
