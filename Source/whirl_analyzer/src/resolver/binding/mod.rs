@@ -1,21 +1,23 @@
 mod programerror;
+mod typed_expr;
+mod typed_module;
+mod typed_statement;
 
 use crate::{
     EvaluatedType, IntermediateType, Literal, LiteralIndex, Module, ModuleGraph, PathIndex,
     SemanticSymbol, SemanticSymbolKind, SymbolIndex, SymbolLocator, SymbolReferenceList,
-    SymbolTable, TypedBlock, TypedCallExpr, TypedConstantDeclaration, TypedExpr, TypedIdent,
-    TypedModelBody, TypedModelConstructor, TypedModelDeclaration, TypedModelProperty,
-    TypedModelPropertyType, TypedModule, TypedModuleDeclaration, TypedNewExpr,
-    TypedReturnStatement, TypedShorthandVariableDeclaration, TypedStmnt, TypedThisExpr,
-    TypedWhileStatement,
+    SymbolTable,
 };
 pub use programerror::*;
 use std::{cell::RefCell, collections::HashMap, mem::take, path::PathBuf, vec};
+pub use typed_expr::*;
+pub use typed_module::*;
+pub use typed_statement::*;
 use whirl_ast::{
     Block, ConstantDeclaration, Expression, GenericParameter, Identifier, ModelBody,
     ModelDeclaration, ModelProperty, ModelPropertyType, ModelSignature, Parameter, ReturnStatement,
     ScopeAddress, ScopeEntry, ScopeSearch, ShorthandVariableDeclaration, Span, Statement,
-    TypeExpression, WhileStatement,
+    TypeDeclaration, TypeExpression, WhileStatement,
 };
 use whirl_errors::ContextError;
 
@@ -128,6 +130,10 @@ impl<'ctx> Binder<'ctx> {
 
 // Binder Utilities.
 impl<'ctx> Binder<'ctx> {
+    /// Returns a scope entry.
+    fn entry(&'ctx self, address: ScopeAddress) -> &mut ScopeEntry {
+        self.module().ambience.get_entry_unguarded_mut(address)
+    }
     /// Returns a mutable reference to the context symbol table.
     fn symbol_table(&self) -> &mut SymbolTable {
         unsafe { &mut *self.symbol_table.as_ptr() }
@@ -184,7 +190,7 @@ impl<'ctx> Binder<'ctx> {
                         scope_id: entry.scope.id,
                         entry_no: entry.index,
                     };
-                    let entry = self.module().ambience.get_entry_unguarded_mut(address);
+                    let entry = self.entry(address);
                     match known_values.get(&entry.ident().unwrap().span) {
                         // Entry has been added the symbol table.
                         Some(index) => *index,
@@ -239,7 +245,7 @@ impl<'ctx> Binder<'ctx> {
         address: ScopeAddress,
         span: Span,
         allow_hoisting: bool,
-    ) -> SymbolIndex {
+    ) -> Result<SymbolIndex, SymbolIndex> {
         let ambience = &self.module().ambience;
         let entry = ambience.get_entry_unguarded(address);
         // Check if entry already exists.
@@ -248,18 +254,19 @@ impl<'ctx> Binder<'ctx> {
             // There is a clashing name in the same scope.
             // The first name will always take precedence.
             if !std::ptr::eq(search.entry, entry) {
-                self.error_and_return_first_instance(search.entry, entry)
+                Err(self.error_and_return_first_instance(search.entry, entry))
             } else {
                 // Use the mutable address instead.
                 // This happens so some entry fields can be taken, not cloned when they are made into symbols.
-                let entry = self.module().ambience.get_entry_unguarded_mut(address);
+                let entry = self.entry(address);
                 // There is no other scope-bound instance of this name that is not equal to this signature.
                 // If the symbol has already been used before, equate the instances.
                 // If the symbol cannot be hoisted, e.g. a constant or a variable, cause an error.
-                self.maybe_bound(&entry, !allow_hoisting, span)
+                Ok(self
+                    .maybe_bound(&entry, !allow_hoisting, span)
                     // No clashes in the current scope, and no previous usage.
                     // create new symbol for this constant.
-                    .unwrap_or_else(|| self.bind_signature(entry, span))
+                    .unwrap_or_else(|| self.bind_signature(entry, span)))
             }
         } else {
             unreachable!("Mismatched scope address. How is that possible?")
@@ -271,8 +278,12 @@ impl<'ctx> Binder<'ctx> {
         match entry {
             ScopeEntry::Function(_) => todo!(),
             ScopeEntry::Type(_type) => {
-                // let mut symbol = SemanticSymbol::from_type(_type, origin_span);
-                todo!()
+                let symbol = SemanticSymbol::from_type(_type, self.path_idx(), origin_span);
+                let index = self.symbol_table().add(symbol);
+                let span = _type.name.span;
+                self.known_values().insert(span, index);
+                // Type value and generic parameters are bound at declaration to prevent recursive loops.
+                index
             }
             ScopeEntry::Model(model) => {
                 let symbol = SemanticSymbol {
@@ -502,7 +513,9 @@ impl<'ctx> Binder<'ctx> {
             Statement::RecordDeclaration => todo!(),
             Statement::TraitDeclaration(_) => todo!(),
             Statement::EnumDeclaration(_) => todo!(),
-            Statement::TypeDeclaration(_) => todo!(),
+            Statement::TypeDeclaration(typedecl) => {
+                TypedStmnt::TypeDeclaration(self.type_declaration(typedecl))
+            }
             Statement::WhileStatement(while_statement) => {
                 TypedStmnt::WhileStatement(self.while_statement(while_statement))
             }
@@ -541,7 +554,9 @@ impl<'ctx> Binder<'ctx> {
         &'ctx self,
         shorthand: ShorthandVariableDeclaration,
     ) -> TypedShorthandVariableDeclaration {
-        let symbol_idx = self.handle_scope_entry(shorthand.address, shorthand.span, false);
+        let symbol_idx = match self.handle_scope_entry(shorthand.address, shorthand.span, false) {
+            Ok(idx) | Err(idx) => idx,
+        };
         let ref_number = self.last_reference_no(symbol_idx);
         return TypedShorthandVariableDeclaration {
             name: SymbolLocator {
@@ -552,9 +567,12 @@ impl<'ctx> Binder<'ctx> {
             span: shorthand.span,
         };
     }
+
     /// Bind a constant declaration.
     fn constant_declaration(&'ctx self, constant: ConstantDeclaration) -> TypedConstantDeclaration {
-        let symbol_idx = self.handle_scope_entry(constant.address, constant.span, false);
+        let symbol_idx = match self.handle_scope_entry(constant.address, constant.span, false) {
+            Ok(idx) | Err(idx) => idx,
+        };
         let ref_number = self.last_reference_no(symbol_idx);
         return TypedConstantDeclaration {
             name: SymbolLocator {
@@ -565,41 +583,74 @@ impl<'ctx> Binder<'ctx> {
             span: constant.span,
         };
     }
+
+    /// Binds a type declaration.
+    fn type_declaration(&'ctx self, type_decl: TypeDeclaration) -> TypedTypeDeclaration {
+        let binding_result = self.handle_scope_entry(type_decl.address, type_decl.span, true);
+        let signature = self.entry(type_decl.address).type_mut();
+        let symbol_idx = match binding_result {
+            Ok(symbol_idx) => {
+                // Add generic parameters, if the binding to this type was successful.
+                self.push_generic_pool(); // List of parameters.
+                match &mut self.symbol_table().get_mut(symbol_idx).unwrap().symbol_kind {
+                    SemanticSymbolKind::TypeName {
+                        generic_params,
+                        value,
+                        ..
+                    } => {
+                        *generic_params =
+                            self.generic_parameters(signature.generic_params.as_ref(), symbol_idx);
+                        *value = self.type_expression(&signature.value);
+                    }
+                    _ => unreachable!("Bound a type but could not retrieve its value."),
+                }
+                self.pop_generic_pool();
+                symbol_idx
+            }
+            Err(idx) => idx,
+        };
+        let ref_number = self.last_reference_no(symbol_idx);
+        TypedTypeDeclaration {
+            name: SymbolLocator {
+                symbol_idx,
+                ref_number,
+            },
+            span: type_decl.span,
+        }
+    }
+
     /// Bind a model declaration.
     fn model_declaration(&'ctx self, model: ModelDeclaration) -> TypedModelDeclaration {
-        self.push_generic_pool(); // Add a list of reachable generic parameters.
-        let symbol_idx = self.handle_scope_entry(model.address, model.span, true); // models can be hoisted.
-        let signature = self
-            .module()
-            .ambience
-            .get_entry_unguarded_mut(model.address)
-            .model_mut();
-        match &mut self.symbol_table().get_mut(symbol_idx).unwrap().symbol_kind {
-            // add other parts.
-            SemanticSymbolKind::Model {
-                is_constructable,
-                implementations,
-                generic_params,
-                ..
-            } => {
-                *implementations = signature
-                    .implementations
-                    .iter()
-                    .map(|implementation| self.type_expression(implementation))
-                    .collect();
-                *generic_params = match signature.generic_params {
-                    Some(ref params) => params
+        let binding_result = self.handle_scope_entry(model.address, model.span, true); // models can be hoisted.
+        let signature = self.entry(model.address).model_mut();
+        self.push_generic_pool(); // List of parameters.
+        let symbol_idx = match binding_result {
+            Ok(symbol_idx) => {
+                // Add generic parameters, if the binding to this type was successful.
+                if let Some(SemanticSymbol {
+                    symbol_kind:
+                        SemanticSymbolKind::Model {
+                            is_constructable,
+                            implementations,
+                            generic_params,
+                            ..
+                        },
+                    ..
+                }) = &mut self.symbol_table().get_mut(symbol_idx)
+                {
+                    *generic_params =
+                        self.generic_parameters(signature.generic_params.as_ref(), symbol_idx);
+                    *is_constructable = model.body.constructor.is_some();
+                    *implementations = signature
+                        .implementations
                         .iter()
-                        .map(|parameter| self.bind_generic_parameter(symbol_idx, parameter))
-                        .collect(),
-                    None => vec![],
-                };
-                *is_constructable = model.body.constructor.is_some()
+                        .map(|implementation| self.type_expression(implementation))
+                        .collect();
+                }
+                symbol_idx
             }
-            _ => unreachable!(
-                "Something has gone horribly wrong with the symbol table, in regards to models."
-            ),
-        }
+            Err(idx) => idx,
+        };
         let ref_number = self.last_reference_no(symbol_idx);
         let typed_model_declaration = TypedModelDeclaration {
             name: SymbolLocator {
@@ -609,7 +660,7 @@ impl<'ctx> Binder<'ctx> {
             body: self.model_body(model.body, symbol_idx, signature.parameters.take()),
             span: model.span,
         };
-        self.pop_generic_pool(); // Removes the list of reachable generic parameters.
+        self.pop_generic_pool();
         return typed_model_declaration;
     }
 
@@ -844,6 +895,7 @@ impl<'ctx> Binder<'ctx> {
         self.pop_generic_pool(); // Remove list of reachable generic parameters.
         return method;
     }
+
     /// Binds a function block.
     fn function_block(
         &'ctx self,
@@ -1047,10 +1099,24 @@ impl<'ctx> Binder<'ctx> {
             span: discrete_type.span,
         }
     }
+    /// Bind an optional list of generic parameters.
+    fn generic_parameters(
+        &'ctx self,
+        param_list: Option<&Vec<GenericParameter>>,
+        owner_symbol: SymbolIndex,
+    ) -> Vec<SymbolIndex> {
+        match param_list {
+            Some(ref params) => params
+                .iter()
+                .map(|parameter| self.bind_generic_parameter(owner_symbol, parameter))
+                .collect(),
+            None => vec![],
+        }
+    }
     /// Bind a generic parameter.
     fn bind_generic_parameter(
         &'ctx self,
-        owner_signature: SymbolIndex,
+        owner_symbol: SymbolIndex,
         parameter: &GenericParameter,
     ) -> SymbolIndex {
         // Check if a generic parameter with this name already exists in this pool.
@@ -1065,7 +1131,7 @@ impl<'ctx> Binder<'ctx> {
         let symbol = SemanticSymbol {
             name: parameter.name.name.to_owned(),
             symbol_kind: SemanticSymbolKind::GenericParameter {
-                owner_signature,
+                owner_signature: owner_symbol,
                 traits: parameter
                     .traits
                     .iter()

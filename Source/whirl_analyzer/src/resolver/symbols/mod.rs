@@ -1,15 +1,7 @@
 use std::path::Path;
-mod typed_expr;
-mod typed_module;
-mod typed_statement;
-
 use whirl_ast::{
     ConstantSignature, Span, TypeSignature, VariableSignature, WhirlNumber, WhirlString,
 };
-
-pub use typed_expr::*;
-pub use typed_module::*;
-pub use typed_statement::*;
 
 /// An index into the paths stored.
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -150,8 +142,8 @@ pub enum SemanticSymbolKind {
     },
     TypeName {
         is_public: bool,
-        generic_arguments: Vec<SymbolIndex>,
-        value: Vec<IntermediateType>,
+        generic_params: Vec<SymbolIndex>,
+        value: IntermediateType,
     },
     UndeclaredValue,
 }
@@ -301,15 +293,22 @@ impl SemanticSymbol {
         }
     }
     /// Create a new symbol from a type.
-    pub fn from_type(_type: &mut TypeSignature, origin_span: Span) -> Self {
+    pub fn from_type(
+        _type: &mut TypeSignature,
+        path_to_module: PathIndex,
+        origin_span: Span,
+    ) -> Self {
         Self {
             name: _type.name.name.to_owned(),
             symbol_kind: SemanticSymbolKind::TypeName {
                 is_public: _type.is_public,
-                generic_arguments: vec![],
-                value: vec![],
+                generic_params: vec![],
+                value: IntermediateType::Placeholder,
             },
-            references: vec![],
+            references: vec![SymbolReferenceList {
+                module_path: path_to_module,
+                starts: vec![_type.name.span.start],
+            }],
             doc_info: _type.info.take(),
             origin_span,
         }
@@ -452,8 +451,8 @@ mod tests {
             name: format!("newVariable"),
             symbol_kind: SemanticSymbolKind::TypeName {
                 is_public: false,
-                generic_arguments: vec![],
-                value: vec![],
+                generic_params: vec![],
+                value: crate::IntermediateType::Placeholder,
             },
             references: vec![],
             doc_info: None,
@@ -469,8 +468,8 @@ mod tests {
             name: format!("newVariable"),
             symbol_kind: SemanticSymbolKind::TypeName {
                 is_public: false,
-                generic_arguments: vec![],
-                value: vec![],
+                generic_params: vec![],
+                value: crate::IntermediateType::Placeholder,
             },
             references: vec![],
             doc_info: None,

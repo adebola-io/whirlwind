@@ -1,4 +1,3 @@
-// !::no-core::!
 module Numeric;
 
 /// An unsigned 8-bit Int.
@@ -43,6 +42,7 @@ public model Float64 {
 }
 
 /// A union data type to represent floating-point numbers.
+
 public type Float = Float32 | Float64;
 
 /// An arbitrarily large integer value.

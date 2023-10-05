@@ -1,5 +1,5 @@
 use super::{symbols::*, ProgramError};
-use crate::{Binder, ModuleGraph};
+use crate::{Binder, ModuleGraph, TypedModule};
 use std::{collections::HashMap, path::PathBuf};
 
 /// A fully resolved representation of an entire program.
@@ -126,14 +126,14 @@ mod tests {
 
     #[test]
     fn test_model_bind() {
-        let graph = resolve_modules("../../Tests/binding/models.wrl");
+        let graph = resolve_modules("../../Tests/binding/types.wrl");
         let context = FullProgramContext::build_from_graph(graph);
         println!(
             "{:#?}",
             context
                 .symbol_table
                 .in_module(PathIndex(0))
-                .map(|symbol| (&symbol.name, &symbol.symbol_kind))
+                .map(|symbol| (&symbol.name, &symbol.symbol_kind, &symbol.references))
                 .collect::<Vec<_>>()
         );
         println!(
@@ -142,6 +142,7 @@ mod tests {
                 .errors
                 .iter()
                 .filter(|error| error.offending_file == PathIndex(0))
+                .collect::<Vec<_>>()
         )
     }
 }

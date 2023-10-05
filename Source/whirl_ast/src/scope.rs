@@ -181,6 +181,13 @@ impl ScopeEntry {
             _ => panic!("{} is not a model!", self.name()),
         }
     }
+    /// Returns an entry as a mutable type signature. Panics if the entry is not a type variant.
+    pub fn type_mut(&mut self) -> &mut TypeSignature {
+        match self {
+            ScopeEntry::Type(t) => t,
+            _ => panic!("{} is not a type!", self.name()),
+        }
+    }
     /// Returns true of the entry is reserved.
     pub fn is_reserved(&self) -> bool {
         matches!(self, ScopeEntry::ReservedSpace)

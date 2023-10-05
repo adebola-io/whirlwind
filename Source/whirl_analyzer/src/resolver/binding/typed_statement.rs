@@ -9,6 +9,7 @@ pub enum TypedStmnt {
     UseDeclaration(TypedUseDeclaration),
     ShorthandVariableDeclaration(TypedShorthandVariableDeclaration),
     ConstantDeclaration(TypedConstantDeclaration),
+    TypeDeclaration(TypedTypeDeclaration),
     ModelDeclaration(TypedModelDeclaration),
     ExpressionStatement(TypedExpr),
     FreeExpression(TypedExpr),
@@ -42,6 +43,12 @@ pub enum TypedUsePath {
 pub struct TypedTestDeclaration {
     pub name: LiteralIndex,
     pub body: TypedBlock,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TypedTypeDeclaration {
+    pub name: SymbolLocator,
     pub span: Span,
 }
 
