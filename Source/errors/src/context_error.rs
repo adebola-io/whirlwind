@@ -41,6 +41,10 @@ pub enum ContextErrorType {
     },
     // Declaring a required parameter after an optional one.
     RequiredAfterOptional,
+    // Declaraing two enum variants with the same name.
+    DuplicateEnumVariant {
+        name: String,
+    },
 }
 
 pub fn unknown_value(name: String, span: ast::Span) -> ContextError {

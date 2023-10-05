@@ -169,4 +169,26 @@ mod tests {
                 .collect::<Vec<_>>()
         )
     }
+
+    #[test]
+    fn test_enum_type() {
+        let graph = resolve_modules("../../Tests/binding/enums.wrl");
+        let context = FullProgramContext::build_from_graph(graph);
+        println!(
+            "{:#?}",
+            context
+                .symbol_table
+                .in_module(PathIndex(0))
+                .map(|symbol| (&symbol.name, &symbol.symbol_kind, &symbol.references))
+                .collect::<Vec<_>>()
+        );
+        println!(
+            "ERRORS: \n\n\n{:#?}",
+            context
+                .errors
+                .iter()
+                .filter(|error| error.offending_file == PathIndex(0))
+                .collect::<Vec<_>>()
+        )
+    }
 }

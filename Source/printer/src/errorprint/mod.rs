@@ -157,6 +157,8 @@ pub fn stringify_context_error(error: &ContextErrorType) -> String {
         ContextErrorType::DuplicateModelProperty { name } => format!("Duplicate model property '{name}'."),
         ContextErrorType::DuplicateGenericParameter { name } => format!("Duplicate generic parameter '{name}'."),
         ContextErrorType::DuplicateParameterName { name } => format!("Duplicate parameter name '{name}'"),
-        ContextErrorType::RequiredAfterOptional => format!("A required parameter cannot follow an optional one."),       
+        ContextErrorType::RequiredAfterOptional => format!("A required parameter cannot follow an optional one."),
+        ContextErrorType::DuplicateEnumVariant { name } => format!("Duplicate enum variant '{name}'"),
+               
     }
 }

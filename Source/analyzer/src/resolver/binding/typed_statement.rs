@@ -6,6 +6,7 @@ use crate::{EvaluatedType, IntermediateType, LiteralIndex, SymbolIndex, SymbolLo
 pub enum TypedStmnt {
     // Declarations.
     TestDeclaration(TypedTestDeclaration),
+    EnumDeclaration(TypedEnumDeclaration),
     UseDeclaration(TypedUseDeclaration),
     ShorthandVariableDeclaration(TypedShorthandVariableDeclaration),
     ConstantDeclaration(TypedConstantDeclaration),
@@ -22,6 +23,12 @@ pub enum TypedStmnt {
 pub struct TypedUseDeclaration {
     pub is_public: bool,
     pub target: TypedUseTarget,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TypedEnumDeclaration {
+    pub name: SymbolLocator,
     pub span: Span,
 }
 

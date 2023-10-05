@@ -188,6 +188,13 @@ impl ScopeEntry {
             _ => panic!("{} is not a type!", self.name()),
         }
     }
+    /// Returns an entry as a mutable enum signature. Panics if the entry is not a enum variant.
+    pub fn enum_mut(&mut self) -> &mut EnumSignature {
+        match self {
+            ScopeEntry::Enum(e) => e,
+            _ => panic!("{} is not an enum!", self.name()),
+        }
+    }
     /// Returns true of the entry is reserved.
     pub fn is_reserved(&self) -> bool {
         matches!(self, ScopeEntry::ReservedSpace)

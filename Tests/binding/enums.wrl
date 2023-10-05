@@ -1,0 +1,6 @@
+module Enumerated;
+
+public enum Gender<T> {
+    Male(Gender),
+    Female(T),
+}

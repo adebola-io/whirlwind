@@ -202,3 +202,12 @@ pub fn empty_enum_tag(span: ast::Span) -> ParseError {
         span,
     }
 }
+
+pub fn duplicate_enum_variant(name: ast::Identifier) -> ContextError {
+    ContextError {
+        _type: ContextErrorType::DuplicateEnumVariant {
+            name: name.name.to_owned(),
+        },
+        span: name.span,
+    }
+}

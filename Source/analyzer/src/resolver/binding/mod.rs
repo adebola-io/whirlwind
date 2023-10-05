@@ -9,10 +9,10 @@ use crate::{
     SymbolTable,
 };
 use ast::{
-    Block, ConstantDeclaration, Expression, GenericParameter, Identifier, ModelBody,
-    ModelDeclaration, ModelProperty, ModelPropertyType, ModelSignature, Parameter, ReturnStatement,
-    ScopeAddress, ScopeEntry, ScopeSearch, ShorthandVariableDeclaration, Span, Statement,
-    TypeDeclaration, TypeExpression, WhileStatement,
+    Block, ConstantDeclaration, EnumDeclaration, EnumVariant, Expression, GenericParameter,
+    Identifier, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType, ModelSignature,
+    Parameter, ReturnStatement, ScopeAddress, ScopeEntry, ScopeSearch,
+    ShorthandVariableDeclaration, Span, Statement, TypeDeclaration, TypeExpression, WhileStatement,
 };
 use errors::ContextError;
 pub use programerror::*;
@@ -47,12 +47,17 @@ pub struct Binder<'ctx> {
     /// The current scope in which to search for a match.
     current_scope: RefCell<usize>,
     /// The model `This` currently refers to.
-    this_model: RefCell<Vec<SymbolIndex>>,
+    this_type: RefCell<Vec<SymbolIndex>>,
 }
 
 pub struct TemporaryParameterDetails {
     name: String,
     is_optional: bool,
+    index: SymbolIndex,
+}
+
+pub struct TemporaryVariantDetails {
+    name: String,
     index: SymbolIndex,
 }
 
@@ -77,7 +82,7 @@ impl<'ctx> Binder<'ctx> {
             generic_pools: RefCell::new(vec![]),
             literals: RefCell::new(literals),
             current_scope: RefCell::new(0),
-            this_model: RefCell::new(vec![]),
+            this_type: RefCell::new(vec![]),
         }
     }
     /// Takes a module and converts it to its typed equivalent.
@@ -313,7 +318,13 @@ impl<'ctx> Binder<'ctx> {
                 self.known_values().insert(span, index);
                 index
             }
-            ScopeEntry::Enum(_) => todo!(),
+            ScopeEntry::Enum(_enum) => {
+                let symbol = SemanticSymbol::from_enum(_enum, self.path_idx(), origin_span);
+                let index = self.symbol_table().add(symbol);
+                let span = _enum.name.span;
+                self.known_values().insert(span, index);
+                index
+            }
             ScopeEntry::Variable(variable) => {
                 let symbol = SemanticSymbol::from_variable(variable, self.path_idx(), origin_span);
                 let index = self.symbol_table().add(symbol);
@@ -512,7 +523,9 @@ impl<'ctx> Binder<'ctx> {
             Statement::FunctionDeclaration(_) => todo!(),
             Statement::RecordDeclaration => todo!(),
             Statement::TraitDeclaration(_) => todo!(),
-            Statement::EnumDeclaration(_) => todo!(),
+            Statement::EnumDeclaration(_enum) => {
+                TypedStmnt::EnumDeclaration(self.enum_declaration(_enum))
+            }
             Statement::TypeDeclaration(typedecl) => {
                 TypedStmnt::TypeDeclaration(self.type_declaration(typedecl))
             }
@@ -652,7 +665,7 @@ impl<'ctx> Binder<'ctx> {
             }
             Err(idx) => idx,
         };
-        self.this_model.borrow_mut().push(symbol_idx); // Set meaning of `This`.
+        self.this_type.borrow_mut().push(symbol_idx); // Set meaning of `This`.
         let ref_number = self.last_reference_no(symbol_idx);
         let typed_model_declaration = TypedModelDeclaration {
             name: SymbolLocator {
@@ -663,7 +676,7 @@ impl<'ctx> Binder<'ctx> {
             span: model.span,
         };
         self.pop_generic_pool();
-        self.this_model.borrow_mut().pop(); // Remove meaning of This.
+        self.this_type.borrow_mut().pop(); // Remove meaning of This.
         return typed_model_declaration;
     }
 
@@ -969,6 +982,98 @@ impl<'ctx> Binder<'ctx> {
                 .collect(),
         )
     }
+
+    /// Binds an enum declaration.
+    fn enum_declaration(&'ctx self, enumdecl: EnumDeclaration) -> TypedEnumDeclaration {
+        let binding_result = self.handle_scope_entry(enumdecl.address, enumdecl.span, true); // enums can be hoisted.
+        self.push_generic_pool();
+        let signature = self.entry(enumdecl.address).enum_mut();
+        let symbol_idx = match binding_result {
+            Ok(symbol_idx) => {
+                self.this_type.borrow_mut().push(symbol_idx); // Set meaning of `This`.
+                match &mut self.symbol_table().get_mut(symbol_idx) {
+                    // Add generic parameters, if the binding to this type was successful.
+                    Some(SemanticSymbol {
+                        symbol_kind:
+                            SemanticSymbolKind::Enum {
+                                generic_params,
+                                variants,
+                                ..
+                            },
+                        ..
+                    }) => {
+                        // Generic parameters should always be first.
+                        *generic_params =
+                            self.generic_parameters(signature.generic_params.as_ref(), symbol_idx);
+                        *variants = self.enum_variants(&signature.variants, symbol_idx);
+                    }
+                    _ => unreachable!("Cannot retrieve bound enum."),
+                }
+                symbol_idx
+            }
+            Err(idx) => {
+                self.this_type.borrow_mut().push(idx); // Set meaning of `This`.
+                idx
+            }
+        };
+        let ref_number = self.last_reference_no(symbol_idx);
+        let enum_declaration = TypedEnumDeclaration {
+            name: SymbolLocator {
+                symbol_idx,
+                ref_number,
+            },
+            span: enumdecl.span,
+        };
+        self.this_type.borrow_mut().pop(); // Remove meaning of This.
+        self.pop_generic_pool();
+        return enum_declaration;
+    }
+
+    /// Bind a list enum variants
+    fn enum_variants(
+        &'ctx self,
+        variants: &[EnumVariant],
+        symbol_idx: SymbolIndex,
+    ) -> Vec<SymbolIndex> {
+        let mut temp_variants: Vec<TemporaryVariantDetails> = vec![];
+        for (index, variant) in variants.into_iter().enumerate() {
+            // Block multiple variants with the same name.
+            if temp_variants
+                .iter()
+                .find(|temp| temp.name == variant.name.name)
+                .is_some()
+            {
+                self.add_ctx_error(errors::duplicate_enum_variant(variant.name.to_owned()));
+                continue;
+            }
+            let symbol = SemanticSymbol {
+                name: variant.name.name.to_owned(),
+                symbol_kind: SemanticSymbolKind::Variant {
+                    owner_enum: symbol_idx,
+                    variant_index: index,
+                    tagged_types: variant
+                        .tagged_types
+                        .iter()
+                        .map(|tagged_type_exp| self.type_expression(tagged_type_exp))
+                        .collect(),
+                },
+                references: vec![SymbolReferenceList {
+                    module_path: self.path_idx(),
+                    starts: vec![variant.span.start],
+                }],
+                doc_info: None, // todo: doc info for variants.
+                origin_span: variant.span,
+            };
+            let symbol_idx = self.symbol_table().add(symbol);
+            self.known_values().insert(variant.name.span, symbol_idx);
+            // store for next variant check.
+            temp_variants.push(TemporaryVariantDetails {
+                name: variant.name.name.to_owned(),
+                index: symbol_idx,
+            });
+        }
+        temp_variants.into_iter().map(|temp| temp.index).collect()
+    }
 }
 
 // Expressions.
@@ -1080,7 +1185,7 @@ impl<'ctx> Binder<'ctx> {
             TypeExpression::Member(_) => todo!(),
             TypeExpression::Discrete(discrete_type) => self.discrete_type(discrete_type),
             TypeExpression::This { span } => IntermediateType::This {
-                meaning: self.this_model.borrow().last().copied(),
+                meaning: self.this_type.borrow().last().copied(),
                 span: *span,
             },
             TypeExpression::Invalid => IntermediateType::Placeholder,

@@ -1,4 +1,7 @@
-use ast::{ConstantSignature, Span, TypeSignature, VariableSignature, WhirlNumber, WhirlString};
+use ast::{
+    ConstantSignature, EnumSignature, Span, TypeSignature, VariableSignature, WhirlNumber,
+    WhirlString,
+};
 use std::path::Path;
 
 /// An index into the paths stored.
@@ -83,13 +86,14 @@ pub enum SemanticSymbolKind {
     },
     Enum {
         is_public: bool,
+        generic_params: Vec<SymbolIndex>,
         variants: Vec<SymbolIndex>,
     },
     /// Variant of an enum declaration.
     Variant {
         owner_enum: SymbolIndex,
         variant_index: usize,
-        tagged_type: Option<IntermediateType>,
+        tagged_types: Vec<IntermediateType>,
     },
     Variable {
         is_public: bool,
@@ -312,6 +316,27 @@ impl SemanticSymbol {
                 starts: vec![_type.name.span.start],
             }],
             doc_info: _type.info.take(),
+            origin_span,
+        }
+    }
+    /// Create a new symbol from an enum signature.
+    pub fn from_enum(
+        _enum: &mut EnumSignature,
+        path_to_module: PathIndex,
+        origin_span: Span,
+    ) -> Self {
+        Self {
+            name: _enum.name.name.to_owned(),
+            symbol_kind: SemanticSymbolKind::Enum {
+                is_public: _enum.is_public,
+                generic_params: vec![],
+                variants: vec![],
+            },
+            references: vec![SymbolReferenceList {
+                module_path: path_to_module,
+                starts: vec![_enum.name.span.start],
+            }],
+            doc_info: _enum.info.take(),
             origin_span,
         }
     }
