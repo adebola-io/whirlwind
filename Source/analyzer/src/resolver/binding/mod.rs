@@ -1156,16 +1156,20 @@ impl<'ctx> Binder<'ctx> {
             Expression::FnExpr(fnexpr) => {
                 TypedExpr::FnExpr(Box::new(self.function_expression(*fnexpr)))
             }
-            Expression::IfExpr(_) => todo!(),
-            Expression::ArrayExpr(_) => todo!(),
+            Expression::IfExpr(ifexpr) => TypedExpr::IfExpr(self.if_expression(ifexpr)),
+            Expression::ArrayExpr(arrayexpr) => {
+                TypedExpr::ArrayExpr(self.array_expression(arrayexpr))
+            }
             Expression::AccessExpr(_) => todo!(),
-            Expression::IndexExpr(_) => todo!(),
+            Expression::IndexExpr(indexexpr) => {
+                TypedExpr::IndexExpr(self.index_expression(indexexpr))
+            }
             Expression::BinaryExpr(binexp) => TypedExpr::BinaryExpr(self.binary_expression(binexp)),
             Expression::AssignmentExpr(_) => todo!(),
             Expression::UnaryExpr(_) => todo!(),
             Expression::LogicExpr(_) => todo!(),
             Expression::UpdateExpr(_) => todo!(),
-            Expression::BlockExpr(_) => todo!(),
+            Expression::BlockExpr(block) => TypedExpr::Block(self.block(block)),
         }
     }
     /// Bind an identifier.
@@ -1289,6 +1293,37 @@ impl<'ctx> Binder<'ctx> {
             operator: binexp.operator,
             right: self.expression(binexp.right),
             span: binexp.span,
+        })
+    }
+    /// Binds an if expression.
+    fn if_expression(&'ctx self, ifexpr: Box<ast::IfExpression>) -> Box<TypedIfExpr> {
+        Box::new(TypedIfExpr {
+            condition: self.expression(ifexpr.condition),
+            consequent: self.block(ifexpr.consequent),
+            alternate: ifexpr.alternate.map(|_else| TypedElse {
+                expression: self.expression(_else.expression),
+                span: _else.span,
+            }),
+            span: ifexpr.span,
+        })
+    }
+    /// Binds an array expression.
+    fn array_expression(&'ctx self, array: ast::ArrayExpr) -> TypedArrayExpr {
+        TypedArrayExpr {
+            elements: array
+                .elements
+                .into_iter()
+                .map(|expression| self.expression(expression))
+                .collect(),
+            span: array.span,
+        }
+    }
+    /// Binds an index expression.
+    fn index_expression(&'ctx self, indexexp: Box<ast::IndexExpr>) -> Box<TypedIndexExpr> {
+        Box::new(TypedIndexExpr {
+            object: self.expression(indexexp.object),
+            index: self.expression(indexexp.index),
+            span: indexexp.span,
         })
     }
 }

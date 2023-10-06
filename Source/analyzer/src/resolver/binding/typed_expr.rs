@@ -13,6 +13,9 @@ pub enum TypedExpr {
     FnExpr(Box<TypedFnExpr>),
     Block(TypedBlock),
     BinaryExpr(Box<TypedBinExpr>),
+    IfExpr(Box<TypedIfExpr>),
+    ArrayExpr(TypedArrayExpr),
+    IndexExpr(Box<TypedIndexExpr>),
 }
 
 #[derive(Debug, PartialEq)]
@@ -54,5 +57,32 @@ pub struct TypedBinExpr {
     pub left: TypedExpr,
     pub operator: BinOperator,
     pub right: TypedExpr,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TypedIfExpr {
+    pub condition: TypedExpr,
+    pub consequent: TypedBlock,
+    pub alternate: Option<TypedElse>,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TypedElse {
+    pub expression: TypedExpr,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TypedArrayExpr {
+    pub elements: Vec<TypedExpr>,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TypedIndexExpr {
+    pub object: TypedExpr,
+    pub index: TypedExpr,
     pub span: Span,
 }
