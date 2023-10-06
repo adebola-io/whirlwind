@@ -833,6 +833,7 @@ fn parse_fn_expressions() {
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::FreeExpression(Expression::FnExpr(Box::new(FunctionExpr {
+            is_async: false,
             generic_params: None,
             params: vec![Parameter {
                 name: Identifier {
@@ -864,6 +865,35 @@ fn parse_fn_expressions() {
                 span: [1, 24, 1, 25].into()
             }),
             span: [1, 1, 1, 25].into()
+        })))
+    );
+}
+
+#[test]
+fn parse_async_fn_expression() {
+    let mut parser = parse_text("(async fn (a) a)");
+    parser.debug_allow_global_expressions = true;
+    assert_eq!(
+        parser.next().unwrap().expect(|err| format!("{err:?}")),
+        Statement::FreeExpression(Expression::FnExpr(Box::new(FunctionExpr {
+            is_async: true,
+            generic_params: None,
+            params: vec![Parameter {
+                name: Identifier {
+                    name: format!("a"),
+                    span: [1, 12, 1, 13].into()
+                },
+                info: None,
+                type_label: None,
+                is_optional: false,
+                span: [1, 12, 1, 13].into()
+            }],
+            return_type: None,
+            body: Expression::Identifier(Identifier {
+                name: format!("a"),
+                span: [1, 15, 1, 16].into()
+            }),
+            span: [1, 2, 1, 16].into()
         })))
     );
 }
@@ -1956,6 +1986,7 @@ fn parse_return_statement() {
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::FreeExpression(Expression::FnExpr(Box::new(FunctionExpr {
+            is_async: false,
             generic_params: None,
             params: vec![],
             return_type: None,

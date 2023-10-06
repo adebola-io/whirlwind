@@ -84,6 +84,7 @@ pub enum SemanticSymbolKind {
         methods: Vec<SymbolIndex>,
         attributes: Vec<SymbolIndex>,
     },
+    // An enum.
     Enum {
         is_public: bool,
         generic_params: Vec<SymbolIndex>,
@@ -127,11 +128,9 @@ pub enum SemanticSymbolKind {
     /// Parameter of a function.
     Parameter {
         is_optional: bool,
-        owner_function: SymbolIndex,
         param_type: Option<IntermediateType>,
     },
     GenericParameter {
-        owner_symbol: SymbolIndex,
         traits: Vec<IntermediateType>,
         default_value: Option<IntermediateType>,
     },
@@ -139,7 +138,13 @@ pub enum SemanticSymbolKind {
         is_public: bool,
         is_async: bool,
         params: Vec<SymbolIndex>,
-        generic_arguments: Vec<SymbolIndex>,
+        generic_params: Vec<SymbolIndex>,
+        return_type: Option<IntermediateType>,
+    },
+    FnExpr {
+        is_async: bool,
+        params: Vec<SymbolIndex>,
+        generic_params: Vec<SymbolIndex>,
         return_type: Option<IntermediateType>,
     },
     TypeName {

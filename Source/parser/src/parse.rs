@@ -257,7 +257,8 @@ impl<L: Lexer> Parser<L> {
         let token = self.token().unwrap();
 
         let expression = match token._type {
-            TokenType::Keyword(Fn) => self.function_expression(),
+            TokenType::Keyword(Fn) => self.function_expression(false, token.span.start),
+            TokenType::Keyword(Async) => self.async_function_expression(),
             TokenType::Keyword(True | False) => self.spring(Partial::from(self.boolean_literal())),
             TokenType::Keyword(New) => self.new_expression(),
             TokenType::Keyword(If) => self.if_expression(),
@@ -348,10 +349,8 @@ impl<L: Lexer> Parser<L> {
     }
 
     /// Parses a function expression.
-    fn function_expression(&self) -> Imperfect<Expression> {
+    fn function_expression(&self, is_async: bool, start: [u32; 2]) -> Imperfect<Expression> {
         expect_or_return!(TokenType::Keyword(Fn), self);
-        let start = self.token().unwrap().span.start;
-
         self.advance(); // Move past fn.
         let generic_params = check!(self.maybe_generic_params());
         let params = check!(self.parameters());
@@ -381,6 +380,7 @@ impl<L: Lexer> Parser<L> {
         let span = Span::from([start, end]);
 
         let function = FunctionExpr {
+            is_async,
             generic_params,
             params,
             return_type,
@@ -389,6 +389,14 @@ impl<L: Lexer> Parser<L> {
         };
         let exp = Partial::from_tuple((Some(Expression::FnExpr(Box::new(function))), errors));
         self.spring(exp)
+    }
+
+    /// Parses an async function expression.
+    fn async_function_expression(&self) -> Imperfect<Expression> {
+        expect_or_return!(TokenType::Keyword(Async), self);
+        let start = self.token().unwrap().span.start;
+        self.advance(); // Move past async.
+        self.function_expression(true, start)
     }
 
     /// Parses an if expression.

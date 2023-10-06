@@ -70,6 +70,7 @@ pub struct CallExpr {
 
 #[derive(Debug, PartialEq)]
 pub struct FunctionExpr {
+    pub is_async: bool,
     pub generic_params: Option<Vec<GenericParameter>>,
     pub params: Vec<Parameter>,
     pub return_type: Option<TypeExpression>,

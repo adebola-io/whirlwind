@@ -9,9 +9,9 @@ use crate::{
     SymbolTable,
 };
 use ast::{
-    Block, ConstantDeclaration, EnumDeclaration, EnumVariant, Expression, GenericParameter,
-    Identifier, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType, ModelSignature,
-    Parameter, ReturnStatement, ScopeAddress, ScopeEntry, ScopeSearch,
+    Block, ConstantDeclaration, EnumDeclaration, EnumVariant, Expression, FunctionExpr,
+    GenericParameter, Identifier, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType,
+    ModelSignature, Parameter, ReturnStatement, ScopeAddress, ScopeEntry, ScopeSearch, ScopeType,
     ShorthandVariableDeclaration, Span, Statement, TypeDeclaration, TypeExpression, WhileStatement,
 };
 use errors::ContextError;
@@ -614,7 +614,7 @@ impl<'ctx> Binder<'ctx> {
                         ..
                     } => {
                         *generic_params =
-                            self.generic_parameters(signature.generic_params.as_ref(), symbol_idx);
+                            self.generic_parameters(signature.generic_params.as_ref());
                         *value = self.type_expression(&signature.value);
                     }
                     _ => unreachable!("Bound a type but could not retrieve its value."),
@@ -655,8 +655,7 @@ impl<'ctx> Binder<'ctx> {
                 {
                     *is_constructable = model.body.constructor.is_some();
                     // Generic parameters should always be first.
-                    *generic_params =
-                        self.generic_parameters(signature.generic_params.as_ref(), symbol_idx);
+                    *generic_params = self.generic_parameters(signature.generic_params.as_ref());
                     *implementations = signature
                         .implementations
                         .iter()
@@ -692,7 +691,7 @@ impl<'ctx> Binder<'ctx> {
         TypedModelBody {
             constructor: body.constructor.map(|constructor_block| {
                 let (block, parameters) =
-                    self.function_block(owner_idx, constructor_block, constructor_params.unwrap());
+                    self.function_block(constructor_block, constructor_params.unwrap());
                 TypedModelConstructor { parameters, block }
             }),
             properties: body
@@ -880,7 +879,7 @@ impl<'ctx> Binder<'ctx> {
             index
         };
         let ref_number = self.last_reference_no(symbol_idx);
-        let (body, parameters) = self.function_block(symbol_idx, body, take(&mut method.params));
+        let (body, parameters) = self.function_block(body, take(&mut method.params));
         // Add return type, generic parameters and parameters.
         if let SemanticSymbolKind::Method {
             params,
@@ -893,7 +892,7 @@ impl<'ctx> Binder<'ctx> {
             *generic_params = match method.generic_params {
                 Some(ref generic_parameters) => generic_parameters
                     .iter()
-                    .map(|parameter| self.bind_generic_parameter(symbol_idx, parameter))
+                    .map(|parameter| self.bind_generic_parameter(parameter))
                     .collect(),
                 None => vec![],
             };
@@ -917,7 +916,6 @@ impl<'ctx> Binder<'ctx> {
     /// Binds a function block.
     fn function_block(
         &'ctx self,
-        owner_function: SymbolIndex,
         block: Block,
         params: Vec<Parameter>,
     ) -> (TypedBlock, Vec<SymbolIndex>) {
@@ -948,7 +946,6 @@ impl<'ctx> Binder<'ctx> {
                 name: parameter.name.name.to_owned(),
                 symbol_kind: SemanticSymbolKind::Parameter {
                     is_optional: parameter.is_optional,
-                    owner_function,
                     param_type: parameter
                         .type_label
                         .as_ref()
@@ -1006,7 +1003,7 @@ impl<'ctx> Binder<'ctx> {
                     }) => {
                         // Generic parameters should always be first.
                         *generic_params =
-                            self.generic_parameters(signature.generic_params.as_ref(), symbol_idx);
+                            self.generic_parameters(signature.generic_params.as_ref());
                         *variants = self.enum_variants(&signature.variants, symbol_idx);
                     }
                     _ => unreachable!("Cannot retrieve bound enum."),
@@ -1092,12 +1089,14 @@ impl<'ctx> Binder<'ctx> {
             }
             Expression::ThisExpr(this) => TypedExpr::ThisExpr(self.this_expression(this)),
             Expression::CallExpr(call) => TypedExpr::CallExpr(Box::new(self.call_expression(call))),
-            Expression::FnExpr(_) => todo!(),
+            Expression::FnExpr(fnexpr) => {
+                TypedExpr::FnExpr(Box::new(self.function_expression(*fnexpr)))
+            }
             Expression::IfExpr(_) => todo!(),
             Expression::ArrayExpr(_) => todo!(),
             Expression::AccessExpr(_) => todo!(),
             Expression::IndexExpr(_) => todo!(),
-            Expression::BinaryExpr(_) => todo!(),
+            Expression::BinaryExpr(binexp) => TypedExpr::BinaryExpr(self.binary_expression(binexp)),
             Expression::AssignmentExpr(_) => todo!(),
             Expression::UnaryExpr(_) => todo!(),
             Expression::LogicExpr(_) => todo!(),
@@ -1152,6 +1151,57 @@ impl<'ctx> Binder<'ctx> {
                 .collect(),
         }
     }
+    /// Bind a function expression.
+    fn function_expression(&'ctx self, func: FunctionExpr) -> TypedFnExpr {
+        // bind generic parameters.
+        self.push_generic_pool();
+        let generic_params = self.generic_parameters(func.generic_params.as_ref());
+        let return_type = func
+            .return_type
+            .map(|ref rettype| self.type_expression(rettype));
+        // If the expression is a block, all well and good.
+        // if the expression is anything else, it needs to be scoped to a block so that the parameter values have meaning and scope.
+        let function_expr = match func.body {
+            Expression::BlockExpr(block) => {
+                let (body, params) = self.function_block(block, func.params);
+                TypedFnExpr {
+                    is_async: func.is_async,
+                    generic_params,
+                    params,
+                    return_type,
+                    body: TypedExpr::Block(body),
+                    span: func.span,
+                }
+            }
+            body => {
+                self.module().ambience.enter(ScopeType::Functional);
+                let fake_scope_id = self.module().ambience.current_scope();
+                let fakeblock = Block {
+                    scope_id: fake_scope_id,
+                    statements: vec![Statement::FreeExpression(body)],
+                    span: Span::default(), // unecessary span.
+                };
+                let (mut block, params) = self.function_block(fakeblock, func.params);
+                self.module().ambience.jump_to_scope(fake_scope_id);
+                self.module().ambience.leave_scope();
+                TypedFnExpr {
+                    is_async: func.is_async,
+                    generic_params,
+                    params,
+                    return_type,
+                    body: match block.statements.remove(0) {
+                        TypedStmnt::FreeExpression(expression) => expression,
+                        _ => unreachable!(
+                            "Did not enclose the expression of a block as an expression."
+                        ),
+                    },
+                    span: func.span,
+                }
+            }
+        };
+        self.pop_generic_pool();
+        function_expr
+    }
     /// Bind a block.
     fn block(&'ctx self, block: Block) -> TypedBlock {
         let prior_scope = self.scope();
@@ -1167,6 +1217,15 @@ impl<'ctx> Binder<'ctx> {
         };
         self.set_scope(prior_scope);
         return block;
+    }
+    /// Binds a binary expression.
+    fn binary_expression(&'ctx self, binexp: Box<ast::BinaryExpr>) -> Box<TypedBinExpr> {
+        Box::new(TypedBinExpr {
+            left: self.expression(binexp.left),
+            operator: binexp.operator,
+            right: self.expression(binexp.right),
+            span: binexp.span,
+        })
     }
 }
 
@@ -1216,22 +1275,17 @@ impl<'ctx> Binder<'ctx> {
     fn generic_parameters(
         &'ctx self,
         param_list: Option<&Vec<GenericParameter>>,
-        owner_symbol: SymbolIndex,
     ) -> Vec<SymbolIndex> {
         match param_list {
             Some(ref params) => params
                 .iter()
-                .map(|parameter| self.bind_generic_parameter(owner_symbol, parameter))
+                .map(|parameter| self.bind_generic_parameter(parameter))
                 .collect(),
             None => vec![],
         }
     }
     /// Bind a generic parameter.
-    fn bind_generic_parameter(
-        &'ctx self,
-        owner_symbol: SymbolIndex,
-        parameter: &GenericParameter,
-    ) -> SymbolIndex {
+    fn bind_generic_parameter(&'ctx self, parameter: &GenericParameter) -> SymbolIndex {
         // Check if a generic parameter with this name already exists in this pool.
         if let Some(index) = self.lookaround_for_generic_parameter(&parameter.name.name) {
             self.add_ctx_error(errors::duplicate_generic_parameter(
@@ -1244,7 +1298,6 @@ impl<'ctx> Binder<'ctx> {
         let symbol = SemanticSymbol {
             name: parameter.name.name.to_owned(),
             symbol_kind: SemanticSymbolKind::GenericParameter {
-                owner_symbol,
                 traits: parameter
                     .traits
                     .iter()
