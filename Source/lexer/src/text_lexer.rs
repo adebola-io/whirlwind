@@ -5,7 +5,7 @@ use errors::LexError;
 
 use crate::{lexer_inner::LexerInner, Lexer};
 
-/// A generic lexer for Whirl text.
+/// A generic lexer for Whirlwind text.
 pub struct TextLexer<I: Iterator<Item = char>> {
     chars: I,
     position: u32,

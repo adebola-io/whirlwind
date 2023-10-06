@@ -3,7 +3,7 @@ use crate::{
     UpdateOperator,
 };
 
-/// A token is the smallest lexical unit of a Whirl program.
+/// A token is the smallest lexical unit of a Whirlwind program.
 #[derive(PartialEq, Debug)]
 pub struct Token {
     pub _type: TokenType,

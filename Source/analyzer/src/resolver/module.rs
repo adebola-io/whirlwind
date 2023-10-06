@@ -36,13 +36,13 @@ impl Module {
         }
     }
 
-    /// Creates a module from Whirl source code text.
+    /// Creates a module from Whirlwind source code text.
     pub fn from_text(value: String) -> Self {
         let program = Program::from_text(&value);
         Module::from_program(program, 0, None)
     }
 
-    /// Read a Whirl file and build a module from its contents.
+    /// Read a Whirlwind file and build a module from its contents.
     pub fn from_path(path: PathBuf, module_id: usize) -> Result<Self, ImportError> {
         match path.extension() {
             Some(ext) => {

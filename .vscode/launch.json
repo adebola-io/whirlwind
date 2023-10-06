@@ -6,10 +6,10 @@
    "configurations": [
       {
          "args": [
-            "--extensionDevelopmentPath=${workspaceFolder}/Extensions/vscode-whirl"
+            "--extensionDevelopmentPath=${workspaceFolder}/Extensions/vscode"
          ],
          "name": "Launch Extension",
-         "outFiles": ["${workspaceFolder}/Extensions/vscode-whirl/out/**/*.js"],
+         "outFiles": ["${workspaceFolder}/Extensions/vscode/out/**/*.js"],
          "request": "launch",
          "type": "extensionHost"
       }

@@ -188,13 +188,13 @@ public model String implements Addition {
     /// If count is 0, the empty string is returned.
     /// ## Usage
     /// ```
-    /// str := "Whirl";
+    /// str := "Whirlwind";
     /// 
     /// str2 := str.Repeat(3);
     /// Assert(str2).Equals("WhirlWhirlWhirl"); // 3 copies.
     /// 
     /// str3 := str.Repeat(1);
-    /// Assert(str3).Equals("Whirl"); // One copy.
+    /// Assert(str3).Equals("Whirlwind"); // One copy.
     /// 
     /// str3 := str.Repeat(0);
     /// AssertThat(str2.IsEmpty()); // No copies.

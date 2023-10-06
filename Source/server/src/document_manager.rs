@@ -96,7 +96,7 @@ impl DocumentManager {
                 }
             }
             graph.set_entry_module(main_module.unwrap());
-            // Todo: read whirl.yaml to find source module instead.
+            // Todo: read whirlwind.yaml to find source module instead.
             break;
         }
         // Root not found, skip project altogether.

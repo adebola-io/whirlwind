@@ -1,13 +1,13 @@
 {
-   "name": "vscode-whirl",
-   "displayName": "Whirl",
-   "description": "Support for the Whirl Programming Language",
+   "name": "vscode-whirlwind",
+   "displayName": "Whirlwind",
+   "description": "Support for the Whirlwind Programming Language",
    "publisher": "adebola-io",
    "author": {
       "name": "Adebola Akomolafe",
       "email": "adebolaakomolafe@gmail.com"
    },
-   "icon": "./icons/whirl-color.svg",
+   "icon": "./icons/wrl-color.svg",
    "version": "0.0.1",
    "engines": {
       "vscode": "^1.54.0"
@@ -25,18 +25,18 @@
          {
             "id": "wrl",
             "aliases": [
-               "Whirl",
+               "Whirlwind",
                "wrl"
             ],
             "extensions": [
                ".wrl"
             ],
-            "configuration": "./syntaxes/whirl.json"
+            "configuration": "./syntaxes/whirlwind.json"
          }
       ],
       "configuration": {
          "type": "object",
-         "title": "Whirl",
+         "title": "Whirlwind",
          "properties": {
             "pbls.maxNumberOfProblems": {
                "scope": "resource",
@@ -50,13 +50,13 @@
          {
             "language": "wrl",
             "scopeName": "source.wrl",
-            "path": "./syntaxes/whirl.tmlLanguage.json"
+            "path": "./syntaxes/whirlwind.tmlLanguage.json"
          }
       ],
       "snippets": [
          {
             "language": "wrl",
-            "path": "./snippets/whirl.code-snippets"
+            "path": "./snippets/whirlwind.code-snippets"
          }
       ]
    },

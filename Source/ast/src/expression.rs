@@ -206,7 +206,7 @@ pub enum AssignOperator {
     MinusAssign, // a -= b
 }
 
-/// Chart for expression precedence in Whirl.
+/// Chart for expression precedence in Whirlwind.
 #[derive(Clone, Copy, PartialEq, PartialOrd)]
 pub enum ExpressionPrecedence {
     Access = 1,                     // a.b

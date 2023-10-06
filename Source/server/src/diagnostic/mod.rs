@@ -33,7 +33,7 @@ pub fn to_diagnostic(error: &ModuleError) -> Diagnostic {
         severity: Some(DiagnosticSeverity::ERROR),
         code: None,
         code_description: None,
-        source: Some(format!("whirl")),
+        source: Some(format!("whirlwind")),
         message,
         related_information: None,
         tags: None,

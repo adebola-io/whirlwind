@@ -1,1 +1,1 @@
-# The Whirl Core Library.
+# The Whirlwind Core Library.

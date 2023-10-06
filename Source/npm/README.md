@@ -1,3 +1,3 @@
-# Whirl
+# Whirlwind
 
-Whirl is a programming language for application development.
+Whirlwind is a programming language for application development.

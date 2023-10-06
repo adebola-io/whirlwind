@@ -15,8 +15,8 @@ exports.activate = async (context) => {
    });
 
    client = new LanguageClient(
-      "Whirl",
-      "Whirl Language Server",
+      "Whirlwind",
+      "Whirlwind Language Server",
       {
          command: context.asAbsolutePath(process.env.WHIRL_LS_PATH),
          debug: {
