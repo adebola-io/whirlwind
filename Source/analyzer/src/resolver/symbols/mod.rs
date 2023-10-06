@@ -349,6 +349,29 @@ impl SemanticSymbol {
             origin_span,
         }
     }
+    /// Create a new symbol from a function signature.
+    pub fn from_function(
+        function: &mut ast::FunctionSignature,
+        path_idx: PathIndex,
+        origin_span: Span,
+    ) -> SemanticSymbol {
+        Self {
+            name: function.name.name.to_owned(),
+            symbol_kind: SemanticSymbolKind::Function {
+                is_public: function.is_public,
+                is_async: function.is_async,
+                params: vec![],
+                generic_params: vec![],
+                return_type: None,
+            },
+            references: vec![SymbolReferenceList {
+                module_path: path_idx,
+                starts: vec![function.name.span.start],
+            }],
+            doc_info: function.info.take(),
+            origin_span,
+        }
+    }
 }
 
 impl SymbolTable {
@@ -399,8 +422,8 @@ impl SymbolTable {
             })
     }
     /// Get a symbol mutably using its index.
-    pub fn get_mut(&mut self, index: SymbolIndex) -> Option<&mut SemanticSymbol> {
-        match self.symbols.get_mut(index.0)? {
+    pub fn get_mut(&mut self, idx: SymbolIndex) -> Option<&mut SemanticSymbol> {
+        match self.symbols.get_mut(idx.0)? {
             SymbolEntry::Removed => None,
             SymbolEntry::Symbol(symbol) => Some(symbol),
         }

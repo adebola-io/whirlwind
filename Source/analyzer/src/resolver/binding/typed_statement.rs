@@ -17,6 +17,7 @@ pub enum TypedStmnt {
     ModuleDeclaration(TypedModuleDeclaration),
     ReturnStatement(TypedReturnStatement),
     WhileStatement(TypedWhileStatement),
+    Function(TypedFunctionDeclaration),
 }
 
 #[derive(Debug, PartialEq)]
@@ -70,6 +71,13 @@ pub struct TypedBlock {
 pub struct TypedShorthandVariableDeclaration {
     pub name: SymbolLocator,
     pub value: TypedExpr,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TypedFunctionDeclaration {
+    pub name: SymbolLocator,
+    pub body: TypedBlock,
     pub span: Span,
 }
 

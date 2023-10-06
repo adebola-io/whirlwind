@@ -281,7 +281,14 @@ impl<'ctx> Binder<'ctx> {
     /// Create a binding for a signature from a scope entry.
     fn bind_signature(&'ctx self, entry: &mut ScopeEntry, origin_span: Span) -> SymbolIndex {
         match entry {
-            ScopeEntry::Function(_) => todo!(),
+            ScopeEntry::Function(function) => {
+                let symbol = SemanticSymbol::from_function(function, self.path_idx(), origin_span);
+                let index = self.symbol_table().add(symbol);
+                let span = function.name.span;
+                self.known_values().insert(span, index);
+                // Return type, parameters and generic parameters are bound at declaration to prevent recursive loops.
+                index
+            }
             ScopeEntry::Type(_type) => {
                 let symbol = SemanticSymbol::from_type(_type, self.path_idx(), origin_span);
                 let index = self.symbol_table().add(symbol);
@@ -522,7 +529,9 @@ impl<'ctx> Binder<'ctx> {
             Statement::ModuleDeclaration(module) => {
                 TypedStmnt::ModuleDeclaration(TypedModuleDeclaration { span: module.span })
             }
-            Statement::FunctionDeclaration(_) => todo!(),
+            Statement::FunctionDeclaration(func) => {
+                TypedStmnt::Function(self.function_declaration(func))
+            }
             Statement::RecordDeclaration => todo!(),
             Statement::TraitDeclaration(_) => todo!(),
             Statement::EnumDeclaration(_enum) => {
@@ -911,6 +920,61 @@ impl<'ctx> Binder<'ctx> {
         };
         self.pop_generic_pool(); // Remove list of reachable generic parameters.
         return method;
+    }
+
+    /// Binds a function declaration.
+    fn function_declaration(
+        &'ctx self,
+        func: ast::FunctionDeclaration,
+    ) -> TypedFunctionDeclaration {
+        let binding_result = self.handle_scope_entry(func.address, func.span, true);
+        let signature = self.entry(func.address).func_mut();
+        self.push_generic_pool(); // List of generic params.
+        let (symbol_idx, body) = match binding_result {
+            Ok(idx) => {
+                // add generic params if binding was successful.
+                let body = if let Some(SemanticSymbol {
+                    symbol_kind:
+                        SemanticSymbolKind::Function {
+                            generic_params,
+                            params,
+                            return_type,
+                            ..
+                        },
+                    ..
+                }) = &mut self.symbol_table().get_mut(idx)
+                {
+                    // Generic parameters should always be first.
+                    *generic_params = self.generic_parameters(signature.generic_params.as_ref());
+                    *return_type = signature
+                        .return_type
+                        .as_ref()
+                        .map(|type_exp| self.type_expression(type_exp));
+                    let (body, parameters) =
+                        self.function_block(func.body, take(&mut signature.params));
+                    *params = parameters;
+                    body
+                } else {
+                    unreachable!("Could not retrieve bound function symbol.")
+                };
+                (idx, body)
+            }
+            // binding failed because it already exists.
+            Err(idx) => {
+                let (body, _) = self.function_block(func.body, take(&mut signature.params));
+                (idx, body)
+            }
+        };
+        self.pop_generic_pool();
+        let ref_number = self.last_reference_no(symbol_idx);
+        TypedFunctionDeclaration {
+            name: SymbolLocator {
+                symbol_idx,
+                ref_number,
+            },
+            body,
+            span: func.span,
+        }
     }
 
     /// Binds a function block.

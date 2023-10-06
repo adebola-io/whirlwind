@@ -1,1 +1,7 @@
-square := fn(a) a ^ 2;
+public model Maybe<T> {
+    var item: T;
+
+    public function Unwrap(): T {
+
+    }
+}
