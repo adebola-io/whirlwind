@@ -253,8 +253,8 @@ impl<'a> HoverFinder<'a> {
                     return hover_finder.statement(declaration);
                 }
                 ast::ScopeEntry::Constant(c) => name_hover!(c, scope, hover_finder),
-                ast::ScopeEntry::Variable(_) => {},
-                // technically unreachable
+                ast::ScopeEntry::Variable(_) => {}
+                _ => {} // technically unreachable
             }
         }
 
@@ -519,9 +519,8 @@ impl<'a> ASTVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
                     .next()?;
                 return hvfinder.statement(declaration);
             }
-            ast::ScopeEntry::ReservedSpace => {}
             ast::ScopeEntry::Constant(c) => name_hover!(c, scope, hvfinder),
-            ast::ScopeEntry::ShorthandVariable(_) => {}
+            _ => {}
         };
         return None;
     }

@@ -50,6 +50,13 @@ pub struct Parameter {
     pub span: Span,
 }
 
+#[derive(Debug, Hash)]
+pub struct LoopVariable {
+    pub name: VariablePattern,
+}
+#[derive(Debug, Hash)]
+pub struct LoopLabel(pub Identifier);
+
 impl Signature for Parameter {
     fn info(&self) -> Option<&Vec<String>> {
         self.info.as_ref()
@@ -107,6 +114,7 @@ pub enum VariablePattern {
     ObjectPattern {
         real_name: Identifier,
         alias: Option<Identifier>,
+        span: Span,
     },
     ArrayPattern(Identifier),
 }

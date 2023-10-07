@@ -228,7 +228,7 @@ impl<'ctx> Binder<'ctx> {
                     }
                     let new_symbol = SemanticSymbol {
                         name: name.name.to_owned(),
-                        symbol_kind: SemanticSymbolKind::UndeclaredValue,
+                        kind: SemanticSymbolKind::UndeclaredValue,
                         references: vec![],
                         doc_info: None,
                         origin_span: name.span,
@@ -301,7 +301,7 @@ impl<'ctx> Binder<'ctx> {
                 let symbol = SemanticSymbol {
                     // taking the string will make the entry un-lookup-able.
                     name: model.name.name.to_owned(),
-                    symbol_kind: SemanticSymbolKind::Model {
+                    kind: SemanticSymbolKind::Model {
                         is_public: model.is_public,
                         // Signatures may have been prematurely categorized as needing no AST tree data.
                         // The values after are written later and not now
@@ -340,7 +340,7 @@ impl<'ctx> Binder<'ctx> {
                 self.known_values().insert(span, index);
                 // Add type. Hackery to prevent recursive real-name-is-also-type-name loops.
                 if let SemanticSymbolKind::Variable { declared_type, .. } =
-                    &mut self.symbol_table().get_mut(index).unwrap().symbol_kind
+                    &mut self.symbol_table().get_mut(index).unwrap().kind
                 {
                     *declared_type = variable
                         .var_type
@@ -361,13 +361,15 @@ impl<'ctx> Binder<'ctx> {
                 self.known_values().insert(constant.name.span, index);
                 // Add type. Hackery to prevent recursive real-name-is-also-type-name loops.
                 if let SemanticSymbolKind::Constant { declared_type, .. } =
-                    &mut self.symbol_table().get_mut(index).unwrap().symbol_kind
+                    &mut self.symbol_table().get_mut(index).unwrap().kind
                 {
                     *declared_type = self.type_expression(&constant.var_type)
                 }
                 index
             }
             ScopeEntry::Variable(_) => todo!(),
+            ScopeEntry::LoopVariable(_) => todo!(),
+            ScopeEntry::LoopLabel(_) => todo!(),
         }
     }
     /// Check if a symbol has been jumped to already.
@@ -534,6 +536,7 @@ impl<'ctx> Binder<'ctx> {
             }
             Statement::RecordDeclaration => todo!(),
             Statement::TraitDeclaration(_) => todo!(),
+            Statement::ForStatement(_) => todo!(),
             Statement::EnumDeclaration(_enum) => {
                 TypedStmnt::EnumDeclaration(self.enum_declaration(_enum))
             }
@@ -546,7 +549,6 @@ impl<'ctx> Binder<'ctx> {
             Statement::ReturnStatement(returnstmnt) => {
                 TypedStmnt::ReturnStatement(self.return_statement(returnstmnt))
             }
-            Statement::ForStatement => todo!(),
             Statement::ExpressionStatement(expression) | Statement::FreeExpression(expression) => {
                 TypedStmnt::FreeExpression(self.expression(expression))
             }
@@ -616,7 +618,7 @@ impl<'ctx> Binder<'ctx> {
             Ok(symbol_idx) => {
                 // Add generic parameters, if the binding to this type was successful.
                 self.push_generic_pool(); // List of parameters.
-                match &mut self.symbol_table().get_mut(symbol_idx).unwrap().symbol_kind {
+                match &mut self.symbol_table().get_mut(symbol_idx).unwrap().kind {
                     SemanticSymbolKind::TypeName {
                         generic_params,
                         value,
@@ -652,7 +654,7 @@ impl<'ctx> Binder<'ctx> {
             Ok(symbol_idx) => {
                 // Add generic parameters, if the binding to this type was successful.
                 if let Some(SemanticSymbol {
-                    symbol_kind:
+                    kind:
                         SemanticSymbolKind::Model {
                             is_constructable,
                             implementations,
@@ -792,7 +794,7 @@ impl<'ctx> Binder<'ctx> {
             // attribute being bound is the first attribute to be bound with this name.
             let symbol = SemanticSymbol {
                 name: attribute.name.name.to_owned(),
-                symbol_kind: SemanticSymbolKind::Attribute {
+                kind: SemanticSymbolKind::Attribute {
                     is_public: attribute.is_public,
                     declared_type: self.type_expression(&attribute.var_type),
                     inferred_type: EvaluatedType::unknown(),
@@ -866,7 +868,7 @@ impl<'ctx> Binder<'ctx> {
             // first property with this name to be bound.
             let symbol = SemanticSymbol {
                 name: method.name.name.to_owned(),
-                symbol_kind: SemanticSymbolKind::Method {
+                kind: SemanticSymbolKind::Method {
                     is_public: method.is_public,
                     is_static: method.is_static,
                     is_async: method.is_async,
@@ -895,13 +897,13 @@ impl<'ctx> Binder<'ctx> {
             generic_params,
             return_type,
             ..
-        } = &mut self.symbol_table().get_mut(symbol_idx).unwrap().symbol_kind
+        } = &mut self.symbol_table().get_mut(symbol_idx).unwrap().kind
         {
             *params = parameters;
             *generic_params = match method.generic_params {
                 Some(ref generic_parameters) => generic_parameters
                     .iter()
-                    .map(|parameter| self.bind_generic_parameter(parameter))
+                    .map(|parameter| self.bind_generic_parameter_name(parameter))
                     .collect(),
                 None => vec![],
             };
@@ -934,7 +936,7 @@ impl<'ctx> Binder<'ctx> {
             Ok(idx) => {
                 // add generic params if binding was successful.
                 let body = if let Some(SemanticSymbol {
-                    symbol_kind:
+                    kind:
                         SemanticSymbolKind::Function {
                             generic_params,
                             params,
@@ -1008,7 +1010,7 @@ impl<'ctx> Binder<'ctx> {
             }
             let mut symbol = SemanticSymbol {
                 name: parameter.name.name.to_owned(),
-                symbol_kind: SemanticSymbolKind::Parameter {
+                kind: SemanticSymbolKind::Parameter {
                     is_optional: parameter.is_optional,
                     param_type: parameter
                         .type_label
@@ -1057,7 +1059,7 @@ impl<'ctx> Binder<'ctx> {
                 match &mut self.symbol_table().get_mut(symbol_idx) {
                     // Add generic parameters, if the binding to this type was successful.
                     Some(SemanticSymbol {
-                        symbol_kind:
+                        kind:
                             SemanticSymbolKind::Enum {
                                 generic_params,
                                 variants,
@@ -1111,7 +1113,7 @@ impl<'ctx> Binder<'ctx> {
             }
             let symbol = SemanticSymbol {
                 name: variant.name.name.to_owned(),
-                symbol_kind: SemanticSymbolKind::Variant {
+                kind: SemanticSymbolKind::Variant {
                     owner_enum: symbol_idx,
                     variant_index: index,
                     tagged_types: variant
@@ -1378,13 +1380,40 @@ impl<'ctx> Binder<'ctx> {
         match param_list {
             Some(ref params) => params
                 .iter()
-                .map(|parameter| self.bind_generic_parameter(parameter))
+                .map(|parameter| {
+                    // Binds only the parameter names.
+                    let index = self.bind_generic_parameter_name(parameter);
+                    // Bind the trait guards and default values.
+                    if let Some(SemanticSymbol {
+                        kind:
+                            SemanticSymbolKind::GenericParameter {
+                                traits,
+                                default_value,
+                                ..
+                            },
+                        ..
+                    }) = self.symbol_table().get_mut(index)
+                    {
+                        *traits = parameter
+                            .traits
+                            .iter()
+                            .map(|_trait| self.type_expression(_trait))
+                            .collect();
+                        *default_value = parameter
+                            .default
+                            .as_ref()
+                            .map(|default_value| self.type_expression(default_value));
+                    } else {
+                        unreachable!("Could not retrieve bound generic parameter.")
+                    }
+                    index
+                })
                 .collect(),
             None => vec![],
         }
     }
     /// Bind a generic parameter.
-    fn bind_generic_parameter(&'ctx self, parameter: &GenericParameter) -> SymbolIndex {
+    fn bind_generic_parameter_name(&'ctx self, parameter: &GenericParameter) -> SymbolIndex {
         // Check if a generic parameter with this name already exists in this pool.
         if let Some(index) = self.lookaround_for_generic_parameter(&parameter.name.name) {
             self.add_ctx_error(errors::duplicate_generic_parameter(
@@ -1396,16 +1425,10 @@ impl<'ctx> Binder<'ctx> {
         }
         let symbol = SemanticSymbol {
             name: parameter.name.name.to_owned(),
-            symbol_kind: SemanticSymbolKind::GenericParameter {
-                traits: parameter
-                    .traits
-                    .iter()
-                    .map(|_trait| self.type_expression(_trait))
-                    .collect(),
-                default_value: parameter
-                    .default
-                    .as_ref()
-                    .map(|default_value| self.type_expression(default_value)),
+            kind: SemanticSymbolKind::GenericParameter {
+                // traits and default values are bound later.
+                traits: vec![],
+                default_value: None,
             },
             references: vec![SymbolReferenceList {
                 module_path: self.path_idx(),

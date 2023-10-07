@@ -1,10 +1,10 @@
 use crate::{
     AccessExpr, ArrayExpr, AssignmentExpr, BinaryExpr, Block, CallExpr, ConstantDeclaration,
-    EnumDeclaration, Expression, FunctionDeclaration, FunctionExpr, Identifier, IfExpression,
-    IndexExpr, LogicExpr, ModelDeclaration, ModuleDeclaration, NewExpr, Parameter, ReturnStatement,
-    ShorthandVariableDeclaration, Statement, TestDeclaration, ThisExpr, TraitDeclaration,
-    TypeDeclaration, UnaryExpr, UpdateExpr, UseDeclaration, VariableDeclaration, WhileStatement,
-    WhirlBoolean, WhirlNumber, WhirlString,
+    EnumDeclaration, Expression, ForStatement, FunctionDeclaration, FunctionExpr, Identifier,
+    IfExpression, IndexExpr, LogicExpr, ModelDeclaration, ModuleDeclaration, NewExpr, Parameter,
+    ReturnStatement, ShorthandVariableDeclaration, Statement, TestDeclaration, ThisExpr,
+    TraitDeclaration, TypeDeclaration, UnaryExpr, UpdateExpr, UseDeclaration, VariableDeclaration,
+    WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
 };
 
 #[allow(unused_variables)]
@@ -375,10 +375,12 @@ pub trait MutASTVisitor<Output: Default = ()> {
             Statement::TraitDeclaration(_) => todo!(),
             Statement::WhileStatement(w) => self.while_statement(w),
             Statement::ReturnStatement(_) => todo!(),
-            Statement::ForStatement => todo!(),
+            Statement::ForStatement(f) => self.for_statement(f),
             // _ => {}
         }
     }
+
+    fn for_statement(&mut self, f: &mut ForStatement) {}
 
     fn expr_statement(&mut self, exp: &mut Expression) {
         self.expression(exp);
@@ -459,9 +461,11 @@ pub trait ASTVisitorExprOutputNoArgs<Output: Default = ()> {
             Statement::ReturnStatement(r) => self.return_statement(r),
             Statement::VariableDeclaration(v) => self.var_decl(v),
             Statement::ConstantDeclaration(c) => self.constant(c),
-            Statement::ForStatement => todo!(),
+            Statement::ForStatement(f) => self.for_statement(f),
         }
     }
+
+    fn for_statement(&self, f: &ForStatement) {}
 
     fn free_expr(&self, exp: &Expression) {
         self.expr(exp);

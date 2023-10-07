@@ -21,7 +21,7 @@ pub enum Statement {
     // Control Statements.
     WhileStatement(WhileStatement),
     ReturnStatement(ReturnStatement),
-    ForStatement,
+    ForStatement(ForStatement),
     // Expression statements.
     ExpressionStatement(Expression),
     /// An expression without the semicolon.
@@ -226,6 +226,15 @@ pub struct ReturnStatement {
     pub span: Span,
 }
 
+#[derive(Debug, PartialEq)]
+pub struct ForStatement {
+    pub items: Vec<ScopeAddress>,
+    pub iterator: Expression,
+    pub label: Option<ScopeAddress>,
+    pub body: Block,
+    pub span: Span,
+}
+
 /// Node for an enumerated type.
 #[derive(Debug, PartialEq)]
 pub struct EnumDeclaration {
@@ -382,7 +391,7 @@ impl Spannable for Statement {
             Statement::EnumDeclaration(e) => e.span,
             Statement::TypeDeclaration(t) => t.span,
             Statement::WhileStatement(w) => w.span,
-            Statement::ForStatement => todo!(),
+            Statement::ForStatement(f) => f.span,
             Statement::ExpressionStatement(e) | Statement::FreeExpression(e) => e.span(),
             Statement::ShorthandVariableDeclaration(v) => v.span,
             Statement::ModuleDeclaration(m) => m.span,
@@ -402,7 +411,7 @@ impl Spannable for Statement {
             Statement::EnumDeclaration(e) => e.span.start = start,
             Statement::TypeDeclaration(t) => t.span.start = start,
             Statement::WhileStatement(w) => w.span.start = start,
-            Statement::ForStatement => todo!(),
+            Statement::ForStatement(f) => f.span.start = start,
             Statement::ExpressionStatement(e) | Statement::FreeExpression(e) => e.set_start(start),
             Statement::ShorthandVariableDeclaration(v) => v.span.start = start,
             Statement::ModuleDeclaration(m) => m.span.start = start,
@@ -434,9 +443,8 @@ impl Spannable for Statement {
             | Statement::FreeExpression(expression) => {
                 nested.append(&mut expression.captured_scopes())
             }
+            Statement::ForStatement(f) => nested.push(f.body.scope_id),
             // Statement::RecordDeclaration => todo!(),
-            // Statement::VariableDeclaration => todo!(),
-            // Statement::ForStatement => todo!(),
             _ => {}
         }
         nested

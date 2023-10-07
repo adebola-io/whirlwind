@@ -2,13 +2,13 @@
 
 use ast::{
     AccessExpr, ArrayExpr, AssignmentExpr, BinaryExpr, Block, CallExpr, ConstantDeclaration,
-    DiscreteType, Else, EnumDeclaration, Expression, FunctionDeclaration, FunctionExpr, Identifier,
-    IfExpression, IndexExpr, LogicExpr, ModelBody, ModelDeclaration, ModelProperty,
-    ModelPropertyType, ModuleDeclaration, NewExpr, Parameter, ReturnStatement, ScopeAddress,
-    ScopeEntry, Span, Statement, TestDeclaration, ThisExpr, TraitBody, TraitDeclaration,
-    TraitProperty, TypeDeclaration, TypeExpression, UnaryExpr, UpdateExpr, UpdateOperator,
-    UseDeclaration, UsePath, UseTarget, VariableDeclaration, WhileStatement, WhirlBoolean,
-    WhirlNumber, WhirlString,
+    DiscreteType, Else, EnumDeclaration, Expression, ForStatement, FunctionDeclaration,
+    FunctionExpr, Identifier, IfExpression, IndexExpr, LogicExpr, ModelBody, ModelDeclaration,
+    ModelProperty, ModelPropertyType, ModuleDeclaration, NewExpr, Parameter, ReturnStatement,
+    ScopeAddress, ScopeEntry, Span, Statement, TestDeclaration, ThisExpr, TraitBody,
+    TraitDeclaration, TraitProperty, TypeDeclaration, TypeExpression, UnaryExpr, UpdateExpr,
+    UpdateOperator, UseDeclaration, UsePath, UseTarget, VariableDeclaration, WhileStatement,
+    WhirlBoolean, WhirlNumber, WhirlString,
 };
 
 use crate::parse_text;
@@ -2124,4 +2124,67 @@ fn parse_variable_declaration() {
     );
     assert!(parser.module_ambience().lookaround("prop1").is_some());
     assert!(parser.module_ambience().lookaround("prop2").is_some());
+}
+
+#[test]
+fn parse_for_statement() {
+    // Simple.
+    let mut parser = parse_text("for item in list {} ");
+    assert_eq!(
+        parser.next().unwrap().expect(|err| format!("{:?}", err)),
+        Statement::ForStatement(ForStatement {
+            items: vec![[0, 1, 0].into()],
+            iterator: Expression::Identifier(Identifier {
+                name: format!("list"),
+                span: [1, 13, 1, 17].into()
+            }),
+            label: None,
+            body: Block {
+                scope_id: 1,
+                statements: vec![],
+                span: [1, 18, 1, 20].into()
+            },
+            span: [1, 1, 1, 20].into()
+        })
+    );
+
+    // Destructured
+    let mut parser = parse_text("for { prop1, prop2 as prop3 } in list {} ");
+    assert_eq!(
+        parser.next().unwrap().expect(|err| format!("{:?}", err)),
+        Statement::ForStatement(ForStatement {
+            items: vec![[0, 1, 0].into(), [0, 1, 1].into()],
+            iterator: Expression::Identifier(Identifier {
+                name: format!("list"),
+                span: [1, 34, 1, 38].into()
+            }),
+            label: None,
+            body: Block {
+                scope_id: 1,
+                statements: vec![],
+                span: [1, 39, 1, 41].into()
+            },
+            span: [1, 1, 1, 41].into()
+        })
+    );
+
+    // With label.
+    let mut parser = parse_text("for item in list as outerLoop {} ");
+    assert_eq!(
+        parser.next().unwrap().expect(|err| format!("{:?}", err)),
+        Statement::ForStatement(ForStatement {
+            items: vec![[0, 1, 0].into()],
+            iterator: Expression::Identifier(Identifier {
+                name: format!("list"),
+                span: [1, 13, 1, 17].into()
+            }),
+            label: Some([0, 1, 1].into()),
+            body: Block {
+                scope_id: 1,
+                statements: vec![],
+                span: [1, 31, 1, 33].into()
+            },
+            span: [1, 1, 1, 33].into()
+        })
+    );
 }

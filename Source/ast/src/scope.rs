@@ -1,9 +1,9 @@
 use std::hash::Hash;
 
 use crate::{
-    ConstantSignature, EnumSignature, FunctionSignature, ModelSignature, Parameter,
-    ShorthandVariableSignature, TraitSignature, TypeSignature, UseTargetSignature, VariablePattern,
-    VariableSignature,
+    ConstantSignature, EnumSignature, FunctionSignature, LoopLabel, LoopVariable, ModelSignature,
+    Parameter, ShorthandVariableSignature, TraitSignature, TypeSignature, UseTargetSignature,
+    VariablePattern, VariableSignature,
 };
 
 /// An entry to the symbol table of a scope.
@@ -18,9 +18,11 @@ pub enum ScopeEntry {
     Trait(TraitSignature),
     Parameter(Parameter),
     UseImport(UseTargetSignature),
+    LoopVariable(LoopVariable),
+    Constant(ConstantSignature),
     // Entry reserved for a not yet parsed atom.
     ReservedSpace,
-    Constant(ConstantSignature),
+    LoopLabel(LoopLabel),
 }
 
 #[derive(Debug, Default)]
@@ -122,7 +124,26 @@ impl ScopeEntry {
                         real_name: name, ..
                     },
                 ..
-            }) => &name.name,
+            })
+            | ScopeEntry::LoopVariable(LoopVariable {
+                name: VariablePattern::Identifier(name) | VariablePattern::ArrayPattern(name),
+                ..
+            })
+            | ScopeEntry::LoopVariable(LoopVariable {
+                name:
+                    VariablePattern::ObjectPattern {
+                        alias: Some(name), ..
+                    },
+                ..
+            })
+            | ScopeEntry::LoopVariable(LoopVariable {
+                name:
+                    VariablePattern::ObjectPattern {
+                        real_name: name, ..
+                    },
+                ..
+            })
+            | ScopeEntry::LoopLabel(LoopLabel(name)) => &name.name,
             ScopeEntry::ReservedSpace => {
                 unreachable!("Cannot retrieve the name of a reserved space. What are you doing?")
             }
@@ -158,7 +179,26 @@ impl ScopeEntry {
                         real_name: name, ..
                     },
                 ..
-            }) => Some(&name),
+            })
+            | ScopeEntry::LoopVariable(LoopVariable {
+                name: VariablePattern::Identifier(name) | VariablePattern::ArrayPattern(name),
+                ..
+            })
+            | ScopeEntry::LoopVariable(LoopVariable {
+                name:
+                    VariablePattern::ObjectPattern {
+                        alias: Some(name), ..
+                    },
+                ..
+            })
+            | ScopeEntry::LoopVariable(LoopVariable {
+                name:
+                    VariablePattern::ObjectPattern {
+                        real_name: name, ..
+                    },
+                ..
+            })
+            | ScopeEntry::LoopLabel(LoopLabel(name)) => Some(&name),
             ScopeEntry::ReservedSpace => None,
         }
     }
@@ -254,6 +294,22 @@ impl ScopeEntry {
     pub fn is_parameter(&self) -> bool {
         matches!(self, Self::Parameter(..))
     }
+
+    /// Returns `true` if the scope entry is [`LoopVariable`].
+    ///
+    /// [`LoopVariable`]: ScopeEntry::LoopVariable
+    #[must_use]
+    pub fn is_loop_variable(&self) -> bool {
+        matches!(self, Self::LoopVariable(..))
+    }
+
+    /// Returns `true` if the scope entry is [`LoopLabel`].
+    ///
+    /// [`LoopLabel`]: ScopeEntry::LoopLabel
+    #[must_use]
+    pub fn is_loop_label(&self) -> bool {
+        matches!(self, Self::LoopLabel(..))
+    }
 }
 
 impl PartialEq<Self> for &ScopeEntry {
@@ -287,18 +343,31 @@ impl Scope {
     }
     /// Find an item inside the current scope.
     pub fn find(&self, name: &str) -> Option<(usize, &ScopeEntry)> {
-        // check for parameters first.
+        // check for parameters, loop vars and labels first.
         let parameters = self
             .entries
             .iter()
             .enumerate()
             .filter(|entry| entry.1.is_parameter());
-        let other_entries = self
+        let loopvars = self
             .entries
             .iter()
             .enumerate()
-            .filter(|entry| !entry.1.is_parameter());
-        for (index, entry) in parameters.chain(other_entries) {
+            .filter(|entry| entry.1.is_loop_variable());
+        let loop_labels = self
+            .entries
+            .iter()
+            .enumerate()
+            .filter(|entry| entry.1.is_loop_label());
+
+        let other_entries = self.entries.iter().enumerate().filter(|entry| {
+            !entry.1.is_parameter() && !entry.1.is_loop_variable() && !entry.1.is_loop_label()
+        });
+        for (index, entry) in parameters
+            .chain(loopvars)
+            .chain(loop_labels)
+            .chain(other_entries)
+        {
             if entry.name() == name {
                 return Some((index, entry));
             }

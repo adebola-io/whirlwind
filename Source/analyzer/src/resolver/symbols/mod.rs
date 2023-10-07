@@ -34,7 +34,7 @@ pub enum SymbolEntry {
 #[derive(Debug)]
 pub struct SemanticSymbol {
     pub name: String,
-    pub symbol_kind: SemanticSymbolKind,
+    pub kind: SemanticSymbolKind,
     pub references: Vec<SymbolReferenceList>,
     pub doc_info: Option<Vec<String>>,
     pub origin_span: Span,
@@ -272,7 +272,7 @@ impl SemanticSymbol {
         Self {
             // taking the name makes it un-lookup-able.
             name: variable.name.name.to_owned(),
-            symbol_kind: SemanticSymbolKind::Variable {
+            kind: SemanticSymbolKind::Variable {
                 is_public: false,
                 declared_type: None,
                 inferred_type: EvaluatedType::unknown(),
@@ -294,7 +294,7 @@ impl SemanticSymbol {
         Self {
             // taking the name makes it un-lookup-able.
             name: constant.name.name.to_owned(),
-            symbol_kind: SemanticSymbolKind::Constant {
+            kind: SemanticSymbolKind::Constant {
                 is_public: constant.is_public,
                 declared_type: IntermediateType::Placeholder,
                 inferred_type: EvaluatedType::unknown(),
@@ -315,7 +315,7 @@ impl SemanticSymbol {
     ) -> Self {
         Self {
             name: _type.name.name.to_owned(),
-            symbol_kind: SemanticSymbolKind::TypeName {
+            kind: SemanticSymbolKind::TypeName {
                 is_public: _type.is_public,
                 generic_params: vec![],
                 value: IntermediateType::Placeholder,
@@ -336,7 +336,7 @@ impl SemanticSymbol {
     ) -> Self {
         Self {
             name: _enum.name.name.to_owned(),
-            symbol_kind: SemanticSymbolKind::Enum {
+            kind: SemanticSymbolKind::Enum {
                 is_public: _enum.is_public,
                 generic_params: vec![],
                 variants: vec![],
@@ -357,7 +357,7 @@ impl SemanticSymbol {
     ) -> SemanticSymbol {
         Self {
             name: function.name.name.to_owned(),
-            symbol_kind: SemanticSymbolKind::Function {
+            kind: SemanticSymbolKind::Function {
                 is_public: function.is_public,
                 is_async: function.is_async,
                 params: vec![],
@@ -508,7 +508,7 @@ mod tests {
         let mut symboltable = SymbolTable::new();
         let symbol_index = symboltable.add(SemanticSymbol {
             name: format!("newVariable"),
-            symbol_kind: SemanticSymbolKind::TypeName {
+            kind: SemanticSymbolKind::TypeName {
                 is_public: false,
                 generic_params: vec![],
                 value: crate::IntermediateType::Placeholder,
@@ -525,7 +525,7 @@ mod tests {
         let mut symboltable = SymbolTable::new();
         let symbol_index = symboltable.add(SemanticSymbol {
             name: format!("newVariable"),
-            symbol_kind: SemanticSymbolKind::TypeName {
+            kind: SemanticSymbolKind::TypeName {
                 is_public: false,
                 generic_params: vec![],
                 value: crate::IntermediateType::Placeholder,

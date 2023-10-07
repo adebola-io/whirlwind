@@ -3,17 +3,17 @@ use std::cell::RefCell;
 use ast::{
     AccessExpr, ArrayExpr, AssignmentExpr, AttributeSignature, BinaryExpr, Block, BorrowedType,
     Bracket::*, CallExpr, Comment, ConstantDeclaration, ConstantSignature, DiscreteType,
-    EnumDeclaration, EnumSignature, EnumVariant, Expression, ExpressionPrecedence,
+    EnumDeclaration, EnumSignature, EnumVariant, Expression, ExpressionPrecedence, ForStatement,
     FunctionDeclaration, FunctionExpr, FunctionSignature, FunctionalType, GenericParameter,
-    Identifier, IfExpression, IndexExpr, Keyword::*, LogicExpr, MemberType, MethodSignature,
-    ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType, ModelSignature, ModuleAmbience,
-    ModuleDeclaration, NewExpr, Operator::*, Parameter, ReturnStatement, ScopeAddress, ScopeEntry,
-    ScopeType, ShorthandVariableDeclaration, ShorthandVariableSignature, Span, Spannable,
-    Statement, TestDeclaration, ThisExpr, Token, TokenType, TraitBody, TraitDeclaration,
-    TraitProperty, TraitPropertyType, TraitSignature, TypeDeclaration, TypeExpression,
-    TypeSignature, UnaryExpr, UnionType, UpdateExpr, UseDeclaration, UsePath, UseTarget,
-    UseTargetSignature, VariableDeclaration, VariablePattern, VariableSignature, WhileStatement,
-    WhirlBoolean, WhirlNumber, WhirlString,
+    Identifier, IfExpression, IndexExpr, Keyword::*, LogicExpr, LoopLabel, LoopVariable,
+    MemberType, MethodSignature, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType,
+    ModelSignature, ModuleAmbience, ModuleDeclaration, NewExpr, Operator::*, Parameter,
+    ReturnStatement, ScopeAddress, ScopeEntry, ScopeType, ShorthandVariableDeclaration,
+    ShorthandVariableSignature, Span, Spannable, Statement, TestDeclaration, ThisExpr, Token,
+    TokenType, TraitBody, TraitDeclaration, TraitProperty, TraitPropertyType, TraitSignature,
+    TypeDeclaration, TypeExpression, TypeSignature, UnaryExpr, UnionType, UpdateExpr,
+    UseDeclaration, UsePath, UseTarget, UseTargetSignature, VariableDeclaration, VariablePattern,
+    VariableSignature, WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
 };
 use errors::{self as errors, expected, ParseError};
 use lexer::Lexer;
@@ -79,7 +79,7 @@ macro_rules! check {
 }
 
 /// shorthand to return an empty partial if the token stream has ended.
-macro_rules! ended {
+macro_rules! if_ended {
     ($error: expr, $self: ident) => {
         if let None = $self.token() {
             return Partial::from_tuple((None, vec![$error]));
@@ -252,7 +252,7 @@ impl<L: Lexer> Parser<L> {
 
     /// Parses an expression.
     fn expression(&self) -> Imperfect<Expression> {
-        ended!(errors::expression_expected(self.last_token_end()), self);
+        if_ended!(errors::expression_expected(self.last_token_end()), self);
 
         let token = self.token().unwrap();
 
@@ -356,7 +356,7 @@ impl<L: Lexer> Parser<L> {
         let params = check!(self.parameters());
         let return_type = check!(self.maybe_type_label());
 
-        ended!(
+        if_ended!(
             errors::expected(TokenType::Bracket(LCurly), self.last_token_span(),),
             self
         );
@@ -866,7 +866,7 @@ impl<L: Lexer> Parser<L> {
 impl<L: Lexer> Parser<L> {
     /// Parses a statement.
     fn statement(&self) -> Partial<Statement, ParseError> {
-        ended!(
+        if_ended!(
             errors::declaration_or_statement_expected(self.last_token_end(),),
             self
         );
@@ -920,6 +920,7 @@ impl<L: Lexer> Parser<L> {
                 .map(|c| Statement::ConstantDeclaration(c)),
             TokenType::Keyword(While) => self.while_statement(),
             TokenType::Keyword(Return) => self.return_statement(),
+            TokenType::Keyword(For) => self.for_statement(),
             // unimplemented!(
             //     "{:?} not implemented yet!. The last token was {:?}",
             //     self.token().unwrap(),
@@ -1019,7 +1020,7 @@ impl<L: Lexer> Parser<L> {
 
         self.advance(); // Move past public.
 
-        ended!(errors::declaration_expected(self.last_token_span()), self);
+        if_ended!(errors::declaration_expected(self.last_token_span()), self);
 
         let token = self.token().unwrap();
 
@@ -1126,7 +1127,7 @@ impl<L: Lexer> Parser<L> {
         let start = self.token().unwrap().span.start;
         self.advance(); // Move past test.
 
-        ended!(errors::string_expected(self.last_token_end()), self);
+        if_ended!(errors::string_expected(self.last_token_end()), self);
         let token = self.token().unwrap();
 
         let mut partial = match token._type {
@@ -1447,7 +1448,7 @@ impl<L: Lexer> Parser<L> {
         self.advance(); // Move past model.
         let name = check!(self.identifier());
         let generic_params = check!(self.maybe_generic_params());
-        ended!(
+        if_ended!(
             errors::expected(TokenType::Bracket(LCurly), self.last_token_end(),),
             self
         );
@@ -1777,7 +1778,7 @@ impl<L: Lexer> Parser<L> {
         expect_or_return!(TokenType::Keyword(Function), self);
         self.advance(); // Move past function.
         let info = self.get_doc_comment();
-        ended!(errors::identifier_expected(self.last_token_end()), self);
+        if_ended!(errors::identifier_expected(self.last_token_end()), self);
         let token = self.token().unwrap();
         // If [ is the next token, parse a trait impl.
         if token._type == TokenType::Bracket(LSquare) {
@@ -1898,7 +1899,7 @@ impl<L: Lexer> Parser<L> {
 
         let mut errors = vec![];
 
-        ended!(errors::identifier_expected(self.last_token_end()), self);
+        if_ended!(errors::identifier_expected(self.last_token_end()), self);
         let token = self.token().unwrap();
         let names = match token._type {
             // Parse destructured pattern.
@@ -2025,6 +2026,7 @@ impl<L: Lexer> Parser<L> {
     /// Parses an object pattern item. Assumes that the real name is the first token.
     fn object_pattern_item(&self) -> Fallible<VariablePattern> {
         let real_name = self.identifier()?;
+        let start = real_name.span.start;
         let alias = match self.token() {
             Some(Token {
                 _type: TokenType::Keyword(As),
@@ -2036,7 +2038,16 @@ impl<L: Lexer> Parser<L> {
             None => return Err(expected(TokenType::Bracket(RCurly), self.last_token_end())),
             _ => None,
         };
-        Ok(VariablePattern::ObjectPattern { real_name, alias })
+        let end = match alias {
+            Some(ref alias) => alias.span.end,
+            None => real_name.span.end,
+        };
+        let span = Span { start, end };
+        Ok(VariablePattern::ObjectPattern {
+            real_name,
+            alias,
+            span,
+        })
     }
 
     /// Parses an array pattern. Assumes that `[` is the current token.
@@ -2073,7 +2084,7 @@ impl<L: Lexer> Parser<L> {
         self.advance(); // Move past trait.
         let name = check!(self.identifier());
         let generic_params = check!(self.maybe_generic_params());
-        ended!(
+        if_ended!(
             errors::expected(TokenType::Bracket(LCurly), self.last_token_end(),),
             self
         );
@@ -2261,7 +2272,7 @@ impl<L: Lexer> Parser<L> {
         let generic_params = check!(self.maybe_generic_params());
         let params = check!(self.parameters());
         let return_type = check!(self.maybe_type_label());
-        ended!(
+        if_ended!(
             errors::expected(TokenType::Operator(SemiColon), self.last_token_end()),
             self
         );
@@ -2332,8 +2343,10 @@ impl<L: Lexer> Parser<L> {
     /// Parses a return statement.
     fn return_statement(&self) -> Imperfect<Statement> {
         expect_or_return!(TokenType::Keyword(Return), self);
-        let start = self.token().unwrap().span.start;
-        let ret_end = self.token().unwrap().span.start;
+        let Span {
+            start,
+            end: ret_end,
+        } = self.token().unwrap().span;
         self.advance(); // move past return
         let mut errors = vec![];
 
@@ -2389,6 +2402,94 @@ impl<L: Lexer> Parser<L> {
         }
 
         partial
+    }
+
+    /// Parses a for statement,
+    fn for_statement(&self) -> Imperfect<Statement> {
+        expect_or_return!(TokenType::Keyword(For), self);
+        let start = self.token().unwrap().span.start;
+        let mut errors = vec![];
+
+        self.advance(); // Move past for.
+        if_ended!(errors::identifier_expected(self.last_token_end()), self);
+        let token = self.token().unwrap();
+        let names = match token._type {
+            // Parse destructured pattern.
+            // Model destructure.
+            TokenType::Bracket(LCurly) => check!(self.object_pattern()),
+            // Array destructure.
+            TokenType::Bracket(LSquare) => check!(self.array_pattern()),
+            // Normal.
+            _ => {
+                vec![(
+                    VariablePattern::Identifier(check!(self.identifier())),
+                    self.get_doc_comment(),
+                )]
+            }
+        };
+        expect_or_return!(TokenType::Keyword(In), self);
+        self.advance(); // move past in
+        let (iterator_opt, mut iterator_errors) = self.expression().to_tuple();
+        errors.append(&mut iterator_errors);
+        let iterator = match iterator_opt {
+            Some(iterator) => iterator,
+            None => return Partial::from_errors(errors),
+        };
+        if_ended!(
+            expected(TokenType::Bracket(LCurly), self.last_token_end()),
+            self
+        );
+        let token = self.token().unwrap();
+        // parse for label.
+        let label_name_opt = if token._type == TokenType::Keyword(As) {
+            self.advance(); // Move past as
+            match self.identifier() {
+                Ok(ident) => Some(ident),
+                Err(error) => {
+                    errors.push(error);
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
+        let (body_opt, mut body_errors) = self.block(ScopeType::Local).to_tuple();
+        errors.append(&mut body_errors);
+
+        let body = match body_opt {
+            Some(block) => block,
+            None => return Partial::from_errors(errors),
+        };
+
+        let end = body.span.end;
+        let span = Span { start, end };
+
+        // register label and item(s) inside block.
+        let ambience = self.module_ambience();
+        ambience.jump_to_scope(body.scope_id);
+        let items = names
+            .into_iter()
+            .map(|(name, _)| ScopeAddress {
+                module_id: ambience.id(),
+                scope_id: ambience.current_scope(),
+                entry_no: ambience.register(ScopeEntry::LoopVariable(LoopVariable { name })),
+            })
+            .collect::<Vec<_>>();
+        let label = label_name_opt.map(|label_name| ScopeAddress {
+            module_id: ambience.id(),
+            scope_id: ambience.current_scope(),
+            entry_no: ambience.register(ScopeEntry::LoopLabel(LoopLabel(label_name))),
+        });
+
+        let statement = Statement::ForStatement(ForStatement {
+            items,
+            iterator,
+            label,
+            body,
+            span,
+        });
+        Partial::from_tuple((Some(statement), errors))
     }
 
     /// Parses an identifier and advances. It assumes that the identifier is the current token.
