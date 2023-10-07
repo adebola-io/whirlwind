@@ -36,6 +36,9 @@ pub enum ParserErrorType {
     GlobalControl,
     /// Writing a enum variant with an empty list of tagged types.
     EmptyEnumTag,
+    /// Using continue outside a loop.
+    ContinueOutsideLoop,
+    BreakOutsideLoop,
 }
 
 pub fn public_shorthand_var(span: Span) -> ParseError {

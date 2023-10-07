@@ -552,6 +552,8 @@ impl<'ctx> Binder<'ctx> {
             Statement::ExpressionStatement(expression) | Statement::FreeExpression(expression) => {
                 TypedStmnt::FreeExpression(self.expression(expression))
             }
+            Statement::BreakStatement(_) => todo!(),
+            Statement::ContinueStatement(_) => todo!(),
         }
     }
     /// Binds a return statement.
@@ -1429,6 +1431,7 @@ impl<'ctx> Binder<'ctx> {
                 // traits and default values are bound later.
                 traits: vec![],
                 default_value: None,
+                solutions: vec![],
             },
             references: vec![SymbolReferenceList {
                 module_path: self.path_idx(),

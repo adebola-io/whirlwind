@@ -72,7 +72,10 @@ pub enum TypeExpression {
     Invalid,
 }
 
-/// A complex union type e.g. `type Animal = Cat | Dog | Parrot; `
+/// A union type e.g.
+/// ```wrl
+/// type Animal = Cat | Dog | Parrot;
+/// ```
 #[derive(Debug, PartialEq, Clone, Hash)]
 pub struct UnionType {
     pub types: Vec<TypeExpression>,

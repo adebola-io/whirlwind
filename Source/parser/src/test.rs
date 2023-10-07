@@ -1,14 +1,14 @@
 #![cfg(test)]
 
 use ast::{
-    AccessExpr, ArrayExpr, AssignmentExpr, BinaryExpr, Block, CallExpr, ConstantDeclaration,
-    DiscreteType, Else, EnumDeclaration, Expression, ForStatement, FunctionDeclaration,
-    FunctionExpr, Identifier, IfExpression, IndexExpr, LogicExpr, ModelBody, ModelDeclaration,
-    ModelProperty, ModelPropertyType, ModuleDeclaration, NewExpr, Parameter, ReturnStatement,
-    ScopeAddress, ScopeEntry, Span, Statement, TestDeclaration, ThisExpr, TraitBody,
-    TraitDeclaration, TraitProperty, TypeDeclaration, TypeExpression, UnaryExpr, UpdateExpr,
-    UpdateOperator, UseDeclaration, UsePath, UseTarget, VariableDeclaration, WhileStatement,
-    WhirlBoolean, WhirlNumber, WhirlString,
+    AccessExpr, ArrayExpr, AssignmentExpr, BinaryExpr, Block, BreakStatement, CallExpr,
+    ConstantDeclaration, ContinueStatement, DiscreteType, Else, EnumDeclaration, Expression,
+    ForStatement, FunctionDeclaration, FunctionExpr, Identifier, IfExpression, IndexExpr,
+    LogicExpr, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType, ModuleDeclaration,
+    NewExpr, Parameter, ReturnStatement, ScopeAddress, ScopeEntry, Span, Statement,
+    TestDeclaration, ThisExpr, TraitBody, TraitDeclaration, TraitProperty, TypeDeclaration,
+    TypeExpression, UnaryExpr, UpdateExpr, UpdateOperator, UseDeclaration, UsePath, UseTarget,
+    VariableDeclaration, WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
 };
 
 use crate::parse_text;
@@ -2185,6 +2185,60 @@ fn parse_for_statement() {
                 span: [1, 31, 1, 33].into()
             },
             span: [1, 1, 1, 33].into()
+        })
+    );
+}
+
+#[test]
+fn parse_continue_statement() {
+    let mut parser = parse_text("continue;");
+    parser.debug_allow_global_expressions = true;
+    assert_eq!(
+        parser.next().unwrap().expect(|err| format!("{:?}", err)),
+        Statement::ContinueStatement(ContinueStatement {
+            label: None,
+            span: [1, 1, 1, 10].into()
+        })
+    );
+
+    // with label.
+    let mut parser = parse_text("continue outerLoop;");
+    parser.debug_allow_global_expressions = true;
+    assert_eq!(
+        parser.next().unwrap().expect(|err| format!("{:?}", err)),
+        Statement::ContinueStatement(ContinueStatement {
+            label: Some(Identifier {
+                name: format!("outerLoop"),
+                span: [1, 10, 1, 19].into()
+            }),
+            span: [1, 1, 1, 20].into()
+        })
+    );
+}
+
+#[test]
+fn parse_break_statement() {
+    let mut parser = parse_text("break;");
+    parser.debug_allow_global_expressions = true;
+    assert_eq!(
+        parser.next().unwrap().expect(|err| format!("{:?}", err)),
+        Statement::BreakStatement(BreakStatement {
+            label: None,
+            span: [1, 1, 1, 7].into()
+        })
+    );
+
+    // with label.
+    let mut parser = parse_text("break outerLoop;");
+    parser.debug_allow_global_expressions = true;
+    assert_eq!(
+        parser.next().unwrap().expect(|err| format!("{:?}", err)),
+        Statement::BreakStatement(BreakStatement {
+            label: Some(Identifier {
+                name: format!("outerLoop"),
+                span: [1, 7, 1, 16].into()
+            }),
+            span: [1, 1, 1, 17].into()
         })
     );
 }

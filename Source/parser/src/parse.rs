@@ -2,18 +2,19 @@ use std::cell::RefCell;
 
 use ast::{
     AccessExpr, ArrayExpr, AssignmentExpr, AttributeSignature, BinaryExpr, Block, BorrowedType,
-    Bracket::*, CallExpr, Comment, ConstantDeclaration, ConstantSignature, DiscreteType,
-    EnumDeclaration, EnumSignature, EnumVariant, Expression, ExpressionPrecedence, ForStatement,
-    FunctionDeclaration, FunctionExpr, FunctionSignature, FunctionalType, GenericParameter,
-    Identifier, IfExpression, IndexExpr, Keyword::*, LogicExpr, LoopLabel, LoopVariable,
-    MemberType, MethodSignature, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType,
-    ModelSignature, ModuleAmbience, ModuleDeclaration, NewExpr, Operator::*, Parameter,
-    ReturnStatement, ScopeAddress, ScopeEntry, ScopeType, ShorthandVariableDeclaration,
-    ShorthandVariableSignature, Span, Spannable, Statement, TestDeclaration, ThisExpr, Token,
-    TokenType, TraitBody, TraitDeclaration, TraitProperty, TraitPropertyType, TraitSignature,
-    TypeDeclaration, TypeExpression, TypeSignature, UnaryExpr, UnionType, UpdateExpr,
-    UseDeclaration, UsePath, UseTarget, UseTargetSignature, VariableDeclaration, VariablePattern,
-    VariableSignature, WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
+    Bracket::*, BreakStatement, CallExpr, Comment, ConstantDeclaration, ConstantSignature,
+    ContinueStatement, DiscreteType, EnumDeclaration, EnumSignature, EnumVariant, Expression,
+    ExpressionPrecedence, ForStatement, FunctionDeclaration, FunctionExpr, FunctionSignature,
+    FunctionalType, GenericParameter, Identifier, IfExpression, IndexExpr, Keyword::*, LogicExpr,
+    LoopLabel, LoopVariable, MemberType, MethodSignature, ModelBody, ModelDeclaration,
+    ModelProperty, ModelPropertyType, ModelSignature, ModuleAmbience, ModuleDeclaration, NewExpr,
+    Operator::*, Parameter, ReturnStatement, ScopeAddress, ScopeEntry, ScopeType,
+    ShorthandVariableDeclaration, ShorthandVariableSignature, Span, Spannable, Statement,
+    TestDeclaration, ThisExpr, Token, TokenType, TraitBody, TraitDeclaration, TraitProperty,
+    TraitPropertyType, TraitSignature, TypeDeclaration, TypeExpression, TypeSignature, UnaryExpr,
+    UnionType, UpdateExpr, UseDeclaration, UsePath, UseTarget, UseTargetSignature,
+    VariableDeclaration, VariablePattern, VariableSignature, WhileStatement, WhirlBoolean,
+    WhirlNumber, WhirlString,
 };
 use errors::{self as errors, expected, ParseError};
 use lexer::Lexer;
@@ -921,6 +922,8 @@ impl<L: Lexer> Parser<L> {
             TokenType::Keyword(While) => self.while_statement(),
             TokenType::Keyword(Return) => self.return_statement(),
             TokenType::Keyword(For) => self.for_statement(),
+            TokenType::Keyword(Continue) => self.continue_statement(),
+            TokenType::Keyword(Break) => self.break_statement(),
             // unimplemented!(
             //     "{:?} not implemented yet!. The last token was {:?}",
             //     self.token().unwrap(),
@@ -2322,7 +2325,7 @@ impl<L: Lexer> Parser<L> {
             return Partial::from_errors(errors);
         }
         let condition = condition.value.unwrap();
-        let mut body = self.block(ScopeType::Local);
+        let mut body = self.block(ScopeType::WhileLoop);
         errors.append(&mut body.errors);
         if body.is_none() {
             return Partial::from_errors(errors);
@@ -2491,6 +2494,100 @@ impl<L: Lexer> Parser<L> {
             span,
         });
         Partial::from_tuple((Some(statement), errors))
+    }
+
+    /// Parses a continue statement.
+    fn continue_statement(&self) -> Imperfect<Statement> {
+        expect_or_return!(TokenType::Keyword(Continue), self);
+        let start = self.token().unwrap().span.start;
+        let mut end = self.token().unwrap().span.end;
+        self.advance(); // move past continue.
+        let mut errors = vec![];
+
+        let label = if self
+            .token()
+            .is_some_and(|token| matches!(token._type, TokenType::Ident(_)))
+        {
+            match self.identifier() {
+                Ok(ident) => Some(ident),
+                Err(error) => {
+                    errors.push(error);
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
+        match self.token() {
+            Some(Token {
+                _type: TokenType::Operator(o),
+                span,
+            }) if *o == SemiColon => {
+                end = span.end;
+                self.advance(); // move past ;
+            }
+            _ => {
+                errors.push(expected(
+                    TokenType::Operator(SemiColon),
+                    self.last_token_end(),
+                ));
+            }
+        };
+        let span = Span { start, end };
+        if !self.module_ambience().is_in_loop_context() && !self.debug_allow_global_expressions {
+            errors.push(errors::continue_outside_loop(span));
+        }
+        let continuestatement = Statement::ContinueStatement(ContinueStatement { label, span });
+
+        Partial::from_tuple((Some(continuestatement), errors))
+    }
+
+    /// Parses a break statement.
+    fn break_statement(&self) -> Imperfect<Statement> {
+        expect_or_return!(TokenType::Keyword(Break), self);
+        let start = self.token().unwrap().span.start;
+        let mut end = self.token().unwrap().span.end;
+        self.advance(); // move past break.
+        let mut errors = vec![];
+
+        let label = if self
+            .token()
+            .is_some_and(|token| matches!(token._type, TokenType::Ident(_)))
+        {
+            match self.identifier() {
+                Ok(ident) => Some(ident),
+                Err(error) => {
+                    errors.push(error);
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
+        match self.token() {
+            Some(Token {
+                _type: TokenType::Operator(o),
+                span,
+            }) if *o == SemiColon => {
+                end = span.end;
+                self.advance(); // move past ;
+            }
+            _ => {
+                errors.push(expected(
+                    TokenType::Operator(SemiColon),
+                    self.last_token_end(),
+                ));
+            }
+        };
+        let span = Span { start, end };
+        if !self.module_ambience().is_in_loop_context() && !self.debug_allow_global_expressions {
+            errors.push(errors::break_outside_loop(span));
+        }
+        let breakstatement = Statement::BreakStatement(BreakStatement { label, span });
+
+        Partial::from_tuple((Some(breakstatement), errors))
     }
 
     /// Parses an identifier and advances. It assumes that the identifier is the current token.

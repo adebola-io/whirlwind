@@ -6,7 +6,7 @@ use crate::{
     VariablePattern, VariableSignature,
 };
 
-/// An entry to the symbol table of a scope.
+/// An entry to a local scope.
 #[derive(Debug, Hash)]
 pub enum ScopeEntry {
     Function(FunctionSignature),
@@ -20,9 +20,9 @@ pub enum ScopeEntry {
     UseImport(UseTargetSignature),
     LoopVariable(LoopVariable),
     Constant(ConstantSignature),
+    LoopLabel(LoopLabel),
     // Entry reserved for a not yet parsed atom.
     ReservedSpace,
-    LoopLabel(LoopLabel),
 }
 
 #[derive(Debug, Default)]
@@ -30,6 +30,8 @@ pub enum ScopeType {
     Local,
     Test,
     Functional,
+    WhileLoop,
+    ForLoop,
     ModelConstructorOf {
         model: ScopeAddress,
     },

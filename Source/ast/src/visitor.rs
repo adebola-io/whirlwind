@@ -376,11 +376,17 @@ pub trait MutASTVisitor<Output: Default = ()> {
             Statement::WhileStatement(w) => self.while_statement(w),
             Statement::ReturnStatement(_) => todo!(),
             Statement::ForStatement(f) => self.for_statement(f),
+            Statement::ContinueStatement(c) => self.continue_statement(c),
+            Statement::BreakStatement(b) => self.break_statement(b),
             // _ => {}
         }
     }
 
     fn for_statement(&mut self, f: &mut ForStatement) {}
+
+    fn break_statement(&mut self, b: &mut crate::BreakStatement) {}
+
+    fn continue_statement(&mut self, c: &mut crate::ContinueStatement) {}
 
     fn expr_statement(&mut self, exp: &mut Expression) {
         self.expression(exp);
@@ -462,10 +468,16 @@ pub trait ASTVisitorExprOutputNoArgs<Output: Default = ()> {
             Statement::VariableDeclaration(v) => self.var_decl(v),
             Statement::ConstantDeclaration(c) => self.constant(c),
             Statement::ForStatement(f) => self.for_statement(f),
+            Statement::ContinueStatement(c) => self.continue_statement(c),
+            Statement::BreakStatement(b) => self.break_statement(b),
         }
     }
 
     fn for_statement(&self, f: &ForStatement) {}
+
+    fn break_statement(&self, b: &crate::BreakStatement) {}
+
+    fn continue_statement(&self, c: &crate::ContinueStatement) {}
 
     fn free_expr(&self, exp: &Expression) {
         self.expr(exp);

@@ -106,6 +106,10 @@ pub fn stringify_parse_error(error: &ParserErrorType) -> String {
         ParserErrorType::TestInNonGlobalScope => format!("Test declarations are only allowed in the global scope."),
         ParserErrorType::UseImportInNonGlobalScope => format!("Use imports are only allowed in testing and the global scope."),
         ParserErrorType::EmptyEnumTag => format!("Enum variants cannot have empty tags. Remove the parenthesis if no tags are necessary."),
+        ParserErrorType::ContinueOutsideLoop => format!("continue statements can only be used from within a loop."),
+        ParserErrorType::BreakOutsideLoop => format!("break statements can only be used from within a loop."),
+        
+        
     }
 }
 

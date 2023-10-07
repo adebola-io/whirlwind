@@ -22,6 +22,8 @@ pub enum Statement {
     WhileStatement(WhileStatement),
     ReturnStatement(ReturnStatement),
     ForStatement(ForStatement),
+    ContinueStatement(ContinueStatement),
+    BreakStatement(BreakStatement),
     // Expression statements.
     ExpressionStatement(Expression),
     /// An expression without the semicolon.
@@ -235,6 +237,18 @@ pub struct ForStatement {
     pub span: Span,
 }
 
+#[derive(Debug, PartialEq)]
+pub struct ContinueStatement {
+    pub label: Option<Identifier>,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct BreakStatement {
+    pub label: Option<Identifier>,
+    pub span: Span,
+}
+
 /// Node for an enumerated type.
 #[derive(Debug, PartialEq)]
 pub struct EnumDeclaration {
@@ -294,7 +308,8 @@ impl Positioning for Statement {
             match self {
                 Statement::TestDeclaration(TestDeclaration { body, .. })
                 | Statement::FunctionDeclaration(FunctionDeclaration { body, .. })
-                | Statement::WhileStatement(WhileStatement { body, .. }) => {
+                | Statement::WhileStatement(WhileStatement { body, .. })
+                | Statement::ForStatement(ForStatement { body, .. }) => {
                     if body.span.encloses(span) {
                         // The span is within the body of the statement, not just the statement itself.
                         nodes.append(&mut collect_closest_within_block(self, body, span));
@@ -338,13 +353,16 @@ impl Positioning for Statement {
                     }
                 }
                 // Within a shorthand variable declaration.
-                Statement::ShorthandVariableDeclaration(var_decl) => {
-                    let expression = &var_decl.value;
-                    if expression.span().encloses(span) {
+                Statement::ShorthandVariableDeclaration(ShorthandVariableDeclaration {
+                    value,
+                    ..
+                })
+                | Statement::VariableDeclaration(VariableDeclaration {
+                    value: Some(value), ..
+                }) => {
+                    if value.span().encloses(span) {
                         // span is within the expression value of the node.
-                        nodes.append(&mut collect_closest_within_expression(
-                            self, expression, span,
-                        ))
+                        nodes.append(&mut collect_closest_within_expression(self, value, span))
                     }
                 }
                 // Within a shorthand variable declaration.
@@ -363,7 +381,6 @@ impl Positioning for Statement {
                 ),
                 // Statement::RecordDeclaration => todo!(),
                 // Statement::VariableDeclaration => todo!(),
-                // Statement::ForStatement => todo!(),
                 _ => nodes.push(self),
             }
             if nodes.len() == 0 {
@@ -396,6 +413,8 @@ impl Spannable for Statement {
             Statement::ShorthandVariableDeclaration(v) => v.span,
             Statement::ModuleDeclaration(m) => m.span,
             Statement::ReturnStatement(r) => r.span,
+            Statement::ContinueStatement(c) => c.span,
+            Statement::BreakStatement(b) => b.span,
         }
     }
     fn set_start(&mut self, start: [u32; 2]) {
@@ -416,6 +435,8 @@ impl Spannable for Statement {
             Statement::ShorthandVariableDeclaration(v) => v.span.start = start,
             Statement::ModuleDeclaration(m) => m.span.start = start,
             Statement::ReturnStatement(r) => r.span.start = start,
+            Statement::ContinueStatement(c) => c.span.start = start,
+            Statement::BreakStatement(b) => b.span.start = start,
         }
     }
     fn captured_scopes(&self) -> Vec<usize> {

@@ -133,6 +133,7 @@ pub enum SemanticSymbolKind {
     GenericParameter {
         traits: Vec<IntermediateType>,
         default_value: Option<IntermediateType>,
+        solutions: Vec<EvaluatedType>,
     },
     Function {
         is_public: bool,

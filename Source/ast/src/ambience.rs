@@ -327,6 +327,23 @@ impl ModuleAmbience {
             None => panic!("Cannot allocate to an out of bounds entry number: {entry_no}"),
         }
     }
+    /// Returns true if the current scope or any of the parent scopes is a for or while loop.
+    pub fn is_in_loop_context(&self) -> bool {
+        let mut current_scope = self.current_scope;
+        loop {
+            let scope = &self.scopes[current_scope];
+            match scope._type {
+                ScopeType::ForLoop | ScopeType::WhileLoop => return true,
+                _ => {
+                    if let Some(parent) = scope.parent_index {
+                        current_scope = parent;
+                    } else {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl<'a> ModuleAmbienceShadow<'a> {

@@ -211,3 +211,17 @@ pub fn duplicate_enum_variant(name: ast::Identifier) -> ContextError {
         span: name.span,
     }
 }
+
+pub fn continue_outside_loop(span: ast::Span) -> ParseError {
+    ParseError {
+        _type: ParserErrorType::ContinueOutsideLoop,
+        span,
+    }
+}
+
+pub fn break_outside_loop(span: ast::Span) -> ParseError {
+    ParseError {
+        _type: ParserErrorType::BreakOutsideLoop,
+        span,
+    }
+}

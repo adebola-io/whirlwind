@@ -1,14 +1,14 @@
 [workspace]
 members = [
-    "Source/ast", 
-    "Source/corelib", 
-    "Source/errors", 
-    "Source/lexer", 
-    "Source/parser",
-    "Source/printer",
-    "Source/repl",
-    "Source/analyzer",
-    "Source/server",
-    "Source/utils",
-    "Source/macros"
+    "source/ast", 
+    "source/corelib", 
+    "source/errors", 
+    "source/lexer", 
+    "source/parser",
+    "source/printer",
+    "source/repl",
+    "source/analyzer",
+    "source/server",
+    "source/utils",
+    "source/macros"
     ]

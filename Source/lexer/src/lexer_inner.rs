@@ -482,6 +482,7 @@ pub trait LexerInner {
             "as" => token!(Keyword::As, self),
             "and" => token!(Operator::And, self).unwrap(),
             "async" => token!(Keyword::Async, self),
+            "break" => token!(Keyword::Break, self),
             "case" => token!(Keyword::Case, self),
             "const" => token!(Keyword::Const, self),
             "model" => token!(Keyword::Model, self),
