@@ -2481,6 +2481,7 @@ impl<L: Lexer> Parser<L> {
             scope_id: ambience.current_scope(),
             entry_no: ambience.register(ScopeEntry::LoopLabel(LoopLabel(label_name))),
         });
+        ambience.leave_scope();
 
         let statement = Statement::ForStatement(ForStatement {
             items,

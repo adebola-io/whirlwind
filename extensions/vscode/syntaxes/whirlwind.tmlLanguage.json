@@ -396,30 +396,21 @@
          "end": "(?=\\>)"
       },
       "generic_params": {
-         "match": "(\\<)(.*)(\\>)",
-         "captures": {
-            "1": {
-               "name": "punctuation.greater.whirlwind"
+         "begin": "(?<=\\<\\s*)",
+         "patterns": [
+            {
+               "name": "punctuation",
+               "match": "\\&"
             },
-            "2": {
-               "patterns": [
-                  {
-                     "name": "punctuation",
-                     "match": "\\&"
-                  },
-                  {
-                     "name": "constant.language",
-                     "match": "\\bThis\\b"
-                  },
-                  { "include": "#type_name" },
-                  { "include": "#type_label" },
-                  { "include": "#punctuation_comma" }
-               ]
+            {
+               "name": "constant.language",
+               "match": "\\bThis\\b"
             },
-            "3": {
-               "name": "punctuation.lesser.whirlwind"
-            }
-         }
+            { "include": "#type_name" },
+            { "include": "#type_label" },
+            { "include": "#punctuation_comma" }
+         ],
+         "end": "(?=\\>)"
       },
 
       "this": {
