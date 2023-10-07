@@ -11,7 +11,7 @@ let client;
  */
 exports.activate = async (context) => {
    require("dotenv").config({
-      path: context.asAbsolutePath(".env"),
+      path: context.asAbsolutePath(".env.sample"),
    });
 
    client = new LanguageClient(
