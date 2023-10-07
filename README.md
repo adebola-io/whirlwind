@@ -2,10 +2,9 @@
 
 <h1 align=center>
   <img width=100 src="https://user-images.githubusercontent.com/60784068/270170981-a76d4e8a-6279-4bc6-80ca-8c9e81c298d9.svg" alt="Whirl Icon"/>
-
-Whirlwind.
-
 </h1>
+
+<h1 align=center>Whirlwind.</h1>
 
 Whirlwind is a simple programming language for quickly and easily writing maintenable software.
 
