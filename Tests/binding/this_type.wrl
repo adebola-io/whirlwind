@@ -1,6 +1,6 @@
 public model Node {
     var parent: This;
-    var children: ArrayOf<This>;
+    var children: Array<This>;
     public function DoStuff() {
         model Hello {
             function h(): This {

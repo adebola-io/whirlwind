@@ -1,15 +1,15 @@
-module ArrayOf;
+module Array;
 
 use Numeric.Int;
 
 
 /// A contiguous, growable list of items.
-public model ArrayOf<T> {
+public model Array<T> {
 
 }
 
 /// A fixed-size list of items.
-public model StaticArrayOf<T> {
+public model StaticArray<T> {
     new(size: Int) {
 
     }

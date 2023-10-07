@@ -1,7 +1,7 @@
 module Primitives;
 
 public use String.{String, Chars};
-public use ArrayOf.ArrayOf;
+public use Array.Array;
 public use Bool.Bool;
 public use Numeric;
 public use Numeric.{

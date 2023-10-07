@@ -2,7 +2,7 @@ module ArrayStack;
 
 use Package.Core.{
     Primitives.{
-        ArrayOf,
+        Array,
         UnsignedInt,
         // Numeric.MAX_SAFE_Int
     },
@@ -15,7 +15,7 @@ use Package.Core.{
 /// 
 /// A stack is a LIFO (Last-in-First-out) data structure that stores items in one direction.
 public model ArrayStack<T> {
-    var items: ArrayOf<T>;
+    var items: Array<T>;
     var capacity: UnsignedInt;
    
     new(capacity?: Int) {

@@ -5,14 +5,14 @@ use Package.Core.{
     Internals.{ Invoke, Invocation }, 
     Memory.{ CharSpace, Bytes }, 
     Ops.Addition, 
-    Prelude.{ Maybe, Iteratable, Range },
+    Prelude.{ Maybe, AsIterator, Iteratable, Range },
     Process.Todo,
 };
 use Numeric.{ Int, UnsignedInt };
-use ArrayOf.ArrayOf;
+use Array.Array;
 
 /// Model for creating, manipulating and formatting text sequences.
-public model String implements Addition {
+public model String implements Addition, AsIterator<Chars, &String> {
     /// Adds two strings together.
     /// ## Usage
     /// ```
@@ -21,6 +21,18 @@ public model String implements Addition {
     /// ```
     public function [Addition.Add](other: This): This {
         return Invoke(Invocation.StrAdd(this, other));
+    }
+    /// Creates an iterator from the contents of a string.
+    /// ## Usage
+    /// ```
+    /// str := "This is a string";
+    /// 
+    /// for char in str {
+    ///     Core.Io.Println(char);
+    /// }
+    /// ```
+    public function [AsIterator.Convert](): Chars {
+        return this.Chars();
     }
     /// Returns a `Maybe` with the character at a zero based index in the string.
     ///
@@ -102,7 +114,7 @@ public model String implements Addition {
     /// AssertThat(str.Contains("world"));
     /// AssertThat(str.Contains("premiere"));
     /// ```
-    public function Contains(substr: String): Bool {
+    public function Contains(substr: &String): Bool {
         return Invoke(Invocation.StrContains(this, substr));
     }
     /// Returns true if the string has no characters.
@@ -234,7 +246,7 @@ public model String implements Addition {
     /// 
     /// Assert(str.Slice(0..5)).Equals("Hello"); // index 0 to 4.
     /// ```
-    public function Slice(bounds: Range<Int>): Maybe<String> {
+    public function Slice(bounds: Range<Int>): Maybe<&String> {
         return Invoke(Invocation.StrSlice(this, bounds));
     }
     /// Divides the string into a list of substrings based on a delimeter.
@@ -245,7 +257,7 @@ public model String implements Addition {
     /// 
     /// Assert(words).Equals(["Ring", "Around", "The", "Rosy"]);
     /// ```
-    public function Split(delim: String): Arrayof<String> {
+    public function Split(delim: String): Array<String> {
         return Invoke(Invocation.StrSplit(this, delim));
     }
     /// Changes the first character of every word in the string to upper case.

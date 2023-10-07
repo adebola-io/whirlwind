@@ -2,7 +2,7 @@ module Main;
 
 /// A last-in first-out data structure.
 public model Stack<T> {
-    var items: ArrayOf<T>;
+    var items: <T>;
     var capacity: Int;
 
     new(capacity?: Int) {

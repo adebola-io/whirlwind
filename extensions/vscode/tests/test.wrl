@@ -19,7 +19,7 @@ trait PartialEq<T> {
 }
 
 model EmployeeList implements PartialEq<This> {
-    var items: ArrayOf<Employee>;
+    var items: Array<Employee>;
 
     new() {
         this.items = [];

@@ -1,7 +1,7 @@
 module Prelude;
 
 
-public use Iteratable.Iteratable;
+public use Iteratable.{Iteratable, AsIterator};
 public use Default.Default;
 public use Maybe.Maybe;
 public use Range.Range;

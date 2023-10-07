@@ -4,7 +4,7 @@
 /// 
 /// A stack is a LIFO (Last-in-First-out) data structure that stores items in one direction.
 public model ArrayStack<T> {
-    var items: ArrayOf<T>;
+    var items: Array<T>;
     var capacity: UnsignedInt;
    
     new(capacity?: Integer) {

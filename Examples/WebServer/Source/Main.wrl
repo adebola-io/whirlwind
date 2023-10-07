@@ -2,12 +2,9 @@ module Main;
 
 use Core.Http.Server;
 
-/// This is the entry to the program.
 public function Main() {
-    app := new Server();
-
+    var app = new Server();
     app.Get("/hello", fn (req, res) res.Status(200).Json("Hello, world!"));
-
     app.Listen(8080);
 }
 

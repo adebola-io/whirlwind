@@ -1,6 +1,6 @@
 module Iteratable;
 
-use Package.Core.Primitives.ArrayOf;
+use Package.Core.Primitives.Array;
 use Maybe.Maybe;
 
 /// ## The Iteratable trait
@@ -24,11 +24,17 @@ public trait Iteratable<Item> {
     /// Returns the next item in the iteration.
     public function Next(): Maybe<Item>;
     /// Gathers all the items left in the iterator into an array.
-    public function Collect<T: Collectible<Item>>(): T {
+    public function Collect(): Array<T> {
         array := [];
-        // for item in this {
-        //     array.Push(item);
-        // }
+        for item in this as label {
+            array.Push(item);
+        }
         array
     }
+}
+
+/// This trait specifies that a model can be made into an iterator.
+public trait AsIterator<T: Iterator<U>, U> {
+    /// Turn a model into an iterator.
+    public function Convert(): U;
 }
