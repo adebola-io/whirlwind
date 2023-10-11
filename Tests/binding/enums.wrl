@@ -1,7 +1,0 @@
-module Enumerated;
-public model Stuff {
-
-    function Hey(ade?: Ad, ademide: Add) {
-
-    }
-}

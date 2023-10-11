@@ -1,8 +1,8 @@
 use ast::{ModuleAmbience, Spannable, Statement, UseDeclaration};
 use errors::{ImportError, LexError, ModuleError, ParseError};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use super::program::Program;
+use super::program::Ast;
 
 /// A completely parsed program.
 /// This struct presents higher level operations for the frontend representation of source code.
@@ -21,29 +21,30 @@ pub struct Module {
 }
 
 impl Module {
-    pub fn from_program(program: Program, module_id: usize, module_path: Option<PathBuf>) -> Self {
+    pub fn from_ast(ast: Ast, module_id: usize, module_path: Option<PathBuf>) -> Self {
         Module {
             module_id,
             module_path,
-            name: program.ambience().get_module_name().map(|x| x.to_string()),
-            _line_lens: program.line_lengths,
-            statements: program.statements,
-            lexical_errors: program.lexical_errors,
-            syntax_errors: program.syntax_errors,
-            ambience: program.ambience.take(),
-            allow_prelude: program.allow_prelude,
+            name: ast.ambience().get_module_name().map(|x| x.to_string()),
+            _line_lens: ast.line_lengths,
+            statements: ast.statements,
+            lexical_errors: ast.lexical_errors,
+            syntax_errors: ast.syntax_errors,
+            ambience: ast.ambience.take(),
+            allow_prelude: ast.allow_prelude,
             import_errors: vec![],
         }
     }
 
     /// Creates a module from Whirlwind source code text.
-    pub fn from_text(value: String) -> Self {
-        let program = Program::from_text(&value);
-        Module::from_program(program, 0, None)
+    pub fn from_text(value: String, id: usize) -> Self {
+        let ast = Ast::from_text(&value);
+        Module::from_ast(ast, 0, None)
     }
 
     /// Read a Whirlwind file and build a module from its contents.
-    pub fn from_path(path: PathBuf, module_id: usize) -> Result<Self, ImportError> {
+    pub fn from_path<P: AsRef<Path>>(path: P, module_id: usize) -> Result<Self, ImportError> {
+        let path = PathBuf::from(path.as_ref());
         match path.extension() {
             Some(ext) => {
                 if ext != "wrl" {
@@ -54,8 +55,8 @@ impl Module {
                     Ok(content) => content,
                     Err(error) => return Err(errors::error_reading_entry_file(error)),
                 };
-                let program = Program::from_text(&entry_source);
-                Ok(Module::from_program(program, module_id, Some(path)))
+                let ast = Ast::from_text(&entry_source);
+                Ok(Module::from_ast(ast, module_id, Some(path)))
             }
             None => return Err(errors::unknown_file_type(path)),
         }
@@ -85,8 +86,8 @@ impl Module {
 
     pub fn refresh_with_text(&mut self, new_text: String) {
         // cursed (totally safe) code.
-        *self = Module::from_program(
-            Program::from_text(&new_text),
+        *self = Module::from_ast(
+            Ast::from_text(&new_text),
             self.module_id,
             self.module_path.take(),
         );

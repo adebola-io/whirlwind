@@ -1,13 +1,13 @@
 use super::{symbols::*, ProgramError};
-use crate::{Binder, ModuleGraph, TypedModule};
-use std::{collections::HashMap, path::PathBuf};
+use crate::{Binder, Module, TypedModule};
+use std::path::PathBuf;
 
 /// A fully resolved representation of an entire program.
 #[derive(Debug)]
 pub struct FullProgramContext {
     pub module_paths: Vec<PathBuf>,
-    pub root_folder: Option<PathBuf>,
-    pub directories: HashMap<PathBuf, HashMap<String, usize>>,
+    // pub root_folder: Option<PathBuf>,
+    // pub directories: HashMap<PathBuf, HashMap<String, usize>>,
     pub symbol_table: SymbolTable,
     pub typed_modules: Vec<TypedModule>,
     pub literals: Vec<Literal>,
@@ -15,34 +15,28 @@ pub struct FullProgramContext {
     // pub warnings: Vec<Warnings>,
 }
 
-#[derive(Debug)]
-pub struct ModuleGraphSkeleton {
-    pub graph: ModuleGraph,
-}
-
 impl FullProgramContext {
-    /// Build a program context from a module graph.
-    pub fn build_from_graph(mut graph: ModuleGraph) -> Self {
+    /// Builds a program context from the entry module.
+    /// It also specifies whether the module imports should be resolved, which adds multiple modules to the context.
+    pub fn build_from_module(module: Module, should_resolve_imports: bool) -> Self {
         let mut errors = vec![];
         let mut symbol_table = SymbolTable::new();
         let mut typed_modules = vec![];
         let mut literals = vec![];
         let mut module_paths = vec![];
 
-        let modules = std::mem::take(&mut graph.modules);
-
-        for module in modules {
-            let mut binder: Binder = Binder::new(
-                module,
-                &graph,
-                &mut module_paths,
-                &mut symbol_table,
-                &mut literals,
-                &mut errors,
-            );
-            if let Some(typed_module) = binder.bind() {
-                typed_modules.push(typed_module)
+        let mut binder: Binder = Binder::new(
+            module,
+            &mut module_paths,
+            &mut symbol_table,
+            &mut literals,
+            &mut errors,
+        );
+        if let Some(typed_module) = binder.bind() {
+            if should_resolve_imports {
+                //
             }
+            typed_modules.push(typed_module)
         }
 
         FullProgramContext {
@@ -51,8 +45,8 @@ impl FullProgramContext {
             typed_modules,
             literals,
             errors,
-            root_folder: graph.root_folder,
-            directories: graph.directories,
+            // root_folder: graph.root_folder,
+            // directories: graph.directories,
         }
     }
     /// Returns the first declaration of a symbol.
@@ -91,89 +85,116 @@ impl FullProgramContext {
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     // todo: use virtual fs.
-    use crate::{resolve_modules, FullProgramContext, PathIndex, SymbolIndex};
+    use crate::{FullProgramContext, Module, PathIndex};
 
     #[test]
-    fn test_shorthand_variable_context() {
-        let graph = resolve_modules("../../Tests/binding/variables.wrl");
-        let context = FullProgramContext::build_from_graph(graph);
-        assert_eq!(
-            context.symbol_table.get(SymbolIndex(0)).unwrap().name,
-            "name"
-        );
-        assert_eq!(
-            context.symbol_table.get(SymbolIndex(1)).unwrap().name,
-            "CONSTANT_VALUE"
-        );
-        assert_eq!(
-            context.symbol_table.get(SymbolIndex(2)).unwrap().name,
-            "Number"
-        );
+    fn bind_variables_and_constants() {
+        let text = "
+            module Test; 
+
+            public function Main() {
+                greeting := \"Say Hello\";
+                const CONSTANT: Number = 9090;
+            }
+        ";
+        let mut module = Module::from_text(format!("{text}"), 0);
+        module.module_path = Some(PathBuf::from("testing://"));
+        let context = FullProgramContext::build_from_module(module, false);
+        assert!(context.errors.len() == 1);
+        assert!(context
+            .symbol_table
+            .find(|symbol| symbol.name == "greeting")
+            .is_some());
+        assert!(context
+            .symbol_table
+            .find(|symbol| symbol.name == "CONSTANT")
+            .is_some());
     }
 
     #[test]
-    fn test_call_expression_bind() {
-        let graph = resolve_modules("../../Tests/binding/this_and_call.wrl");
-        let _context = FullProgramContext::build_from_graph(graph);
-        // println!(
-        //     "{:#?}",
-        //     context
-        //         .symbol_table
-        //         .in_module(PathIndex(0))
-        //         .map(|symbol| &symbol.name)
-        //         .collect::<Vec<_>>()
-        // );
+    fn bind_call_expression() {
+        let text = "
+            module Test;
+
+            public function Main() {
+                greeting := \"Say Hello\";
+                Println(greeting);
+            }
+        ";
+        let mut module = Module::from_text(format!("{text}"), 0);
+        module.module_path = Some(PathBuf::from("testing://"));
+        let context = FullProgramContext::build_from_module(module, false);
+        assert!(context.errors.len() == 1);
+        assert!(context
+            .symbol_table
+            .find(|symbol| symbol.name == "Println")
+            .is_some());
+        assert!(context
+            .symbol_table
+            .find(|symbol| symbol.name == "greeting")
+            .is_some());
     }
 
     #[test]
-    fn test_model_bind() {
-        let graph = resolve_modules("../../Tests/binding/types.wrl");
-        let context = FullProgramContext::build_from_graph(graph);
-        println!(
-            "{:#?}",
-            context
-                .symbol_table
-                .in_module(PathIndex(0))
-                .map(|symbol| (&symbol.name, &symbol.kind, &symbol.references))
-                .collect::<Vec<_>>()
-        );
-        println!(
-            "ERRORS: \n\n\n{:#?}",
-            context
-                .errors
-                .iter()
-                .filter(|error| error.offending_file == PathIndex(0))
-                .collect::<Vec<_>>()
-        )
+    fn bind_models() {
+        let text = "
+            module Test;
+
+            public model Car {
+                var make: String,
+                var year: UnsignedInt,
+                public function Honk() {
+
+                }
+            }
+        ";
+        let mut module = Module::from_text(format!("{text}"), 0);
+        module.module_path = Some(PathBuf::from("testing://"));
+        let context = FullProgramContext::build_from_module(module, false);
+        assert!(context
+            .symbol_table
+            .find(|symbol| symbol.name == "Car")
+            .is_some());
+        assert!(context
+            .symbol_table
+            .find(|symbol| symbol.name == "Honk")
+            .is_some());
     }
 
     #[test]
-    fn test_this_type() {
-        let graph = resolve_modules("../../Tests/binding/this_type.wrl");
-        let context = FullProgramContext::build_from_graph(graph);
-        println!(
-            "{:#?}",
-            context
-                .symbol_table
-                .in_module(PathIndex(0))
-                .map(|symbol| (&symbol.name, &symbol.kind, &symbol.references))
-                .collect::<Vec<_>>()
-        );
-        println!(
-            "ERRORS: \n\n\n{:#?}",
-            context
-                .errors
-                .iter()
-                .filter(|error| error.offending_file == PathIndex(0))
-                .collect::<Vec<_>>()
-        )
+    fn bind_this() {
+        let text = "
+            module Test;
+
+            public model Unit {
+                public function Clone(): This {
+                    return this;
+                }
+            }
+        ";
+        let mut module = Module::from_text(format!("{text}"), 0);
+        module.module_path = Some(PathBuf::from("testing://"));
+        let context = FullProgramContext::build_from_module(module, false);
+        assert!(context.errors.len() == 0);
     }
 
     #[test]
     fn test_enum_type() {
-        let graph = resolve_modules("../../Tests/binding/enums.wrl");
-        let context = FullProgramContext::build_from_graph(graph);
+        let text = "
+            module Test;
+
+            public enum Color {
+                Red,
+                Orange(Color),
+                Green
+            }
+        ";
+        let mut module = Module::from_text(format!("{text}"), 0);
+        module.module_path = Some(PathBuf::from("testing://"));
+        let context = FullProgramContext::build_from_module(module, false);
         println!(
             "{:#?}",
             context
@@ -189,13 +210,22 @@ mod tests {
                 .iter()
                 .filter(|error| error.offending_file == PathIndex(0))
                 .collect::<Vec<_>>()
-        )
+        );
+        assert!(context.errors.len() == 0);
     }
 
     #[test]
     fn test_fn_expr() {
-        let graph = resolve_modules("../../Tests/binding/function_expr.wrl");
-        let context = FullProgramContext::build_from_graph(graph);
+        let text = "
+            module Test;
+
+            function Main() {
+                square := fn(a) a * 2;
+            }
+        ";
+        let mut module = Module::from_text(format!("{text}"), 0);
+        module.module_path = Some(PathBuf::from("testing://"));
+        let context = FullProgramContext::build_from_module(module, false);
         println!(
             "{:#?}",
             context
@@ -211,6 +241,7 @@ mod tests {
                 .iter()
                 .filter(|error| error.offending_file == PathIndex(0))
                 .collect::<Vec<_>>()
-        )
+        );
+        assert!(context.errors.len() == 0);
     }
 }

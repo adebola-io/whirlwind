@@ -154,6 +154,11 @@ pub enum SemanticSymbolKind {
         value: IntermediateType,
     },
     UndeclaredValue,
+    /// Represents an import that cannot be resolved without knowledge of its owner's contents.
+    Import {
+        is_public: bool,
+        path: Vec<String>,
+    },
 }
 
 #[derive(Debug, PartialEq)]
@@ -373,6 +378,27 @@ impl SemanticSymbol {
             origin_span,
         }
     }
+
+    /// Create a new symbol from a use import.
+    pub fn from_use_import(
+        u: &mut ast::UseTargetSignature,
+        path_idx: PathIndex,
+        origin_span: Span,
+    ) -> SemanticSymbol {
+        Self {
+            name: u.name.name.to_owned(),
+            kind: SemanticSymbolKind::Import {
+                is_public: u.is_public,
+                path: vec![],
+            },
+            references: vec![SymbolReferenceList {
+                module_path: path_idx,
+                starts: vec![u.name.span.start],
+            }],
+            doc_info: None,
+            origin_span,
+        }
+    }
 }
 
 impl SymbolTable {
@@ -399,6 +425,15 @@ impl SymbolTable {
         };
         SymbolIndex(index)
     }
+    /// Returns an iterator over all the symbols in the table.
+    pub fn symbols(&self) -> impl Iterator<Item = &SemanticSymbol> {
+        self.symbols
+            .iter()
+            .filter_map(|symbolentry| match symbolentry {
+                SymbolEntry::Symbol(symbol) => Some(symbol),
+                _ => None,
+            })
+    }
     /// Get a symbol using its index.
     pub fn get(&self, index: SymbolIndex) -> Option<&SemanticSymbol> {
         match self.symbols.get(index.0)? {
@@ -406,21 +441,26 @@ impl SymbolTable {
             SymbolEntry::Symbol(symbol) => Some(symbol),
         }
     }
+    /// Returns an iterator of the undeclared values in the table.
+    pub fn undeclared_values(&self) -> impl Iterator<Item = &SemanticSymbol> {
+        self.symbols()
+            .filter(|symbol| matches!(symbol.kind, SemanticSymbolKind::UndeclaredValue))
+    }
     /// Returns a list of the symbols in a module.
     pub fn in_module(&self, module_path: PathIndex) -> impl Iterator<Item = &SemanticSymbol> {
-        self.symbols
-            .iter()
-            .filter(|symbolentry| matches!(symbolentry, SymbolEntry::Symbol(_)))
-            .map(|symbolentry| match symbolentry {
-                SymbolEntry::Symbol(symbol) => symbol,
-                _ => unreachable!(),
-            })
-            .filter(move |symbol| {
-                symbol
-                    .references
-                    .first()
-                    .is_some_and(|reference| reference.module_path == module_path)
-            })
+        self.symbols().filter(move |symbol| {
+            symbol
+                .references
+                .first()
+                .is_some_and(|reference| reference.module_path == module_path)
+        })
+    }
+    /// Returns the first symbol in the table that adheres to a predicate.
+    pub fn find<F: FnMut(&&SemanticSymbol) -> bool>(
+        &self,
+        predicate: F,
+    ) -> Option<&SemanticSymbol> {
+        self.symbols().find(predicate)
     }
     /// Get a symbol mutably using its index.
     pub fn get_mut(&mut self, idx: SymbolIndex) -> Option<&mut SemanticSymbol> {

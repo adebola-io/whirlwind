@@ -1,7 +1,0 @@
-public model Maybe<T> {
-    var item: T;
-
-    public function Unwrap(): T {
-
-    }
-}

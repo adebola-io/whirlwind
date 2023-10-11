@@ -4,9 +4,8 @@ mod typed_module;
 mod typed_statement;
 
 use crate::{
-    EvaluatedType, IntermediateType, Literal, LiteralIndex, Module, ModuleGraph, PathIndex,
-    SemanticSymbol, SemanticSymbolKind, SymbolIndex, SymbolLocator, SymbolReferenceList,
-    SymbolTable,
+    EvaluatedType, IntermediateType, Literal, LiteralIndex, Module, PathIndex, SemanticSymbol,
+    SemanticSymbolKind, SymbolIndex, SymbolLocator, SymbolReferenceList, SymbolTable,
 };
 use ast::{
     Block, ConstantDeclaration, EnumDeclaration, EnumVariant, Expression, FunctionExpr,
@@ -29,8 +28,6 @@ pub use typed_statement::*;
 pub struct Binder<'ctx> {
     /// The module to bind.
     module: RefCell<Module>,
-    /// The (emptied) module.
-    _graph: &'ctx ModuleGraph,
     paths: &'ctx mut Vec<PathBuf>,
     /// The context symbol table.
     symbol_table: RefCell<&'ctx mut SymbolTable>,
@@ -48,6 +45,8 @@ pub struct Binder<'ctx> {
     current_scope: RefCell<usize>,
     /// The model `This` currently refers to.
     this_type: RefCell<Vec<SymbolIndex>>,
+    /// The imported symbols into the module, which will be resolved later.
+    imports: RefCell<Vec<SymbolIndex>>,
 }
 
 pub struct TemporaryParameterDetails {
@@ -65,7 +64,6 @@ impl<'ctx> Binder<'ctx> {
     /// Create new node reducer.
     pub fn new(
         module: Module,
-        graph: &'ctx ModuleGraph,
         paths: &'ctx mut Vec<PathBuf>,
         symbol_table: &'ctx mut SymbolTable,
         literals: &'ctx mut Vec<Literal>,
@@ -73,7 +71,6 @@ impl<'ctx> Binder<'ctx> {
     ) -> Self {
         Self {
             module: RefCell::new(module),
-            _graph: graph,
             paths,
             symbol_table: RefCell::new(symbol_table),
             errors: RefCell::new(errors),
@@ -83,6 +80,7 @@ impl<'ctx> Binder<'ctx> {
             literals: RefCell::new(literals),
             current_scope: RefCell::new(0),
             this_type: RefCell::new(vec![]),
+            imports: RefCell::new(vec![]),
         }
     }
     /// Takes a module and converts it to its typed equivalent.
@@ -95,10 +93,12 @@ impl<'ctx> Binder<'ctx> {
             .into_iter()
             .map(|statement| self.statement(statement))
             .collect();
+        let imports = take(self.imports.borrow_mut().as_mut());
         let typed_module = TypedModule {
             path,
             line_lengths,
             statements,
+            imports,
         };
         Some(typed_module)
     }
@@ -350,8 +350,17 @@ impl<'ctx> Binder<'ctx> {
                 index
             }
             ScopeEntry::Trait(_) => todo!(),
-            ScopeEntry::Parameter(_) => todo!(),
-            ScopeEntry::UseImport(_) => todo!(),
+            ScopeEntry::UseImport(u) => {
+                let symbol = SemanticSymbol::from_use_import(u, self.path_idx(), origin_span);
+                let index = self.symbol_table().add(symbol);
+                let span = u.name.span;
+                self.known_values().insert(span, index);
+                self.imports.borrow_mut().push(index);
+                index
+            }
+            ScopeEntry::Parameter(_) => {
+                unreachable!("Encountered an unbound parameter while binding.")
+            }
             ScopeEntry::ReservedSpace => {
                 unreachable!("Encountered a reserved space while binding.")
             }
