@@ -39,7 +39,7 @@ impl Module {
     /// Creates a module from Whirlwind source code text.
     pub fn from_text(value: String, id: usize) -> Self {
         let ast = Ast::from_text(&value);
-        Module::from_ast(ast, 0, None)
+        Module::from_ast(ast, id, None)
     }
 
     /// Read a Whirlwind file and build a module from its contents.

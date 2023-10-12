@@ -1,5 +1,4 @@
 {
-   "npm.packageManager": "pnpm",
    "python.analysis.typeCheckingMode": "strict",
    "editor.tokenColorCustomizations": {
       "[Red]": {

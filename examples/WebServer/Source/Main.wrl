@@ -6,9 +6,7 @@ public function Main() {
     var app = new Server();
     app.endpoints.Get(
         "/hello", 
-        fn (req, res) {
-            res.Status(200).Json("Hello, world!");
-        }
+        fn (req, res) res.Status(200).Json("Hello, world!")
     );
     app.Listen(8080);
 }
