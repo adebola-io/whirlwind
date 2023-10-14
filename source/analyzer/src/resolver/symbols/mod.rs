@@ -154,10 +154,10 @@ pub enum SemanticSymbolKind {
         value: IntermediateType,
     },
     UndeclaredValue,
-    /// Represents an import that cannot be resolved without knowledge of its owner's contents.
     Import {
         is_public: bool,
-        path: Vec<String>,
+        // The index of the symbol being imported.
+        source: Option<SymbolIndex>,
     },
 }
 
@@ -389,7 +389,7 @@ impl SemanticSymbol {
             name: u.name.name.to_owned(),
             kind: SemanticSymbolKind::Import {
                 is_public: u.is_public,
-                path: vec![],
+                source: None,
             },
             references: vec![SymbolReferenceList {
                 module_path: path_idx,

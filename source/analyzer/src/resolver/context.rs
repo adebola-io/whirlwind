@@ -1,13 +1,13 @@
 use super::{symbols::*, ProgramError};
 use crate::{Binder, Module, TypedModule};
-use std::path::PathBuf;
+use std::{collections::HashMap, path::PathBuf};
 
 /// A fully resolved representation of an entire program.
 #[derive(Debug)]
 pub struct FullProgramContext {
     pub module_paths: Vec<PathBuf>,
     // pub root_folder: Option<PathBuf>,
-    // pub directories: HashMap<PathBuf, HashMap<String, usize>>,
+    pub directories: HashMap<PathBuf, HashMap<String, usize>>,
     pub symbol_table: SymbolTable,
     pub typed_modules: Vec<TypedModule>,
     pub literals: Vec<Literal>,
@@ -18,12 +18,13 @@ pub struct FullProgramContext {
 impl FullProgramContext {
     /// Builds a program context from the entry module.
     /// It also specifies whether the module imports should be resolved, which adds multiple modules to the context.
-    pub fn build_from_module(module: Module, should_resolve_imports: bool) -> Self {
+    pub fn build_from_module(module: Module, should_resolve_imports: bool) -> Option<Self> {
         let mut errors = vec![];
         let mut symbol_table = SymbolTable::new();
         let mut typed_modules = vec![];
         let mut literals = vec![];
         let mut module_paths = vec![];
+        let mut import_lists = vec![];
 
         let mut binder: Binder = Binder::new(
             module,
@@ -32,22 +33,27 @@ impl FullProgramContext {
             &mut literals,
             &mut errors,
         );
-        if let Some(typed_module) = binder.bind() {
-            if should_resolve_imports {
-                //
-            }
-            typed_modules.push(typed_module)
-        }
+        let typed_module = if should_resolve_imports {
+            let (module, imports) = binder.bind_and_show_imports()?;
+            import_lists.push(imports);
+            module
+        } else {
+            binder.bind()?
+        };
+        typed_modules.push(typed_module);
 
-        FullProgramContext {
+        // for import in import_lists {
+        //
+        // }
+
+        Some(FullProgramContext {
             module_paths,
             symbol_table,
             typed_modules,
             literals,
             errors,
-            // root_folder: graph.root_folder,
-            // directories: graph.directories,
-        }
+            directories: HashMap::new(),
+        })
     }
     /// Returns the first declaration of a symbol.
     pub fn get_declaration_of(&self, index: SymbolIndex) -> Option<SemanticSymbolDeclaration> {
@@ -81,6 +87,10 @@ impl FullProgramContext {
                 .flatten(),
         )
     }
+
+    pub fn contains_folder(&self, parent_folder: &std::path::Path) -> bool {
+        todo!()
+    }
 }
 
 #[cfg(test)]
@@ -102,7 +112,7 @@ mod tests {
         ";
         let mut module = Module::from_text(format!("{text}"), 0);
         module.module_path = Some(PathBuf::from("testing://"));
-        let context = FullProgramContext::build_from_module(module, false);
+        let context = FullProgramContext::build_from_module(module, false).unwrap();
         assert!(context.errors.len() == 1);
         assert!(context
             .symbol_table
@@ -126,7 +136,7 @@ mod tests {
         ";
         let mut module = Module::from_text(format!("{text}"), 0);
         module.module_path = Some(PathBuf::from("testing://"));
-        let context = FullProgramContext::build_from_module(module, false);
+        let context = FullProgramContext::build_from_module(module, false).unwrap();
         assert!(context.errors.len() == 1);
         assert!(context
             .symbol_table
@@ -153,7 +163,7 @@ mod tests {
         ";
         let mut module = Module::from_text(format!("{text}"), 0);
         module.module_path = Some(PathBuf::from("testing://"));
-        let context = FullProgramContext::build_from_module(module, false);
+        let context = FullProgramContext::build_from_module(module, false).unwrap();
         assert!(context
             .symbol_table
             .find(|symbol| symbol.name == "Car")
@@ -177,7 +187,7 @@ mod tests {
         ";
         let mut module = Module::from_text(format!("{text}"), 0);
         module.module_path = Some(PathBuf::from("testing://"));
-        let context = FullProgramContext::build_from_module(module, false);
+        let context = FullProgramContext::build_from_module(module, false).unwrap();
         assert!(context.errors.len() == 0);
     }
 
@@ -194,7 +204,7 @@ mod tests {
         ";
         let mut module = Module::from_text(format!("{text}"), 0);
         module.module_path = Some(PathBuf::from("testing://"));
-        let context = FullProgramContext::build_from_module(module, false);
+        let context = FullProgramContext::build_from_module(module, false).unwrap();
         println!(
             "{:#?}",
             context
@@ -225,7 +235,7 @@ mod tests {
         ";
         let mut module = Module::from_text(format!("{text}"), 0);
         module.module_path = Some(PathBuf::from("testing://"));
-        let context = FullProgramContext::build_from_module(module, false);
+        let context = FullProgramContext::build_from_module(module, false).unwrap();
         println!(
             "{:#?}",
             context
@@ -242,6 +252,31 @@ mod tests {
                 .filter(|error| error.offending_file == PathIndex(0))
                 .collect::<Vec<_>>()
         );
+        assert!(context.errors.len() == 0);
+    }
+
+    #[test]
+    fn test_use_import() {
+        let text = "
+            module Test;
+
+            use Core.Io.Println;
+
+            function Main() {
+                Println(\"Hello, world!\");
+            }
+        ";
+        let mut module = Module::from_text(format!("{text}"), 0);
+        module.module_path = Some(PathBuf::from("testing://"));
+        let context = FullProgramContext::build_from_module(module, true).unwrap();
+        assert!(context
+            .symbol_table
+            .find(|symbol| symbol.name == "Println")
+            .is_some());
+        assert!(context
+            .symbol_table
+            .find(|symbol| symbol.name == "Main")
+            .is_some());
         assert!(context.errors.len() == 0);
     }
 }

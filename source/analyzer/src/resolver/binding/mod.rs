@@ -11,7 +11,8 @@ use ast::{
     Block, ConstantDeclaration, EnumDeclaration, EnumVariant, Expression, FunctionExpr,
     GenericParameter, Identifier, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType,
     ModelSignature, Parameter, ReturnStatement, ScopeAddress, ScopeEntry, ScopeSearch, ScopeType,
-    ShorthandVariableDeclaration, Span, Statement, TypeDeclaration, TypeExpression, WhileStatement,
+    ShorthandVariableDeclaration, Span, Statement, TypeDeclaration, TypeExpression, UseDeclaration,
+    UseTarget, WhileStatement,
 };
 use errors::ContextError;
 pub use programerror::*;
@@ -28,6 +29,7 @@ pub use typed_statement::*;
 pub struct Binder<'ctx> {
     /// The module to bind.
     module: RefCell<Module>,
+    // The context path list.
     paths: &'ctx mut Vec<PathBuf>,
     /// The context symbol table.
     symbol_table: RefCell<&'ctx mut SymbolTable>,
@@ -37,6 +39,8 @@ pub struct Binder<'ctx> {
     known_values: RefCell<HashMap<Span, SymbolIndex>>,
     /// Values that are undeclared in the scope tree.
     unknown_values: RefCell<HashMap<(String, usize), SymbolIndex>>,
+    /// The imported symbols into the module, and the target that shows their full path.
+    imported_values: RefCell<Vec<(UseTarget, Vec<SymbolIndex>)>>,
     /// Generic parameter values.
     generic_pools: RefCell<Vec<Vec<(String, SymbolIndex)>>>,
     /// Literal values.
@@ -45,8 +49,6 @@ pub struct Binder<'ctx> {
     current_scope: RefCell<usize>,
     /// The model `This` currently refers to.
     this_type: RefCell<Vec<SymbolIndex>>,
-    /// The imported symbols into the module, which will be resolved later.
-    imports: RefCell<Vec<SymbolIndex>>,
 }
 
 pub struct TemporaryParameterDetails {
@@ -76,11 +78,11 @@ impl<'ctx> Binder<'ctx> {
             errors: RefCell::new(errors),
             known_values: RefCell::new(HashMap::new()),
             unknown_values: RefCell::new(HashMap::new()),
+            imported_values: RefCell::new(vec![]),
             generic_pools: RefCell::new(vec![]),
             literals: RefCell::new(literals),
             current_scope: RefCell::new(0),
             this_type: RefCell::new(vec![]),
-            imports: RefCell::new(vec![]),
         }
     }
     /// Takes a module and converts it to its typed equivalent.
@@ -93,14 +95,31 @@ impl<'ctx> Binder<'ctx> {
             .into_iter()
             .map(|statement| self.statement(statement))
             .collect();
-        let imports = take(self.imports.borrow_mut().as_mut());
         let typed_module = TypedModule {
             path,
             line_lengths,
             statements,
-            imports,
         };
         Some(typed_module)
+    }
+    /// Binds a module and returns a reference to its list of imports.
+    pub fn bind_and_show_imports(
+        &'ctx mut self,
+    ) -> Option<(TypedModule, &mut Vec<(UseTarget, Vec<SymbolIndex>)>)> {
+        let path = PathIndex(self.paths.len() as u32);
+        self.paths.push(self.module().module_path.as_ref()?.clone());
+        self.collect_prior_errors(path);
+        let line_lengths = take(&mut self.module()._line_lens);
+        let statements = take(&mut self.module().statements)
+            .into_iter()
+            .map(|statement| self.statement(statement))
+            .collect();
+        let typed_module = TypedModule {
+            path,
+            line_lengths,
+            statements,
+        };
+        Some((typed_module, self.imported_values()))
     }
     /// Collect the import, syntax and lexing errors,
     fn collect_prior_errors(&'ctx self, path: PathIndex) {
@@ -154,6 +173,10 @@ impl<'ctx> Binder<'ctx> {
     fn module(&self) -> &mut Module {
         unsafe { &mut *self.module.as_ptr() }
     }
+    /// Returns a mutable reference to the map of imported values.
+    fn imported_values(&self) -> &mut Vec<(UseTarget, Vec<SymbolIndex>)> {
+        unsafe { &mut *self.imported_values.as_ptr() }
+    }
     /// Returns the module's path index.
     /// It is only valid after the path index has been added.
     fn path_idx(&self) -> PathIndex {
@@ -206,7 +229,8 @@ impl<'ctx> Binder<'ctx> {
                         // Pause the current binding and jump to bind that symbol.
                         // It binds the symbol with a placeholder declaration range,
                         // that will be overwritten when the actual declaration is encountered.
-                        // If the symbol is a constant or a variable, then this process will result in a context error later on.
+                        // If the symbol is a constant or a variable,
+                        // then this process will result in a context error (using variable before declaration) later on.
                         None => self.bind_signature(entry, Span::default()),
                     }
                 }
@@ -351,11 +375,11 @@ impl<'ctx> Binder<'ctx> {
             }
             ScopeEntry::Trait(_) => todo!(),
             ScopeEntry::UseImport(u) => {
+                // Full path is added later.
                 let symbol = SemanticSymbol::from_use_import(u, self.path_idx(), origin_span);
                 let index = self.symbol_table().add(symbol);
                 let span = u.name.span;
                 self.known_values().insert(span, index);
-                self.imports.borrow_mut().push(index);
                 index
             }
             ScopeEntry::Parameter(_) => {
@@ -524,7 +548,7 @@ impl<'ctx> Binder<'ctx> {
     fn statement(&'ctx self, statement: Statement) -> TypedStmnt {
         match statement {
             Statement::TestDeclaration(_) => todo!(),
-            Statement::UseDeclaration(_) => todo!(),
+            Statement::UseDeclaration(u) => TypedStmnt::UseDeclaration(self.use_declaration(u)),
             Statement::VariableDeclaration(_) => todo!(),
             Statement::ShorthandVariableDeclaration(shorthandvariable) => {
                 TypedStmnt::ShorthandVariableDeclaration(
@@ -586,6 +610,32 @@ impl<'ctx> Binder<'ctx> {
 
 // Declarations.
 impl<'ctx> Binder<'ctx> {
+    /// Binds a use declaration.
+    fn use_declaration(&'ctx self, usedecl: UseDeclaration) -> TypedUseDeclaration {
+        let imported_values = self.imported_values();
+        let mut imports = vec![];
+        for address in usedecl.addresses {
+            if let Ok(symbol_idx) = self.handle_scope_entry(address, usedecl.span, false) {
+                imports.push(symbol_idx);
+            };
+        }
+
+        let typed_use_decl = TypedUseDeclaration {
+            is_public: usedecl.is_public,
+            imports: imports
+                .iter()
+                .map(|import| SymbolLocator {
+                    symbol_idx: *import,
+                    ref_number: self.last_reference_no(*import),
+                })
+                .collect(),
+            span: usedecl.span,
+        };
+        // Add imported values so they can be resolved later.
+        imported_values.push((usedecl.target, imports));
+
+        return typed_use_decl;
+    }
     /// Binds a shorthand variable declaration.
     fn shorthand_variable_declaration(
         &'ctx self,

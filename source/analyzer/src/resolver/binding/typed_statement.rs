@@ -23,7 +23,7 @@ pub enum TypedStmnt {
 #[derive(Debug, PartialEq)]
 pub struct TypedUseDeclaration {
     pub is_public: bool,
-    pub target: TypedUseTarget,
+    pub imports: Vec<SymbolLocator>,
     pub span: Span,
 }
 
