@@ -4,8 +4,9 @@ use crate::{
     diagnostic::to_diagnostic,
     error::DocumentError,
     hover::{HoverFinder, HoverInfo},
+    message_store::MessageStore,
 };
-use analyzer::{Module, ModuleGraph};
+use analyzer::{FullProgramContext, Module, ModuleGraph};
 use ast::ASTVisitorNoArgs;
 use tower_lsp::lsp_types::{
     CompletionParams, CompletionResponse, Diagnostic, DidChangeTextDocumentParams,
@@ -14,51 +15,89 @@ use tower_lsp::lsp_types::{
 };
 use utils::get_parent_dir;
 
+// Adds an error message to a message store and immediately returns the message store.
+macro_rules! log_error {
+    ($messages: expr, $($arg:tt)*) => {{
+        $messages.error((format!($($arg)*)));
+        return $messages;
+    }};
+}
+
 #[derive(Debug)]
 pub struct DocumentManager {
-    pub graphs: RwLock<Vec<ModuleGraph>>,
+    pub contexts: RwLock<Vec<FullProgramContext>>,
 }
 
 impl DocumentManager {
     pub fn new() -> Self {
         let manager = DocumentManager {
-            graphs: RwLock::new(vec![]),
+            contexts: RwLock::new(vec![]),
         };
         manager
     }
     /// Add a new document to be tracked.
-    pub fn add_document(&self, params: DidOpenTextDocumentParams) -> Result<(), DocumentError> {
-        let mut graphs = self.graphs.write().unwrap();
-        let uri = params.text_document.uri;
-        let path_buf = uri_to_absolute_path(uri)?;
-        let parent_folder = get_parent_dir(&path_buf)
-            .ok_or_else(|| DocumentError::NoParentFolder(path_buf.clone()))?;
+    pub fn add_document(&self, params: DidOpenTextDocumentParams) -> MessageStore {
+        let mut msgs = MessageStore::new();
 
-        // Containing folder is already part of a module graph.
-        for graph in graphs.iter_mut() {
-            if graph.contains_folder(parent_folder) {
-                match Module::from_path(path_buf, graph.len()) {
+        let mut contexts = self.contexts.write().unwrap();
+        let uri = params.text_document.uri;
+        let path_buf = match uri_to_absolute_path(uri) {
+            Ok(path_buf) => path_buf,
+            Err(err) => {
+                log_error!(
+                    msgs,
+                    "Could not convert URI to an absolute file path. ERROR: {err:?}"
+                )
+            }
+        };
+        let parent_folder = match get_parent_dir(&path_buf) {
+            Some(path) => path,
+            None => {
+                log_error!(msgs, "Could not determine parent folder for {path_buf:?}.")
+            }
+        };
+
+        // Containing folder is already part of a context.
+        for context in contexts.iter_mut() {
+            if context.contains_folder(parent_folder) {
+                match Module::from_path(path_buf, context.typed_modules.len()) {
                     Ok(module) => {
-                        graph.add_module(module);
-                        graph.unravel();
+                        let path = module.module_path.as_ref().unwrap();
+                        let message = match &module.name {
+                            Some(name) => {
+                                format!("Adding module {name} at path {:?}", path)
+                            }
+                            None => {
+                                format!("Adding anonymous module at path {:?}", path)
+                            }
+                        };
+                        msgs.inform(message);
+                        context.add_module(module);
+                        msgs.inform("Module added.");
                     }
+                    // If module cannot be added, store error in the root file.
                     Err(error) => {
-                        graph.add_error(error);
+                        msgs.inform(format!("Error creating module from path, {error:?}"));
+                        context.add_import_error(error);
                     }
                 }
-                return Ok(());
+                return msgs;
             }
         }
-        // No graph has the file. Add a new graph.
-        let mut graph = ModuleGraph::new();
+
+        // No context has the file. Add a new context.
+        let mut context = FullProgramContext::new(true);
         let mut root_folder = parent_folder;
-        // // Look 5 levels above to try to find the root of the project.
+
+        // Look 5 levels above to try to find the root of the project.
         for _ in 0..5 {
-            let children: Vec<_> = root_folder
-                .read_dir()?
-                .filter_map(|entry| entry.ok())
-                .collect();
-            //     // Find Main source module.
+            let children: Vec<_> = match root_folder.read_dir() {
+                Ok(rdir) => rdir,
+                Err(error) => log_error!(msgs, "Error reading directory: {error:?}"),
+            }
+            .filter_map(|entry| entry.ok())
+            .collect();
+            // Find Main source module.
             let main_module = children
                 .iter()
                 .filter_map(|child| {
@@ -76,61 +115,68 @@ impl DocumentManager {
                         .is_some_and(|name| name == "Main" || name == "Lib")
                 });
             if main_module.is_none() {
-                root_folder = get_parent_dir(root_folder)
-                    .ok_or_else(|| DocumentError::NoParentFolder(root_folder.to_path_buf()))?;
+                root_folder = match get_parent_dir(&root_folder) {
+                    Some(path) => path,
+                    None => {
+                        log_error!(msgs, "Could not determine parent folder during upwards traversal for {root_folder:?}.")
+                    }
+                };
                 continue;
             }
             // Check again to see if there is already a graph with this module.
-            for graph in graphs.iter_mut() {
-                if graph.contains_folder(root_folder) {
-                    match Module::from_path(path_buf, graph.len()) {
+            for context in contexts.iter_mut() {
+                if context.contains_folder(root_folder) {
+                    match Module::from_path(path_buf, context.typed_modules.len()) {
                         Ok(module) => {
-                            graph.add_module(module);
-                            graph.unravel();
+                            context.add_module(module);
                         }
-                        Err(error) => {
-                            graph.add_error(error);
-                        }
+                        Err(error) => context.add_import_error(error),
                     }
-                    return Ok(());
+                    return msgs;
                 }
             }
-            graph.set_entry_module(main_module.unwrap());
+            let module = main_module.unwrap();
+            msgs.inform(format!("Adding main module {:?}...", module.module_path));
+            if let Some(()) = context.add_module(module) {
+                msgs.inform("Main module added.")
+            }
             // Todo: read whirlwind.yaml to find source module instead.
             break;
         }
         // Root not found, skip project altogether.
-        if graph.is_empty() {
-            return Err(DocumentError::CouldNotDetermineMain);
+        if context.is_empty() {
+            log_error!(msgs, "Could not determine main module for project.")
         }
-        graph.unravel();
-        graphs.push(graph);
-        Ok(())
+        contexts.push(context);
+
+        msgs
     }
 
     /// Hover over support.
-    pub fn get_hover_info(&self, params: HoverParams) -> Option<HoverInfo> {
-        let uri = params.text_document_position_params.text_document.uri;
-        let path_buf = uri_to_absolute_path(uri).ok()?;
-        let graphs = self.graphs.read().unwrap();
-        let main_graph = graphs.iter().find(|graph| graph.contains_file(&path_buf))?;
-        let module = main_graph.get_module_at_path(&path_buf)?;
+    pub fn get_hover_info(&self, _params: HoverParams) -> Option<HoverInfo> {
+        // let uri = params.text_document_position_params.text_document.uri;
+        // let path_buf = uri_to_absolute_path(uri).ok()?;
+        // let graphs = self.graphs.read().unwrap();
+        // let main_graph = graphs.iter().find(|graph| graph.contains_file(&path_buf))?;
+        // let module = main_graph.get_module_at_path(&path_buf)?;
 
-        get_hover_for_position(
-            module,
-            main_graph,
-            params.text_document_position_params.position,
-        )
+        // get_hover_for_position(
+        //     module,
+        //     main_graph,
+        //     params.text_document_position_params.position,
+        // )
+        None
     }
     /// Checks if a uri is already being tracked.
     pub fn has(&self, uri: Url) -> bool {
-        let graphs = self.graphs.read().unwrap();
+        let contexts = self.contexts.read().unwrap();
         let path_buf = match uri_to_absolute_path(uri) {
             Ok(path_buf) => path_buf,
             Err(_) => return false,
         };
-        for graph in graphs.iter() {
-            if graph.contains_file(&path_buf) {
+
+        for context in contexts.iter() {
+            if context.contains_file(&path_buf) {
                 return true;
             }
         }
@@ -164,22 +210,39 @@ impl DocumentManager {
         None
     }
 
-    /// Handles didChange event
-    pub fn handle_change(&self, mut params: DidChangeTextDocumentParams) -> Option<()> {
+    /// Handles didChange event.
+    pub fn handle_change(&self, mut params: DidChangeTextDocumentParams) -> MessageStore {
+        let mut msgs = MessageStore::new();
+        msgs.inform("Handling text update...");
+
         let uri = params.text_document.uri;
-        let path_buf = uri_to_absolute_path(uri).ok()?;
-        let mut graphs = self.graphs.write().unwrap();
-        let graph = graphs
+        let path_buf = match uri_to_absolute_path(uri) {
+            Ok(path) => path,
+            Err(err) => log_error!(
+                msgs,
+                "Error converting URI to absolute path duting change: {err:?}"
+            ),
+        };
+        let mut contexts = self.contexts.write().unwrap();
+        let context = contexts
             .iter_mut()
-            .find(|graph| graph.contains_file(&path_buf))?;
+            .find(|context| context.contains_file(&path_buf));
+
+        let context = match context {
+            Some(context) => context,
+            None => log_error!(
+                msgs,
+                "Could not find module with this file, and therefore no changes are handled."
+            ),
+        };
         let last = params.content_changes.len() - 1;
         let most_current = std::mem::take(&mut params.content_changes[last].text);
-        graph
-            .get_mut_module_at_path(&path_buf)?
-            .refresh_with_text(most_current);
-        // Audit all modules in the graph. // todo: find more performant way to update imports.
-        graph.refresh();
-        Some(())
+        msgs.inform(format!("Refreshing module {path_buf:?}"));
+        if let None = context.refresh_module_with_text(&path_buf, most_current) {
+            log_error!(msgs, "Something went wrong while refreshing user text.")
+        };
+
+        msgs
     }
     /// Get diagnostics.
     pub fn get_diagnostics(
@@ -188,30 +251,32 @@ impl DocumentManager {
     ) -> Option<DocumentDiagnosticReport> {
         let uri = params.text_document.uri;
         let path_buf = uri_to_absolute_path(uri).ok()?;
-        let graphs = self.graphs.read().unwrap();
-        graphs
+
+        let contexts = self.contexts.read().unwrap();
+        let context = contexts
             .iter()
-            .find_map(|graph| match graph.contains_file(&path_buf) {
-                true => graph.get_module_at_path(&path_buf),
-                false => None,
+            .find(|context| context.contains_file(&path_buf))?;
+
+        let path_idx = context.get_module_at_path(&path_buf)?.path;
+        Some({
+            DocumentDiagnosticReport::Full(RelatedFullDocumentDiagnosticReport {
+                related_documents: None,
+                full_document_diagnostic_report: FullDocumentDiagnosticReport {
+                    result_id: None,
+                    items: context
+                        .errors
+                        .iter()
+                        .filter(|error| error.offending_file == path_idx)
+                        .map(|p| to_diagnostic(p))
+                        .collect::<Vec<Diagnostic>>(),
+                },
             })
-            .map(|module| {
-                DocumentDiagnosticReport::Full(RelatedFullDocumentDiagnosticReport {
-                    related_documents: None,
-                    full_document_diagnostic_report: FullDocumentDiagnosticReport {
-                        result_id: None,
-                        items: module
-                            .errors()
-                            .map(|p| to_diagnostic(&p))
-                            .collect::<Vec<Diagnostic>>(),
-                    },
-                })
-            })
+        })
     }
 }
 
 /// Traverse through the document and pinpoint the position of the hover.
-fn get_hover_for_position(
+fn _get_hover_for_position(
     module: &Module,
     graph: &ModuleGraph,
     pos: Position,

@@ -1,4 +1,4 @@
-use crate::{PathIndex, SymbolIndex, TypedStmnt};
+use crate::{PathIndex, TypedStmnt};
 
 /// A semantically contextualized module.
 #[derive(Debug)]

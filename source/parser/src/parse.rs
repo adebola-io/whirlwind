@@ -242,7 +242,7 @@ impl<L: Lexer> Parser<L> {
                 TokenType::Ident(_) => partial
                     .with_error(expected(
                         TokenType::Operator(SemiColon),
-                        Span::at(t.span.start),
+                        self.last_token_end(),
                     ))
                     .map(|expression| Statement::FreeExpression(expression)),
                 _ => partial.map(|expression| Statement::FreeExpression(expression)),

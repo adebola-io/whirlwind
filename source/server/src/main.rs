@@ -3,8 +3,10 @@ mod error;
 
 mod document_manager;
 mod hover;
+mod message_store;
 
-use document_manager::{uri_to_absolute_path, DocumentManager};
+use document_manager::DocumentManager;
+use message_store::MessageStore;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
@@ -62,28 +64,17 @@ impl LanguageServer for Backend {
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        let uri = params.text_document.uri.clone();
-        let current_graph_count = self.docs.graphs.read().unwrap().len();
-        if self.docs.has(uri.clone()) {
-            return;
-        }
-        let path = uri_to_absolute_path(uri);
-        if let Err(err) = self.docs.add_document(params) {
-            self.log_message(&format!("Error Adding file: {:?}, ----  {:?}", path, err))
-                .await
-        }
-        let new_graph_count = self.docs.graphs.read().unwrap().len();
-        if new_graph_count > current_graph_count {
-            self.log_message(&format!(
-                "Added new graph for project containing {:?}",
-                path
-            ))
-            .await
+        if !self.docs.has(params.text_document.uri.clone()) {
+            let messages = self.docs.add_document(params);
+            self.log_all(messages).await;
+        } else {
+            self.log_message("Opened analyzed file.").await;
         }
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        self.docs.handle_change(params);
+        let messages = self.docs.handle_change(params);
+        self.log_all(messages).await;
     }
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
@@ -117,6 +108,11 @@ impl Backend {
         self.client
             .log_message(MessageType::INFO, format!("{:?}", message))
             .await
+    }
+    async fn log_all(&self, message_store: MessageStore) {
+        for message in message_store {
+            self.client.log_message(message.0, message.1).await
+        }
     }
 }
 

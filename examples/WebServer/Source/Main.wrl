@@ -1,13 +1,14 @@
 module Main;
 
-use Core.Http.Server;
+// use Core.Http.Server;
 
 public function Main() {
-    var app = new Server();
-    app.endpoints.Get(
-        "/hello", 
-        fn (req, res) res.Status(200).Json("Hello, world!")
-    );
-    app.Listen(8080);
+    app := new Server();
+    // var app = new Server();
+//     app.endpoints.Get(
+//         "/hello", 
+//         fn (req, res) res.Status(200).Json("Hello, world!")
+//     );
+//     app.Listen(8080);
 }
 
