@@ -78,7 +78,9 @@ impl LanguageServer for Backend {
     }
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
-        Ok(self.docs.get_hover_info(params).map(|h| h.into()))
+        let (messages, hoverinfo) = self.docs.get_hover_info(params);
+        self.log_all(messages).await;
+        Ok(hoverinfo.map(|h| h.into()))
     }
 
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {

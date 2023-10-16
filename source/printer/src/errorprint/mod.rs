@@ -153,16 +153,16 @@ pub fn stringify_import_error(error: &ImportErrorType) -> String {
 
 pub fn stringify_context_error(error: &ContextErrorType) -> String {
     match error {
-        ContextErrorType::UnknownValue { name } => format!("Use of undeclared variable {name}"),
+        ContextErrorType::UnknownValue { name } => format!("Use of undeclared variable '{name}'."),
         ContextErrorType::UnknownProperty { model_name, property } => format!("No property '{property}' exists on {model_name}."),
         ContextErrorType::AlreadyDeclaredInScope { name } => format!("Cannot redeclare block scoped value '{name}'."),
         ContextErrorType::UseBeforeDeclare { name } => format!("Use of block scoped value '{name}' before its declaration."),
         ContextErrorType::ThisOutsideMethod => format!("The `this` value can only be used in model or trait methods."),
         ContextErrorType::DuplicateModelProperty { name } => format!("Duplicate model property '{name}'."),
         ContextErrorType::DuplicateGenericParameter { name } => format!("Duplicate generic parameter '{name}'."),
-        ContextErrorType::DuplicateParameterName { name } => format!("Duplicate parameter name '{name}'"),
+        ContextErrorType::DuplicateParameterName { name } => format!("Duplicate parameter name '{name}'."),
         ContextErrorType::RequiredAfterOptional => format!("A required parameter cannot follow an optional one."),
-        ContextErrorType::DuplicateEnumVariant { name } => format!("Duplicate enum variant '{name}'"),
+        ContextErrorType::DuplicateEnumVariant { name } => format!("Duplicate enum variant '{name}'."),
                
     }
 }

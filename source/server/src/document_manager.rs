@@ -4,14 +4,14 @@ use crate::{
     diagnostic::to_diagnostic,
     error::DocumentError,
     hover::{HoverFinder, HoverInfo},
-    message_store::MessageStore,
+    message_store::{MessageStore, WithMessages},
 };
-use analyzer::{FullProgramContext, Module, ModuleGraph};
-use ast::ASTVisitorNoArgs;
+use analyzer::{FullProgramContext, Module, TypedVisitorNoArgs};
+// use ast::ASTVisitorNoArgs;
 use tower_lsp::lsp_types::{
     CompletionParams, CompletionResponse, Diagnostic, DidChangeTextDocumentParams,
     DidOpenTextDocumentParams, DocumentDiagnosticParams, DocumentDiagnosticReport,
-    FullDocumentDiagnosticReport, HoverParams, Position, RelatedFullDocumentDiagnosticReport, Url,
+    FullDocumentDiagnosticReport, HoverParams, RelatedFullDocumentDiagnosticReport, Url,
 };
 use utils::get_parent_dir;
 
@@ -30,10 +30,9 @@ pub struct DocumentManager {
 
 impl DocumentManager {
     pub fn new() -> Self {
-        let manager = DocumentManager {
+        DocumentManager {
             contexts: RwLock::new(vec![]),
-        };
-        manager
+        }
     }
     /// Add a new document to be tracked.
     pub fn add_document(&self, params: DidOpenTextDocumentParams) -> MessageStore {
@@ -65,10 +64,10 @@ impl DocumentManager {
                         let path = module.module_path.as_ref().unwrap();
                         let message = match &module.name {
                             Some(name) => {
-                                format!("Adding module {name} at path {:?}", path)
+                                format!("Adding module {name} at path {path:?}")
                             }
                             None => {
-                                format!("Adding anonymous module at path {:?}", path)
+                                format!("Adding anonymous module at path {path:?}")
                             }
                         };
                         msgs.inform(message);
@@ -153,19 +152,48 @@ impl DocumentManager {
     }
 
     /// Hover over support.
-    pub fn get_hover_info(&self, _params: HoverParams) -> Option<HoverInfo> {
-        // let uri = params.text_document_position_params.text_document.uri;
-        // let path_buf = uri_to_absolute_path(uri).ok()?;
-        // let graphs = self.graphs.read().unwrap();
-        // let main_graph = graphs.iter().find(|graph| graph.contains_file(&path_buf))?;
-        // let module = main_graph.get_module_at_path(&path_buf)?;
-
-        // get_hover_for_position(
-        //     module,
-        //     main_graph,
-        //     params.text_document_position_params.position,
-        // )
-        None
+    pub fn get_hover_info(&self, params: HoverParams) -> WithMessages<Option<HoverInfo>> {
+        let mut messages = MessageStore::new();
+        let uri = params.text_document_position_params.text_document.uri;
+        let path_buf = match uri_to_absolute_path(uri) {
+            Ok(p) => p,
+            Err(error) => {
+                messages.error(format!(
+                    "Could not convert uri for hover in file. ERROR: {error:?}"
+                ));
+                return (messages, None);
+            }
+        };
+        let contexts = self.contexts.read().unwrap();
+        let main_context = match contexts
+            .iter()
+            .find(|context| context.contains_file(&path_buf))
+        {
+            Some(context) => context,
+            None => {
+                messages.error(format!("Could not find context for {path_buf:?}"));
+                return (messages, None);
+            }
+        };
+        let module = match main_context.get_module_at_path(&path_buf) {
+            Some(m) => m,
+            None => {
+                messages.error(format!(
+                    "Could not find module with path {path_buf:?} in context."
+                ));
+                return (messages, None);
+            }
+        };
+        let pos = params.text_document_position_params.position;
+        // Editor ranges are zero-based, for some reason.
+        let pos = [pos.line + 1, pos.character + 1];
+        let _hover_finder = HoverFinder::new(module, main_context, pos, messages);
+        for statement in module.statements.iter() {
+            if let Some(hover) = _hover_finder.statement(statement) {
+                return (_hover_finder.message_store.take(), Some(hover));
+            }
+        }
+        return (_hover_finder.message_store.take(), None);
     }
     /// Checks if a uri is already being tracked.
     pub fn has(&self, uri: Url) -> bool {
@@ -174,7 +202,6 @@ impl DocumentManager {
             Ok(path_buf) => path_buf,
             Err(_) => return false,
         };
-
         for context in contexts.iter() {
             if context.contains_file(&path_buf) {
                 return true;
@@ -214,7 +241,6 @@ impl DocumentManager {
     pub fn handle_change(&self, mut params: DidChangeTextDocumentParams) -> MessageStore {
         let mut msgs = MessageStore::new();
         msgs.inform("Handling text update...");
-
         let uri = params.text_document.uri;
         let path_buf = match uri_to_absolute_path(uri) {
             Ok(path) => path,
@@ -227,7 +253,6 @@ impl DocumentManager {
         let context = contexts
             .iter_mut()
             .find(|context| context.contains_file(&path_buf));
-
         let context = match context {
             Some(context) => context,
             None => log_error!(
@@ -241,7 +266,6 @@ impl DocumentManager {
         if let None = context.refresh_module_with_text(&path_buf, most_current) {
             log_error!(msgs, "Something went wrong while refreshing user text.")
         };
-
         msgs
     }
     /// Get diagnostics.
@@ -273,24 +297,6 @@ impl DocumentManager {
             })
         })
     }
-}
-
-/// Traverse through the document and pinpoint the position of the hover.
-fn _get_hover_for_position(
-    module: &Module,
-    graph: &ModuleGraph,
-    pos: Position,
-) -> Option<HoverInfo> {
-    // Editor ranges are zero-based, for some reason.
-    let pos = [pos.line + 1, pos.character + 1];
-    let hover_finder = HoverFinder::new(module, graph, pos);
-    for statement in module.statements() {
-        let hover_info = hover_finder.statement(statement);
-        if hover_info.is_some() {
-            return hover_info;
-        }
-    }
-    return None;
 }
 
 /// Convert a uri to an absolute path.

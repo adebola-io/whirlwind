@@ -2,8 +2,12 @@ module Main;
 
 // use Core.Http.Server;
 
+type Addition = Add;
+
 public function Main() {
-    app := new Server();
+    // app: Integer := 0;
+    Main; Add;
+    // Integer
     // var app = new Server();
 //     app.endpoints.Get(
 //         "/hello", 
@@ -12,3 +16,7 @@ public function Main() {
 //     app.Listen(8080);
 }
 
+/// Adds two numbers together.
+function Add<T: Addition>(a: T, b: T): T {
+    return a + b;
+}

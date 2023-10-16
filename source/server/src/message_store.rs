@@ -3,6 +3,7 @@ use std::fmt::Display;
 use tower_lsp::lsp_types::MessageType;
 
 /// A list of messages to be logged to the server's client whenever the async shenanigans allows it.
+#[derive(Default)]
 pub struct MessageStore {
     messages: Vec<(MessageType, String)>,
 }
