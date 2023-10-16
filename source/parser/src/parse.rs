@@ -1514,9 +1514,9 @@ impl<L: Lexer> Parser<L> {
                 traits.push(trait_);
                 if self
                     .token()
-                    .is_some_and(|t| t._type == TokenType::Operator(Comma))
+                    .is_some_and(|t| t._type == TokenType::Operator(Plus))
                 {
-                    self.advance(); // Move past ,
+                    self.advance(); // Move past +
                     continue;
                 }
                 break;
@@ -2655,9 +2655,9 @@ impl<L: Lexer> Parser<L> {
         // Parse assigned traits.
         if self
             .token()
-            .is_some_and(|t| t._type == TokenType::Operator(Colon))
+            .is_some_and(|t| t._type == TokenType::Keyword(Implements))
         {
-            self.advance();
+            self.advance(); // Move past implements
             loop {
                 let r#trait = self.type_expression()?;
                 if let TypeExpression::Union(_)

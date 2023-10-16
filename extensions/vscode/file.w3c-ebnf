@@ -157,7 +157,7 @@ GenericParameters ::= GenericParameter ("," GenericParameters?)?
 
 EnumVariants ::= Identifier ("(" TypeExpression ("," TypeExpression)* ")")? ("," EnumVariants?)?
 
-TypeList ::= (DiscreteType | MemberType) ("," TypeList?)?
+TypeList ::= (DiscreteType | MemberType) ("+" TypeList?)?
 
 GenericArgumentList ::= "<" GenericArguments ">"
 
@@ -213,7 +213,7 @@ ArrayElements ::= Expression ("," ArrayElements?)?
 
 Else ::= "else " Expression
 
-GenericParameter ::= Identifier (TypeLabel ("+" TypeExpression)*)? DefaultGenericArgument?
+GenericParameter ::= Identifier ImplementsLabel? DefaultGenericArgument?
 
 GenericArguments ::= TypeExpression ("," GenericArguments?)?
 

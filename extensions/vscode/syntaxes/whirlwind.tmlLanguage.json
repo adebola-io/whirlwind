@@ -398,6 +398,7 @@
       "generic_params": {
          "begin": "(?<=\\<\\s*)",
          "patterns": [
+            { "include": "#injunction" },
             {
                "name": "punctuation",
                "match": "\\&"
@@ -407,7 +408,12 @@
                "match": "\\bThis\\b"
             },
             { "include": "#type_name" },
+            { "include": "#injunction" },
             { "include": "#type_label" },
+            {
+               "name": "punctuation",
+               "match": "\\+"
+            },
             { "include": "#punctuation_comma" }
          ],
          "end": "(?=\\>)"

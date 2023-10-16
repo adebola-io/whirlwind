@@ -1,5 +1,6 @@
 #![cfg(test)]
 
+use crate::parse_text;
 use ast::{
     AccessExpr, ArrayExpr, AssignmentExpr, BinaryExpr, Block, BreakStatement, CallExpr,
     ConstantDeclaration, ContinueStatement, DiscreteType, Else, EnumDeclaration, Expression,
@@ -10,8 +11,6 @@ use ast::{
     TypeExpression, UnaryExpr, UpdateExpr, UpdateOperator, UseDeclaration, UsePath, UseTarget,
     VariableDeclaration, WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
 };
-
-use crate::parse_text;
 
 #[test]
 fn parsing_public_functions() {
@@ -329,7 +328,7 @@ fn parsing_async_functions() {
 
 #[test]
 fn parse_function_with_nested_generics() {
-    let mut parser = parse_text("function Collect<T: Collectible<Item>>(): T {}");
+    let mut parser = parse_text("function Collect<T implements Collectible<Item>>(): T {}");
 
     let statement = parser.next().unwrap().unwrap();
     let module_ambience = parser.module_ambience();
@@ -347,9 +346,9 @@ fn parse_function_with_nested_generics() {
             body: Block {
                 scope_id: 1,
                 statements: vec![],
-                span: Span::from([1, 45, 1, 47])
+                span: Span::from([1, 55, 1, 57])
             },
-            span: Span::from([1, 1, 1, 47])
+            span: Span::from([1, 1, 1, 57])
         })
     );
 }
@@ -1705,7 +1704,7 @@ fn parse_generic_params() {
     // With trait guards.
     parser = parse_text(
         "
-    enum Result<T, E: Error> {
+    enum Result<T, E implements Error> {
         Ok(T),
         Err(E)
     }",
@@ -1736,7 +1735,7 @@ fn parse_generic_params() {
     // With default values.
     parser = parse_text(
         "
-    model Stack<T: Sized + Nullable = Int> {
+    model Stack<T implements Sized + Nullable = Int> {
 
     }
     ",
@@ -1762,7 +1761,7 @@ fn parse_generic_params() {
             body: ModelBody {
                 properties: vec![],
                 constructor: None,
-                span: [2, 44, 4, 6].into()
+                span: [2, 54, 4, 6].into()
             },
             span: [2, 5, 4, 6].into()
         })
