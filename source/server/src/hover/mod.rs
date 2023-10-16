@@ -657,6 +657,23 @@ impl HoverFinder<'_> {
             IntermediateType::Placeholder => {
                 unreachable!("Attempted a hover over a placeholder intermediate type. How???")
             }
+            IntermediateType::MemberType {
+                object,
+                property,
+                span,
+            } => {
+                if !span.contains(self.pos) {
+                    return None;
+                }
+                // Hovering over the namespace.
+                if let Some(hvinfo) = self.type_hover(&object) {
+                    return Some(hvinfo);
+                }
+                // Hovering over the property.
+                if let Some(hvinfo) = self.type_hover(&property) {
+                    return Some(hvinfo);
+                }
+            }
         }
         return None;
     }

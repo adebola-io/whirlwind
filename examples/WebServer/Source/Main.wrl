@@ -1,22 +1,12 @@
 module Main;
 
-// use Core.Http.Server;
-
-type Addition = Add;
+use Core.Http.Server;
 
 public function Main() {
-    // app: Integer := 0;
-    Main; Add;
-    // Integer
-    // var app = new Server();
-//     app.endpoints.Get(
-//         "/hello", 
-//         fn (req, res) res.Status(200).Json("Hello, world!")
-//     );
-//     app.Listen(8080);
-}
-
-/// Adds two numbers together.
-function Add<T: Addition>(a: T, b: T): T {
-    return a + b;
+    app := new Server();
+    app.endpoints.Get(
+        "/hello", 
+        fn (req, res) res.Status(200).Json("Hello, world!")
+    )!;
+    app.Listen(8080)!;
 }

@@ -172,6 +172,11 @@ pub enum IntermediateType {
         return_type: Option<Box<IntermediateType>>,
         span: Span,
     },
+    MemberType {
+        object: Box<IntermediateType>,
+        property: Box<IntermediateType>,
+        span: Span,
+    },
     SimpleType {
         value: SymbolIndex,
         generic_args: Vec<IntermediateType>,

@@ -10,9 +10,9 @@ use crate::{
 use ast::{
     Block, ConstantDeclaration, EnumDeclaration, EnumVariant, Expression, FunctionExpr,
     GenericParameter, Identifier, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType,
-    ModelSignature, ModuleAmbience, Parameter, ReturnStatement, ScopeAddress, ScopeEntry,
-    ScopeSearch, ScopeType, ShorthandVariableDeclaration, Span, Statement, TestDeclaration,
-    TypeDeclaration, TypeExpression, UseDeclaration, UseTarget, WhileStatement, WhirlString,
+    ModuleAmbience, Parameter, ReturnStatement, ScopeAddress, ScopeEntry, ScopeType,
+    ShorthandVariableDeclaration, Span, Statement, TestDeclaration, TypeDeclaration,
+    TypeExpression, UseDeclaration, UseTarget, WhileStatement, WhirlString,
 };
 use errors::ContextError;
 pub use programerror::*;
@@ -1573,7 +1573,7 @@ mod statements {
 
 // Expressions.
 mod expressions {
-    use super::{statements::bind_function_block, *};
+    use super::{bind_utils::last_reference_no, statements::bind_function_block, *};
     // Binds an expression.
     pub fn bind_expression(
         expression: Expression,
@@ -1637,7 +1637,14 @@ mod expressions {
                 literals,
                 ambience,
             )),
-            Expression::AccessExpr(_accessexp) => TypedExpression::AccessExpr(todo!()),
+            Expression::AccessExpr(accessexp) => TypedExpression::AccessExpr(access_expression(
+                accessexp,
+                binder,
+                symbol_table,
+                errors,
+                literals,
+                ambience,
+            )),
             Expression::IndexExpr(indexexp) => TypedExpression::IndexExpr(index_expression(
                 indexexp,
                 binder,
@@ -2050,9 +2057,55 @@ mod expressions {
             span: assexp.span,
         })
     }
+
     /// Binds an access expression.
-    fn access_expression(_accessexp: Box<ast::AccessExpr>) -> Box<TypedAccessExpr> {
-        todo!()
+    fn access_expression(
+        accessexp: Box<ast::AccessExpr>,
+        binder: &mut Binder,
+        symbol_table: &mut SymbolTable,
+        errors: &mut Vec<ProgramError>,
+        literals: &mut Vec<Literal>,
+        ambience: &mut ModuleAmbience,
+    ) -> Box<TypedAccessExpr> {
+        let object = bind_expression(
+            accessexp.object,
+            binder,
+            symbol_table,
+            errors,
+            literals,
+            ambience,
+        );
+        // It is unfeasible to bind the type of the accessed property,
+        // so it wil have to be done during typechecking.
+        // The Property Symbol serves as a placeholder to be mutated later.
+        let property_ident = match accessexp.property {
+            Expression::Identifier(i) => i,
+            _ => unreachable!(
+                "Attempting to bind a property that is not an identifier. Fix parsing."
+            ),
+        };
+        let mut property_symbol = SemanticSymbol {
+            name: property_ident.name,
+            kind: SemanticSymbolKind::Property { resolved: None },
+            references: vec![],
+            doc_info: None,
+            origin_span: property_ident.span,
+        };
+        property_symbol.add_reference(binder.path, property_ident.span);
+        let symbol_idx = symbol_table.add(property_symbol);
+        let ref_number = last_reference_no(symbol_table, symbol_idx);
+
+        let property = TypedExpression::Identifier(TypedIdent {
+            value: SymbolLocator {
+                symbol_idx,
+                ref_number,
+            },
+        });
+        Box::new(TypedAccessExpr {
+            object,
+            property,
+            span: accessexp.span,
+        })
     }
 
     /// Binds a unary expression.
@@ -2209,7 +2262,56 @@ mod types {
                 span: union_type.span,
             },
             TypeExpression::Functional(_) => todo!(),
-            TypeExpression::Member(_) => todo!(),
+            TypeExpression::Member(member_type) => {
+                let object_type = bind_type_expression(
+                    &member_type.namespace,
+                    binder,
+                    symbol_table,
+                    errors,
+                    ambience,
+                );
+                // Same as in access expressions, properties cannot be bound
+                // until imports are resolved and types are inferred.
+                // So, a placeholder is used.
+                let property_type = match &*member_type.property {
+                    TypeExpression::Discrete(discrete_type) => discrete_type,
+                    _ => unreachable!("Found and attempted to bind a type property that is not a simple/discrete type. Fix parsing.")
+                };
+                let mut property_symbol = SemanticSymbol {
+                    name: property_type.name.name.to_owned(),
+                    kind: SemanticSymbolKind::Property { resolved: None },
+                    references: vec![],
+                    doc_info: None,
+                    origin_span: property_type.name.span,
+                };
+                property_symbol.add_reference(binder.path, property_type.name.span);
+                let property_symbol_idx = symbol_table.add(property_symbol);
+                // Collect generics.
+                let mut generic_args = vec![];
+                if let Some(ref arguments) = property_type.generic_args {
+                    for argument in arguments {
+                        generic_args.push(bind_type_expression(
+                            argument,
+                            binder,
+                            symbol_table,
+                            errors,
+                            ambience,
+                        ))
+                    }
+                }
+
+                let final_property_type = IntermediateType::SimpleType {
+                    value: property_symbol_idx,
+                    generic_args: generic_args,
+                    span: property_type.span,
+                };
+
+                IntermediateType::MemberType {
+                    object: Box::new(object_type),
+                    property: Box::new(final_property_type),
+                    span: member_type.span,
+                }
+            }
             TypeExpression::Discrete(discrete_type) => {
                 bind_discrete_type(discrete_type, binder, symbol_table, errors, ambience)
             }

@@ -1,5 +1,53 @@
 module Test;
 
-public function Main() {
-    
+public type Array = Array;
+public type UnsignedInt = UnsignedInt;
+public type Int = UnsignedInt;
+public type Maybe = Maybe;
+public type Magnitude = Magnitude;
+/// Returns a Maybe with no value.
+public function None<T>(): Maybe<T> {}
+/// Returns a `Maybe` with a value.
+public function Some<T>(value: T): Maybe<T> {}
+
+
+
+/// Returns the largest value in an array.
+/// It returns an empty value if the array is empty.
+/// ### Usage
+/// ```
+/// array := [2, 3, 4, 5, 6, 7];
+/// largest := Max(array);
+/// 
+/// Assert(largest == Some(7));
+/// ```
+public function Max<T implements Magnitude>(array: Array<T>): Maybe<T> {
+    if array.Len() == 0 {
+        None()
+    } else {
+        max := array[0];
+        i := 1;
+        while i < array.len() {
+            if array[i] > max {
+                max = array[i]
+            };
+            i += 1;
+        }
+        Some(max)
+    }
+}
+
+/// Returns the nth Fibonacci number.
+/// ### Usage
+/// ```
+/// Assert(Fibonacci(1) == 1);
+/// Assert(Fibonacci(2) == 1);
+/// Assert(Fibonacci(3) == 2);
+/// Assert(Fibonacci(10) == 55);
+/// ```
+public function Fibonacci(n: UnsignedInt): UnsignedInt {
+    return 
+        if n == 0 {0} 
+        else if n == 1 {1} 
+        else Fibonacci(n-1) + Fibonacci(n-2);
 }

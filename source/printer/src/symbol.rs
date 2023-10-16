@@ -153,7 +153,7 @@ impl<'a> SymbolWriter<'a> {
             } => {
                 string.push_str(&symbol.name);
                 if traits.len() > 0 {
-                    string.push_str(": ");
+                    string.push_str(" implements ");
                     for (i, trait_) in traits.iter().enumerate() {
                         string.push_str(&self.print_intermediate_type(trait_));
                         if i + 1 != traits.len() {
@@ -330,6 +330,17 @@ impl<'a> SymbolWriter<'a> {
             }
             IntermediateType::Placeholder => {
                 unreachable!("Attempted to print a placeholder intermediate type.")
+            }
+            IntermediateType::MemberType {
+                object,
+                property,
+                span,
+            } => {
+                format!(
+                    "{}.{}",
+                    self.print_intermediate_type(object),
+                    self.print_intermediate_type(property)
+                )
             }
         }
     }
