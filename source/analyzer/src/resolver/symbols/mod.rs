@@ -159,13 +159,17 @@ pub enum SemanticSymbolKind {
         // The index of the symbol being imported.
         source: Option<SymbolIndex>,
     },
+    /// An accessed property on another symbol that cannot be resolved yet.
+    Property {
+        resolved: Option<SymbolIndex>,
+    },
 }
 
 #[derive(Debug, PartialEq)]
 pub enum IntermediateType {
     FunctionType {
         params: Vec<ParameterType>,
-        return_type: Box<IntermediateType>,
+        return_type: Option<Box<IntermediateType>>,
         span: Span,
     },
     SimpleType {
@@ -223,8 +227,8 @@ impl EvaluatedType {
 #[derive(Debug, PartialEq)]
 pub struct ParameterType {
     pub name: String,
-    pub is_public: bool,
-    pub type_label: Option<SymbolIndex>,
+    pub is_optional: bool,
+    pub type_label: Option<IntermediateType>,
 }
 
 #[derive(Debug)]
@@ -271,7 +275,7 @@ impl SemanticSymbol {
     }
     /// Create a new semantic symbol from a variable.
     pub fn from_shorthand_variable(
-        variable: &mut ShorthandVariableSignature,
+        variable: &ShorthandVariableSignature,
         path_to_module: PathIndex,
         origin_span: Span,
     ) -> SemanticSymbol {
@@ -287,13 +291,13 @@ impl SemanticSymbol {
                 module_path: path_to_module,
                 starts: vec![variable.name.span.start],
             }],
-            doc_info: variable.info.take(), // todo.
+            doc_info: variable.info.clone(), // todo.
             origin_span,
         }
     }
     /// Create a new symbol from a constant.
     pub fn from_constant(
-        constant: &mut ConstantSignature,
+        constant: &ConstantSignature,
         path_to_module: PathIndex,
         origin_span: Span,
     ) -> Self {
@@ -309,16 +313,12 @@ impl SemanticSymbol {
                 module_path: path_to_module,
                 starts: vec![constant.name.span.start],
             }],
-            doc_info: constant.info.take(), // todo.
+            doc_info: constant.info.clone(), // todo.
             origin_span,
         }
     }
     /// Create a new symbol from a type.
-    pub fn from_type(
-        _type: &mut TypeSignature,
-        path_to_module: PathIndex,
-        origin_span: Span,
-    ) -> Self {
+    pub fn from_type(_type: &TypeSignature, path_to_module: PathIndex, origin_span: Span) -> Self {
         Self {
             name: _type.name.name.to_owned(),
             kind: SemanticSymbolKind::TypeName {
@@ -330,16 +330,12 @@ impl SemanticSymbol {
                 module_path: path_to_module,
                 starts: vec![_type.name.span.start],
             }],
-            doc_info: _type.info.take(),
+            doc_info: _type.info.clone(),
             origin_span,
         }
     }
     /// Create a new symbol from an enum signature.
-    pub fn from_enum(
-        _enum: &mut EnumSignature,
-        path_to_module: PathIndex,
-        origin_span: Span,
-    ) -> Self {
+    pub fn from_enum(_enum: &EnumSignature, path_to_module: PathIndex, origin_span: Span) -> Self {
         Self {
             name: _enum.name.name.to_owned(),
             kind: SemanticSymbolKind::Enum {
@@ -351,13 +347,13 @@ impl SemanticSymbol {
                 module_path: path_to_module,
                 starts: vec![_enum.name.span.start],
             }],
-            doc_info: _enum.info.take(),
+            doc_info: _enum.info.clone(),
             origin_span,
         }
     }
     /// Create a new symbol from a function signature.
     pub fn from_function(
-        function: &mut ast::FunctionSignature,
+        function: &ast::FunctionSignature,
         path_idx: PathIndex,
         origin_span: Span,
     ) -> SemanticSymbol {
@@ -374,14 +370,14 @@ impl SemanticSymbol {
                 module_path: path_idx,
                 starts: vec![function.name.span.start],
             }],
-            doc_info: function.info.take(),
+            doc_info: function.info.clone(), // todo.
             origin_span,
         }
     }
 
     /// Create a new symbol from a use import.
     pub fn from_use_import(
-        u: &mut ast::UseTargetSignature,
+        u: &ast::UseTargetSignature,
         path_idx: PathIndex,
         origin_span: Span,
     ) -> SemanticSymbol {
@@ -397,6 +393,15 @@ impl SemanticSymbol {
             }],
             doc_info: None,
             origin_span,
+        }
+    }
+    /// Reconstruct the identifier span for the original declaration.
+    /// Panics if there is not at least one reference.
+    pub fn ident_span(&self) -> Span {
+        let start = self.references[0].starts[0];
+        Span {
+            start,
+            end: [start[0], (start[1] as usize + self.name.len()) as u32],
         }
     }
 }

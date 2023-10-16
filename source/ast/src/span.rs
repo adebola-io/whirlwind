@@ -36,6 +36,13 @@ impl Span {
             end: position,
         }
     }
+    /// Create a span, given the starting line and character, and the horizontal width of the span.
+    pub fn on_line(start: [u32; 2], width: u32) -> Self {
+        Span {
+            start,
+            end: [start[0], start[1] + width],
+        }
+    }
 
     /// Check if a span is a child of this span.
     pub fn encloses(&self, other: Span) -> bool {

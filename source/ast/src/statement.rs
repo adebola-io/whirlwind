@@ -5,6 +5,7 @@ use crate::{
 
 #[derive(Debug, PartialEq)]
 pub enum Statement {
+    RecordDeclaration,
     // Declarations.
     TestDeclaration(TestDeclaration),
     UseDeclaration(UseDeclaration),
@@ -14,7 +15,6 @@ pub enum Statement {
     ModelDeclaration(ModelDeclaration),
     ModuleDeclaration(ModuleDeclaration),
     FunctionDeclaration(FunctionDeclaration),
-    RecordDeclaration,
     TraitDeclaration(TraitDeclaration),
     EnumDeclaration(EnumDeclaration),
     TypeDeclaration(TypeDeclaration),

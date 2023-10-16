@@ -1,7 +1,7 @@
 use utils::get_parent_dir;
 
 use super::{symbols::*, ProgramError};
-use crate::{Binder, Module, ProgramErrorType::Importing, TypedModule};
+use crate::{bind, bind_and_show_imports, Module, ProgramErrorType::Importing, TypedModule};
 use std::{collections::HashMap, path::PathBuf};
 
 /// A fully resolved representation of an entire program.
@@ -105,20 +105,25 @@ impl FullProgramContext {
 
         let mut import_lists = vec![];
 
-        let mut binder: Binder = Binder::new(
-            module,
-            &mut self.module_paths,
-            &mut self.symbol_table,
-            &mut self.literals,
-            &mut self.errors,
-        );
         if self.should_resolve_imports {
-            if let Some((typed_module, imports)) = binder.bind_and_show_imports() {
+            if let Some((typed_module, imports)) = bind_and_show_imports(
+                module,
+                &mut self.module_paths,
+                &mut self.symbol_table,
+                &mut self.errors,
+                &mut self.literals,
+            ) {
                 import_lists.push(imports);
                 self.typed_modules.push(typed_module);
             };
         } else {
-            if let Some(typed_module) = binder.bind() {
+            if let Some(typed_module) = bind(
+                module,
+                &mut self.module_paths,
+                &mut self.symbol_table,
+                &mut self.errors,
+                &mut self.literals,
+            ) {
                 self.typed_modules.push(typed_module);
             }
         };
@@ -249,6 +254,22 @@ mod tests {
             .symbol_table
             .find(|symbol| symbol.name == "CONSTANT")
             .is_some());
+        println!(
+            "{:#?}",
+            context
+                .symbol_table
+                .in_module(PathIndex(0))
+                .map(|symbol| (&symbol.name, &symbol.kind, &symbol.references))
+                .collect::<Vec<_>>()
+        );
+        println!(
+            "ERRORS: \n\n\n{:#?}",
+            context
+                .errors
+                .iter()
+                .filter(|error| error.offending_file == PathIndex(0))
+                .collect::<Vec<_>>()
+        );
     }
 
     #[test]
@@ -405,5 +426,32 @@ mod tests {
             .find(|symbol| symbol.name == "Main")
             .is_some());
         assert!(context.errors.len() == 0);
+    }
+
+    #[test]
+    fn test_function() {
+        let text = "
+        module Main;
+
+function Main() {
+}
+
+/// Adds two numbers together.
+function Add(a: Int, b: Int): Int {
+    return a + b;
+}
+
+        ";
+
+        let mut module = Module::from_text(format!("{text}"), 0);
+        module.module_path = Some(PathBuf::from("testing://"));
+        let context = FullProgramContext::build_from_module(module, true).unwrap();
+        println!(
+            "{:#?}",
+            context
+                .symbol_table
+                .in_module(PathIndex(0))
+                .collect::<Vec<_>>()
+        );
     }
 }

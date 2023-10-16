@@ -1,29 +1,47 @@
 use ast::Span;
 
-use crate::{EvaluatedType, IntermediateType, LiteralIndex, SymbolIndex, SymbolLocator, TypedExpr};
+use crate::{
+    EvaluatedType, IntermediateType, LiteralIndex, SymbolIndex, SymbolLocator, TypedExpression,
+    TypedIdent,
+};
 
 #[derive(Debug, PartialEq)]
 pub enum TypedStmnt {
+    RecordDeclaration,
     // Declarations.
     TestDeclaration(TypedTestDeclaration),
     EnumDeclaration(TypedEnumDeclaration),
     UseDeclaration(TypedUseDeclaration),
+    VariableDeclaration(TypedVariableDeclaration),
     ShorthandVariableDeclaration(TypedShorthandVariableDeclaration),
     ConstantDeclaration(TypedConstantDeclaration),
     TypeDeclaration(TypedTypeDeclaration),
     ModelDeclaration(TypedModelDeclaration),
-    ExpressionStatement(TypedExpr),
-    FreeExpression(TypedExpr),
     ModuleDeclaration(TypedModuleDeclaration),
+    FunctionDeclaration(TypedFunctionDeclaration),
+    TraitDeclaration(TypedTraitDeclaration),
+    // Expression statements.
+    ExpressionStatement(TypedExpression),
+    FreeExpression(TypedExpression),
+    // Control statements.
     ReturnStatement(TypedReturnStatement),
+    BreakStatement(TypedBreakStatement),
+    ForStatement(TypedForStatement),
     WhileStatement(TypedWhileStatement),
-    Function(TypedFunctionDeclaration),
+    ContinueStatement(TypedContinueStatement),
 }
 
 #[derive(Debug, PartialEq)]
 pub struct TypedUseDeclaration {
     pub is_public: bool,
     pub imports: Vec<SymbolLocator>,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TypedVariableDeclaration {
+    pub names: Vec<SymbolLocator>,
+    pub value: Option<TypedExpression>,
     pub span: Span,
 }
 
@@ -70,7 +88,7 @@ pub struct TypedBlock {
 #[derive(Debug, PartialEq)]
 pub struct TypedShorthandVariableDeclaration {
     pub name: SymbolLocator,
-    pub value: TypedExpr,
+    pub value: TypedExpression,
     pub span: Span,
 }
 
@@ -81,10 +99,39 @@ pub struct TypedFunctionDeclaration {
     pub span: Span,
 }
 
+/// A node for a trait declaration in the AST.
+#[derive(Debug, PartialEq)]
+pub struct TypedTraitDeclaration {
+    pub name: SymbolLocator,
+    pub body: TypedTraitBody,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TypedTraitBody {
+    pub properties: Vec<TypedTraitProperty>,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TypedTraitProperty {
+    pub index: usize,
+    pub _type: TypedTraitPropertyType,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum TypedTraitPropertyType {
+    /// A method that is to be implemented.
+    Signature,
+    /// A method with a default implementation.
+    Method { body: TypedBlock },
+}
+
 #[derive(Debug, PartialEq)]
 pub struct TypedConstantDeclaration {
     pub name: SymbolLocator,
-    pub value: TypedExpr,
+    pub value: TypedExpression,
     pub span: Span,
 }
 
@@ -134,13 +181,34 @@ pub struct TypedModuleDeclaration {
 
 #[derive(Debug, PartialEq)]
 pub struct TypedReturnStatement {
-    pub value: Option<TypedExpr>,
+    pub value: Option<TypedExpression>,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TypedBreakStatement {
+    pub label: Option<TypedIdent>,
     pub span: Span,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct TypedWhileStatement {
-    pub condition: TypedExpr,
+    pub condition: TypedExpression,
     pub body: TypedBlock,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TypedForStatement {
+    pub items: Vec<SymbolIndex>,
+    pub iterator: TypedExpression,
+    pub label: Option<SymbolIndex>,
+    pub body: TypedBlock,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TypedContinueStatement {
+    pub label: Option<TypedIdent>,
     pub span: Span,
 }
