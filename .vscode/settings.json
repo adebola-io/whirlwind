@@ -18,5 +18,8 @@
             }
          ]
       }
-   }
+   },
+   "rust-analyzer.linkedProjects": [
+      "./source/analyzer/Cargo.toml"
+   ]
 }

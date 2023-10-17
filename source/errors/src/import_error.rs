@@ -42,6 +42,10 @@ pub enum ImportErrorType {
     SymbolNotAModule {
         symbolname: String,
     },
+    MismatchInName {
+        module_name: String,
+        file_name: String,
+    },
 }
 
 impl PartialEq for ImportErrorType {

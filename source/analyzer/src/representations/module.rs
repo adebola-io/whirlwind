@@ -1,15 +1,13 @@
+use crate::Ast;
 use ast::{ModuleAmbience, Spannable, Statement, UseDeclaration};
 use errors::{ImportError, LexError, ModuleError, ParseError};
 use std::path::{Path, PathBuf};
-
-use super::program::Ast;
 
 /// A completely parsed program.
 /// This struct presents higher level operations for the frontend representation of source code.
 #[derive(Debug, Default)]
 pub struct Module {
     pub module_path: Option<PathBuf>,
-    pub module_id: usize,
     pub name: Option<String>,
     pub(crate) _line_lens: Vec<u32>,
     pub(crate) statements: Vec<Statement>,
@@ -17,13 +15,11 @@ pub struct Module {
     pub(crate) syntax_errors: Vec<ParseError>,
     pub(crate) import_errors: Vec<ImportError>,
     pub ambience: ModuleAmbience,
-    pub allow_prelude: bool,
 }
 
 impl Module {
-    pub fn from_ast(ast: Ast, module_id: usize, module_path: Option<PathBuf>) -> Self {
+    pub fn from_ast(ast: Ast, module_path: Option<PathBuf>) -> Self {
         Module {
-            module_id,
             module_path,
             name: ast.ambience().get_module_name().map(|x| x.to_string()),
             _line_lens: ast.line_lengths,
@@ -31,19 +27,18 @@ impl Module {
             lexical_errors: ast.lexical_errors,
             syntax_errors: ast.syntax_errors,
             ambience: ast.ambience.take(),
-            allow_prelude: ast.allow_prelude,
             import_errors: vec![],
         }
     }
 
     /// Creates a module from Whirlwind source code text.
-    pub fn from_text(value: String, id: usize) -> Self {
+    pub fn from_text(value: String) -> Self {
         let ast = Ast::from_text(&value);
-        Module::from_ast(ast, id, None)
+        Module::from_ast(ast, None)
     }
 
     /// Read a Whirlwind file and build a module from its contents.
-    pub fn from_path<P: AsRef<Path>>(path: P, module_id: usize) -> Result<Self, ImportError> {
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, ImportError> {
         let path = PathBuf::from(path.as_ref());
         match path.extension() {
             Some(ext) => {
@@ -56,7 +51,7 @@ impl Module {
                     Err(error) => return Err(errors::error_reading_entry_file(error)),
                 };
                 let ast = Ast::from_text(&entry_source);
-                Ok(Module::from_ast(ast, module_id, Some(path)))
+                Ok(Module::from_ast(ast, Some(path)))
             }
             None => return Err(errors::unknown_file_type(path)),
         }
@@ -86,11 +81,7 @@ impl Module {
 
     pub fn refresh_with_text(&mut self, new_text: String) {
         // cursed (totally safe) code.
-        *self = Module::from_ast(
-            Ast::from_text(&new_text),
-            self.module_id,
-            self.module_path.take(),
-        );
+        *self = Module::from_ast(Ast::from_text(&new_text), self.module_path.take());
     }
 
     /// Returns an iterator over the imports in the module.

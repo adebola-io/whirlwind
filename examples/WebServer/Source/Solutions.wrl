@@ -1,8 +1,10 @@
-module Test;
+module Solutions;
 
 public type Array = Array;
 public type UnsignedInt = UnsignedInt;
 public type Int = UnsignedInt;
+public type Float = Float;
+public type Number = Int | Float;
 public type Maybe = Maybe;
 public type Magnitude = Magnitude;
 /// Returns a Maybe with no value.
@@ -27,7 +29,7 @@ public function Max<T implements Magnitude>(array: Array<T>): Maybe<T> {
     } else {
         max := array[0];
         i := 1;
-        while i < array.len() {
+        while i < array.Len() {
             if array[i] > max {
                 max = array[i]
             };
@@ -35,6 +37,23 @@ public function Max<T implements Magnitude>(array: Array<T>): Maybe<T> {
         }
         Some(max)
     }
+}
+
+/// Returns the sum of all the elements in the array.
+/// ### Usage
+/// ```
+/// array := [1, 2, 3, 4];
+/// sum = Sum(array)
+/// 
+/// Assert(sum == 10);
+/// ```
+public function Sum(array: Array<Number>): Number {
+    i := 1;
+    sum := 0;
+    while i < array.Len() {
+        sum += array[0]
+    }
+    sum
 }
 
 /// Returns the nth Fibonacci number.
@@ -51,3 +70,4 @@ public function Fibonacci(n: UnsignedInt): UnsignedInt {
         else if n == 1 {1} 
         else Fibonacci(n-1) + Fibonacci(n-2);
 }
+

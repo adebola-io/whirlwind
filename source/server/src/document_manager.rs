@@ -59,15 +59,15 @@ impl DocumentManager {
         // Containing folder is already part of a context.
         for context in contexts.iter_mut() {
             if context.contains_folder(parent_folder) {
-                match Module::from_path(path_buf, context.typed_modules.len()) {
+                match Module::from_path(path_buf) {
                     Ok(module) => {
                         let path = module.module_path.as_ref().unwrap();
                         let message = match &module.name {
                             Some(name) => {
-                                format!("Adding module {name} at path {path:?}")
+                                format!("Folder already analyzed. Adding module {name} at path {path:?}")
                             }
                             None => {
-                                format!("Adding anonymous module at path {path:?}")
+                                format!("Folder already analyzed. Adding anonymous module at path {path:?}")
                             }
                         };
                         msgs.inform(message);
@@ -85,7 +85,8 @@ impl DocumentManager {
         }
 
         // No context has the file. Add a new context.
-        let mut context = FullProgramContext::new(true);
+        msgs.inform(format!("New module context for {path_buf:?}"));
+        let mut context = FullProgramContext::new(true, false);
         let mut root_folder = parent_folder;
 
         // Look 5 levels above to try to find the root of the project.
@@ -106,7 +107,7 @@ impl DocumentManager {
                         false => None,
                     }
                 })
-                .filter_map(|file| Module::from_path(file, 0).ok())
+                .filter_map(|file| Module::from_path(file).ok())
                 .find(|module| {
                     module
                         .name
@@ -122,11 +123,13 @@ impl DocumentManager {
                 };
                 continue;
             }
-            // Check again to see if there is already a graph with this module.
+            // Check again to see if there is already a graph with this folder.
             for context in contexts.iter_mut() {
                 if context.contains_folder(root_folder) {
-                    match Module::from_path(path_buf, context.typed_modules.len()) {
+                    msgs.inform(format!("Found the context for {path_buf:?}"));
+                    match Module::from_path(path_buf) {
                         Ok(module) => {
+                            msgs.inform(format!("Module added successfully."));
                             context.add_module(module);
                         }
                         Err(error) => context.add_import_error(error),
@@ -134,9 +137,10 @@ impl DocumentManager {
                     return msgs;
                 }
             }
+            // Start at main module.
             let module = main_module.unwrap();
             msgs.inform(format!("Adding main module {:?}...", module.module_path));
-            if let Some(()) = context.add_module(module) {
+            if let Some(_) = context.add_module(module) {
                 msgs.inform("Main module added.")
             }
             // Todo: read whirlwind.yaml to find source module instead.
@@ -246,7 +250,7 @@ impl DocumentManager {
             Ok(path) => path,
             Err(err) => log_error!(
                 msgs,
-                "Error converting URI to absolute path duting change: {err:?}"
+                "Error converting URI to absolute path during change: {err:?}"
             ),
         };
         let mut contexts = self.contexts.write().unwrap();
@@ -281,7 +285,11 @@ impl DocumentManager {
             .iter()
             .find(|context| context.contains_file(&path_buf))?;
 
-        let path_idx = context.get_module_at_path(&path_buf)?.path;
+        let path_idx = context
+            .module_map
+            .paths()
+            .find(|tuple| tuple.1.path_buf == path_buf)?
+            .0;
         Some({
             DocumentDiagnosticReport::Full(RelatedFullDocumentDiagnosticReport {
                 related_documents: None,

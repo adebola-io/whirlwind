@@ -148,6 +148,8 @@ pub fn stringify_import_error(error: &ImportErrorType) -> String {
         ImportErrorType::SymbolNotFound { modulename, symbolname } => format!("module '{modulename}' has no public member called '{symbolname}'. "),
         ImportErrorType::SymbolNotAModule { symbolname } => format!("'{symbolname}' is not a module."),
         ImportErrorType::NamelessModule => format!("All .wrl files must have a module name declaration."),
+        ImportErrorType::MismatchInName { module_name, file_name } => format!("Module name and file names must be equal. This module is named '{module_name}', but the file is named '{file_name}'."),
+        
     }
 }
 

@@ -225,3 +225,17 @@ pub fn break_outside_loop(span: ast::Span) -> ParseError {
         span,
     }
 }
+
+pub fn mismatched_file_and_module_name(
+    module_name: &str,
+    file_name: &str,
+    module_ident_span: ast::Span,
+) -> ImportError {
+    ImportError {
+        _type: ImportErrorType::MismatchInName {
+            module_name: module_name.to_string(),
+            file_name: file_name.to_string(),
+        },
+        span: Some(module_ident_span),
+    }
+}

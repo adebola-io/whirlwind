@@ -1,11 +1,11 @@
-mod programerror;
 mod typed_expr;
 mod typed_module;
 mod typed_statement;
 
 use crate::{
-    EvaluatedType, IntermediateType, Literal, LiteralIndex, Module, PathIndex, SemanticSymbol,
-    SemanticSymbolKind, SymbolIndex, SymbolLocator, SymbolReferenceList, SymbolTable,
+    EvaluatedType, IntermediateType, Literal, LiteralIndex, Module, PathIndex, ProgramError,
+    ProgramErrorType, SemanticSymbol, SemanticSymbolKind, SymbolIndex, SymbolLocator,
+    SymbolReferenceList, SymbolTable,
 };
 use ast::{
     Block, ConstantDeclaration, EnumDeclaration, EnumVariant, Expression, FunctionExpr,
@@ -15,8 +15,7 @@ use ast::{
     TypeExpression, UseDeclaration, UseTarget, WhileStatement, WhirlString,
 };
 use errors::ContextError;
-pub use programerror::*;
-use std::{cell::RefCell, collections::HashMap, mem::take, path::PathBuf, vec};
+use std::{cell::RefCell, collections::HashMap, mem::take, vec};
 pub use typed_expr::*;
 pub use typed_module::*;
 pub use typed_statement::*;
@@ -34,12 +33,16 @@ pub struct Binder {
     unknown_values: HashMap<(String, usize), SymbolIndex>,
     /// The imported symbols into the module, and the target that shows their full path.
     imported_values: Vec<(UseTarget, Vec<SymbolIndex>)>,
+    /// Symbols in this module.
+    module_symbols: Vec<SymbolIndex>,
     /// Generic parameter values.
     generic_pools: RefCell<Vec<Vec<(String, SymbolIndex)>>>,
     /// The current scope in which to search for a match.
     current_scope: usize,
     /// The model `This` currently refers to.
     this_type: Vec<SymbolIndex>,
+    /// The span of the module declaration inside this module.
+    module_decl_span: Option<Span>,
 }
 
 pub struct TemporaryParameterDetails {
@@ -57,20 +60,19 @@ pub struct TemporaryVariantDetails {
 pub fn bind(
     // The module to bind.
     mut module: Module,
-    // The context path list.
-    paths: &mut Vec<PathBuf>,
+    // The reserved module path.
+    path_idx: PathIndex,
     // The context symbol table.
     symbol_table: &mut SymbolTable,
     // The context errors.
     errors: &mut Vec<ProgramError>,
     // Literal values.
     literals: &mut Vec<Literal>,
-) -> Option<TypedModule> {
-    let path = PathIndex(paths.len() as u32);
-    let mut binder = Binder::new(path);
-    paths.push(module.module_path.as_ref()?.clone());
-    bind_utils::collect_prior_errors(path, &mut module, errors);
+) -> Option<(TypedModule, Vec<(UseTarget, Vec<SymbolIndex>)>)> {
+    let mut binder = Binder::new(path_idx);
+    bind_utils::collect_prior_errors(path_idx, &mut module, errors);
     let line_lengths = module._line_lens;
+    let path_buf = module.module_path?;
 
     let mut statements = vec![];
     let module_statements = take(&mut module.statements);
@@ -85,13 +87,37 @@ pub fn bind(
         ));
     }
 
+    let origin_span = binder.module_decl_span.unwrap_or_else(|| Span::default());
+    let module_symbol = SemanticSymbol {
+        name: module.name?,
+        kind: SemanticSymbolKind::Module {
+            parent_modules: vec![],
+            imports: binder
+                .imported_values
+                .iter()
+                .map(|tuple| tuple.1.iter())
+                .flatten()
+                .map(|idx| *idx)
+                .collect(),
+            symbols: binder.module_symbols,
+        },
+        references: vec![SymbolReferenceList {
+            module_path: path_idx,
+            starts: vec![module.ambience.module_name?.span.start],
+        }],
+        doc_info: module.ambience.module_info,
+        origin_span,
+    };
+    let symbol_idx = symbol_table.add(module_symbol);
     let typed_module = TypedModule {
-        path,
+        path_idx,
+        path_buf,
+        symbol_idx,
         line_lengths,
         statements,
     };
 
-    Some(typed_module)
+    Some((typed_module, binder.imported_values))
 }
 
 mod bind_utils {
@@ -137,7 +163,14 @@ mod bind_utils {
         } else {
             unreachable!("Mismatched scope address. How is that possible?")
         };
-        symbol_idx
+        // mark a global value.
+        if shadow.is_in_global_scope() && symbol_idx.is_ok() {
+            let symbol_idx = symbol_idx.unwrap();
+            binder.module_symbols.push(symbol_idx);
+            Ok(symbol_idx)
+        } else {
+            symbol_idx
+        }
     }
 
     /// Pushes an error to the list of context errors.
@@ -448,6 +481,7 @@ mod bind_utils {
     }
 }
 
+/// Statements
 mod statements {
     use super::{
         bind_utils::{add_ctx_error, handle_scope_entry, last_reference_no},
@@ -506,6 +540,7 @@ mod statements {
                 bind_model_declaration(model, binder, symbol_table, errors, literals, ambience),
             ),
             Statement::ModuleDeclaration(module) => {
+                binder.module_decl_span = Some(module.span);
                 TypedStmnt::ModuleDeclaration(TypedModuleDeclaration { span: module.span })
             }
             Statement::FunctionDeclaration(func) => TypedStmnt::FunctionDeclaration(
@@ -1571,7 +1606,7 @@ mod statements {
     }
 }
 
-// Expressions.
+/// Expressions.
 mod expressions {
     use super::{bind_utils::last_reference_no, statements::bind_function_block, *};
     // Binds an expression.
@@ -2184,7 +2219,7 @@ mod expressions {
     }
 }
 
-// Literals.
+/// Literals.
 mod literals {
     use super::*;
     /// Bind a string.
@@ -2238,7 +2273,7 @@ mod literals {
     }
 }
 
-// Types
+/// Types
 mod types {
     use super::*;
 
@@ -2457,46 +2492,6 @@ mod types {
     }
 }
 
-/// Binds a module and returns a reference to its list of imports.
-pub fn bind_and_show_imports(
-    // The module to bind.
-    mut module: Module,
-    // The context path list.
-    paths: &mut Vec<PathBuf>,
-    // The context symbol table.
-    symbol_table: &mut SymbolTable,
-    // The context errors.
-    errors: &mut Vec<ProgramError>,
-    // Literal values.
-    literals: &mut Vec<Literal>,
-) -> Option<(TypedModule, Vec<(UseTarget, Vec<SymbolIndex>)>)> {
-    let path = PathIndex(paths.len() as u32);
-    let mut binder = Binder::new(path);
-    paths.push(module.module_path.as_ref()?.clone());
-    bind_utils::collect_prior_errors(path, &mut module, errors);
-    let line_lengths = module._line_lens;
-
-    let mut statements = vec![];
-    let module_statements = take(&mut module.statements);
-    for statement in module_statements {
-        statements.push(statements::bind_statement(
-            statement,
-            &mut binder,
-            symbol_table,
-            errors,
-            literals,
-            &mut module.ambience,
-        ));
-    }
-    let typed_module = TypedModule {
-        path,
-        line_lengths,
-        statements,
-    };
-
-    Some((typed_module, binder.imported_values))
-}
-
 impl Binder {
     /// Create new binder for a module path.
     pub fn new(path: PathIndex) -> Self {
@@ -2508,6 +2503,8 @@ impl Binder {
             imported_values: vec![],
             current_scope: 0,
             this_type: vec![],
+            module_symbols: vec![],
+            module_decl_span: None,
         }
     }
 }

@@ -13,8 +13,6 @@ pub trait Lexer: LexerInner + Iterator<Item = Token> {
     fn get_next_token(&mut self) -> Option<Token> {
         self.next_token_inner()
     }
-    /// Retruns true if the prelude is allowed.
-    fn allows_prelude(&self) -> bool;
     /// Bypass comments and invalid tokens in the stream and return the next syntactic token.
     fn next_useful_token(&mut self) -> Option<Token> {
         loop {

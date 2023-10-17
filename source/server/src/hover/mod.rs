@@ -375,7 +375,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
             let references = symbol
                 .references
                 .iter()
-                .find(|reflist| reflist.module_path == self.module.path)?;
+                .find(|reflist| reflist.module_path == self.module.path_idx)?;
             for span_start in references.starts.iter() {
                 let span = Span::on_line(*span_start, symbol.name.len() as u32);
                 if span.contains(self.pos) {
@@ -568,7 +568,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
         let references = symbol
             .references
             .iter()
-            .find(|reflist| reflist.module_path == self.module.path)?;
+            .find(|reflist| reflist.module_path == self.module.path_idx)?;
         for span_start in references.starts.iter() {
             let span = Span::on_line(*span_start, symbol.name.len() as u32);
             if span.contains(self.pos) {
@@ -606,7 +606,7 @@ impl HoverFinder<'_> {
                 let references = symbol
                     .references
                     .iter()
-                    .find(|reflist| reflist.module_path == self.module.path)?;
+                    .find(|reflist| reflist.module_path == self.module.path_idx)?;
                 for span_start in references.starts.iter() {
                     let span = Span::on_line(*span_start, symbol.name.len() as u32);
                     if span.contains(self.pos) {
@@ -693,7 +693,7 @@ impl HoverFinder<'_> {
             let references = symbol
                 .references
                 .iter()
-                .find(|reflist| reflist.module_path == self.module.path)?;
+                .find(|reflist| reflist.module_path == self.module.path_idx)?;
             for span_start in references.starts.iter() {
                 let span = Span::on_line(*span_start, symbol.name.len() as u32);
                 if span.contains(self.pos) {
@@ -730,7 +730,7 @@ impl HoverFinder<'_> {
             let references = symbol
                 .references
                 .iter()
-                .find(|reflist| reflist.module_path == self.module.path)?;
+                .find(|reflist| reflist.module_path == self.module.path_idx)?;
             for span_start in references.starts.iter() {
                 let span = Span::on_line(*span_start, symbol.name.len() as u32);
                 if span.contains(self.pos) {

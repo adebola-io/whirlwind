@@ -1,12 +1,15 @@
+use crate::PathIndex;
 use ast::{
     ConstantSignature, EnumSignature, ShorthandVariableSignature, Span, TypeSignature, WhirlNumber,
     WhirlString,
 };
 use std::path::Path;
 
-/// An index into the paths stored.
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub struct PathIndex(pub u32);
+impl From<usize> for PathIndex {
+    fn from(value: usize) -> Self {
+        PathIndex(value as u32)
+    }
+}
 
 /// An index into the list of literals in the program.
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -41,7 +44,7 @@ pub struct SemanticSymbol {
 }
 
 /// A collection of all instances of a symbol inside a file.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SymbolReferenceList {
     /// Path to file where the references exist.
     pub module_path: PathIndex,
@@ -70,9 +73,10 @@ pub enum SemanticSymbolKind {
     Module {
         parent_modules: Vec<SymbolIndex>,
         imports: Vec<SymbolIndex>,
-        exports: Vec<SymbolIndex>,
+        symbols: Vec<SymbolIndex>,
     },
     Trait {
+        is_public: bool,
         implementations: Vec<SymbolIndex>,
         methods: Vec<SymbolIndex>,
     },
@@ -163,6 +167,24 @@ pub enum SemanticSymbolKind {
     Property {
         resolved: Option<SymbolIndex>,
     },
+}
+
+impl SemanticSymbolKind {
+    pub fn is_public(&self) -> bool {
+        match self {
+            SemanticSymbolKind::Trait { is_public, .. }
+            | SemanticSymbolKind::Model { is_public, .. }
+            | SemanticSymbolKind::Enum { is_public, .. }
+            | SemanticSymbolKind::Variable { is_public, .. }
+            | SemanticSymbolKind::Constant { is_public, .. }
+            | SemanticSymbolKind::Function { is_public, .. }
+            | SemanticSymbolKind::TypeName { is_public, .. }
+            | SemanticSymbolKind::Import { is_public, .. }
+            | SemanticSymbolKind::Method { is_public, .. }
+            | SemanticSymbolKind::Attribute { is_public, .. } => *is_public,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -436,11 +458,12 @@ impl SymbolTable {
         SymbolIndex(index)
     }
     /// Returns an iterator over all the symbols in the table.
-    pub fn symbols(&self) -> impl Iterator<Item = &SemanticSymbol> {
+    pub fn symbols(&self) -> impl Iterator<Item = (SymbolIndex, &SemanticSymbol)> {
         self.symbols
             .iter()
+            .enumerate()
             .filter_map(|symbolentry| match symbolentry {
-                SymbolEntry::Symbol(symbol) => Some(symbol),
+                (idx, SymbolEntry::Symbol(symbol)) => Some((SymbolIndex(idx), symbol)),
                 _ => None,
             })
     }
@@ -454,23 +477,26 @@ impl SymbolTable {
     /// Returns an iterator of the undeclared values in the table.
     pub fn undeclared_values(&self) -> impl Iterator<Item = &SemanticSymbol> {
         self.symbols()
+            .map(|(_, symbol)| symbol)
             .filter(|symbol| matches!(symbol.kind, SemanticSymbolKind::UndeclaredValue))
     }
     /// Returns a list of the symbols in a module.
     pub fn in_module(&self, module_path: PathIndex) -> impl Iterator<Item = &SemanticSymbol> {
-        self.symbols().filter(move |symbol| {
-            symbol
-                .references
-                .first()
-                .is_some_and(|reference| reference.module_path == module_path)
-        })
+        self.symbols()
+            .map(|(_, symbol)| symbol)
+            .filter(move |symbol| {
+                symbol
+                    .references
+                    .first()
+                    .is_some_and(|reference| reference.module_path == module_path)
+            })
     }
     /// Returns the first symbol in the table that adheres to a predicate.
     pub fn find<F: FnMut(&&SemanticSymbol) -> bool>(
         &self,
         predicate: F,
     ) -> Option<&SemanticSymbol> {
-        self.symbols().find(predicate)
+        self.symbols().map(|(_, symbol)| symbol).find(predicate)
     }
     /// Get a symbol mutably using its index.
     pub fn get_mut(&mut self, idx: SymbolIndex) -> Option<&mut SemanticSymbol> {

@@ -20,12 +20,13 @@ impl<'a> SymbolWriter<'a> {
             SemanticSymbolKind::Module {
                 parent_modules,
                 imports,
-                exports,
+                symbols: exports,
             } => {
                 string.push_str("module "); // todo: print full path.
                 string.push_str(&symbol.name);
             }
             SemanticSymbolKind::Trait {
+                is_public,
                 implementations,
                 methods,
             } => todo!(),

@@ -1,6 +1,5 @@
+use crate::PathIndex;
 use errors::{ContextError, ImportError, LexError, ParseError, TypeError};
-
-use crate::resolver::symbols::PathIndex;
 
 #[derive(PartialEq, Debug)]
 pub struct ProgramError {

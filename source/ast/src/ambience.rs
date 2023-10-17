@@ -12,7 +12,7 @@ pub struct DirectoryAmbience {}
 #[derive(Debug)]
 pub struct ModuleAmbience {
     pub module_id: usize,
-    module_name: Option<Identifier>,
+    pub module_name: Option<Identifier>,
     pub module_info: Option<Vec<String>>,
     scopes: Vec<Scope>,
     current_scope: usize,
@@ -415,6 +415,14 @@ impl<'a> ModuleAmbienceShadow<'a> {
             }
         }
         return false;
+    }
+
+    /// Checks if the program is currently in the global scope.
+    pub fn is_in_global_scope(&self) -> bool {
+        matches!(
+            &self.base.scopes[self.current_scope]._type,
+            ScopeType::Global
+        )
     }
 }
 
