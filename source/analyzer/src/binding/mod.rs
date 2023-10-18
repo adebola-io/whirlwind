@@ -2283,6 +2283,8 @@ mod literals {
 
 /// Types
 mod types {
+    use crate::ParameterType;
+
     use super::*;
 
     /// Binds a type expression.
@@ -2304,7 +2306,32 @@ mod types {
                     .collect(),
                 span: union_type.span,
             },
-            TypeExpression::Functional(_) => todo!(),
+            TypeExpression::Functional(func) => {
+                let mut params = vec![];
+                for param in &func.params {
+                    let parametertype = ParameterType {
+                        name: param.name.name.clone(),
+                        is_optional: param.is_optional,
+                        type_label: param.type_label.as_ref().map(|type_exp| {
+                            bind_type_expression(type_exp, binder, symbol_table, errors, ambience)
+                        }),
+                    };
+                    params.push(parametertype);
+                }
+                IntermediateType::FunctionType {
+                    params,
+                    return_type: func.return_type.as_ref().map(|type_exp| {
+                        Box::new(bind_type_expression(
+                            type_exp,
+                            binder,
+                            symbol_table,
+                            errors,
+                            ambience,
+                        ))
+                    }),
+                    span: func.span,
+                }
+            }
             TypeExpression::Member(member_type) => {
                 let object_type = bind_type_expression(
                     &member_type.namespace,

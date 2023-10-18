@@ -78,6 +78,7 @@ pub enum SemanticSymbolKind {
     Trait {
         is_public: bool,
         implementations: Vec<SymbolIndex>,
+        generic_params: Vec<SymbolIndex>,
         methods: Vec<SymbolIndex>,
     },
     Model {

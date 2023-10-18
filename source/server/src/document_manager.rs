@@ -89,8 +89,7 @@ impl DocumentManager {
         }
 
         // No context has the file. Add a new context.
-        msgs.inform(format!("New module context for {path_buf:?}"));
-        let mut context = Standpoint::new(true, self.corelib_path.clone());
+        msgs.inform(format!("Creating new module context for {path_buf:?}"));
         let mut root_folder = parent_folder;
 
         // Look 5 levels above to try to find the root of the project.
@@ -143,19 +142,36 @@ impl DocumentManager {
             }
             // Start at main module.
             let module = main_module.unwrap();
+            let mut standpoint = Standpoint::new(true, self.corelib_path.clone());
+            msgs.inform(format!(
+                "New context created with {} modules. The core library path is {:?}.",
+                standpoint.module_map.len(),
+                standpoint
+                    .corelib_path
+                    .and_then(|path_idx| standpoint.module_map.get(path_idx))
+                    .map(|module| &module.path_buf)
+            ));
             msgs.inform(format!("Adding main module {:?}...", module.module_path));
-            if let Some(_) = context.add_module(module) {
-                msgs.inform("Main module added.")
+            if let Some(_) = standpoint.add_module(module) {
+                // now add the current module.
+                match Module::from_path(path_buf) {
+                    Ok(current_module) => match standpoint.add_module(current_module) {
+                        Some(_) => msgs.inform("Module added successfully."),
+                        None => log_error!(
+                            msgs,
+                            "Could not add this module to fresh standpoint. Skipping altogether.."
+                        ),
+                    },
+                    Err(error) => msgs.inform(format!("Error creating current module: {error:?}")),
+                }
+            } else {
+                // Root not found, skip project altogether.
+                log_error!(msgs, "Could not determine main module for project.")
             }
+            contexts.push(standpoint);
             // Todo: read whirlwind.yaml to find source module instead.
             break;
         }
-        // Root not found, skip project altogether.
-        if context.is_empty() {
-            log_error!(msgs, "Could not determine main module for project.")
-        }
-        contexts.push(context);
-
         msgs
     }
 

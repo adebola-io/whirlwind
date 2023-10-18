@@ -2,18 +2,37 @@
 use analyzer::{EvaluatedType, IntermediateType, SemanticSymbolKind, Standpoint, SymbolIndex};
 
 pub struct SymbolWriter<'a> {
-    context: &'a Standpoint,
+    standpoint: &'a Standpoint,
 }
 
 impl<'a> SymbolWriter<'a> {
     /// Creates a new symbol printer.
-    pub fn new(context: &'a Standpoint) -> Self {
-        Self { context }
+    pub fn new(standpoint: &'a Standpoint) -> Self {
+        Self { standpoint }
     }
     /// Print a symbol.
     pub fn print_symbol_with_idx(&self, symbol_idx: SymbolIndex) -> String {
-        let symbol = self.context.symbol_table.get(symbol_idx).unwrap();
+        let symbol = match self.standpoint.symbol_table.get(symbol_idx) {
+            Some(symbol) => symbol,
+            None => return String::from("[[[UNKNOWN, UNTRACKED SYMBOL]]]"),
+        };
         let mut string = String::new();
+        // Print the name of the module.
+        if symbol.kind.is_public()
+            && !(matches!(
+                symbol.kind,
+                SemanticSymbolKind::Property { .. }
+                    | SemanticSymbolKind::Import { .. }
+                    | SemanticSymbolKind::Module { .. }
+            ))
+        {
+            if let Some(reference) = symbol.references.first() {
+                if let Some(module) = self.standpoint.module_map.get(reference.module_path) {
+                    string = self.print_symbol_with_idx(module.symbol_idx);
+                    string.push('\n');
+                }
+            };
+        }
         match &symbol.kind {
             SemanticSymbolKind::Module {
                 parent_modules,
@@ -25,17 +44,28 @@ impl<'a> SymbolWriter<'a> {
             }
             SemanticSymbolKind::Trait {
                 is_public,
-                implementations,
-                methods,
-            } => todo!(),
+                generic_params,
+                ..
+            } => {
+                if *is_public {
+                    string.push_str("public ");
+                }
+                string.push_str("trait ");
+                string.push_str(&symbol.name);
+                self.maybe_print_generic_params_into_string(&mut string, generic_params);
+            }
             SemanticSymbolKind::Model {
                 is_public,
-                is_constructable,
                 generic_params,
-                implementations,
-                methods,
-                attributes,
-            } => todo!(),
+                ..
+            } => {
+                if *is_public {
+                    string.push_str("public ");
+                }
+                string.push_str("model ");
+                string.push_str(&symbol.name);
+                self.maybe_print_generic_params_into_string(&mut string, generic_params);
+            }
             SemanticSymbolKind::Enum {
                 is_public,
                 generic_params,
@@ -54,7 +84,7 @@ impl<'a> SymbolWriter<'a> {
                 tagged_types,
             } => {
                 let name_of_owner = &self
-                    .context
+                    .standpoint
                     .symbol_table
                     .get(*owner_enum)
                     .expect("Could not retrieve owner enum fro variant symbol while printing.")
@@ -116,10 +146,19 @@ impl<'a> SymbolWriter<'a> {
             SemanticSymbolKind::Attribute {
                 owner_model,
                 is_public,
-                property_index,
                 declared_type,
-                inferred_type,
-            } => todo!(),
+                ..
+            } => {
+                string = self.print_symbol_with_idx(*owner_model);
+                string.push('\n');
+                if *is_public {
+                    string.push_str("public ");
+                }
+                string.push_str("var ");
+                string.push_str(&symbol.name);
+                string.push_str(": ");
+                string.push_str(&self.print_intermediate_type(declared_type))
+            }
             SemanticSymbolKind::Method {
                 is_public,
                 is_static,
@@ -129,7 +168,24 @@ impl<'a> SymbolWriter<'a> {
                 params,
                 generic_params,
                 return_type,
-            } => todo!(),
+            } => {
+                string = self.print_symbol_with_idx(*owner_model_or_trait);
+                string.push('\n');
+                if *is_public {
+                    string.push_str("public ");
+                }
+                if *is_static {
+                    string.push_str("static ");
+                }
+                if *is_async {
+                    string.push_str("async ");
+                }
+                string.push_str("function ");
+                string.push_str(&symbol.name);
+                self.maybe_print_generic_params_into_string(&mut string, generic_params);
+                self.print_parameters_into_string(&mut string, params);
+                self.maybe_print_return_type_into_string(&mut string, return_type.as_ref());
+            }
             SemanticSymbolKind::Parameter {
                 is_optional,
                 param_type,
@@ -209,7 +265,17 @@ impl<'a> SymbolWriter<'a> {
                 string.push_str(&symbol.name);
                 string.push_str(": {{unknown}}");
             }
-            SemanticSymbolKind::Import { is_public, source } => todo!(),
+            SemanticSymbolKind::Import { is_public, source } => match source {
+                Some(source) => return self.print_symbol_with_idx(*source),
+                None => {
+                    if *is_public {
+                        string.push_str("public ");
+                    }
+                    string.push_str("use ");
+                    string.push_str(&symbol.name);
+                    string.push_str(": {{unknown}}");
+                }
+            },
             SemanticSymbolKind::Property { resolved } => match resolved {
                 Some(idx) => {
                     string = self.print_symbol_with_idx(*idx);
@@ -290,7 +356,7 @@ impl<'a> SymbolWriter<'a> {
                 generic_args,
                 span,
             } => {
-                let mut symbol = self.context.symbol_table.get(*value).unwrap();
+                let mut symbol = self.standpoint.symbol_table.get(*value).unwrap();
                 let mut string = symbol.name.clone();
                 if generic_args.len() > 0 {
                     string.push('<');

@@ -1,19 +1,6 @@
-module Solutions;
+module Algorithms;
 
-public type Array = Array;
-public type UnsignedInt = UnsignedInt;
-public type Int = UnsignedInt;
-public type Float = Float;
-public type Number = Int | Float;
-public type Maybe = Maybe;
-type Magnitude = Magnitude;
-
-/// Returns a Maybe with no value.
-public function None<T>(): Maybe<T> {}
-/// Returns a `Maybe` with a value.
-public function Some<T>(value: T): Maybe<T> {}
-
-
+use Core.{Magnitude, None, Some, Array, Maybe, Number, UnsignedInt};
 
 /// Returns the largest value in an array.
 /// It returns an empty value if the array is empty.
@@ -72,3 +59,16 @@ public function Fibonacci(n: UnsignedInt): UnsignedInt {
         else Fibonacci(n-1) + Fibonacci(n-2);
 }
 
+
+/// Calculates the factorial of a given number.
+/// ### Usage
+/// ```
+/// Assert(Factorial(3) == 6); // 3 * 2 * 1;
+/// Assert(Factorial(5) == 120); // 5 * 4 * 3 * 2 * 1;
+/// ```
+public function Factorial(n: UnsignedInt): UnsignedInt {
+    if n == 1 || n == 0 {
+        return 1;
+    };
+    return n * Factorial(n - 1);
+}

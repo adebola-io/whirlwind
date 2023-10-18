@@ -49,10 +49,15 @@ impl ModuleMap {
 
     /// Reserve an index for a module to be added later.
     pub fn reserve_index(&mut self) -> PathIndex {
-        let index_number = self.entries.len();
-        self.holes.push(index_number);
-        self.entries.push(Entry::Void);
-        PathIndex(index_number as u32)
+        match self.holes.last() {
+            Some(last_hole) => PathIndex(*last_hole as u32),
+            None => {
+                let index_number = self.entries.len();
+                self.holes.push(index_number);
+                self.entries.push(Entry::Void);
+                PathIndex(index_number as u32)
+            }
+        }
     }
 
     /// Add a module to the table and return its index number.

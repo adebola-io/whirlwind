@@ -468,42 +468,30 @@ impl Standpoint {
 
         let module_name = module_symbol.name;
         // Get all symbols that were declared in the module to refresh.
-        let affected_symbols = match module_symbol.kind {
-            SemanticSymbolKind::Module { symbols, .. } => symbols,
-            _ => unreachable!(),
-        };
+        // todo: performanceee.
+        let affected_symbols = self
+            .symbol_table
+            .symbols()
+            .filter(|module| {
+                module
+                    .1
+                    .references
+                    .first()
+                    .is_some_and(|reff| reff.module_path == path_idx)
+            })
+            .map(|(idx, _)| idx)
+            .collect::<Vec<_>>();
         // Get all the connected modules, so they can also be updated.
-        let mut connected_path_idxs = vec![];
         for symbol_idx in affected_symbols {
             // Delete the stale affected symbols.
-            let symbol = self.symbol_table.remove(symbol_idx)?;
-            // It should skip over this module itself.
-            for reference in symbol.references {
-                if reference.module_path != path_idx
-                    && !connected_path_idxs.contains(&reference.module_path)
-                {
-                    connected_path_idxs.push(reference.module_path);
-                }
-            }
+            self.symbol_table.remove(symbol_idx)?;
         }
-
-        // References to this module.
-        for reference in module_symbol.references {
-            if reference.module_path != path_idx
-                && !connected_path_idxs.contains(&reference.module_path)
-            {
-                connected_path_idxs.push(reference.module_path);
-            }
-        }
-        // Delete stale semantic errors.
-        // todo: performanceee.
+        // Delete stale semantic errors, and errors related to this module.
         self.errors.retain(|error| {
-            !matches!(
+            !(matches!(
                 error.error_type,
-                ProgramErrorType::Context(_)
-                    | ProgramErrorType::Importing(_)
-                    | ProgramErrorType::Typing(_)
-            )
+                ProgramErrorType::Importing(_) | ProgramErrorType::Typing(_)
+            ) || error.offending_file == path_idx)
         });
 
         // Remove the stale module.
@@ -891,6 +879,8 @@ function Add(a: Int, b: Int): Int {
     public use Utils.Add;
     public use Utils.Divide;
 
+    public type Function = fn (a: Function): Function;
+
     public function Main() {
         return Add(1, 2);
     }
@@ -918,5 +908,21 @@ function Add(a: Int, b: Int): Int {
         );
         println!("{:#?}", standpoint.errors);
         assert!(standpoint.errors.len() == 0);
+    }
+
+    #[test]
+    fn test_duplication() {
+        let text = "
+            module Test;
+
+            public type Maybe = Maybe;
+
+            public model Maybe<T> implements Assertable<T> + Try<T> {}
+
+        ";
+        let mut module = Module::from_text(format!("{text}"));
+        module.module_path = Some(PathBuf::from("testing://Test.wrl"));
+        let standpoint = Standpoint::build_from_module(module, false).unwrap();
+        println!("{:#?}", standpoint);
     }
 }

@@ -1,10 +1,11 @@
 use crate::{
     LiteralIndex, TypedAccessExpr, TypedArrayExpr, TypedAssignmentExpr, TypedBinExpr, TypedBlock,
-    TypedCallExpr, TypedConstantDeclaration, TypedEnumDeclaration, TypedExpression, TypedFnExpr,
-    TypedForStatement, TypedFunctionDeclaration, TypedIdent, TypedIfExpr, TypedIndexExpr,
-    TypedLogicExpr, TypedModelDeclaration, TypedModuleDeclaration, TypedNewExpr,
-    TypedReturnStatement, TypedShorthandVariableDeclaration, TypedStmnt, TypedTestDeclaration,
-    TypedThisExpr, TypedTraitDeclaration, TypedTypeDeclaration, TypedUnaryExpr, TypedUpdateExpr,
+    TypedBreakStatement, TypedCallExpr, TypedConstantDeclaration, TypedContinueStatement,
+    TypedEnumDeclaration, TypedExpression, TypedFnExpr, TypedForStatement,
+    TypedFunctionDeclaration, TypedIdent, TypedIfExpr, TypedIndexExpr, TypedLogicExpr,
+    TypedModelDeclaration, TypedModuleDeclaration, TypedNewExpr, TypedReturnStatement,
+    TypedShorthandVariableDeclaration, TypedStmnt, TypedTestDeclaration, TypedThisExpr,
+    TypedTraitDeclaration, TypedTypeDeclaration, TypedUnaryExpr, TypedUpdateExpr,
     TypedUseDeclaration, TypedVariableDeclaration, TypedWhileStatement,
 };
 
@@ -179,8 +180,16 @@ pub trait TypedVisitorNoArgs<Output: Default = ()> {
             TypedStmnt::ModuleDeclaration(m) => self.module_declaration(m),
             TypedStmnt::UseDeclaration(u) => self.use_declaration(u),
             TypedStmnt::ConstantDeclaration(c) => self.constant(c),
+            TypedStmnt::TestDeclaration(t) => self.test_declaration(t),
+            TypedStmnt::ReturnStatement(rettye) => self.return_statement(rettye),
+            TypedStmnt::BreakStatement(brk) => self.break_statement(brk),
+            TypedStmnt::ForStatement(for_stat) => self.for_statement(for_stat),
+            TypedStmnt::WhileStatement(whilestat) => self.while_statement(whilestat),
+            TypedStmnt::ContinueStatement(continue_) => self.continue_statement(continue_),
+            TypedStmnt::RecordDeclaration => todo!(),
+            TypedStmnt::VariableDeclaration(_) => todo!(),
+            TypedStmnt::TraitDeclaration(_) => todo!(),
             // TypedStmnt::VariableDeclaration(v) => self.variable_declaration(v),
-            _ => Output::default(),
         }
     }
     fn use_declaration(&self, use_decl: &TypedUseDeclaration) -> Output {
@@ -307,6 +316,30 @@ pub trait TypedVisitorNoArgs<Output: Default = ()> {
     //     Output::default()
     // }
     fn constant(&self, constant: &TypedConstantDeclaration) -> Output {
+        Output::default()
+    }
+
+    fn test_declaration(&self, test: &TypedTestDeclaration) -> Output {
+        Output::default()
+    }
+
+    fn break_statement(&self, brk: &TypedBreakStatement) -> Output {
+        Output::default()
+    }
+
+    fn for_statement(&self, forstat: &TypedForStatement) -> Output {
+        Output::default()
+    }
+
+    fn while_statement(&self, _while: &TypedWhileStatement) -> Output {
+        Output::default()
+    }
+
+    fn continue_statement(&self, cont: &TypedContinueStatement) -> Output {
+        Output::default()
+    }
+
+    fn return_statement(&self, rettye: &TypedReturnStatement) -> Output {
         Output::default()
     }
     /// Visit a function node.

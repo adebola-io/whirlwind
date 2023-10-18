@@ -202,7 +202,7 @@ pub struct TypedWhileStatement {
 pub struct TypedForStatement {
     pub items: Vec<SymbolIndex>,
     pub iterator: TypedExpression,
-    pub label: Option<SymbolIndex>,
+    pub label: Option<TypedIdent>,
     pub body: TypedBlock,
     pub span: Span,
 }
