@@ -45,7 +45,7 @@ pub struct UseDeclaration {
     pub span: Span,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum UsePath {
     /// Importing the module as a namespace. e.g. `use ExternalModule;`
     Me,
@@ -55,7 +55,7 @@ pub enum UsePath {
     List(Vec<UseTarget>),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct UseTarget {
     /// Name of the module imported.
     pub name: Identifier,

@@ -1,0 +1,11 @@
+module Http;
+
+public model Server {
+    // public var endpoints: Endpoints;
+    new() {
+    }
+
+    // public function Listen(port?: UnsignedInt) {
+
+    // }
+}

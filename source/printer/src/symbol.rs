@@ -1,15 +1,13 @@
 #![allow(unused)]
-use analyzer::{
-    EvaluatedType, FullProgramContext, IntermediateType, SemanticSymbolKind, SymbolIndex,
-};
+use analyzer::{EvaluatedType, IntermediateType, SemanticSymbolKind, Standpoint, SymbolIndex};
 
 pub struct SymbolWriter<'a> {
-    context: &'a FullProgramContext,
+    context: &'a Standpoint,
 }
 
 impl<'a> SymbolWriter<'a> {
     /// Creates a new symbol printer.
-    pub fn new(context: &'a FullProgramContext) -> Self {
+    pub fn new(context: &'a Standpoint) -> Self {
         Self { context }
     }
     /// Print a symbol.

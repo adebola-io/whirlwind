@@ -1,0 +1,5 @@
+module Http;
+
+public model Server {
+    public var endpoints: Endpoints;
+}

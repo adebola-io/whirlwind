@@ -6,6 +6,7 @@ mod type_error;
 
 use std::path::PathBuf;
 
+use ast::UseTarget;
 pub use context_error::*;
 pub use import_error::*;
 pub use lex_error::*;
@@ -84,10 +85,10 @@ pub fn cannot_find_module(module_name: String, span: ast::Span) -> ImportError {
     }
 }
 
-pub fn self_import(name: String, span: ast::Span) -> ImportError {
+pub fn self_import(target: &UseTarget) -> ImportError {
     ImportError {
-        _type: ImportErrorType::SelfReferentialUse(name),
-        span: Some(span),
+        _type: ImportErrorType::SelfReferentialUse(target.name.name.clone()),
+        span: Some(target.name.span),
     }
 }
 

@@ -43,6 +43,8 @@ pub struct Binder {
     this_type: Vec<SymbolIndex>,
     /// The span of the module declaration inside this module.
     module_decl_span: Option<Span>,
+    // The index of the core library module, if it is allowed.
+    corelib_symbol_idx: Option<SymbolIndex>,
 }
 
 pub struct TemporaryParameterDetails {
@@ -68,8 +70,10 @@ pub fn bind(
     errors: &mut Vec<ProgramError>,
     // Literal values.
     literals: &mut Vec<Literal>,
-) -> Option<(TypedModule, Vec<(UseTarget, Vec<SymbolIndex>)>)> {
-    let mut binder = Binder::new(path_idx);
+    // The symbol index of the core library.
+    corelib_symbol_idx: Option<SymbolIndex>,
+) -> Option<TypedModule> {
+    let mut binder = Binder::new(path_idx, corelib_symbol_idx);
     bind_utils::collect_prior_errors(path_idx, &mut module, errors);
     let line_lengths = module._line_lens;
     let path_buf = module.module_path?;
@@ -109,15 +113,14 @@ pub fn bind(
         origin_span,
     };
     let symbol_idx = symbol_table.add(module_symbol);
-    let typed_module = TypedModule {
+    Some(TypedModule {
         path_idx,
         path_buf,
         symbol_idx,
         line_lengths,
         statements,
-    };
-
-    Some((typed_module, binder.imported_values))
+        imports: binder.imported_values,
+    })
 }
 
 mod bind_utils {
@@ -407,6 +410,12 @@ mod bind_utils {
                     // Try to see if there is a generic parameter with this name.
                     if let Some(index) = binder.lookup_generic_parameter(&name.name) {
                         return index;
+                    }
+                    // Is it the Core library?
+                    if name.name == "Core" {
+                        if let Some(symbol_idx) = binder.corelib_symbol_idx {
+                            return symbol_idx;
+                        }
                     }
                     // Entry does not exist.
                     add_ctx_error(
@@ -1163,7 +1172,6 @@ mod statements {
         literals: &mut Vec<Literal>,
         ambience: &mut ModuleAmbience,
     ) -> TypedFunctionDeclaration {
-        // println!("Binding a function declaration...");
         let binding_result = handle_scope_entry(
             binder,
             symbol_table,
@@ -2494,7 +2502,7 @@ mod types {
 
 impl Binder {
     /// Create new binder for a module path.
-    pub fn new(path: PathIndex) -> Self {
+    pub fn new(path: PathIndex, corelib_symbol_idx: Option<SymbolIndex>) -> Self {
         Self {
             path,
             known_values: HashMap::new(),
@@ -2505,6 +2513,7 @@ impl Binder {
             this_type: vec![],
             module_symbols: vec![],
             module_decl_span: None,
+            corelib_symbol_idx,
         }
     }
 }

@@ -1,0 +1,9 @@
+module Core;
+
+type Int = Int;
+
+public use Http;
+
+public function Add(a: Int, b: Int): Int {
+    return a + b;
+}

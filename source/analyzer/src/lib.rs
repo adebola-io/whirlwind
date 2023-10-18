@@ -7,6 +7,9 @@ mod resolver;
 mod symbols;
 mod visitor;
 
+pub const CORE_LIBRARY_PATH: &'static str =
+    "/home/adebola/projects/whirlwind/examples/fakeCore/Core.wrl";
+
 pub use binding::*;
 pub use context::*;
 pub use modulemap::*;

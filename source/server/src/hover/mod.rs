@@ -1,8 +1,8 @@
 #![allow(unused)]
 use crate::message_store::MessageStore;
 use analyzer::{
-    FullProgramContext, IntermediateType, SemanticSymbolKind, SymbolIndex, TypedCallExpr,
-    TypedIdent, TypedModule, TypedThisExpr, TypedTypeDeclaration, TypedVisitorNoArgs,
+    IntermediateType, SemanticSymbolKind, Standpoint, SymbolIndex, TypedCallExpr, TypedIdent,
+    TypedModule, TypedThisExpr, TypedTypeDeclaration, TypedVisitorNoArgs,
 };
 use ast::Span;
 use printer::SymbolWriter;
@@ -104,8 +104,8 @@ impl HoverInfo {
     }
 }
 
-impl From<(&FullProgramContext, SymbolIndex)> for HoverInfo {
-    fn from(tuple: (&FullProgramContext, SymbolIndex)) -> Self {
+impl From<(&Standpoint, SymbolIndex)> for HoverInfo {
+    fn from(tuple: (&Standpoint, SymbolIndex)) -> Self {
         let mut contents = vec![];
 
         let symbol = tuple.0.symbol_table.get(tuple.1).unwrap();
@@ -142,7 +142,7 @@ impl From<HoverInfo> for Hover {
 
 pub struct HoverFinder<'a> {
     module: &'a TypedModule,
-    context: &'a FullProgramContext,
+    context: &'a Standpoint,
     pos: [u32; 2],
     pub message_store: RefCell<MessageStore>,
 }
@@ -150,7 +150,7 @@ pub struct HoverFinder<'a> {
 impl<'a> HoverFinder<'a> {
     pub fn new(
         module: &'a TypedModule,
-        context: &'a FullProgramContext,
+        context: &'a Standpoint,
         pos: [u32; 2],
         messages: MessageStore,
     ) -> Self {
@@ -160,6 +160,41 @@ impl<'a> HoverFinder<'a> {
             pos,
             message_store: RefCell::new(messages),
         }
+    }
+
+    /// Hover over a generic parameter.
+    fn generic_parameter(&self, generic_param: SymbolIndex) -> Option<HoverInfo> {
+        let symbol = self.context.symbol_table.get(generic_param)?;
+        let references = symbol
+            .references
+            .iter()
+            .find(|reflist| reflist.module_path == self.module.path_idx)?;
+        for span_start in references.starts.iter() {
+            let span = Span::on_line(*span_start, symbol.name.len() as u32);
+            if span.contains(self.pos) {
+                self.message_store
+                    .borrow_mut()
+                    .inform("Hovering over generic parameter...");
+                return Some(HoverInfo::from((self.context, generic_param)));
+            }
+        }
+        let (traits, default) = match &symbol.kind {
+            SemanticSymbolKind::GenericParameter {
+                traits,
+                default_value,
+                ..
+            } => (traits, default_value),
+            _ => return None,
+        };
+        for _trait in traits {
+            if let Some(hvinfo) = self.type_hover(_trait) {
+                return Some(hvinfo);
+            }
+        }
+        if let Some(hvinfo) = default.as_ref().and_then(|_type| self.type_hover(_type)) {
+            return Some(hvinfo);
+        }
+        return None;
     }
 
     // /// Create a hover over this module itself.
@@ -371,36 +406,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
         };
         // Hovering over a generic parameter.
         for generic_param in generic_params {
-            let symbol = self.context.symbol_table.get(*generic_param)?;
-            let references = symbol
-                .references
-                .iter()
-                .find(|reflist| reflist.module_path == self.module.path_idx)?;
-            for span_start in references.starts.iter() {
-                let span = Span::on_line(*span_start, symbol.name.len() as u32);
-                if span.contains(self.pos) {
-                    self.message_store
-                        .borrow_mut()
-                        .inform("Hovering over generic parameter...");
-                    return Some(HoverInfo::from((self.context, *generic_param)));
-                }
-            }
-            let (traits, default) = match &symbol.kind {
-                SemanticSymbolKind::GenericParameter {
-                    traits,
-                    default_value,
-                    ..
-                } => (traits, default_value),
-                _ => return None,
-            };
-            // Hovering over a generic parameter trait.
-            for _trait in traits {
-                if let Some(hvinfo) = self.type_hover(_trait) {
-                    return Some(hvinfo);
-                }
-            }
-            // Hovering over the default value.
-            if let Some(hvinfo) = default.as_ref().and_then(|_type| self.type_hover(_type)) {
+            if let Some(hvinfo) = self.generic_parameter(*generic_param) {
                 return Some(hvinfo);
             }
         }
@@ -462,27 +468,27 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
         // hovering over function parts.
         return self.fn_parts_hover(generic_params, params, return_type, body);
     }
-    //     /// Hover over an enum declaration.
-    //     fn enum_decl(&self, enum_decl: &ast::EnumDeclaration) -> Option<HoverInfo> {
-    //         let scope = self.module.ambience.get_scope(enum_decl.address.scope_id)?;
-    //         let signature = scope.get_enum(enum_decl.address.entry_no)?;
-    //         // hover over enum name.
-    //         name_hover!(signature, scope, self);
-    //         // hover over variant.
-    //         for variant in &signature.variants {
-    //             if variant.span.contains(self.pos) {
-    //                 if scope.is_global() && signature.is_public {
-    //                     let global_hover = PublicSignatureContext {
-    //                         module_ambience: &self.module.ambience,
-    //                         signature: &(&signature.name, variant),
-    //                     };
-    //                     return Some((&global_hover).into());
-    //                 }
-    //                 return Some(HoverInfo::from(&(&signature.name, variant)));
-    //             }
-    //         }
-    //         return None;
-    //     }
+    /// Hover over an enum declaration.
+    fn enum_decl(&self, enum_decl: &analyzer::TypedEnumDeclaration) -> Option<HoverInfo> {
+        if !enum_decl.span.contains(self.pos) {
+            return None;
+        }
+        let symbol = self.context.symbol_table.get(enum_decl.name.symbol_idx)?;
+        // Hovering over the enum name.
+        if symbol.ident_span().contains(self.pos) {
+            self.message_store
+                .borrow_mut()
+                .inform("Hovering over a enum name...");
+            return Some(HoverInfo::from((self.context, enum_decl.name.symbol_idx)));
+        };
+
+        // Hovering over a generic param.
+        let (generic_params) = match &symbol.kind {
+            SemanticSymbolKind::Enum { generic_params, .. } => (generic_params),
+            _ => return None,
+        };
+        return None;
+    }
     //     /// Hover over a model.
     //     fn model_decl(&self, model_decl: &ast::ModelDeclaration) -> Option<HoverInfo> {
     //         let module_ambience = &self.module.ambience;

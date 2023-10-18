@@ -1574,10 +1574,10 @@ impl<L: Lexer> Parser<L> {
         // Helper closure to quickly generate attributes.
         let mut generate_attrib = |is_public, start| {
             let partial = self.attribute(is_public);
-            if partial.is_none() {
-                return partial.map(|_| ());
-            }
             let (tuple, errors) = partial.to_tuple();
+            if tuple.is_none() {
+                return Partial::from_errors(errors);
+            }
             let (signature, _type) = tuple.unwrap();
             // Build model property enum from type.
             let attribute = ModelProperty {

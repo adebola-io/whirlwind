@@ -1,5 +1,9 @@
 use super::{symbols::*, ProgramError};
-use crate::{bind, Module, ModuleMap, PathIndex, ProgramErrorType::Importing, TypedModule};
+use crate::{
+    bind, Module, ModuleMap, PathIndex,
+    ProgramErrorType::{self, Importing},
+    TypedModule,
+};
 use ast::UseTarget;
 use std::{
     collections::HashMap,
@@ -9,7 +13,7 @@ use utils::get_parent_dir;
 
 /// A fully resolved representation of an entire program.
 #[derive(Debug)]
-pub struct FullProgramContext {
+pub struct Standpoint {
     pub module_map: ModuleMap,
     pub root_folder: Option<PathBuf>,
     pub entry_module: PathIndex,
@@ -18,13 +22,15 @@ pub struct FullProgramContext {
     pub literals: Vec<Literal>,
     pub errors: Vec<ProgramError>,
     pub should_resolve_imports: bool,
-    pub use_prelude: bool,
+    // The path to the entry module of the core library.
+    pub corelib_path: Option<PathIndex>,
     // pub warnings: Vec<Warnings>,
 }
 
-impl FullProgramContext {
-    pub fn new(should_resolve_imports: bool, use_prelude: bool) -> Self {
-        let context = FullProgramContext {
+impl Standpoint {
+    /// Creates a new standpoint.
+    pub fn new(should_resolve_imports: bool, corelib_path: Option<PathBuf>) -> Self {
+        let mut standpoint = Standpoint {
             module_map: ModuleMap::new(),
             entry_module: PathIndex(0),
             directories: HashMap::new(),
@@ -33,19 +39,23 @@ impl FullProgramContext {
             errors: vec![],
             root_folder: None,
             should_resolve_imports,
-            use_prelude,
+            corelib_path: None,
         };
-        context
+        //todo: if corelib is already loaded in another standpoint.
+        if let Some(path) = corelib_path {
+            match Module::from_path(path) {
+                Ok(module) => standpoint.corelib_path = standpoint.add_module(module),
+                Err(error) => standpoint.add_import_error(error),
+            }
+        }
+        standpoint
     }
-    /// Builds a program context from the entry module.
-    /// It also specifies whether the module imports should be resolved, which adds multiple modules to the context.
+    /// Builds a program standpoint from the entry module.
+    /// It also specifies whether the module imports should be resolved, which adds multiple modules to the standpoint.
     pub fn build_from_module(module: Module, should_resolve_imports: bool) -> Option<Self> {
-        let mut context = FullProgramContext::new(should_resolve_imports, true);
-        context.add_module(module);
-        // for import in import_lists {
-        //
-        // }
-        Some(context)
+        let mut standpoint = Standpoint::new(should_resolve_imports, None);
+        standpoint.add_module(module);
+        Some(standpoint)
     }
     /// Returns the first declaration of a symbol.
     pub fn get_declaration_of(&self, index: SymbolIndex) -> Option<SemanticSymbolDeclaration> {
@@ -77,7 +87,7 @@ impl FullProgramContext {
                 .flatten(),
         )
     }
-    /// Add a module to the context and returns its path index.
+    /// Add a module to the standpoint and returns its path index.
     pub fn add_module(&mut self, module: Module) -> Option<PathIndex> {
         let module_path = module.module_path.as_ref()?.to_owned();
         let module_directory = get_parent_dir(&module_path)?;
@@ -113,12 +123,16 @@ impl FullProgramContext {
             })
         }
 
-        let (typed_module, imports) = bind(
+        let corelib_symbol_idx = self
+            .corelib_path
+            .map(|path| self.module_map.get(path).unwrap().symbol_idx);
+        let typed_module = bind(
             module,
             path_idx,
             &mut self.symbol_table,
             &mut self.errors,
             &mut self.literals,
+            corelib_symbol_idx,
         )?;
 
         // Module names and file names must be equal.
@@ -137,20 +151,16 @@ impl FullProgramContext {
         dir_map.insert(module_name, path_idx);
         self.module_map.add(typed_module);
 
-        // Resolve imports.
+        // Get just added module and resolve imports.
         if self.should_resolve_imports {
-            self.resolve_imports(imports, path_idx).unwrap();
+            self.resolve_imports_of(path_idx).unwrap();
         }
         Some(path_idx)
     }
     // Resolve the imports of a module given its path index.
-    fn resolve_imports(
-        &mut self,
-        imports: Vec<(UseTarget, Vec<SymbolIndex>)>,
-        base_module_path_idx: PathIndex,
-    ) -> Result<(), String> {
+    fn resolve_imports_of(&mut self, root_path_idx: PathIndex) -> Result<(), String> {
         // The module requesting imports.
-        let base_module = match self.module_map.get(base_module_path_idx) {
+        let base_module = match self.module_map.get(root_path_idx) {
             Some(module) => module,
             None => return Err("Could not get base module".to_owned()),
         };
@@ -162,8 +172,9 @@ impl FullProgramContext {
 
         // Find the modules to import.
         // todo: solve import graphs in parallel.
-        for (target, leaves) in imports {
-            self.resolve_import_target(&parent_dir, target, base_module_path_idx, leaves)?;
+        // todo: reduce cloning.
+        for (target, leaves) in base_module.imports.clone() {
+            self.resolve_import_target(&parent_dir, &target, root_path_idx, &leaves)?;
         }
         Ok(())
     }
@@ -171,9 +182,9 @@ impl FullProgramContext {
     fn resolve_import_target(
         &mut self,
         parent_dir: &PathBuf,
-        target: UseTarget,
+        target: &UseTarget,
         root: PathIndex,
-        leaves: Vec<SymbolIndex>,
+        leaves: &Vec<SymbolIndex>,
     ) -> Result<(), String> {
         let path_index = match self.get_or_create_module_in_dir(parent_dir, &target.name.name) {
             Some(path_index) => path_index,
@@ -182,7 +193,7 @@ impl FullProgramContext {
                 self.errors.push(ProgramError {
                     offending_file: root,
                     error_type: Importing(errors::cannot_find_module(
-                        target.name.name,
+                        target.name.name.clone(),
                         target.name.span,
                     )),
                 });
@@ -193,19 +204,16 @@ impl FullProgramContext {
         if path_index == root {
             self.errors.push(ProgramError {
                 offending_file: root,
-                error_type: Importing(errors::self_import(target.name.name, target.name.span)),
+                error_type: Importing(errors::self_import(target)),
             });
             return Ok(());
         }
-
         let imported_module = match self.module_map.get(path_index) {
             Some(imp_module) => imp_module,
             None => return Err("Could not get imported module.".to_owned()),
         };
         let index = imported_module.symbol_idx;
-
         let solved_import_sources = self.solve_import_symbols(&target, leaves, index, root);
-
         for (initial, solved) in solved_import_sources {
             let import_symbol = match self.symbol_table.get_mut(initial) {
                 Some(symbol) => symbol,
@@ -240,7 +248,7 @@ impl FullProgramContext {
     fn solve_import_symbols(
         &mut self,
         target: &UseTarget,
-        leaves: Vec<SymbolIndex>,
+        leaves: &Vec<SymbolIndex>,
         index: SymbolIndex,
         root: PathIndex,
     ) -> Vec<(SymbolIndex, Option<SymbolIndex>)> {
@@ -249,43 +257,75 @@ impl FullProgramContext {
             ast::UsePath::Item(sub_target) => {
                 let imported_symbol_idx =
                     self.look_for_symbol_in_module(index, root, &target, &sub_target);
-                match imported_symbol_idx {
-                    Some(symbol_idx) => {
+                if let Some(symbol_idx) = imported_symbol_idx {
+                    // Block private imports.
+                    let symbol = self.symbol_table.get(symbol_idx).unwrap();
+                    if !symbol.kind.is_public() {
+                        self.add_import_error_in_file(
+                            root,
+                            errors::private_symbol_leak(
+                                target.name.name.clone(),
+                                sub_target.name.to_owned(),
+                            ),
+                        );
+                    }
+                    self.solve_import_symbols(&sub_target, leaves, symbol_idx, root)
+                } else {
+                    self.add_import_error_in_file(
+                        root,
+                        errors::no_such_symbol_in_module(
+                            target.name.name.clone(),
+                            sub_target.name.to_owned(),
+                        ),
+                    );
+                    vec![]
+                }
+            }
+            ast::UsePath::List(list) => {
+                let mut solved = vec![];
+                for (i, sub_target) in list.iter().enumerate() {
+                    let leaves = vec![leaves[i]];
+                    let imported_symbol_idx =
+                        self.look_for_symbol_in_module(index, root, &target, &*sub_target);
+                    if let Some(symbol_idx) = imported_symbol_idx {
                         // Block private imports.
                         let symbol = self.symbol_table.get(symbol_idx).unwrap();
                         if !symbol.kind.is_public() {
-                            self.errors.push(ProgramError {
-                                offending_file: root,
-                                error_type: Importing(errors::private_symbol_leak(
+                            self.add_import_error_in_file(
+                                root,
+                                errors::private_symbol_leak(
                                     target.name.name.clone(),
                                     sub_target.name.to_owned(),
-                                )),
-                            });
+                                ),
+                            );
                         }
-                        self.solve_import_symbols(&sub_target, leaves, symbol_idx, root)
-                    }
-                    None => {
-                        self.errors.push(ProgramError {
-                            offending_file: root,
-                            error_type: Importing(errors::no_such_symbol_in_module(
+                        solved.append(&mut self.solve_import_symbols(
+                            &sub_target,
+                            &leaves,
+                            symbol_idx,
+                            root,
+                        ))
+                    } else {
+                        self.add_import_error_in_file(
+                            root,
+                            errors::no_such_symbol_in_module(
                                 target.name.name.clone(),
                                 sub_target.name.to_owned(),
-                            )),
-                        });
-                        vec![]
+                            ),
+                        );
                     }
                 }
+                solved
             }
-            ast::UsePath::List(_) => todo!(),
         }
     }
-
+    /// Handle searching an external module for a symbol.
     fn look_for_symbol_in_module(
         &mut self,
         index: SymbolIndex,
         root: PathIndex,
         target: &UseTarget,
-        sub_target: &Box<UseTarget>,
+        sub_target: &UseTarget,
     ) -> Option<SymbolIndex> {
         let symbol = self.symbol_table.get(index)?;
         let symbols_in_module = match &symbol.kind {
@@ -317,7 +357,7 @@ impl FullProgramContext {
         });
         symbol_to_retrieve.copied()
     }
-    /// Check if a folder is part of the context.
+    /// Check if a folder is part of the standpoint.
     pub fn contains_folder(&self, dir: &Path) -> bool {
         self.directories.get(dir).is_some()
     }
@@ -328,11 +368,22 @@ impl FullProgramContext {
             error_type: Importing(error),
         })
     }
-    /// Check if the context is empty.
+    /// Add an import error to the list of errors.
+    pub fn add_import_error_in_file(
+        &mut self,
+        offending_file: PathIndex,
+        error: errors::ImportError,
+    ) {
+        self.errors.push(ProgramError {
+            offending_file,
+            error_type: Importing(error),
+        })
+    }
+    /// Check if the standpoint is empty.
     pub fn is_empty(&self) -> bool {
         self.module_map.len() == 0
     }
-    /// Check if a file is part of the context.
+    /// Check if a file is part of the standpoint.
     pub fn contains_file(&self, path_buf: &PathBuf) -> bool {
         self.module_map
             .paths()
@@ -340,52 +391,59 @@ impl FullProgramContext {
             .is_some()
     }
     /// Get the module in a directory using its module name.
-    /// The module is freshly analyzed if it exists but it has not been added to the context yet.
+    /// The module is freshly analyzed if it exists but it has not been added to the standpoint yet.
     pub fn get_or_create_module_in_dir(&mut self, dir: &Path, name: &str) -> Option<PathIndex> {
         let dir_map = self.directories.get(dir)?;
         if name == "Package" {
-            todo!()
+            return Some(self.entry_module);
         } else if name == "Super" {
             todo!()
-        } else if name == "Core" && self.use_prelude {
-            todo!()
+        } else if name == "Core" && self.corelib_path.is_some() {
+            return self.corelib_path;
         }
         match dir_map.get(name) {
             // Retrieved successfully.
             Some(path_index) => return Some(*path_index),
             None => {
-                // Path either doesn't exist, or has not been added to the context yet.
+                // Path either doesn't exist, or has not been added to the standpoint yet.
                 // Traverse through the entire folder to determine the path.
-                for entry_result in dir.read_dir().ok()? {
-                    let entry = match entry_result {
-                        Ok(entry) => entry,
-                        Err(err) => {
-                            self.add_import_error(errors::error_reading_entry_file(err));
-                            continue;
-                        }
-                    };
-                    let entry_path = entry.path();
-                    // Path points to a file, easy peasy (peezy?).
-                    let module_is_file = entry_path.is_file()
-                        && entry_path.file_stem()?.to_str()? == name
-                        && entry_path.extension()?.to_str()? == "wrl";
-                    if module_is_file {
-                        match Module::from_path(entry_path) {
-                            Ok(module) => return self.add_module(module),
-                            Err(error) => {
-                                self.add_import_error(error);
-                                continue;
-                            }
-                        }
-                    }
-                    let module_is_directory =
-                        entry_path.is_dir() && entry_path.file_name()?.to_str()? == name;
-                    if module_is_directory {}
-                }
+                self.create_module_in_dir(dir, name);
                 // No possible path to this module was resolved,
                 return None;
             }
         }
+    }
+    /// Rescursively search for and add a module in a directory to the module map.
+    fn create_module_in_dir(&mut self, dir: &Path, name: &str) -> Option<PathIndex> {
+        for entry_result in dir.read_dir().ok()? {
+            let entry = match entry_result {
+                Ok(entry) => entry,
+                Err(err) => {
+                    self.add_import_error(errors::error_reading_entry_file(err));
+                    continue;
+                }
+            };
+            let entry_path = entry.path();
+            // Path points to a file, easy peasy (peezy?).
+            let module_is_file = entry_path.is_file()
+                && entry_path.file_stem()?.to_str()? == name
+                && entry_path.extension()?.to_str()? == "wrl";
+            if module_is_file {
+                match Module::from_path(entry_path) {
+                    Ok(module) => return self.add_module(module),
+                    Err(error) => {
+                        self.add_import_error(error);
+                        continue;
+                    }
+                }
+            }
+            let module_is_directory =
+                entry_path.is_dir() && entry_path.file_name()?.to_str()? == name;
+            if module_is_directory {
+                return self.create_module_in_dir(&entry_path, name);
+            }
+        }
+        return None;
     }
     /// Returns reference to a (typed) module at a specific path, if it exists.
     pub fn get_module_at_path(&self, path_buf: &PathBuf) -> Option<&TypedModule> {
@@ -401,52 +459,86 @@ impl FullProgramContext {
             .find(|tuple| tuple.1.path_buf == *path_buf)
             .map(|tuple| tuple.1)
     }
-    /// Changes the content of a single module and updates the entire context accordingly.
+    /// Changes the content of a single module and updates the entire standpoint accordingly.
     pub fn refresh_module_with_text(&mut self, path: &PathBuf, text: String) -> Option<()> {
-        let path_idx = self.module_map.map_path_to_index(path)?;
-        let module_symbol = self.module_map.get(path_idx)?.symbol_idx;
-        let module_name = std::mem::take(&mut self.symbol_table.get_mut(module_symbol)?.name);
-        let mut affected_symbols = vec![];
-        let mut affected_modules = vec![];
         // todo: find more performant ways to implement this.
+        let path_idx = self.module_map.map_path_to_index(path)?;
+        let module_symbol_idx = self.module_map.get(path_idx)?.symbol_idx;
+        let module_symbol = self.symbol_table.remove(module_symbol_idx)?;
+
+        let module_name = module_symbol.name;
         // Get all symbols that were declared in the module to refresh.
-        for (symbol_idx, symbol) in self.symbol_table.symbols() {
-            if symbol.references[0].module_path == path_idx {
-                affected_symbols.push(symbol_idx);
-                // Get all the connected modules, so they can also be updated in real time.
-                // It should skip over this module itself.
-                for reference in symbol.references.iter() {
-                    if reference.module_path != path_idx {
-                        affected_modules.push(reference.module_path);
-                    }
+        let affected_symbols = match module_symbol.kind {
+            SemanticSymbolKind::Module { symbols, .. } => symbols,
+            _ => unreachable!(),
+        };
+        // Get all the connected modules, so they can also be updated.
+        let mut connected_path_idxs = vec![];
+        for symbol_idx in affected_symbols {
+            // Delete the stale affected symbols.
+            let symbol = self.symbol_table.remove(symbol_idx)?;
+            // It should skip over this module itself.
+            for reference in symbol.references {
+                if reference.module_path != path_idx
+                    && !connected_path_idxs.contains(&reference.module_path)
+                {
+                    connected_path_idxs.push(reference.module_path);
                 }
             }
         }
-        // Delete the stale affected symbols.
-        for symbol_idx in affected_symbols {
-            self.symbol_table.remove(symbol_idx);
+
+        // References to this module.
+        for reference in module_symbol.references {
+            if reference.module_path != path_idx
+                && !connected_path_idxs.contains(&reference.module_path)
+            {
+                connected_path_idxs.push(reference.module_path);
+            }
         }
-        // Delete stale errors.
-        self.errors.retain(|error| error.offending_file != path_idx);
+        // Delete stale semantic errors.
+        // todo: performanceee.
+        self.errors.retain(|error| {
+            !matches!(
+                error.error_type,
+                ProgramErrorType::Context(_)
+                    | ProgramErrorType::Importing(_)
+                    | ProgramErrorType::Typing(_)
+            )
+        });
+
         // Remove the stale module.
-        // todo: what if the module name changes?
         let stale_module = self.module_map.remove(path_idx)?;
         let parent_directory = get_parent_dir(&stale_module.path_buf)?;
         let dir_map = self.directories.get_mut(parent_directory)?;
         dir_map.remove(&module_name);
+        // if it was the Core library that was updated:
+        let was_core = self
+            .corelib_path
+            .is_some_and(|core_path| core_path == path_idx);
+        if was_core {
+            self.corelib_path = None;
+        }
 
         // Add updated module.
         let mut update = Module::from_text(text);
         update.module_path = Some(path.clone());
-        self.should_resolve_imports = false;
-        let new_path_idx = self.add_module(update);
-        self.should_resolve_imports = true;
+        let new_path_idx = self.add_module(update)?;
+        if was_core {
+            self.corelib_path = Some(new_path_idx);
+        }
 
-        // Update related modules.
-        affected_modules
-            .iter()
-            .filter_map(|idx| self.module_map.get(*idx))
-            .for_each(|_| todo!());
+        // Update all modules.
+        // todo: there should be a better way to do this.
+        if self.should_resolve_imports {
+            let all_paths = self
+                .module_map
+                .paths()
+                .map(|(idx, _)| idx)
+                .collect::<Vec<_>>();
+            for idx in all_paths {
+                self.resolve_imports_of(idx).unwrap();
+            }
+        }
 
         Some(())
     }
@@ -457,7 +549,7 @@ mod tests {
     use std::path::PathBuf;
 
     // todo: use virtual fs.
-    use crate::{FullProgramContext, Module, PathIndex};
+    use crate::{Module, PathIndex, Standpoint};
 
     #[test]
     fn bind_variables_and_constants() {
@@ -471,19 +563,19 @@ mod tests {
         ";
         let mut module = Module::from_text(format!("{text}"));
         module.module_path = Some(PathBuf::from("testing://Test.wrl"));
-        let context = FullProgramContext::build_from_module(module, false).unwrap();
-        assert!(context.errors.len() == 1);
-        assert!(context
+        let standpoint = Standpoint::build_from_module(module, false).unwrap();
+        assert!(standpoint.errors.len() == 1);
+        assert!(standpoint
             .symbol_table
             .find(|symbol| symbol.name == "greeting")
             .is_some());
-        assert!(context
+        assert!(standpoint
             .symbol_table
             .find(|symbol| symbol.name == "CONSTANT")
             .is_some());
         println!(
             "{:#?}",
-            context
+            standpoint
                 .symbol_table
                 .in_module(PathIndex(0))
                 .map(|symbol| (&symbol.name, &symbol.kind, &symbol.references))
@@ -491,7 +583,7 @@ mod tests {
         );
         println!(
             "ERRORS: \n\n\n{:#?}",
-            context
+            standpoint
                 .errors
                 .iter()
                 .filter(|error| error.offending_file == PathIndex(0))
@@ -511,13 +603,13 @@ mod tests {
         ";
         let mut module = Module::from_text(format!("{text}"));
         module.module_path = Some(PathBuf::from("testing://Test.wrl"));
-        let context = FullProgramContext::build_from_module(module, false).unwrap();
-        assert!(context.errors.len() == 1);
-        assert!(context
+        let standpoint = Standpoint::build_from_module(module, false).unwrap();
+        assert!(standpoint.errors.len() == 1);
+        assert!(standpoint
             .symbol_table
             .find(|symbol| symbol.name == "Println")
             .is_some());
-        assert!(context
+        assert!(standpoint
             .symbol_table
             .find(|symbol| symbol.name == "greeting")
             .is_some());
@@ -538,12 +630,12 @@ mod tests {
         ";
         let mut module = Module::from_text(format!("{text}"));
         module.module_path = Some(PathBuf::from("testing://Test.wrl"));
-        let context = FullProgramContext::build_from_module(module, false).unwrap();
-        assert!(context
+        let standpoint = Standpoint::build_from_module(module, false).unwrap();
+        assert!(standpoint
             .symbol_table
             .find(|symbol| symbol.name == "Car")
             .is_some());
-        assert!(context
+        assert!(standpoint
             .symbol_table
             .find(|symbol| symbol.name == "Honk")
             .is_some());
@@ -562,8 +654,8 @@ mod tests {
         ";
         let mut module = Module::from_text(format!("{text}"));
         module.module_path = Some(PathBuf::from("testing://Test.wrl"));
-        let context = FullProgramContext::build_from_module(module, false).unwrap();
-        assert!(context.errors.len() == 0);
+        let standpoint = Standpoint::build_from_module(module, false).unwrap();
+        assert!(standpoint.errors.len() == 0);
     }
 
     #[test]
@@ -579,10 +671,10 @@ mod tests {
         ";
         let mut module = Module::from_text(format!("{text}"));
         module.module_path = Some(PathBuf::from("testing://Test.wrl"));
-        let context = FullProgramContext::build_from_module(module, false).unwrap();
+        let standpoint = Standpoint::build_from_module(module, false).unwrap();
         println!(
             "{:#?}",
-            context
+            standpoint
                 .symbol_table
                 .in_module(PathIndex(0))
                 .map(|symbol| (&symbol.name, &symbol.kind, &symbol.references))
@@ -590,13 +682,13 @@ mod tests {
         );
         println!(
             "ERRORS: \n\n\n{:#?}",
-            context
+            standpoint
                 .errors
                 .iter()
                 .filter(|error| error.offending_file == PathIndex(0))
                 .collect::<Vec<_>>()
         );
-        assert!(context.errors.len() == 0);
+        assert!(standpoint.errors.len() == 0);
     }
 
     #[test]
@@ -610,10 +702,10 @@ mod tests {
         ";
         let mut module = Module::from_text(format!("{text}"));
         module.module_path = Some(PathBuf::from("testing://Test.wrl"));
-        let context = FullProgramContext::build_from_module(module, false).unwrap();
+        let standpoint = Standpoint::build_from_module(module, false).unwrap();
         println!(
             "{:#?}",
-            context
+            standpoint
                 .symbol_table
                 .in_module(PathIndex(0))
                 .map(|symbol| (&symbol.name, &symbol.kind, &symbol.references))
@@ -621,13 +713,13 @@ mod tests {
         );
         println!(
             "ERRORS: \n\n\n{:#?}",
-            context
+            standpoint
                 .errors
                 .iter()
                 .filter(|error| error.offending_file == PathIndex(0))
                 .collect::<Vec<_>>()
         );
-        assert!(context.errors.len() == 0);
+        assert!(standpoint.errors.len() == 0);
     }
 
     #[test]
@@ -643,19 +735,19 @@ mod tests {
         ";
         let mut module = Module::from_text(format!("{text}"));
         module.module_path = Some(PathBuf::from("testing://Test.wrl"));
-        let context = FullProgramContext::build_from_module(module, false).unwrap();
-        assert!(context
+        let standpoint = Standpoint::build_from_module(module, false).unwrap();
+        assert!(standpoint
             .symbol_table
             .find(|symbol| symbol.name == "Println")
             .is_some());
-        assert!(context
+        assert!(standpoint
             .symbol_table
             .find(|symbol| symbol.name == "Main")
             .is_some());
-        assert!(context.errors.len() == 0);
+        assert!(standpoint.errors.len() == 0);
         println!(
             "{:#?}",
-            context
+            standpoint
                 .symbol_table
                 .in_module(PathIndex(0))
                 .map(|symbol| (&symbol.name, &symbol.kind, &symbol.references))
@@ -680,10 +772,10 @@ function Add(a: Int, b: Int): Int {
 
         let mut module = Module::from_text(format!("{text}"));
         module.module_path = Some(PathBuf::from("testing://Test.wrl"));
-        let context = FullProgramContext::build_from_module(module, true).unwrap();
+        let standpoint = Standpoint::build_from_module(module, true).unwrap();
         println!(
             "{:#?}",
-            context
+            standpoint
                 .symbol_table
                 .in_module(PathIndex(0))
                 .collect::<Vec<_>>()
@@ -704,15 +796,15 @@ function Add(a: Int, b: Int): Int {
 
         let mut module = Module::from_text(format!("{text}"));
         module.module_path = Some(PathBuf::from("testing://Test.wrl"));
-        let context = FullProgramContext::build_from_module(module, true).unwrap();
+        let standpoint = Standpoint::build_from_module(module, true).unwrap();
         println!(
             "{:#?}",
-            context
+            standpoint
                 .symbol_table
                 .in_module(PathIndex(0))
                 .collect::<Vec<_>>()
         );
-        println!("{:#?}", context.errors);
+        println!("{:#?}", standpoint.errors);
     }
 
     #[test]
@@ -752,19 +844,79 @@ function Add(a: Int, b: Int): Int {
         let mut test_module = Module::from_text(format!("{module2_text}"));
         test_module.module_path = Some(PathBuf::from("testing://Test.wrl"));
 
-        let mut context = FullProgramContext::build_from_module(utils_module, false).unwrap();
-        context.should_resolve_imports = true;
-        context.add_module(test_module);
-        context.add_module(main_module);
+        let mut standpoint = Standpoint::build_from_module(utils_module, false).unwrap();
+        standpoint.should_resolve_imports = true;
+        standpoint.add_module(test_module);
+        standpoint.add_module(main_module);
+
         println!(
             "{:#?}",
-            context
+            standpoint
                 .symbol_table
                 .symbols()
                 .map(|(_, symbol)| symbol)
                 .collect::<Vec<_>>()
         );
-        println!("{:#?}", context.errors);
-        // assert!(context.errors.len() == 0);
+        println!("{:#?}", standpoint.errors);
+        assert!(standpoint.errors.len() == 0);
+    }
+
+    #[test]
+    fn resolve_mutliple_module_imports() {
+        let module0_text = "
+    module Main;
+
+    use Test.{Utils.Add, Divide};
+
+    
+        ";
+        let module1_text = "
+    module Utils;
+
+    type Int = Int;
+
+    public function Add(a: Int, b: Int): Int {
+        return a + b;
+    }
+
+    public function Divide(a: Int, b: Int): Int {
+        return a / b;
+    }
+    ";
+
+        let module2_text = "
+    module Test;
+
+    public use Utils;
+    public use Utils.Add;
+    public use Utils.Divide;
+
+    public function Main() {
+        return Add(1, 2);
+    }
+    ";
+
+        let mut main_module = Module::from_text(format!("{module0_text}"));
+        main_module.module_path = Some(PathBuf::from("testing://Main.wrl"));
+        let mut utils_module = Module::from_text(format!("{module1_text}"));
+        utils_module.module_path = Some(PathBuf::from("testing://Utils.wrl"));
+        let mut test_module = Module::from_text(format!("{module2_text}"));
+        test_module.module_path = Some(PathBuf::from("testing://Test.wrl"));
+
+        let mut standpoint = Standpoint::build_from_module(utils_module, false).unwrap();
+        standpoint.should_resolve_imports = true;
+        standpoint.add_module(test_module);
+        standpoint.add_module(main_module);
+
+        println!(
+            "{:?}",
+            standpoint
+                .symbol_table
+                .symbols()
+                .map(|(_, symbol)| (&symbol.name, &symbol.references, &symbol.kind))
+                .collect::<Vec<_>>()
+        );
+        println!("{:#?}", standpoint.errors);
+        assert!(standpoint.errors.len() == 0);
     }
 }

@@ -6,7 +6,8 @@ public type Int = UnsignedInt;
 public type Float = Float;
 public type Number = Int | Float;
 public type Maybe = Maybe;
-public type Magnitude = Magnitude;
+type Magnitude = Magnitude;
+
 /// Returns a Maybe with no value.
 public function None<T>(): Maybe<T> {}
 /// Returns a `Maybe` with a value.

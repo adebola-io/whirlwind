@@ -1,3 +1,5 @@
+use ast::UseTarget;
+
 use crate::{PathIndex, SymbolIndex, TypedStmnt};
 use std::path::PathBuf;
 
@@ -10,4 +12,6 @@ pub struct TypedModule {
     pub path_idx: PathIndex,
     pub symbol_idx: SymbolIndex,
     pub statements: Vec<TypedStmnt>,
+    // todo: ugh.
+    pub imports: Vec<(UseTarget, Vec<SymbolIndex>)>,
 }

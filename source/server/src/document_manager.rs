@@ -6,8 +6,7 @@ use crate::{
     hover::{HoverFinder, HoverInfo},
     message_store::{MessageStore, WithMessages},
 };
-use analyzer::{FullProgramContext, Module, TypedVisitorNoArgs};
-// use ast::ASTVisitorNoArgs;
+use analyzer::{Module, Standpoint, TypedVisitorNoArgs, CORE_LIBRARY_PATH};
 use tower_lsp::lsp_types::{
     CompletionParams, CompletionResponse, Diagnostic, DidChangeTextDocumentParams,
     DidOpenTextDocumentParams, DocumentDiagnosticParams, DocumentDiagnosticReport,
@@ -15,7 +14,7 @@ use tower_lsp::lsp_types::{
 };
 use utils::get_parent_dir;
 
-// Adds an error message to a message store and immediately returns the message store.
+/// Adds an error message to a message store and immediately returns the message store.
 macro_rules! log_error {
     ($messages: expr, $($arg:tt)*) => {{
         $messages.error((format!($($arg)*)));
@@ -25,13 +24,15 @@ macro_rules! log_error {
 
 #[derive(Debug)]
 pub struct DocumentManager {
-    pub contexts: RwLock<Vec<FullProgramContext>>,
+    pub contexts: RwLock<Vec<Standpoint>>,
+    pub corelib_path: Option<PathBuf>,
 }
 
 impl DocumentManager {
     pub fn new() -> Self {
         DocumentManager {
             contexts: RwLock::new(vec![]),
+            corelib_path: Some(PathBuf::from(CORE_LIBRARY_PATH)),
         }
     }
     /// Add a new document to be tracked.
@@ -72,7 +73,10 @@ impl DocumentManager {
                         };
                         msgs.inform(message);
                         context.add_module(module);
-                        msgs.inform("Module added.");
+                        msgs.inform(format!(
+                            "Module added. {} modules in standpoint.",
+                            context.module_map.len()
+                        ));
                     }
                     // If module cannot be added, store error in the root file.
                     Err(error) => {
@@ -86,7 +90,7 @@ impl DocumentManager {
 
         // No context has the file. Add a new context.
         msgs.inform(format!("New module context for {path_buf:?}"));
-        let mut context = FullProgramContext::new(true, false);
+        let mut context = Standpoint::new(true, self.corelib_path.clone());
         let mut root_folder = parent_folder;
 
         // Look 5 levels above to try to find the root of the project.
@@ -270,6 +274,7 @@ impl DocumentManager {
         if let None = context.refresh_module_with_text(&path_buf, most_current) {
             log_error!(msgs, "Something went wrong while refreshing user text.")
         };
+        msgs.inform(format!("Errors: {:#?}", context.errors));
         msgs
     }
     /// Get diagnostics.
