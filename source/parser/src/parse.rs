@@ -1456,6 +1456,7 @@ impl<L: Lexer> Parser<L> {
             self
         );
         let implementations = check!(self.maybe_trait_implementations());
+        expect_or_return!(TokenType::Bracket(LCurly), self);
         let entry_no = self.module_ambience().reserve_entry_space();
         let address = ScopeAddress {
             module_id: self.module_ambience().id(),
