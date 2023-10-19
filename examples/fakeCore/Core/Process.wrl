@@ -1,0 +1,11 @@
+module Process;
+
+
+public model Error {
+
+}
+
+/// Removes a layer of the stack trace and panics.
+public function PanicOnCaller(error: Error): never {
+    PanicOnCaller()// Compiler built in.
+}

@@ -1,22 +1,14 @@
-module Core;
+module Maybe;
 
-public use Http;
-use Internals.{ IsNull, Nullptr};
-use Traits.{Assertable, Try};
-use Process.{PanicOnCaller, Error};
-
-// public function Add(a: Int, b: Int): Int {
-//     return a + b;
-// }
-
-public type Array = Array;
-public type UnsignedInt = UnsignedInt;
-public type Int = UnsignedInt;
-public type Float = Float;
-public type Number = Int | Float;
-public type Magnitude = Magnitude;
-public type Bool = Bool;
-
+use Internals.{ IsNull, Nullptr, Flow };
+use Core.{
+    Prelude.{
+        Outcome.{ Ok, Err, },
+        Traits.{ Guaranteed, Try }
+    },
+    Process.{ PanicOnCaller, Error },
+    Bool
+};
 
 /// Creates a `Maybe` with no value.
 public function None<T>(): Maybe<T> {
@@ -29,15 +21,23 @@ public function Some<T>(value: T): Maybe<T> {
 }
 
 // /// A value that may or may not exist.
-public model Maybe<T> implements Assertable<T> + Try<T> {
+public model Maybe<T> implements Guaranteed<T> + Try<T> {
     var value: T;
 
     new(value: T) {
         this.value = value;
     }
-//     // public function [Assertable.Assert](): T {
-//     //     this.Unwrap()
-//     // }
+    // /// Implementation of `Guarantee` trait.
+    // public function [Guaranteed.Guarantee](): T {
+    //     this.Unwrap()
+    // }
+    // /// Implementation of `Try` trait.
+    // public function [Try.Try]<U>(): Result<Flow<T>, Flow<Maybe<U>>> {
+    //     if this.IsSome() { 
+    //         Ok(Flow.Normal(this.value)) 
+    //     } 
+    //     else Err(Flow.Return(None()))
+    // }
     /// Returns a Bool indicating if the Maybe contains no value.
     /// ### Usage
     /// ```
@@ -50,10 +50,10 @@ public model Maybe<T> implements Assertable<T> + Try<T> {
     public function IsNone(): Bool {
         IsNull(this.value)
     }
-//     /// Returns a Bool indicating whether there is a value contained or not.
-//     public function IsSome(): Bool {
-//         !IsNull(this.value)
-//     }
+    /// Returns a Bool indicating whether there is a value contained or not.
+    public function IsSome(): Bool {
+        !IsNull(this.value)
+    }
     /// Ignores the maybe and returns the internal value. 
     /// It will throw an error if no value is present.
     /// ### Usage
@@ -62,8 +62,10 @@ public model Maybe<T> implements Assertable<T> + Try<T> {
     /// Assert(numValue.Unwrap()).Equals(89);
     /// 
     /// noValue: Maybe<Number> = None();
-    /// noValue.Unwrap(); // Will throw an error.
+    /// noValue.Unwrap(); // Will panic with an error.
     /// ```
+    /// ### Panics
+    /// It panics if called on a `Maybe` with no value.
     public function Unwrap(): T {
         if this.IsNone() {
             PanicOnCaller(new Error("Called Unwrap on a None Value"))
@@ -77,7 +79,6 @@ public model Maybe<T> implements Assertable<T> + Try<T> {
     }
     /// Converts a `Maybe<T>` to a `Maybe<E>` by applying a function.
     public function Map<U>(func: fn(former: T): U): Maybe<U> {
-        
-    }
-    
+        Some(func(this?))
+    }   
 }

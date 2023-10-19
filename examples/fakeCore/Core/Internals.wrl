@@ -1,0 +1,26 @@
+module Internals;
+
+function Builtin(): never {
+    Builtin()
+}
+
+/// Returns true if a value is the null pointer.
+/// ### Usage
+/// ```
+/// use Internals.{IsNull, Nullptr};
+/// Assert(IsNull(Nullptr));
+/// ```
+public function IsNull<T>(value: T): T {
+    return Builtin();
+}
+
+public model Nullptr {
+    // Compiler built-in;
+}
+
+public enum Flow<T> {
+    Return(T),
+    Continue(T),
+    Break(T),
+    Normal(T)
+}
