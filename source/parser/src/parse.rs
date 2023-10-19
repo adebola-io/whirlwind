@@ -1,5 +1,3 @@
-use std::cell::RefCell;
-
 use ast::{
     AccessExpr, ArrayExpr, AssignmentExpr, AttributeSignature, BinaryExpr, Block, BorrowedType,
     Bracket::*, BreakStatement, CallExpr, Comment, ConstantDeclaration, ConstantSignature,
@@ -18,6 +16,7 @@ use ast::{
 };
 use errors::{self as errors, expected, ParseError};
 use lexer::Lexer;
+use std::cell::RefCell;
 use utils::Partial;
 
 /// A recursive descent parser that reads tokens lazily and returns statements.
@@ -33,6 +32,7 @@ pub struct Parser<L: Lexer> {
     /// Handles ambiguity caused by nested generic arguments conflicting with bit right shift.
     waiting_for_second_angular_bracket: RefCell<bool>,
     pub debug_allow_global_expressions: bool,
+    is_in_error_state: RefCell<bool>,
 }
 
 type Fallible<T> = Result<T, ParseError>;
@@ -102,6 +102,7 @@ impl<L: Lexer> Parser<L> {
             precedence_stack: RefCell::new(vec![]),
             waiting_for_second_angular_bracket: RefCell::new(false),
             debug_allow_global_expressions: false,
+            is_in_error_state: RefCell::new(false),
         }
     }
 
@@ -933,21 +934,30 @@ impl<L: Lexer> Parser<L> {
             // _ => todo!(),
         };
 
-        // If an error is encountered, clear the precedence stack and skip all the next (likely corrupted) tokens until after a right delimeter or boundary.
+        // If an error is encountered, clear the precedence stack and skip all the next (likely corrupted) tokens until after a delimeter or boundary.
         // Then resume normal parsing.
         if statement.is_none() {
             self.precedence_stack.borrow_mut().clear();
-            self.advance();
+            if *self.is_in_error_state.borrow() {
+                self.advance();
+                *self.is_in_error_state.borrow_mut() = false;
+            } else {
+                *self.is_in_error_state.borrow_mut() = true;
+            }
             loop {
                 match self.token() {
                     Some(token) => match token._type {
-                        TokenType::Bracket(RCurly | RParens | RSquare)
-                        | TokenType::Operator(SemiColon | GreaterThan | RightShift) => break,
+                        TokenType::Bracket(_)
+                        | TokenType::Operator(
+                            SemiColon | GreaterThan | RightShift | LesserThan | LeftShift,
+                        ) => break,
                         _ => self.advance(),
                     },
                     None => break,
                 }
             }
+        } else {
+            *self.is_in_error_state.borrow_mut() = false;
         }
         statement
     }
@@ -960,12 +970,27 @@ impl<L: Lexer> Parser<L> {
         let info = self.get_doc_comment();
         self.advance(); // Move past function.
 
+        let mut errors = vec![];
+
         let name = check!(self.identifier());
-        let generic_params = check!(self.maybe_generic_params());
+        let generic_params = match self.maybe_generic_params() {
+            Ok(param) => param,
+            Err(error) => {
+                errors.push(error);
+                None
+            }
+        };
         let params = check!(self.parameters());
-        let return_type = check!(self.maybe_type_label());
+        let return_type = match self.maybe_type_label() {
+            Ok(rettye) => rettye,
+            Err(error) => {
+                errors.push(error);
+                None
+            }
+        };
         // Errors found in the body of the function.
-        let (body, errors) = self.block(ScopeType::Functional).to_tuple();
+        let (body, mut body_errors) = self.block(ScopeType::Functional).to_tuple();
+        errors.append(&mut body_errors);
         // Require a function body.
         if body.is_none() {
             return Partial::from_errors(errors);
@@ -1096,14 +1121,32 @@ impl<L: Lexer> Parser<L> {
         let info = self.get_doc_comment();
         self.advance(); // move past type.
 
+        let mut errors = vec![];
+
         let name = check!(self.identifier());
-        let generic_params = check!(self.maybe_generic_params());
+        let generic_params = match self.maybe_generic_params() {
+            Ok(g) => g,
+            Err(error) => {
+                errors.push(error);
+                None
+            }
+        };
         expect_or_return!(TokenType::Operator(Assign), self);
         self.advance(); // Move past =
         let value = check!(self.type_expression());
-        expect_or_return!(TokenType::Operator(SemiColon), self);
-        let end = value.span().end;
-        self.advance(); // Move past ;
+        let mut end = value.span().end;
+        if self
+            .token()
+            .is_some_and(|token| token._type == TokenType::Operator(SemiColon))
+        {
+            end = self.token().unwrap().span.end;
+            self.advance(); // Move past ;
+        } else {
+            errors.push(expected(
+                TokenType::Operator(SemiColon),
+                self.last_token_end(),
+            ))
+        }
         let span = Span::from([start, end]);
         let signature = TypeSignature {
             name,
@@ -1121,7 +1164,7 @@ impl<L: Lexer> Parser<L> {
             },
             span,
         };
-        Partial::from_value(type_)
+        Partial::from_tuple((Some(type_), errors))
     }
 
     /// Parses a test declaration. Assumes that `test` is the current token.
@@ -1293,9 +1336,17 @@ impl<L: Lexer> Parser<L> {
         let start = self.token().unwrap().span.start;
         let info = self.get_doc_comment();
         self.advance(); // Move past enum.
+        let mut errors = vec![];
         let name = check!(self.identifier());
-        let generic_params = check!(self.maybe_generic_params());
-        let (variants, errors) = self.enum_variants().to_tuple();
+        let generic_params = match self.maybe_generic_params() {
+            Ok(g) => g,
+            Err(error) => {
+                errors.push(error);
+                None
+            }
+        };
+        let (variants, mut variant_errors) = self.enum_variants().to_tuple();
+        errors.append(&mut variant_errors);
         if variants.is_none() {
             return Partial::from_errors(errors);
         }
@@ -1315,7 +1366,7 @@ impl<L: Lexer> Parser<L> {
         };
         let span = Span::from([start, end]);
         let enum_ = EnumDeclaration { address, span };
-        Partial::from_value(enum_)
+        Partial::from_tuple((Some(enum_), errors))
     }
 
     /// Parses an enum variant.
@@ -1354,12 +1405,14 @@ impl<L: Lexer> Parser<L> {
         let name = check!(self.identifier());
         let start = name.span.start;
         let end;
+        let mut has_tagged_type = false;
         let mut tagged_types = vec![];
         // Parsing a tagged type.
         if self
             .token()
             .is_some_and(|token| token._type == TokenType::Bracket(LParens))
         {
+            has_tagged_type = true;
             self.advance(); // Move past (
             while !self
                 .token()
@@ -1384,7 +1437,7 @@ impl<L: Lexer> Parser<L> {
 
         let span = Span::from([start, end]);
         let mut errors = vec![];
-        if tagged_types.len() == 0 {
+        if tagged_types.len() == 0 && has_tagged_type {
             errors.push(errors::empty_enum_tag(span));
         }
 

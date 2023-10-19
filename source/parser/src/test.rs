@@ -368,7 +368,7 @@ fn parsing_type_declarations() {
         statement,
         Statement::TypeDeclaration(TypeDeclaration {
             address: ScopeAddress::from([0, 0, 0]),
-            span: Span::from([1, 1, 1, 53])
+            span: Span::from([1, 1, 1, 54])
         })
     );
 }
@@ -443,7 +443,7 @@ fn parsing_this_type() {
         statement,
         Statement::TypeDeclaration(TypeDeclaration {
             address: ScopeAddress::from([0, 0, 0]),
-            span: Span::from([1, 1, 1, 17])
+            span: Span::from([1, 1, 1, 18])
         })
     );
 }
@@ -468,7 +468,7 @@ fn parsing_borrowed_type() {
         statement,
         Statement::TypeDeclaration(TypeDeclaration {
             address: ScopeAddress::from([0, 0, 0]),
-            span: Span::from([1, 1, 1, 17])
+            span: Span::from([1, 1, 1, 18])
         })
     );
 }
@@ -501,7 +501,7 @@ fn parsing_enum_variant() {
     }",
     );
 
-    let mut statement = parser.next().unwrap().unwrap();
+    let mut statement = parser.next().unwrap().expect(|err| format!("{err:?}"));
 
     let mut module_ambience = parser.module_ambience();
 
@@ -689,8 +689,13 @@ fn parse_nested_use_item() {
 fn parse_group_use_import() {
     // Nested One item.
     let mut parser = parse_text("use Components.UI.{Button, Alert};");
+    let statement = parser.next().unwrap().unwrap();
+
+    if let Statement::UseDeclaration(usedecl) = &statement {
+        assert!(usedecl.target.scatter().len() == usedecl.target.leaves().len())
+    }
     assert_eq!(
-        parser.next().unwrap().unwrap(),
+        statement,
         Statement::UseDeclaration(UseDeclaration {
             addresses: vec![[0, 0, 0].into(), [0, 0, 1].into()],
             target: UseTarget {
