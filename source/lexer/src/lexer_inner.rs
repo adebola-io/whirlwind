@@ -485,7 +485,7 @@ pub trait LexerInner {
             "implements" => token!(Keyword::Implements, self),
             "new" => token!(Keyword::New, self),
             "not" => token!(Operator::Not, self).unwrap(),
-            "or" => token!(Operator::Not, self).unwrap(),
+            "or" => token!(Operator::Or, self).unwrap(),
             "public" => token!(Keyword::Public, self),
             "record" => token!(Keyword::Record, self),
             "return" => token!(Keyword::Return, self),
