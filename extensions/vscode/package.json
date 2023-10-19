@@ -24,6 +24,11 @@
       "languages": [
          {
             "id": "wrl",
+            "icon": {
+               "dark": "./icons/wrl-color.svg",
+               "light": "./icons/wrl-color.svg"
+            },
+            "firstLine": "public\\s+model|module\\s+\\w+;",
             "aliases": [
                "Whirlwind",
                "wrl"
@@ -32,6 +37,23 @@
                ".wrl"
             ],
             "configuration": "./syntaxes/whirlwind.json"
+         }
+      ],
+      "commands": [
+         {
+            "command": "whirlwind-server-start",
+            "title": "Start Server",
+            "category": "Whirlwind"
+         },
+         {
+            "command": "whirlwind-server-stop",
+            "title": "Stop Server",
+            "category": "Whirlwind"
+         },
+         {
+            "command": "whirlwind-server-restart",
+            "title": "Restart Sever",
+            "category": "Whirlwind"
          }
       ],
       "configuration": {

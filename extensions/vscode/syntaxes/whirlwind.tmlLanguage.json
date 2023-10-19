@@ -30,7 +30,7 @@
       },
       "injunction": {
          "name": "meta.injunction keyword.storage.injunction",
-         "match": "\\b(use|module|enum|public|static|test|var|new|const|model|async|record|trait|type|extends|implements|not|and|or|is|Package|Super)\\b"
+         "match": "\\b(use|module|enum|public|static|test|var|new|const|model|async|record|trait|type|implements|not|and|or|is|Package|Super)\\b"
       },
       "comment": {
          "patterns": [
@@ -172,9 +172,13 @@
          "patterns": [
             { "include": "#comment" },
             { "include": "#type_expression" },
+            {
+               "name": "punctuation",
+               "match": "\\+"
+            },
             { "include": "#punctuation_comma" }
          ],
-         "end": "(?=[^,\\.[A-Za-z0-9]\\s\\<\\>]|extends\\s+)"
+         "end": "(?={)"
       },
       "trait_header": {
          "begin": "(\\btrait\\s+)",
