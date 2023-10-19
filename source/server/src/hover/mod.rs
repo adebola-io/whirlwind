@@ -763,7 +763,19 @@ impl HoverFinder<'_> {
                 params,
                 return_type,
                 span,
-            } => todo!(),
+            } => {
+                within!(span, self);
+                for param in params {
+                    maybe!(param
+                        .type_label
+                        .as_ref()
+                        .and_then(|param_type| self.type_hover(param_type)))
+                }
+
+                maybe!(return_type
+                    .as_ref()
+                    .and_then(|param_type| self.type_hover(param_type)))
+            }
             IntermediateType::SimpleType {
                 value,
                 generic_args,
