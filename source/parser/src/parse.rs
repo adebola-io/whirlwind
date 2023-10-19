@@ -1378,7 +1378,7 @@ impl<L: Lexer> Parser<L> {
         let mut errors = vec![];
         while self
             .token()
-            .is_some_and(|t| t._type != TokenType::Bracket(LCurly))
+            .is_some_and(|t| t._type != TokenType::Bracket(RCurly))
         {
             let mut partial = self.enum_variant();
             errors.append(&mut partial.errors);
