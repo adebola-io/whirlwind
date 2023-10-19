@@ -131,11 +131,11 @@ pub fn stringify_lex_error(error: &LexErrorType) -> String {
 
 pub fn stringify_import_error(error: &ImportErrorType) -> String {
     match error {
-        ImportErrorType::AmbiguousImport { .. } => todo!(),
-        ImportErrorType::ErrorReadingEntry(_) => todo!(),
-        ImportErrorType::UnknownFileType { .. } => todo!(),
+        ImportErrorType::AmbiguousImport { modulename, offending_files } => format!("There are multiple modules in the current directory that refer to {modulename:?}. Offending files: {:?}", offending_files),
+        ImportErrorType::ErrorReadingEntry(err) => format!("Error reading entry file: {err:?}"),
+        ImportErrorType::UnknownFileType { path_buf } => format!("Unknown file type for {path_buf:?}"),
         ImportErrorType::ErrorReadingModule { modulename } => format!("An error was encountered while reading module {modulename}"),
-        ImportErrorType::VagueAccessError(_) => todo!(),
+        ImportErrorType::VagueAccessError(error) => format!("Vague Access Error: {error:?}"),
         ImportErrorType::NonExistentModule(modulename) => format!("Could not resolve module '{modulename}'."),
         ImportErrorType::DuplicatedModuleNameInSameFolder(modulename) => format!("Module conflict: There is another module named '{modulename}' in this folder."),
         ImportErrorType::SelfReferentialUse(modulename) => format!("Cannot import module '{modulename}' into itself."),

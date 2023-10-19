@@ -77,6 +77,37 @@ impl UseTarget {
         }
         leaves
     }
+    /// Separate a single complex use target into multiple distinct single item targets.
+    // todo: find more efficient way to do this.
+    pub fn scatter(&self) -> Vec<UseTarget> {
+        let mut targets = vec![];
+        match &self.path {
+            UsePath::Me => targets.push(self.clone()),
+            UsePath::Item(sub_target) => {
+                let sub_targets = sub_target.scatter();
+                for sub_target in sub_targets {
+                    let _self = UseTarget {
+                        name: self.name.clone(),
+                        path: UsePath::Item(Box::new(sub_target)),
+                    };
+                    targets.push(_self);
+                }
+            }
+            UsePath::List(list) => {
+                for sub_target in list {
+                    let sub_targets = sub_target.scatter();
+                    for sub_target in sub_targets {
+                        let _self = UseTarget {
+                            name: self.name.clone(),
+                            path: UsePath::Item(Box::new(sub_target)),
+                        };
+                        targets.push(_self);
+                    }
+                }
+            }
+        }
+        targets
+    }
 }
 
 #[derive(Debug, Hash)]
