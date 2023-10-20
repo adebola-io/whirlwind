@@ -1,7 +1,7 @@
 use std::{path::PathBuf, sync::RwLock};
 
 use crate::{
-    diagnostic::to_diagnostic,
+    diagnostic::error_to_diagnostic,
     error::DocumentError,
     hover::{HoverFinder, HoverInfo},
     message_store::{MessageStore, WithMessages},
@@ -38,8 +38,7 @@ impl DocumentManager {
     /// Add a new document to be tracked.
     pub fn add_document(&self, params: DidOpenTextDocumentParams) -> MessageStore {
         let mut msgs = MessageStore::new();
-
-        let mut contexts = self.contexts.write().unwrap();
+        let mut standpoints = self.contexts.write().unwrap();
         let uri = params.text_document.uri;
         let path_buf = match uri_to_absolute_path(uri) {
             Ok(path_buf) => path_buf,
@@ -56,9 +55,8 @@ impl DocumentManager {
                 log_error!(msgs, "Could not determine parent folder for {path_buf:?}.")
             }
         };
-
         // Containing folder is already part of a context.
-        for context in contexts.iter_mut() {
+        for context in standpoints.iter_mut() {
             if context.contains_folder(parent_folder) {
                 match Module::from_path(path_buf) {
                     Ok(module) => {
@@ -71,12 +69,17 @@ impl DocumentManager {
                                 format!("Folder already analyzed. Adding anonymous module at path {path:?}")
                             }
                         };
+                        msgs.inform(format!("{:?}", &module.module_path));
+                        msgs.inform(format!("{:?}", &module.name));
+
                         msgs.inform(message);
-                        context.add_module(module);
-                        msgs.inform(format!(
-                            "Module added. {} modules in standpoint.",
-                            context.module_map.len()
-                        ));
+                        match context.add_module(module) {
+                            Some(p) => msgs.inform(format!(
+                                "Module added at index {p:?}. {} modules in standpoint.",
+                                context.module_map.len()
+                            )),
+                            None => msgs.inform("The module was not added. Something went wrong."),
+                        }
                     }
                     // If module cannot be added, store error in the root file.
                     Err(error) => {
@@ -87,11 +90,9 @@ impl DocumentManager {
                 return msgs;
             }
         }
-
         // No context has the file. Add a new context.
         msgs.inform(format!("Creating new module context for {path_buf:?}"));
         let mut root_folder = parent_folder;
-
         // Look 5 levels above to try to find the root of the project.
         for _ in 0..5 {
             let children: Vec<_> = match root_folder.read_dir() {
@@ -117,17 +118,20 @@ impl DocumentManager {
                         .as_ref()
                         .is_some_and(|name| name == "Main" || name == "Lib")
                 });
-            if main_module.is_none() {
-                root_folder = match get_parent_dir(&root_folder) {
-                    Some(path) => path,
-                    None => {
-                        log_error!(msgs, "Could not determine parent folder during upwards traversal for {root_folder:?}.")
-                    }
-                };
-                continue;
-            }
-            // Check again to see if there is already a graph with this folder.
-            for context in contexts.iter_mut() {
+            let main_module = match main_module {
+                Some(module) => module,
+                None => {
+                    root_folder = match get_parent_dir(&root_folder) {
+                        Some(path) => path,
+                        None => {
+                            log_error!(msgs, "Could not determine parent folder during upwards traversal for {root_folder:?}.")
+                        }
+                    };
+                    continue;
+                }
+            };
+            // Check again to see if there is already a graph with this parent folder.
+            for context in standpoints.iter_mut() {
                 if context.contains_folder(root_folder) {
                     msgs.inform(format!("Found the context for {path_buf:?}"));
                     match Module::from_path(path_buf) {
@@ -140,8 +144,6 @@ impl DocumentManager {
                     return msgs;
                 }
             }
-            // Start at main module.
-            let module = main_module.unwrap();
             let mut standpoint = Standpoint::new(true, self.corelib_path.clone());
             msgs.inform(format!(
                 "New context created with {} modules. The core library path is {:?}.",
@@ -151,24 +153,47 @@ impl DocumentManager {
                     .and_then(|path_idx| standpoint.module_map.get(path_idx))
                     .map(|module| &module.path_buf)
             ));
-            msgs.inform(format!("Adding main module {:?}...", module.module_path));
-            if let Some(_) = standpoint.add_module(module) {
-                // now add the current module.
-                match Module::from_path(path_buf) {
-                    Ok(current_module) => match standpoint.add_module(current_module) {
-                        Some(_) => msgs.inform("Module added successfully."),
-                        None => log_error!(
-                            msgs,
-                            "Could not add this module to fresh standpoint. Skipping altogether.."
-                        ),
-                    },
-                    Err(error) => msgs.inform(format!("Error creating current module: {error:?}")),
+            msgs.inform(format!(
+                "Adding main module {:?}...",
+                main_module.module_path
+            ));
+            // Start at main module.
+            if let Some(_) = standpoint.add_module(main_module) {
+                // now add the current module. (if it was not already automatically added.)
+                let index_of_current_module = if !standpoint.contains_file(&path_buf) {
+                    match Module::from_path(path_buf) {
+                        Ok(current_module) => match standpoint.add_module(current_module) {
+                            Some(index) => index,
+                            None => {
+                                log_error!(
+                                msgs,
+                                "Could not add this module to fresh standpoint. Skipping altogether.."
+                            )
+                            }
+                        },
+                        Err(error) => {
+                            msgs.inform(format!("Error creating current module: {error:?}"));
+                            standpoints.push(standpoint);
+                            return msgs;
+                        }
+                    }
+                } else {
+                    standpoint.module_map.map_path_to_index(&path_buf).unwrap()
+                };
+                let module_path = standpoint
+                    .module_map
+                    .get(index_of_current_module)
+                    .map(|t_module| &t_module.path_buf);
+                // todo: this is a hack to overshadow ghost initial errors. fix.
+                if let Some(path_buf) = module_path.cloned() {
+                    msgs.inform("Module added successfully.");
+                    standpoint.refresh_module(&path_buf, params.text_document.text);
                 }
             } else {
                 // Root not found, skip project altogether.
                 log_error!(msgs, "Could not determine main module for project.")
             }
-            contexts.push(standpoint);
+            standpoints.push(standpoint);
             // Todo: read whirlwind.yaml to find source module instead.
             break;
         }
@@ -182,9 +207,8 @@ impl DocumentManager {
         let path_buf = match uri_to_absolute_path(uri) {
             Ok(p) => p,
             Err(error) => {
-                messages.error(format!(
-                    "Could not convert uri for hover in file. ERROR: {error:?}"
-                ));
+                let message = format!("Could not convert uri for hover in file. ERROR: {error:?}");
+                messages.error(message);
                 return (messages, None);
             }
         };
@@ -202,23 +226,23 @@ impl DocumentManager {
         let module = match main_context.get_module_at_path(&path_buf) {
             Some(m) => m,
             None => {
-                messages.error(format!(
-                    "Could not find module with path {path_buf:?} in context."
-                ));
+                let message = format!("Could not find module with path {path_buf:?} in context.");
+                messages.error(message);
                 return (messages, None);
             }
         };
-        let pos = params.text_document_position_params.position;
+        let position = params.text_document_position_params.position;
         // Editor ranges are zero-based, for some reason.
-        let pos = [pos.line + 1, pos.character + 1];
-        let _hover_finder = HoverFinder::new(module, main_context, pos, messages);
+        let pos = [position.line + 1, position.character + 1];
+        let hover_finder = HoverFinder::new(module, main_context, pos, messages);
         for statement in module.statements.iter() {
-            if let Some(hover) = _hover_finder.statement(statement) {
-                return (_hover_finder.message_store.take(), Some(hover));
+            if let Some(hover) = hover_finder.statement(statement) {
+                return (hover_finder.message_store.take(), Some(hover));
             }
         }
-        return (_hover_finder.message_store.take(), None);
+        return (hover_finder.message_store.take(), None);
     }
+
     /// Checks if a uri is already being tracked.
     pub fn has(&self, uri: Url) -> bool {
         let contexts = self.contexts.read().unwrap();
@@ -287,12 +311,25 @@ impl DocumentManager {
         let last = params.content_changes.len() - 1;
         let most_current = std::mem::take(&mut params.content_changes[last].text);
         msgs.inform(format!("Refreshing module {path_buf:?}"));
-        if let None = context.refresh_module_with_text(&path_buf, most_current) {
+        let time = std::time::Instant::now();
+        if let None = context.refresh_module(&path_buf, most_current) {
             log_error!(msgs, "Something went wrong while refreshing user text.")
         };
-        msgs.inform(format!("Errors: {:#?}", context.errors));
+        msgs.inform(format!("Module refreshed in {:?}", time.elapsed()));
+        // for error in context.errors.iter() {
+        //     let message = format!(
+        //         "Error in {:?}: {:?}",
+        //         context
+        //             .module_map
+        //             .get(error.offending_file)
+        //             .map(|t_module| &t_module.path_buf),
+        //         to_diagnostic(error).message
+        //     );
+        //     msgs.inform(message);
+        // }
         msgs
     }
+
     /// Get diagnostics.
     pub fn get_diagnostics(
         &self,
@@ -300,12 +337,10 @@ impl DocumentManager {
     ) -> Option<DocumentDiagnosticReport> {
         let uri = params.text_document.uri;
         let path_buf = uri_to_absolute_path(uri).ok()?;
-
         let contexts = self.contexts.read().unwrap();
         let context = contexts
             .iter()
             .find(|context| context.contains_file(&path_buf))?;
-
         let path_idx = context
             .module_map
             .paths()
@@ -320,7 +355,7 @@ impl DocumentManager {
                         .errors
                         .iter()
                         .filter(|error| error.offending_file == path_idx)
-                        .map(|p| to_diagnostic(p))
+                        .map(|p| error_to_diagnostic(p))
                         .collect::<Vec<Diagnostic>>(),
                 },
             })

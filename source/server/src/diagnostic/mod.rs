@@ -8,7 +8,7 @@ use printer::{
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range};
 
 /// Convert a program error to a diagnostic.
-pub fn to_diagnostic(error: &ProgramError) -> Diagnostic {
+pub fn error_to_diagnostic(error: &ProgramError) -> Diagnostic {
     let (message, range) = match &error.error_type {
         ProgramErrorType::Lexical(lex_error) => (
             stringify_lex_error(&lex_error.error_type),
@@ -51,12 +51,28 @@ pub fn to_diagnostic(error: &ProgramError) -> Diagnostic {
 pub fn to_range(span: Span) -> Range {
     Range {
         start: Position {
-            line: span.start[0] - 1,
-            character: span.start[1] - 1,
+            line: if span.start[0] > 0 {
+                span.start[0] - 1
+            } else {
+                span.start[0]
+            },
+            character: if span.start[1] > 0 {
+                span.start[1] - 1
+            } else {
+                span.start[1]
+            },
         },
         end: Position {
-            line: span.end[0] - 1,
-            character: span.end[1] - 1,
+            line: if span.end[0] > 0 {
+                span.end[0] - 1
+            } else {
+                span.end[0]
+            },
+            character: if span.end[1] > 0 {
+                span.end[1] - 1
+            } else {
+                span.end[1]
+            },
         },
     }
 }

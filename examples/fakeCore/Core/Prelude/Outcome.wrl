@@ -1,0 +1,51 @@
+module Outcome;
+
+use Super.Primitives.Bool;
+
+/// An `Outcome` is a generic (enumerated) model 
+/// that represents the possible results of an operation. 
+/// 
+/// It has two possible inner variants:
+/// - `Ok(T)`: The operation was successful and returned a value of type `T`.
+/// - `Err(E)`: The operation failed and returned an error of type `E`.
+/// 
+/// The Outcome can be used to represent the results of fallible operations,
+/// such as:
+/// - reading a file, 
+/// - parsing a string,
+/// - executing a database query, or
+/// - connecting to a server.
+/// 
+/// It presents a good way to handle errors in a predictable way.
+public model Outcome<T, U> {
+    var inner: OutcomeInner<T, U>;
+    var isErr: Bool;
+
+    public function IsOk(): Bool {
+        !this.IsErr
+    }
+
+    function IsErr(): Bool {
+        this.isErr
+    }
+}
+
+/// Returns an `Outcome` with a value;
+/// ### Usage
+/// ```
+/// outcome := Ok(9)
+/// Assert(outcome.IsErr())
+/// ```
+public function Ok<T, U>(value: T): Outcome<T, U> {
+    Outcome.Ok(value)
+}
+
+/// Returns an `Outcome` with an error.
+public function Err<T, U>(errorValue: T): Outcome<T, U> {
+    Outcome.Err(errorValue)
+}
+
+enum OutcomeInner<T, U> {
+    Ok(T),
+    Err(U)
+}

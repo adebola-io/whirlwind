@@ -1,14 +1,12 @@
 module Maybe;
 
-use Internals.{ IsNull, Nullptr, Flow };
-use Core.{
-    Prelude.{
-        Outcome.{ Ok, Err, },
-        Traits.{ Guaranteed, Try }
-    },
+use Super.{
+    Primitives.Bool,
+    Internals.{ IsNull, Nullptr, Flow },
     Process.{ PanicOnCaller, Error },
-    Bool
-};
+}; 
+use Outcome.{ Ok, Err, }; 
+use Traits.{ Guaranteed, Try };
 
 /// Creates a `Maybe` with no value.
 public function None<T>(): Maybe<T> {

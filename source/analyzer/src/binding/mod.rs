@@ -60,6 +60,8 @@ pub struct TemporaryVariantDetails {
 
 /// Takes a module and converts it to its typed equivalent.
 pub fn bind(
+    // The module name (in case the module is anonymous)
+    module_name: String,
     // The module to bind.
     mut module: Module,
     // The reserved module path.
@@ -93,7 +95,7 @@ pub fn bind(
 
     let origin_span = binder.module_decl_span.unwrap_or_else(|| Span::default());
     let module_symbol = SemanticSymbol {
-        name: module.name?,
+        name: module_name,
         kind: SemanticSymbolKind::Module {
             parent_modules: vec![],
             imports: binder
@@ -107,7 +109,14 @@ pub fn bind(
         },
         references: vec![SymbolReferenceList {
             module_path: path_idx,
-            starts: vec![module.ambience.module_name?.span.start],
+            starts: vec![
+                module
+                    .ambience
+                    .module_name
+                    .map(|name| name.span)
+                    .unwrap_or_default()
+                    .start,
+            ],
         }],
         doc_info: module.ambience.module_info,
         origin_span,

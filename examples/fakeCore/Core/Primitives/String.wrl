@@ -1,0 +1,10 @@
+module String;
+
+
+use Ops.Addition;
+
+
+
+public model String implements Addition {
+
+}

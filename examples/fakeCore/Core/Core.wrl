@@ -1,15 +1,7 @@
 module Core;
 
 public use Http;
-public use Maybe;
 public use Prelude;
 public use Process;
-
-
-public type Array = Array;
-public type UnsignedInt = UnsignedInt;
-public type Int = UnsignedInt;
-public type Float = Float;
-public type Number = Int | Float;
-public type Magnitude = Magnitude;
-public type Bool = Bool;
+public use Internals;
+public use Primitives;
