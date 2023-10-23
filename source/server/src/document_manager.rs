@@ -1,18 +1,49 @@
-use std::{path::PathBuf, sync::RwLock};
-
 use crate::{
-    diagnostic::error_to_diagnostic,
+    diagnostic::{error_to_diagnostic, to_range},
     error::DocumentError,
     hover::{HoverFinder, HoverInfo},
     message_store::{MessageStore, WithMessages},
 };
-use analyzer::{Module, Standpoint, TypedVisitorNoArgs, CORE_LIBRARY_PATH};
+use analyzer::{
+    Module, PathIndex, SemanticSymbol, SemanticSymbolDeclaration, SemanticSymbolKind, Standpoint,
+    SymbolIndex, TypedVisitorNoArgs, CORE_LIBRARY_PATH,
+};
+use ast::Span;
+use std::{
+    path::{Path, PathBuf},
+    sync::RwLock,
+};
 use tower_lsp::lsp_types::{
+    request::{GotoDeclarationParams, GotoDeclarationResponse},
     CompletionParams, CompletionResponse, Diagnostic, DidChangeTextDocumentParams,
     DidOpenTextDocumentParams, DocumentDiagnosticParams, DocumentDiagnosticReport,
-    FullDocumentDiagnosticReport, HoverParams, RelatedFullDocumentDiagnosticReport, Url,
+    FullDocumentDiagnosticReport, HoverParams, Location, Position, ReferenceParams,
+    RelatedFullDocumentDiagnosticReport, Url, WorkspaceDiagnosticParams, WorkspaceDiagnosticReport,
+    WorkspaceDiagnosticReportResult, WorkspaceDocumentDiagnosticReport,
+    WorkspaceFullDocumentDiagnosticReport,
 };
 use utils::get_parent_dir;
+
+macro_rules! find_standpoint {
+    ($uri: expr, $msgs: expr, $standpoints: expr) => {{
+        let path = match uri_to_absolute_path($uri) {
+            Ok(path) => path,
+            Err(_) => {
+                $msgs.inform("Could not convert URI to path!!");
+                return ($msgs, None);
+            }
+        };
+        let standpoint_opt = $standpoints
+            .iter()
+            .find(|standpoint| standpoint.contains_file(&path));
+        if standpoint_opt.is_none() {
+            $msgs.inform("Could not find standpoint containing path");
+            return ($msgs, None);
+        }
+        let standpoint = standpoint_opt.unwrap();
+        (path, standpoint)
+    }};
+}
 
 /// Adds an error message to a message store and immediately returns the message store.
 macro_rules! log_error {
@@ -24,21 +55,23 @@ macro_rules! log_error {
 
 #[derive(Debug)]
 pub struct DocumentManager {
-    pub contexts: RwLock<Vec<Standpoint>>,
+    pub standpoints: RwLock<Vec<Standpoint>>,
     pub corelib_path: Option<PathBuf>,
 }
 
 impl DocumentManager {
+    /// Creates a new document manager.
     pub fn new() -> Self {
         DocumentManager {
-            contexts: RwLock::new(vec![]),
+            standpoints: RwLock::new(vec![]),
             corelib_path: Some(PathBuf::from(CORE_LIBRARY_PATH)),
         }
     }
+
     /// Add a new document to be tracked.
     pub fn add_document(&self, params: DidOpenTextDocumentParams) -> MessageStore {
         let mut msgs = MessageStore::new();
-        let mut standpoints = self.contexts.write().unwrap();
+        let mut standpoints = self.standpoints.write().unwrap();
         let uri = params.text_document.uri;
         let path_buf = match uri_to_absolute_path(uri) {
             Ok(path_buf) => path_buf,
@@ -212,7 +245,7 @@ impl DocumentManager {
                 return (messages, None);
             }
         };
-        let contexts = self.contexts.read().unwrap();
+        let contexts = self.standpoints.read().unwrap();
         let main_context = match contexts
             .iter()
             .find(|context| context.contains_file(&path_buf))
@@ -245,7 +278,7 @@ impl DocumentManager {
 
     /// Checks if a uri is already being tracked.
     pub fn has(&self, uri: Url) -> bool {
-        let contexts = self.contexts.read().unwrap();
+        let contexts = self.standpoints.read().unwrap();
         let path_buf = match uri_to_absolute_path(uri) {
             Ok(path_buf) => path_buf,
             Err(_) => return false,
@@ -258,6 +291,7 @@ impl DocumentManager {
         return false;
     }
 
+    /// Gets completion response.
     pub fn completion(&self, _params: CompletionParams) -> Option<CompletionResponse> {
         // let graphs = self.graphs.read().unwrap();
 
@@ -297,11 +331,11 @@ impl DocumentManager {
                 "Error converting URI to absolute path during change: {err:?}"
             ),
         };
-        let mut contexts = self.contexts.write().unwrap();
+        let mut contexts = self.standpoints.write().unwrap();
         let context = contexts
             .iter_mut()
             .find(|context| context.contains_file(&path_buf));
-        let context = match context {
+        let standpoint = match context {
             Some(context) => context,
             None => log_error!(
                 msgs,
@@ -312,22 +346,65 @@ impl DocumentManager {
         let most_current = std::mem::take(&mut params.content_changes[last].text);
         msgs.inform(format!("Refreshing module {path_buf:?}"));
         let time = std::time::Instant::now();
-        if let None = context.refresh_module(&path_buf, most_current) {
+        if let None = standpoint.refresh_module(&path_buf, most_current) {
             log_error!(msgs, "Something went wrong while refreshing user text.")
         };
         msgs.inform(format!("Module refreshed in {:?}", time.elapsed()));
-        // for error in context.errors.iter() {
-        //     let message = format!(
-        //         "Error in {:?}: {:?}",
-        //         context
-        //             .module_map
-        //             .get(error.offending_file)
-        //             .map(|t_module| &t_module.path_buf),
-        //         to_diagnostic(error).message
-        //     );
-        //     msgs.inform(message);
-        // }
         msgs
+    }
+
+    /// Returns the first declaration of a symbol.
+    pub fn get_declaration(
+        &self,
+        params: GotoDeclarationParams,
+    ) -> WithMessages<Option<GotoDeclarationResponse>> {
+        let mut msgs = MessageStore::new();
+        msgs.inform("Retreiving symbol declaration...");
+        let time = std::time::Instant::now();
+        let uri = params.text_document_position_params.text_document.uri;
+        let position = params.text_document_position_params.position;
+        let standpoints = self.standpoints.read().unwrap();
+        let (pathbuf, standpoint) = find_standpoint!(uri, msgs, standpoints);
+        let path_idx_opt = standpoint.module_map.map_path_to_index(&pathbuf);
+        if path_idx_opt.is_none() {
+            msgs.inform("Found standpoint, but could not map path to index");
+            return (msgs, None);
+        }
+        let path_idx = path_idx_opt.unwrap();
+        let response = match_pos_to_symbol(standpoint, path_idx, position)
+            .map(|(_, symbol)| {
+                let declaration_opt =
+                    symbol
+                        .references
+                        .first()
+                        .map(|reference| SemanticSymbolDeclaration {
+                            module_path: &standpoint
+                                .module_map
+                                .get(reference.module_path)
+                                .expect("Could not retrieve path from index")
+                                .path_buf,
+                            span: &symbol.origin_span,
+                        });
+                let declaration = match declaration_opt {
+                    Some(declaration) => declaration,
+                    None => {
+                        msgs.inform("Could not retrieve symbol's first instance.");
+                        return None;
+                    }
+                };
+                let uri = match path_to_uri(declaration.module_path) {
+                    Ok(uri) => uri,
+                    Err(_) => {
+                        msgs.error("Could not convert path of declaration to uri!!!");
+                        return None;
+                    }
+                };
+                let range = to_range(*declaration.span);
+                msgs.inform(format!("Retieved declaration in {:?}", time.elapsed()));
+                Some(GotoDeclarationResponse::Scalar(Location::new(uri, range)))
+            })
+            .flatten();
+        (msgs, response)
     }
 
     /// Get diagnostics.
@@ -337,11 +414,11 @@ impl DocumentManager {
     ) -> Option<DocumentDiagnosticReport> {
         let uri = params.text_document.uri;
         let path_buf = uri_to_absolute_path(uri).ok()?;
-        let contexts = self.contexts.read().unwrap();
-        let context = contexts
+        let contexts = self.standpoints.read().unwrap();
+        let standpoint = contexts
             .iter()
             .find(|context| context.contains_file(&path_buf))?;
-        let path_idx = context
+        let path_idx = standpoint
             .module_map
             .paths()
             .find(|tuple| tuple.1.path_buf == path_buf)?
@@ -351,7 +428,7 @@ impl DocumentManager {
                 related_documents: None,
                 full_document_diagnostic_report: FullDocumentDiagnosticReport {
                     result_id: None,
-                    items: context
+                    items: standpoint
                         .errors
                         .iter()
                         .filter(|error| error.offending_file == path_idx)
@@ -361,6 +438,92 @@ impl DocumentManager {
             })
         })
     }
+
+    /// Get workspace diagnostics.
+    pub fn get_workspace_diagnostics(
+        &self,
+        _params: WorkspaceDiagnosticParams,
+    ) -> WithMessages<WorkspaceDiagnosticReportResult> {
+        let standpoints = self.standpoints.read().unwrap();
+        let mut msgs = MessageStore::new();
+        msgs.inform("Retrieving workspace diagnostics...");
+        let result = WorkspaceDiagnosticReportResult::Report(WorkspaceDiagnosticReport {
+            items: match standpoints.first() {
+                Some(standpoint) => standpoint
+                    .module_map
+                    .paths()
+                    .filter_map(|(path_idx, module)| {
+                        Some(WorkspaceDocumentDiagnosticReport::Full(
+                            WorkspaceFullDocumentDiagnosticReport {
+                                uri: path_to_uri(&module.path_buf).ok()?,
+                                version: None,
+                                full_document_diagnostic_report: FullDocumentDiagnosticReport {
+                                    result_id: None,
+                                    items: standpoint
+                                        .errors
+                                        .iter()
+                                        .filter(|error| error.offending_file == path_idx)
+                                        .map(|p| error_to_diagnostic(p))
+                                        .collect::<Vec<Diagnostic>>(),
+                                },
+                            },
+                        ))
+                    })
+                    .collect(),
+
+                None => {
+                    return (
+                        msgs,
+                        WorkspaceDiagnosticReportResult::Report(WorkspaceDiagnosticReport {
+                            items: vec![],
+                        }),
+                    )
+                }
+            },
+        });
+
+        (msgs, result)
+    }
+
+    /// Gets the references for a symbol.
+    pub fn get_references(&self, params: ReferenceParams) -> WithMessages<Option<Vec<Location>>> {
+        let uri = params.text_document_position.text_document.uri;
+        let position = params.text_document_position.position;
+        let mut msgs = MessageStore::new();
+        let standpoints = self.standpoints.read().unwrap();
+        let (path, standpoint) = find_standpoint!(uri, msgs, standpoints);
+        let path_idx_opt = standpoint.module_map.map_path_to_index(&path);
+        if path_idx_opt.is_none() {
+            msgs.inform("Found standpoint, but could not map path to index");
+            return (msgs, None);
+        }
+        let path_idx = path_idx_opt.unwrap();
+        let response = match_pos_to_symbol(standpoint, path_idx, position).map(|(_, symbol)| {
+            let mut locations = vec![];
+            for reference in &symbol.references {
+                let module_path_index = reference.module_path;
+                let module_path = match standpoint.module_map.get(module_path_index) {
+                    Some(module) => &module.path_buf,
+                    None => continue,
+                };
+                let uri = match path_to_uri(&module_path) {
+                    Ok(uri) => uri,
+                    Err(()) => continue,
+                };
+                for start in &reference.starts {
+                    let span = Span::on_line(*start, symbol.name.len() as u32);
+                    let location = Location {
+                        uri: uri.clone(),
+                        range: to_range(span),
+                    };
+                    locations.push(location);
+                }
+            }
+            locations
+        });
+
+        (msgs, response)
+    }
 }
 
 /// Convert a uri to an absolute path.
@@ -369,4 +532,45 @@ pub fn uri_to_absolute_path(uri: Url) -> Result<PathBuf, DocumentError> {
         .to_file_path()
         .or_else(|_| Err(DocumentError::CouldNotConvert(uri)))?
         .canonicalize()?)
+}
+
+/// Convert a path to a uri.
+pub fn path_to_uri(path: &Path) -> Result<Url, ()> {
+    Url::from_file_path(path)
+}
+
+// Match a text document position to a symbol in the symbol table.
+// todo: find a way to find module symbols without iterating through all symbols.
+pub fn match_pos_to_symbol<'a>(
+    standpoint: &'a Standpoint,
+    path_idx: PathIndex,
+    position: Position,
+) -> Option<(SymbolIndex, &'a SemanticSymbol)> {
+    // Editor ranges are zero-based, for some reason.
+    let pos = [position.line + 1, position.character + 1];
+    for (symbol_idx, symbol) in standpoint.symbol_table.symbols() {
+        for reference in &symbol.references {
+            if reference.module_path == path_idx {
+                for start in &reference.starts {
+                    let span = Span::on_line(*start, symbol.name.len() as u32);
+                    if span.contains(pos) {
+                        return if let SemanticSymbolKind::Import {
+                            source: Some(source),
+                            ..
+                        } = &symbol.kind
+                        {
+                            // Import redirection.
+                            standpoint
+                                .symbol_table
+                                .get(*source)
+                                .map(|symbol| (*source, symbol))
+                        } else {
+                            Some((symbol_idx, symbol))
+                        };
+                    }
+                }
+            }
+        }
+    }
+    return None;
 }

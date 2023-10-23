@@ -1,1 +1,10 @@
 module Traits;
+
+
+public model Guaranteed {
+
+}
+
+public model Try {
+
+}

@@ -8,6 +8,7 @@ mod message_store;
 use document_manager::DocumentManager;
 use message_store::MessageStore;
 use tower_lsp::jsonrpc::Result;
+use tower_lsp::lsp_types::request::{GotoDeclarationParams, GotoDeclarationResponse};
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 
@@ -38,11 +39,14 @@ impl LanguageServer for Backend {
                         label_details_support: Some(true),
                     }),
                 }),
+                definition_provider: Some(OneOf::Left(true)),
+                references_provider: Some(OneOf::Left(true)),
+                rename_provider: Some(OneOf::Left(true)),
                 diagnostic_provider: Some(DiagnosticServerCapabilities::Options(
                     DiagnosticOptions {
                         identifier: None,
                         inter_file_dependencies: true,
-                        workspace_diagnostics: false,
+                        workspace_diagnostics: true,
                         work_done_progress_options: WorkDoneProgressOptions {
                             work_done_progress: Some(true),
                         },
@@ -77,10 +81,34 @@ impl LanguageServer for Backend {
         self.log_all(messages).await;
     }
 
+    async fn goto_declaration(
+        &self,
+        params: GotoDeclarationParams,
+    ) -> Result<Option<GotoDeclarationResponse>> {
+        let (messages, declaration_response) = self.docs.get_declaration(params);
+        self.log_all(messages).await;
+        Ok(declaration_response)
+    }
+
+    async fn goto_definition(
+        &self,
+        params: GotoDefinitionParams,
+    ) -> Result<Option<GotoDefinitionResponse>> {
+        let (messages, declaration_response) = self.docs.get_declaration(params);
+        self.log_all(messages).await;
+        Ok(declaration_response)
+    }
+
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
         let (messages, hoverinfo) = self.docs.get_hover_info(params);
         self.log_all(messages).await;
         Ok(hoverinfo.map(|h| h.into()))
+    }
+
+    async fn references(&self, params: ReferenceParams) -> Result<Option<Vec<Location>>> {
+        let (messages, locations) = self.docs.get_references(params);
+        self.log_all(messages).await;
+        Ok(locations)
     }
 
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
@@ -102,6 +130,15 @@ impl LanguageServer for Backend {
                 })
             }),
         ))
+    }
+
+    async fn workspace_diagnostic(
+        &self,
+        params: WorkspaceDiagnosticParams,
+    ) -> Result<WorkspaceDiagnosticReportResult> {
+        let (messages, diagnostics) = self.docs.get_workspace_diagnostics(params);
+        self.log_all(messages).await;
+        Ok(diagnostics)
     }
 }
 

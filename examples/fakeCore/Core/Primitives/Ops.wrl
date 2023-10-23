@@ -1,1 +1,5 @@
 module Ops;
+
+public model Addition {
+
+}

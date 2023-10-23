@@ -18,7 +18,7 @@ public function Some<T>(value: T): Maybe<T> {
     new Maybe(value)
 }
 
-// /// A value that may or may not exist.
+/// A value that may or may not exist.
 public model Maybe<T> implements Guaranteed<T> + Try<T> {
     var value: T;
 

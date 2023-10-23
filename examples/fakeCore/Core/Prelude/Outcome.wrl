@@ -16,17 +16,30 @@ use Super.Primitives.Bool;
 /// - executing a database query, or
 /// - connecting to a server.
 /// 
-/// It presents a good way to handle errors in a predictable way.
+/// It presents a way to handle errors predictably.
 public model Outcome<T, U> {
-    var inner: OutcomeInner<T, U>;
-    var isErr: Bool;
+    var inner: T;
 
+    /// Returns true if the outcome is `Ok` 
+    /// i.e. The operation was successful.
     public function IsOk(): Bool {
         !this.IsErr
     }
 
-    function IsErr(): Bool {
+    /// Returns true if the outcome is an `Err`.
+    /// i.e. The operation failed.
+    public function IsErr(): Bool {
         this.isErr
+    }
+
+    /// Checks if the outcome was successful and checks its internal value as well. 
+    public function IsOkAnd(predicate: fn(value: T): Bool): Bool {
+        return this.IsOk() and predicate(this.inner);
+    }
+
+    /// Checks if the outcome failed and checks the error value.
+    public function IsErrAnd(predicate: fn(value: U): Bool): Bool {
+        return this.Err() and predicate(this.inner);
     }
 }
 

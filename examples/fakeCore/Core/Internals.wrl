@@ -1,5 +1,9 @@
 module Internals;
 
+use Primitives.Bool;
+
+public type never = never;
+
 function Builtin(): never {
     Builtin()
 }
@@ -10,8 +14,8 @@ function Builtin(): never {
 /// use Internals.{IsNull, Nullptr};
 /// Assert(IsNull(Nullptr));
 /// ```
-public function IsNull<T>(value: T): T {
-    return Builtin();
+public function IsNull<T>(value: T): Bool {
+    Builtin()
 }
 
 public model Nullptr {
