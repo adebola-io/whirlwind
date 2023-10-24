@@ -67,6 +67,12 @@ pub struct SemanticSymbolDeclaration<'a> {
     pub module_path: &'a Path,
     pub span: &'a Span,
 }
+#[derive(Debug)]
+pub enum VariablePatternForm {
+    Normal,
+    DestructuredFromObject { from_property: Option<SymbolIndex> },
+    DestructuredFromArray,
+}
 
 #[derive(Debug)]
 pub enum SemanticSymbolKind {
@@ -102,6 +108,7 @@ pub enum SemanticSymbolKind {
         tagged_types: Vec<IntermediateType>,
     },
     Variable {
+        pattern_type: VariablePatternForm,
         is_public: bool,
         declared_type: Option<IntermediateType>,
         inferred_type: EvaluatedType,
@@ -188,7 +195,7 @@ impl SemanticSymbolKind {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum IntermediateType {
     FunctionType {
         params: Vec<ParameterType>,
@@ -221,7 +228,7 @@ pub enum IntermediateType {
 }
 
 /// A type expression, as is.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum EvaluatedType {
     /// An instance created with `new A()`.
     ModelInstance {
@@ -252,7 +259,7 @@ impl EvaluatedType {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct ParameterType {
     pub name: String,
     pub is_optional: bool,
@@ -311,6 +318,7 @@ impl SemanticSymbol {
             // taking the name makes it un-lookup-able.
             name: variable.name.name.to_owned(),
             kind: SemanticSymbolKind::Variable {
+                pattern_type: VariablePatternForm::Normal,
                 is_public: false,
                 declared_type: None,
                 inferred_type: EvaluatedType::unknown(),

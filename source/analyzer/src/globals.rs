@@ -7,7 +7,7 @@ use crate::{
 
 /// Builtin and global symbols.
 pub const CORE_LIBRARY_PATH: &'static str =
-    "/home/adebola/projects/whirlwind/examples/fakeCore/Core.wrl";
+    "/home/adebola/projects/whirlwind/examples/fakeCore/Core/Core.wrl";
 
 pub const GLOBALS: [&str; 1] = ["never"];
 

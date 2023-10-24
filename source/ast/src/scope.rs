@@ -291,6 +291,13 @@ impl ScopeEntry {
             _ => panic!("{} is not an enum!", self.name()),
         }
     }
+    /// Returns an entry as a variable. Panics if the entry is not a variable variant.
+    pub fn var(&self) -> &VariableSignature {
+        match self {
+            ScopeEntry::Variable(v) => v,
+            _ => panic!("{} is not a variable!!", self.name()),
+        }
+    }
     /// Returns true of the entry is reserved.
     pub fn is_reserved(&self) -> bool {
         matches!(self, ScopeEntry::ReservedSpace)

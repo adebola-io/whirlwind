@@ -6,6 +6,7 @@ mod representations;
 mod resolver;
 mod standpoint;
 mod symbols;
+mod typecheck;
 mod visitor;
 
 pub use binding::*;
@@ -16,4 +17,5 @@ pub use representations::*;
 pub use resolver::*;
 pub use standpoint::*;
 pub use symbols::*;
+pub use typecheck::*;
 pub use visitor::*;

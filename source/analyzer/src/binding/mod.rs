@@ -133,6 +133,10 @@ pub fn bind(
 }
 
 mod bind_utils {
+    use ast::VariablePattern;
+
+    use crate::VariablePatternForm;
+
     use super::*;
 
     /// Bind an entry within a scope.
@@ -370,7 +374,87 @@ mod bind_utils {
                 }
                 index
             }
-            ScopeEntry::Variable(_) => todo!(),
+            ScopeEntry::Variable(variable) => {
+                let (symbol, span) = match &variable.name {
+                    VariablePattern::Identifier(i) => (
+                        SemanticSymbol {
+                            name: i.name.clone(),
+                            kind: SemanticSymbolKind::Variable {
+                                is_public: variable.is_public,
+                                declared_type: None,
+                                inferred_type: EvaluatedType::Unknown { candidates: vec![] },
+                                pattern_type: VariablePatternForm::Normal,
+                            },
+                            references: vec![SymbolReferenceList {
+                                module_path: binder.path,
+                                starts: vec![i.span.start],
+                            }],
+                            doc_info: variable.info.clone(),
+                            origin_span,
+                        },
+                        i.span,
+                    ),
+                    VariablePattern::ObjectPattern {
+                        real_name, alias, ..
+                    } => {
+                        let name = alias.as_ref().unwrap_or(real_name);
+                        (
+                            SemanticSymbol {
+                                name: name.name.clone(),
+                                kind: SemanticSymbolKind::Variable {
+                                    is_public: variable.is_public,
+                                    declared_type: None,
+                                    inferred_type: EvaluatedType::Unknown { candidates: vec![] },
+                                    pattern_type: VariablePatternForm::DestructuredFromObject {
+                                    from_property: // bind property symbol if it exists.
+                                    alias.as_ref().map(|_| {
+                                        let mut property_symbol = SemanticSymbol {
+                                            name: real_name.name.clone(),
+                                            kind: SemanticSymbolKind::Property { resolved: None },
+                                            references: vec![],
+                                            doc_info: None,
+                                            origin_span: real_name.span,
+                                        };
+                                        property_symbol.add_reference(binder.path, real_name.span);
+                                        let symbol_idx = symbol_table.add(property_symbol);
+                                        symbol_idx
+                                    }),
+                                },
+                                },
+                                references: vec![SymbolReferenceList {
+                                    module_path: binder.path,
+                                    starts: vec![name.span.start],
+                                }],
+                                doc_info: variable.info.clone(),
+                                origin_span,
+                            },
+                            real_name.span,
+                        )
+                    }
+                    VariablePattern::ArrayPattern(i) => (
+                        SemanticSymbol {
+                            name: i.name.clone(),
+                            kind: SemanticSymbolKind::Variable {
+                                is_public: variable.is_public,
+                                declared_type: None,
+                                inferred_type: EvaluatedType::Unknown { candidates: vec![] },
+                                pattern_type: VariablePatternForm::DestructuredFromArray,
+                            },
+                            references: vec![SymbolReferenceList {
+                                module_path: binder.path,
+                                starts: vec![i.span.start],
+                            }],
+                            doc_info: variable.info.clone(),
+                            origin_span,
+                        },
+                        i.span,
+                    ),
+                };
+                // Types will be resolved later.
+                let symbol_idx = symbol_table.add(symbol);
+                binder.known_values.insert(span, symbol_idx);
+                symbol_idx
+            }
             ScopeEntry::LoopVariable(_) => todo!(),
             ScopeEntry::LoopLabel(_) => todo!(),
         }
@@ -620,7 +704,14 @@ mod statements {
             }
             Statement::ForStatement(for_stat) => TypedStmnt::ForStatement(for_statement(for_stat)),
             Statement::VariableDeclaration(variable) => {
-                TypedStmnt::VariableDeclaration(variable_declaration(variable))
+                TypedStmnt::VariableDeclaration(bind_variable_declaration(
+                    variable,
+                    binder,
+                    symbol_table,
+                    errors,
+                    literals,
+                    ambience,
+                ))
             }
         }
     }
@@ -706,7 +797,7 @@ mod statements {
         ) {
             Ok(idx) | Err(idx) => idx,
         };
-        let ref_number = bind_utils::last_reference_no(&symbol_table, symbol_idx);
+        let ref_number = last_reference_no(&symbol_table, symbol_idx);
         return TypedShorthandVariableDeclaration {
             name: SymbolLocator {
                 symbol_idx,
@@ -744,7 +835,7 @@ mod statements {
         ) {
             Ok(idx) | Err(idx) => idx,
         };
-        let ref_number = bind_utils::last_reference_no(&symbol_table, symbol_idx);
+        let ref_number = last_reference_no(&symbol_table, symbol_idx);
         return TypedConstantDeclaration {
             name: SymbolLocator {
                 symbol_idx,
@@ -820,7 +911,7 @@ mod statements {
             Err(idx) => idx,
         };
         binder.this_type.push(symbol_idx); // Set meaning of `This`.
-        let ref_number = bind_utils::last_reference_no(&symbol_table, symbol_idx);
+        let ref_number = last_reference_no(&symbol_table, symbol_idx);
         let typed_model_declaration = TypedModelDeclaration {
             name: SymbolLocator {
                 symbol_idx,
@@ -1025,7 +1116,7 @@ mod statements {
             binder.known_values.insert(attribute.name.span, index);
             index
         };
-        let ref_number = bind_utils::last_reference_no(&symbol_table, symbol_idx);
+        let ref_number = last_reference_no(&symbol_table, symbol_idx);
         TypedModelProperty {
             name: SymbolLocator {
                 symbol_idx,
@@ -1124,7 +1215,7 @@ mod statements {
             .methods
             .get_mut(index)
             .expect("Could not find method with correct index.");
-        let ref_number = bind_utils::last_reference_no(&symbol_table, symbol_idx);
+        let ref_number = last_reference_no(&symbol_table, symbol_idx);
         let method_generic_params = method.generic_params.take();
         let method_params = take(&mut method.params);
         let return_type = method.return_type.take();
@@ -1613,9 +1704,62 @@ mod statements {
             span: cont.span,
         }
     }
+
     /// Binds a variable declaration.
-    pub fn variable_declaration(_variable: ast::VariableDeclaration) -> TypedVariableDeclaration {
-        todo!()
+    pub fn bind_variable_declaration(
+        variable: ast::VariableDeclaration,
+        binder: &mut Binder,
+        symbol_table: &mut SymbolTable,
+        errors: &mut Vec<ProgramError>,
+        literals: &mut Vec<Literal>,
+        ambience: &mut ModuleAmbience,
+    ) -> TypedVariableDeclaration {
+        let mut names = vec![];
+        let mut declared_type_solved = None;
+        for address in variable.addresses {
+            let symbol_idx = match bind_utils::handle_scope_entry(
+                binder,
+                symbol_table,
+                errors,
+                &ambience,
+                address,
+                variable.span,
+                false,
+            ) {
+                Ok(idx) | Err(idx) => idx,
+            };
+            let ref_number = last_reference_no(symbol_table, symbol_idx);
+            // Bind type expression.
+            let entry = ambience.get_entry_unguarded(address).var();
+            if declared_type_solved.is_none() {
+                declared_type_solved =
+                    Some(entry.var_type.as_ref().map(|typ| {
+                        bind_type_expression(typ, binder, symbol_table, errors, ambience)
+                    }));
+            }
+            let symbol = symbol_table
+                .get_mut(symbol_idx)
+                .expect("Could not retrieve just bound variable value!!");
+            if let SemanticSymbol {
+                kind: SemanticSymbolKind::Variable { declared_type, .. },
+                ..
+            } = symbol
+            {
+                *declared_type = declared_type_solved.clone().flatten();
+            }
+            let name = SymbolLocator {
+                symbol_idx,
+                ref_number,
+            };
+            names.push(name);
+        }
+        return TypedVariableDeclaration {
+            names,
+            value: variable.value.map(|expression| {
+                bind_expression(expression, binder, symbol_table, errors, literals, ambience)
+            }),
+            span: variable.span,
+        };
     }
     /// Binds a for statement.
     pub fn for_statement(_for_statement: ast::ForStatement) -> TypedForStatement {

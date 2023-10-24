@@ -60,15 +60,6 @@ impl Standpoint {
         standpoint.add_module(module);
         Some(standpoint)
     }
-    /// Returns the first declaration of a symbol.
-    pub fn get_declaration_of(&self, index: SymbolIndex) -> Option<SemanticSymbolDeclaration> {
-        let symbol = self.symbol_table.get(index)?;
-        let first_reference = symbol.references.first()?;
-        Some(SemanticSymbolDeclaration {
-            module_path: &self.module_map.get(first_reference.module_path)?.path_buf,
-            span: &symbol.origin_span,
-        })
-    }
     /// Find all references to a symbol using its index.
     pub fn find_all_references(
         &self,
@@ -994,5 +985,24 @@ function Add(a: Int, b: Int): Int {
         module.module_path = Some(PathBuf::from("testing://Test.wrl"));
         let standpoint = Standpoint::build_from_module(module, false).unwrap();
         println!("{:#?}", standpoint);
+    }
+
+    #[test]
+    fn test_variable_binding() {
+        let text = "
+            module Test;
+
+            type String = String;
+
+            public function Main() {
+                var { x, y }: Position;
+                var name: String = \"Sefunmi\";
+                var [arrayItem1, arrayItem2] = new Array().FillWith(0, 3);
+            }
+        ";
+        let mut module = Module::from_text(format!("{text}"));
+        module.module_path = Some(PathBuf::from("testing:://Test.wrl"));
+        let standpoint = Standpoint::build_from_module(module, false).unwrap();
+        println!("{:#?}", standpoint.symbol_table);
     }
 }

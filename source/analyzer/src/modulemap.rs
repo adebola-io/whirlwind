@@ -105,13 +105,7 @@ impl ModuleMap {
     }
     /// Returns true if a module is contained in the table.
     pub fn has(&self, module: &TypedModule) -> bool {
-        self.entries
-            .iter()
-            .find(|entry| match entry {
-                Entry::Void => false,
-                Entry::Entry(entry) => std::ptr::eq(entry, module),
-            })
-            .is_some()
+        self.get(module.path_idx).is_some()
     }
     /// Find the index for a path.
     pub fn map_path_to_index(&self, path: &std::path::PathBuf) -> Option<PathIndex> {
