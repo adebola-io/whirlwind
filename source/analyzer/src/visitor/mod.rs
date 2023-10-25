@@ -187,9 +187,8 @@ pub trait TypedVisitorNoArgs<Output: Default = ()> {
             TypedStmnt::WhileStatement(whilestat) => self.while_statement(whilestat),
             TypedStmnt::ContinueStatement(continue_) => self.continue_statement(continue_),
             TypedStmnt::RecordDeclaration => todo!(),
-            TypedStmnt::VariableDeclaration(_) => todo!(),
+            TypedStmnt::VariableDeclaration(variable) => self.var_decl(variable),
             TypedStmnt::TraitDeclaration(_) => todo!(),
-            // TypedStmnt::VariableDeclaration(v) => self.variable_declaration(v),
         }
     }
     fn use_declaration(&self, use_decl: &TypedUseDeclaration) -> Output {
@@ -310,6 +309,9 @@ pub trait TypedVisitorNoArgs<Output: Default = ()> {
         self.expr(&new_exp.value)
     }
     fn shorthand_var_decl(&self, var_decl: &TypedShorthandVariableDeclaration) -> Output {
+        Output::default()
+    }
+    fn var_decl(&self, var_decl: &TypedVariableDeclaration) -> Output {
         Output::default()
     }
     // fn variable_declaration(&self, var_decl: &TypedVariableDeclaration) -> Output {

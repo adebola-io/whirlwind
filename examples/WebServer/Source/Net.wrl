@@ -1,3 +1,0 @@
-module Net;
-
-public use Http;

@@ -1,24 +1,47 @@
-use crate::{SymbolTable, TypedModule, TypedStmnt};
+use crate::{ProgramError, SymbolTable, TypedModule, TypedStmnt};
 use errors::TypeError;
 
 pub struct Typechecker {}
 
 /// Typechecks a module.
-pub fn typecheck(module: &mut TypedModule, symboltable: &mut SymbolTable) -> Vec<TypeError> {
-    let mut errors = vec![];
+pub fn typecheck(
+    module: &mut TypedModule,
+    symboltable: &mut SymbolTable,
+    errors: &mut Vec<ProgramError>,
+) {
     for statement in &mut module.statements {
-        errors.append(&mut statements::typecheck_statement(statement, symboltable))
+        statements::typecheck_statement(statement, symboltable, errors);
     }
-    errors
 }
 
 mod statements {
     use super::*;
 
     pub fn typecheck_statement(
-        _statement: &mut TypedStmnt,
-        _symboltable: &mut SymbolTable,
+        statement: &mut TypedStmnt,
+        symboltable: &mut SymbolTable,
+        errors: &mut Vec<ProgramError>,
     ) -> Vec<TypeError> {
-        vec![]
+        match statement {
+            TypedStmnt::RecordDeclaration => todo!(),
+            TypedStmnt::TestDeclaration(_) => todo!(),
+            TypedStmnt::EnumDeclaration(_) => todo!(),
+            TypedStmnt::UseDeclaration(_) => todo!(),
+            TypedStmnt::VariableDeclaration(_) => todo!(),
+            TypedStmnt::ShorthandVariableDeclaration(_) => todo!(),
+            TypedStmnt::ConstantDeclaration(_) => todo!(),
+            TypedStmnt::TypeDeclaration(_) => todo!(),
+            TypedStmnt::ModelDeclaration(_) => todo!(),
+            TypedStmnt::ModuleDeclaration(_) => todo!(),
+            TypedStmnt::FunctionDeclaration(_) => todo!(),
+            TypedStmnt::TraitDeclaration(_) => todo!(),
+            TypedStmnt::ExpressionStatement(_) => todo!(),
+            TypedStmnt::FreeExpression(_) => todo!(),
+            TypedStmnt::ReturnStatement(_) => todo!(),
+            TypedStmnt::BreakStatement(_) => todo!(),
+            TypedStmnt::ForStatement(_) => todo!(),
+            TypedStmnt::WhileStatement(_) => todo!(),
+            TypedStmnt::ContinueStatement(_) => todo!(),
+        }
     }
 }

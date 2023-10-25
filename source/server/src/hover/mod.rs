@@ -49,9 +49,21 @@ impl From<(&Standpoint, SymbolIndex)> for HoverInfo {
     fn from(tuple: (&Standpoint, SymbolIndex)) -> Self {
         let mut contents = vec![];
 
-        let symbol = tuple.0.symbol_table.get(tuple.1).unwrap();
+        let mut symbol = tuple.0.symbol_table.get(tuple.1).unwrap();
         let writer = SymbolWriter::new(tuple.0);
         let string = writer.print_symbol_with_idx(tuple.1);
+
+        // Import and property redirection.
+        symbol = match &symbol.kind {
+            SemanticSymbolKind::Import {
+                source: Some(origin),
+                ..
+            }
+            | SemanticSymbolKind::Property {
+                resolved: Some(origin),
+            } => tuple.0.symbol_table.get(*origin).unwrap(),
+            _ => symbol,
+        };
 
         contents.push(MarkedString::LanguageString(LanguageString {
             language: String::from("wrl"),
@@ -282,6 +294,38 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
     //         }
     //         return None;
     //     }
+
+    /// Hovering over a variable declaration.
+    fn var_decl(&self, var_decl: &analyzer::TypedVariableDeclaration) -> Option<HoverInfo> {
+        within!(var_decl.span, self);
+        let mut type_already_checked = false;
+        for name in &var_decl.names {
+            let symbol = self.standpoint.symbol_table.get(name.symbol_idx)?;
+            // Hovering over variable name.
+            if symbol.ident_span().contains(self.pos) {
+                self.message_store
+                    .borrow_mut()
+                    .inform("Hovering over variable name...");
+                return Some(HoverInfo::from((self.standpoint, name.symbol_idx)));
+            };
+            if !type_already_checked {
+                let typ = match &symbol.kind {
+                    SemanticSymbolKind::Variable {
+                        declared_type,
+                        inferred_type,
+                        ..
+                    } => declared_type,
+                    _ => continue,
+                };
+                if let Some(intermediate_type) = typ {
+                    maybe!(self.type_hover(intermediate_type))
+                }
+                type_already_checked = true;
+            }
+        }
+        var_decl.value.as_ref().and_then(|value| self.expr(value))
+    }
+
     /// Hovering over a type declaration.:
     fn type_decl(&self, type_decl: &TypedTypeDeclaration) -> Option<HoverInfo> {
         within!(type_decl.span, self);

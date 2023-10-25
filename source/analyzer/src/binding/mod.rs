@@ -45,6 +45,8 @@ pub struct Binder {
     module_decl_span: Option<Span>,
     // The index of the core library module, if it is allowed.
     corelib_symbol_idx: Option<SymbolIndex>,
+    // The index of the core library prelude module, if it is allowed.
+    prelude_symbol_idx: Option<SymbolIndex>,
 }
 
 pub struct TemporaryParameterDetails {
@@ -74,8 +76,10 @@ pub fn bind(
     literals: &mut Vec<Literal>,
     // The symbol index of the core library.
     corelib_symbol_idx: Option<SymbolIndex>,
+    // The symbol index of the prelude module in the core library.
+    prelude_symbol_idx: Option<SymbolIndex>,
 ) -> Option<TypedModule> {
-    let mut binder = Binder::new(path_idx, corelib_symbol_idx);
+    let mut binder = Binder::new(path_idx, corelib_symbol_idx, prelude_symbol_idx);
     bind_utils::collect_prior_errors(path_idx, &mut module, errors);
     let line_lengths = module._line_lens;
     let path_buf = module.module_path?;
@@ -508,6 +512,24 @@ mod bind_utils {
                     if name.name == "Core" {
                         if let Some(symbol_idx) = binder.corelib_symbol_idx {
                             return symbol_idx;
+                        }
+                    }
+                    // As a last resort, check the public declarations in the prelude.
+                    if let Some(idx) = binder.prelude_symbol_idx {
+                        let prelude_module_symbol = symbol_table.get(idx).expect("Something went wrong. Loaded prelude module but could not retrive it as a symbol.");
+                        if let SemanticSymbolKind::Module { symbols, .. } =
+                            &prelude_module_symbol.kind
+                        {
+                            for symbol_idx in symbols {
+                                let declared_symbol_in_prelude = symbol_table
+                                    .get(*symbol_idx)
+                                    .expect("Found unresolvable symbol in module symbol list.");
+                                if declared_symbol_in_prelude.name == name.name
+                                    && declared_symbol_in_prelude.kind.is_public()
+                                {
+                                    return *symbol_idx;
+                                }
+                            }
                         }
                     }
                     // Entry does not exist.
@@ -2682,7 +2704,11 @@ mod types {
 
 impl Binder {
     /// Create new binder for a module path.
-    pub fn new(path: PathIndex, corelib_symbol_idx: Option<SymbolIndex>) -> Self {
+    pub fn new(
+        path: PathIndex,
+        corelib_symbol_idx: Option<SymbolIndex>,
+        prelude_symbol_idx: Option<SymbolIndex>,
+    ) -> Self {
         Self {
             path,
             known_values: HashMap::new(),
@@ -2694,6 +2720,7 @@ impl Binder {
             module_symbols: vec![],
             module_decl_span: None,
             corelib_symbol_idx,
+            prelude_symbol_idx,
         }
     }
 }

@@ -75,6 +75,10 @@ public model Maybe<T> implements Guaranteed<T> + Try<T> {
     public function UnwrapOr(value: T): T {
         if this.IsNone() { value } else { this.value }
     }
+    /// Returns the internal value, or computes another given value.
+    public function UnwrapOrElse(fallback: fn(): T): T {
+        if this.IsNone() { fallback() } else { this.value }
+    }
     /// Converts a `Maybe<T>` to a `Maybe<E>` by applying a function.
     public function Map<U>(func: fn(former: T): U): Maybe<U> {
         Some(func(this?))

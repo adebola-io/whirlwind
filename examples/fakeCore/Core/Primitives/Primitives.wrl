@@ -3,7 +3,6 @@ module Primitives;
 
 public use String.String;
 
-
 public type Array = Array;
 public type UnsignedInt = UnsignedInt;
 public type Int = UnsignedInt;

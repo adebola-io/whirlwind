@@ -2,7 +2,7 @@ use super::{symbols::*, ProgramError};
 use crate::{
     bind, Module, ModuleMap, PathIndex,
     ProgramErrorType::{self, Importing},
-    TypedModule,
+    TypedModule, PRELUDE_PATH,
 };
 use ast::UseTarget;
 use std::{
@@ -25,8 +25,10 @@ pub struct Standpoint {
     /// when operations like adding, removing and refreshing modules
     /// occur.
     pub auto_update: bool,
-    // The path to the entry module of the core library.
+    /// The path to the entry module of the core library.
     pub corelib_path: Option<PathIndex>,
+    /// The path to the prelude module of the core library.
+    pub prelude_path: Option<PathIndex>,
     // pub warnings: Vec<Warnings>,
 }
 
@@ -43,6 +45,7 @@ impl Standpoint {
             root_folder: None,
             auto_update: should_resolve_imports,
             corelib_path: None,
+            prelude_path: None,
         };
         //todo: if corelib is already loaded in another standpoint.
         if let Some(path) = corelib_path {
@@ -224,6 +227,9 @@ impl Standpoint {
         target: &UseTarget,
         sub_target: &UseTarget,
     ) -> Option<SymbolIndex> {
+        let imported_module_symbol = self.symbol_table.get_mut(imported_idx)?;
+        imported_module_symbol.add_reference(root, target.name.span);
+        // drop mutable reference.
         let imported_module_symbol = self.symbol_table.get(imported_idx)?;
         let symbols_in_imported_module = match &imported_module_symbol.kind {
             SemanticSymbolKind::Module { symbols, .. } => Some(symbols),
@@ -388,6 +394,10 @@ impl Standpoint {
             .corelib_path
             .and_then(|path| self.module_map.get(path))
             .map(|t_module| t_module.symbol_idx);
+        let prelude_symbol_idx = self
+            .prelude_path
+            .and_then(|path| self.module_map.get(path))
+            .map(|t_module| t_module.symbol_idx);
         let typed_module = bind(
             module_name.clone(),
             module,
@@ -396,6 +406,7 @@ impl Standpoint {
             &mut self.errors,
             &mut self.literals,
             corelib_symbol_idx,
+            prelude_symbol_idx,
         )?;
 
         // Module names and file names must be equal.
@@ -417,6 +428,12 @@ impl Standpoint {
         if self.auto_update {
             self.resolve_imports_of(path_idx).unwrap();
         }
+
+        // Mark the prelude module.
+        if module_path.as_os_str().to_str()? == PRELUDE_PATH {
+            self.prelude_path = Some(path_idx);
+        }
+
         Some(path_idx)
     }
 

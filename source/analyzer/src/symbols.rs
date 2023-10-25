@@ -300,7 +300,9 @@ impl SemanticSymbol {
             .find(|list| list.module_path == module_path)
         {
             Some(list) => {
-                list.starts.push(span.start);
+                if !list.starts.iter().any(|start| *start == span.start) {
+                    list.starts.push(span.start);
+                }
             }
             None => self.references.push(SymbolReferenceList {
                 module_path,

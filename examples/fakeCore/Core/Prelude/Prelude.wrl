@@ -1,4 +1,22 @@
 module Prelude;
 
-public use Outcome;
-public use Maybe;
+public use Outcome.{
+    Ok,
+    Err,
+    Outcome,
+};
+public use Maybe.{
+    None,
+    Some,
+    Maybe,
+};
+public use Core.Primitives.{
+    String,
+    Array,
+    Number,
+    Int,
+    Float,
+    UnsignedInt,
+    Bool,
+};
+public use Core.Process.Todo;

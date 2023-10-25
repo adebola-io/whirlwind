@@ -1,0 +1,3 @@
+module Algorithms;
+
+use Math;

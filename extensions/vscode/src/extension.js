@@ -81,6 +81,7 @@ exports.activate = async (context) => {
       "whirlwind-server-restart",
       exports.restartServer
    );
+   exports.startLanguageServer();
 };
 
 exports.deactivate = async () => {

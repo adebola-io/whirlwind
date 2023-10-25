@@ -183,13 +183,18 @@ impl DocumentManager {
             }
             let mut standpoint = Standpoint::new(true, self.corelib_path.clone());
             msgs.inform(format!(
-                "New context created with {} modules. The core library path is {:?}.",
+                "New context created with {} modules. The core library path is {:?}. The prelude path is {:?}",
                 standpoint.module_map.len(),
                 standpoint
                     .corelib_path
                     .and_then(|path_idx| standpoint.module_map.get(path_idx))
+                    .map(|module| &module.path_buf),
+                standpoint
+                    .prelude_path
+                    .and_then(|path_idx| standpoint.module_map.get(path_idx))
                     .map(|module| &module.path_buf)
             ));
+
             msgs.inform(format!(
                 "Adding main module {:?}...",
                 main_module.module_path
