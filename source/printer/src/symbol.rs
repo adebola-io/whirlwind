@@ -1,5 +1,8 @@
 #![allow(unused)]
-use analyzer::{EvaluatedType, IntermediateType, SemanticSymbolKind, Standpoint, SymbolIndex};
+use analyzer::{
+    EvaluatedType, IntermediateType, SemanticSymbolKind, Standpoint, SymbolIndex,
+    VariablePatternForm,
+};
 
 pub struct SymbolWriter<'a> {
     standpoint: &'a Standpoint,
@@ -108,6 +111,7 @@ impl<'a> SymbolWriter<'a> {
                 is_public,
                 declared_type,
                 inferred_type,
+                pattern_type,
             } => {
                 if *is_public {
                     string.push_str("public ")
@@ -119,7 +123,14 @@ impl<'a> SymbolWriter<'a> {
                     todo!()
                 } else if let Some(typ) = declared_type {
                     string.push_str(": ");
-                    string.push_str(&self.print_intermediate_type(typ))
+                    string.push_str(&self.print_intermediate_type(typ));
+                    match pattern_type {
+                        VariablePatternForm::Normal => {}
+                        VariablePatternForm::DestructuredFromObject { from_property } => {
+                            string.push_str("  [(property)]")
+                        }
+                        VariablePatternForm::DestructuredFromArray => string.push_str("[item]"),
+                    }
                 } else {
                     // could not infer type
                     string.push_str(": {{unknown}}")

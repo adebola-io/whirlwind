@@ -1,6 +1,9 @@
 module Outcome;
 
-use Super.Primitives.Bool;
+use Super.{
+    Primitives.Bool,
+    Internals.{ IsNull, Injunction },
+};
 
 /// An `Outcome` is a generic (enumerated) model 
 /// that represents the possible results of an operation. 
@@ -17,48 +20,86 @@ use Super.Primitives.Bool;
 /// - connecting to a server.
 /// 
 /// It presents a way to handle errors predictably.
-public model Outcome<T, U> {
+public model Outcome<T, E> {
     var inner: T;
+    var error: E;
 
     /// Returns true if the outcome is `Ok` 
     /// i.e. The operation was successful.
+    /// ### Usage
+    /// ```
+    /// outcome := Ok(9)
+    /// AssertThat(outcome.IsOk())
+    /// ```
     public function IsOk(): Bool {
-        !this.IsErr
+        return IsNull(this.error) and !IsNull(this.inner);
     }
 
     /// Returns true if the outcome is an `Err`.
     /// i.e. The operation failed.
+    /// ### Usage
+    /// ```
+    /// outcome := Err("Something went wrong.");
+    /// AssertThat(outcome.IsErr())
+    /// ```
     public function IsErr(): Bool {
-        this.isErr
+        return !this.IsOk();
     }
 
-    /// Checks if the outcome was successful and checks its internal value as well. 
+    /// Checks if the outcome was successful and checks its internal value as well.
+    /// ### Usage
+    /// ```
+    /// outcome := Ok(42);
+    /// AssertThat(outcome.IsOkAnd(fn(value) value == 42));
+    /// ```
     public function IsOkAnd(predicate: fn(value: T): Bool): Bool {
         return this.IsOk() and predicate(this.inner);
     }
 
-    /// Checks if the outcome failed and checks the error value.
-    public function IsErrAnd(predicate: fn(value: U): Bool): Bool {
-        return this.Err() and predicate(this.inner);
+    /// Checks if the outcome failed and checks the error value as well.
+    /// ### Usage
+    /// ```
+    /// outcome := Err("Something went wrong.");
+    /// AssertThat(outcome.IsErrAnd(fn(e) e == "Something went wrong."));
+    /// ```
+    public function IsErrAnd(predicate: fn(value: E): Bool): Bool {
+        return this.Err() and predicate(this.error);
     }
+
+    /// Converts an `Outcome<T, E>` to an `Outcome<U, E>` by applying a function.
+    /// ### Usage
+    /// ```
+    /// ok := Ok(69);
+    /// err := Err("Error occurred.");
+    /// 
+    /// newOk := outcome.Map(fn(value) value / 3);
+    /// newErr := outcome.Map(fn(value) value / 3);
+    /// 
+    /// AssertThat(newOk == Ok(23));
+    /// AssertThat(newErr == Err("Error occurred."));
+    /// ```
+    public function Map<U>(predicate: fn(former: T): U): Outcome<U, E> {
+        Ok(predicate(this?))
+    }   
+
 }
 
 /// Returns an `Outcome` with a value;
 /// ### Usage
 /// ```
 /// outcome := Ok(9)
-/// Assert(outcome.IsErr())
+/// AssertThat(outcome.IsOk())
 /// ```
 public function Ok<T, U>(value: T): Outcome<T, U> {
-    Outcome.Ok(value)
+    Injunction.Ok(T)
 }
 
 /// Returns an `Outcome` with an error.
+/// ### Usage
+/// ```
+/// outcome := Err("Something went wrong.");
+/// AssertThat(outcome.IsErr())
+/// ```
 public function Err<T, U>(errorValue: T): Outcome<T, U> {
-    Outcome.Err(errorValue)
-}
-
-enum OutcomeInner<T, U> {
-    Ok(T),
-    Err(U)
+    Injunction.Err(U)
 }

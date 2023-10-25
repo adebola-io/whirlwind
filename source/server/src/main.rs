@@ -111,6 +111,12 @@ impl LanguageServer for Backend {
         Ok(locations)
     }
 
+    async fn rename(&self, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
+        let (messages, result) = self.docs.rename(params);
+        self.log_all(messages).await;
+        result
+    }
+
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
         Ok(self.docs.completion(params))
     }

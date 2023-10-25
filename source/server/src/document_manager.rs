@@ -8,19 +8,23 @@ use analyzer::{
     Module, PathIndex, SemanticSymbol, SemanticSymbolDeclaration, SemanticSymbolKind, Standpoint,
     SymbolIndex, TypedVisitorNoArgs, CORE_LIBRARY_PATH,
 };
-use ast::Span;
+use ast::{is_keyword_or_operator, is_valid_identifier, is_valid_identifier_start, Span};
 use std::{
+    collections::HashMap,
     path::{Path, PathBuf},
     sync::RwLock,
 };
-use tower_lsp::lsp_types::{
-    request::{GotoDeclarationParams, GotoDeclarationResponse},
-    CompletionParams, CompletionResponse, Diagnostic, DidChangeTextDocumentParams,
-    DidOpenTextDocumentParams, DocumentDiagnosticParams, DocumentDiagnosticReport,
-    FullDocumentDiagnosticReport, HoverParams, Location, Position, ReferenceParams,
-    RelatedFullDocumentDiagnosticReport, Url, WorkspaceDiagnosticParams, WorkspaceDiagnosticReport,
-    WorkspaceDiagnosticReportResult, WorkspaceDocumentDiagnosticReport,
-    WorkspaceFullDocumentDiagnosticReport,
+use tower_lsp::{
+    jsonrpc::Error,
+    lsp_types::{
+        request::{GotoDeclarationParams, GotoDeclarationResponse},
+        CompletionParams, CompletionResponse, Diagnostic, DidChangeTextDocumentParams,
+        DidOpenTextDocumentParams, DocumentDiagnosticParams, DocumentDiagnosticReport,
+        FullDocumentDiagnosticReport, HoverParams, Location, Position, ReferenceParams,
+        RelatedFullDocumentDiagnosticReport, RenameParams, TextEdit, Url,
+        WorkspaceDiagnosticParams, WorkspaceDiagnosticReport, WorkspaceDiagnosticReportResult,
+        WorkspaceDocumentDiagnosticReport, WorkspaceEdit, WorkspaceFullDocumentDiagnosticReport,
+    },
 };
 use utils::get_parent_dir;
 
@@ -524,6 +528,92 @@ impl DocumentManager {
 
         (msgs, response)
     }
+
+    /// Rename a symbol.
+    pub fn rename(
+        &self,
+        params: RenameParams,
+    ) -> WithMessages<Result<Option<WorkspaceEdit>, Error>> {
+        let mut msgs = MessageStore::new();
+        let new_name = params.new_name;
+        let uri = params.text_document_position.text_document.uri;
+        let position = params.text_document_position.position;
+        let pathbuf = match uri_to_absolute_path(uri) {
+            Ok(path) => path,
+            Err(_) => return (msgs, Err(Error::parse_error())),
+        };
+        if new_name.len() == 0 {
+            msgs.inform("Could not rename: Empty name.");
+            return (
+                msgs,
+                Err(Error::invalid_params(format!(
+                    "Could not rename with empty name."
+                ))),
+            );
+        }
+        if is_keyword_or_operator(&new_name)
+            || !is_valid_identifier_start(new_name.chars().next().unwrap())
+            || new_name.chars().any(|ch| !is_valid_identifier(ch))
+        {
+            msgs.inform("Attempting to rename with keyword or operator.");
+            return (
+                msgs,
+                Err(Error::invalid_params(format!(
+                    "{new_name} is not a valid identifier."
+                ))),
+            );
+        }
+        let mut standpoints = self.standpoints.write().unwrap();
+        let standpoint = standpoints
+            .iter_mut()
+            .find(|context| context.contains_file(&pathbuf));
+        let standpoint = match standpoint {
+            Some(s) => s,
+            None => return (
+                msgs,
+                Err(Error::invalid_params(
+                    "Could not find module with this file, and therefore no changes are handled.",
+                )),
+            ),
+        };
+        let path_idx_opt = standpoint.module_map.map_path_to_index(&pathbuf);
+        if path_idx_opt.is_none() {
+            msgs.inform("Found standpoint, but could not map path to index");
+            return (msgs, Ok(None));
+        }
+        let path_idx = path_idx_opt.unwrap();
+        let response = match_pos_to_symbol(standpoint, path_idx, position).map(|(_, symbol)| {
+            let mut edits = HashMap::new();
+            for reference in &symbol.references {
+                let mut textedits = vec![];
+                let module_path_index = reference.module_path;
+                let module_path = match standpoint.module_map.get(module_path_index) {
+                    Some(module) => &module.path_buf,
+                    None => continue,
+                };
+                let uri = match path_to_uri(&module_path) {
+                    Ok(uri) => uri,
+                    Err(()) => continue,
+                };
+
+                for start in &reference.starts {
+                    let span = Span::on_line(*start, symbol.name.len() as u32);
+                    let textedit = TextEdit {
+                        range: to_range(span),
+                        new_text: new_name.clone(),
+                    };
+                    textedits.push(textedit);
+                }
+                edits.insert(uri, textedits);
+            }
+            WorkspaceEdit {
+                changes: Some(edits),
+                document_changes: None, // todo: change a module file name.
+                change_annotations: None,
+            }
+        });
+        return (msgs, Ok(response));
+    }
 }
 
 /// Convert a uri to an absolute path.
@@ -560,6 +650,15 @@ pub fn match_pos_to_symbol<'a>(
                         } = &symbol.kind
                         {
                             // Import redirection.
+                            standpoint
+                                .symbol_table
+                                .get(*source)
+                                .map(|symbol| (*source, symbol))
+                        } else if let SemanticSymbolKind::Property {
+                            resolved: Some(source),
+                        } = &symbol.kind
+                        {
+                            // Property redirection.
                             standpoint
                                 .symbol_table
                                 .get(*source)

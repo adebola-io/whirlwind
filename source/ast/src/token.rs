@@ -3,6 +3,13 @@ use crate::{
     UpdateOperator,
 };
 
+pub fn is_valid_identifier(ch: char) -> bool {
+    matches!(ch, '0'..='9' | 'A'..='Z' | 'a'..='z' | '_')
+}
+pub fn is_valid_identifier_start(ch: char) -> bool {
+    matches!(ch, 'A'..='Z' | 'a'..='z' | '_')
+}
+
 /// A token is the smallest lexical unit of a Whirlwind program.
 #[derive(PartialEq, Debug)]
 pub struct Token {
@@ -229,4 +236,14 @@ pub enum Keyword {
     Use,
     Var,
     While,
+}
+
+pub fn is_keyword_or_operator(text: &str) -> bool {
+    match text {
+        "as" | "and" | "async" | "break" | "case" | "const" | "model" | "continue" | "else"
+        | "enum" | "false" | "for" | "fn" | "function" | "if" | "in" | "is" | "implements"
+        | "new" | "not" | "or" | "public" | "record" | "return" | "static" | "switch" | "test"
+        | "This" | "this" | "trait" | "true" | "type" | "use" | "var" | "while" | "module" => true,
+        _ => false,
+    }
 }

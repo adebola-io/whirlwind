@@ -1,4 +1,7 @@
-use ast::{Bracket, Comment, Keyword, Operator, Token, TokenType};
+use ast::{
+    is_valid_identifier, is_valid_identifier_start, Bracket, Comment, Keyword, Operator, Token,
+    TokenType,
+};
 use ast::{Number, Span};
 
 use errors::{LexError, LexErrorPos, LexErrorType};
@@ -49,13 +52,6 @@ macro_rules! token {
             span: $self.report_span(),
         })
     };
-}
-
-fn is_valid_identifier(ch: char) -> bool {
-    matches!(ch, '0'..='9' | 'A'..='Z' | 'a'..='z' | '_')
-}
-fn is_valid_identifier_start(ch: char) -> bool {
-    matches!(ch, 'A'..='Z' | 'a'..='z' | '_')
 }
 
 pub trait LexerInner {

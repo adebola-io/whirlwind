@@ -15,7 +15,7 @@ function Builtin(): never {
 /// Assert(IsNull(Nullptr));
 /// ```
 public function IsNull<T>(value: T): Bool {
-    Builtin()
+    return value is Nullptr;
 }
 
 public model Nullptr {
@@ -28,3 +28,10 @@ public enum Flow<T> {
     Break(T),
     Normal(T)
 }
+
+
+public enum Injunction {
+
+}
+
+
