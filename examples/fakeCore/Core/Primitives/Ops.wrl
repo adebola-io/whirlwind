@@ -1,5 +1,6 @@
 module Ops;
 
-public model Addition {
-
+public trait Addition {
+    /// Adds two items together.
+    public function Add(other: This): This;
 }

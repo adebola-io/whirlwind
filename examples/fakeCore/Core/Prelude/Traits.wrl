@@ -1,10 +1,10 @@
 module Traits;
 
 
-public model Guaranteed {
+public trait Guaranteed {
 
 }
 
-public model Try {
+public trait Try {
 
 }

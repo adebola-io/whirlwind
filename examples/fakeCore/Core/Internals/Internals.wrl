@@ -1,6 +1,7 @@
 module Internals;
 
-use Primitives.Bool;
+use Super.Primitives.Bool;
+public use Injunction.{ Injunction, Invoke };
 
 public type never = never;
 
@@ -29,9 +30,5 @@ public enum Flow<T> {
     Normal(T)
 }
 
-
-public enum Injunction {
-
-}
 
 

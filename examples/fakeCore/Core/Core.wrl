@@ -1,7 +1,8 @@
 module Core;
 
 public use Http;
-public use Prelude;
 public use Process;
 public use Internals;
 public use Primitives;
+public use Memory;
+public use Prelude;

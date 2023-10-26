@@ -5,7 +5,7 @@ use Super.{
     Internals.{ IsNull, Nullptr, Flow },
     Process.{ PanicOnCaller, Error },
 }; 
-use Outcome.{ Ok, Err, }; 
+use Outcome.{ Ok, Err, Outcome }; 
 use Traits.{ Guaranteed, Try };
 
 /// Creates a `Maybe` with no value.
@@ -25,17 +25,17 @@ public model Maybe<T> implements Guaranteed<T> + Try<T> {
     new(value: T) {
         this.value = value;
     }
-    // /// Implementation of `Guarantee` trait.
-    // public function [Guaranteed.Guarantee](): T {
-    //     this.Unwrap()
-    // }
-    // /// Implementation of `Try` trait.
-    // public function [Try.Try]<U>(): Result<Flow<T>, Flow<Maybe<U>>> {
-    //     if this.IsSome() { 
-    //         Ok(Flow.Normal(this.value)) 
-    //     } 
-    //     else Err(Flow.Return(None()))
-    // }
+    /// Implementation of `Guarantee` trait.
+    public function [Guaranteed.Guarantee](): T {
+        this.Unwrap()
+    }
+    /// Implementation of `Try` trait.
+    public function [Try.Try]<U>(): Outcome<Flow<T>, Flow<Maybe<U>>> {
+        if this.IsSome() { 
+            Ok(Flow.Normal(this.value)) 
+        } 
+        else Err(Flow.Return(None()))
+    }
     /// Returns a Bool indicating if the Maybe contains no value.
     /// ### Usage
     /// ```
@@ -49,6 +49,14 @@ public model Maybe<T> implements Guaranteed<T> + Try<T> {
         IsNull(this.value)
     }
     /// Returns a Bool indicating whether there is a value contained or not.
+    /// ### Usage
+    /// ```
+    /// stringValue := Some("boy");
+    /// AssertThat(stringValue.IsSome());
+    /// 
+    /// noValue: Maybe<String> := None();
+    /// AssertThat(!noValue.IsSome());
+    /// ```
     public function IsSome(): Bool {
         !IsNull(this.value)
     }

@@ -1,0 +1,16 @@
+module Array;
+
+use Primitives.Int;
+
+
+/// A contiguous, growable list of items.
+public model Array<T> {
+
+}
+
+/// A fixed-size list of items.
+public model StaticArray<T> {
+    new(size: Int) {
+
+    }
+}

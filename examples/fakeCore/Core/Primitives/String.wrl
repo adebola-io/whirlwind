@@ -2,9 +2,370 @@ module String;
 
 
 use Ops.Addition;
+use Bool.Bool;
+use Super.{ 
+    Internals.{ Invoke, Injunction }, 
+    Memory.{ CharSpace, Bytes }, 
+    Prelude.{ Maybe, AsIterator, Iteratable, Range },
+    Process.Todo,
+};
+use Numeric.{ Int, UnsignedInt };
+use Array.Array;
 
+/// Model for creating, manipulating and formatting text sequences.
+public model String implements Addition + AsIterator<&String, Chars> {
+    /// Adds two strings together.
+    /// ## Usage
+    /// ```
+    /// str := "Hello" + ", world!";
+    /// Assert(str).Equals("Hello, world!");
+    /// ```
+    public function [Addition.Add](other: This): This {
+        return Invoke(Injunction.StrAdd(this, other));
+    }
+    /// Creates an iterator from the contents of a string.
+    /// ## Usage
+    /// ```
+    /// str := "This is a string";
+    /// 
+    /// for char in str {
+    ///     Core.Io.Println(char);
+    /// }
+    /// ```
+    public function [AsIterator.Convert](): Chars {
+        return this.Chars();
+    }
+    /// Returns a `Maybe` with the character at a zero based index in the string.
+    ///
+    /// It also supports negative indexes, which will return values in reverse from the end of the string.
+    /// ## Usage
+    /// ```
+    /// str := "This is a string";
+    /// 
+    /// Assert(str.At(0)).Equals(Some("T"));
+    /// Assert(str.At(8)).Equals(Some("a")) 
+    /// Assert(str.At(11)).Equals(Some("t"));
+    /// ```
+    /// _Indexing from behind:_
+    /// 
+    /// ```
+    /// Assert(str.At(-1)).Equals(Some("g"));
+    /// Assert(str.At(-3)).Equals(Some("i"));
+    /// ```
+    /// It will return no value if the length of the string is exceeded.
+    public function At(position: Int): Maybe<&String> {
+        return Invoke(Injunction.StrAt(this, position));
+    }
+    /// Adds text to the end of the string.
+    /// ## Usage
+    /// ```
+    /// str := "Hello";
+    /// 
+    /// str.Append(", world!");
+    /// 
+    /// Assert(Str).Equals("Hello, world!");
+    /// ```
+    // !::mutable::!
+    public function Append(suffix: String) {
+        return Invoke(Injunction.StrAppend(this, suffix));
+    }
+    /// Returns an iterator over the bytes in the string.
+    /// ## Usage
+    /// ```
+    /// str := "adebola.xyz";
+    /// 
+    /// for byte in str.Bytes() {
+    ///     Core.Io.Println(byte)
+    /// }
+    /// ```
+    public function Bytes(): Bytes {
+        return Invoke(Injunction.StrBytes(this));
+    }
+    /// Returns an iterator over the valid characters in the string.
+    /// ## Usage
+    /// ```
+    /// str := "adebola.io"
+    /// 
+    /// for char in str.Chars() {
+    ///     Core.Io.Println(char);
+    /// }
+    /// ```
+    public function Chars(): Chars {
+        return new Chars(this);
+    }
+    /// Empties the string of its characters.
+    /// ## Usage
+    /// ```
+    /// str := "tralalalalaleeday";
+    /// 
+    /// str.Clear();
+    /// 
+    /// Assert(str).Equals("");
+    /// Assert(str.Length()).Equals(0);
+    /// ```
+    // !::mutable::!
+    public function Clear() {
+        return Invoke(Injunction.StrClear(this));
+    }
+    /// Returns true if a substring is contained within the string.
+    /// ## Usage
+    /// ```
+    /// str := "This is a world premiere.";
+    /// 
+    /// AssertThat(str.Contains("world"));
+    /// AssertThat(str.Contains("premiere"));
+    /// ```
+    public function Contains(substr: &String): Bool {
+        return Invoke(Injunction.StrContains(this, substr));
+    }
+    /// Returns true if the string has no characters.
+    /// ## Usage
+    /// ```
+    /// str := "";
+    /// AssertThat(str.IsEmpty());
+    /// 
+    /// str.Append("Hello");
+    /// AssertThat(!str.IsEmpty());
+    /// ```
+    public function IsEmpty(): Bool {
+        return this.Length() == 0;
+    }
+    /// Returns the number of characters in the string.
+    /// ## Usage
+    /// ```
+    /// str := "Hello";
+    /// 
+    /// Assert(str.Length()).Equals(5);
+    /// ```
+    public function Length(): UnsignedInt {
+        return Invoke(Injunction.StrLength(this));
+    }
+     /// Returns a version of the string with padding on both sides.
+    /// ## Usage
+    /// ```
+    /// str := "Alright";
+    /// str2 := str.Pad(3);
+    /// 
+    /// Assert(str2).Equals("   Alright   "); // 3 spaces before and after.
+    /// ```
+    public function Pad(count: UnsignedInt): String {
+        return Invoke(Injunction.StrPad(this, count));
+    }
+    /// Returns a version of the string with left padding.
+    /// ## Usage
+    /// ```
+    /// str := "Alright";
+    /// str2 := str.PadLeft(3);
+    /// 
+    /// Assert(str2).Equals("   Alright"); // 3 spaces before.
+    /// ```
+    public function PadLeft(count: UnsignedInt): String {
+        return Invoke(Injunction.StrPadLeft(this, count));
+    }
+    /// Returns a version of the string with left padding.
+    /// ## Usage
+    /// ```
+    /// str := "Alright";
+    /// str2 := str.PadLeft(3);
+    /// 
+    /// Assert(str2).Equals("   Alright"); // 3 spaces before.
+    /// ```
+    public function PadRight(count: UnsignedInt): String {
+        return Invoke(Injunction.StrPadRight(this, count));
+    }
+    /// Pads the string in place with whitespace on the left and right sides.
+    /// ## Usage
+    /// ```
+    /// str := "Hello, world!";
+    /// str.PadInPlace(3);
+    /// 
+    /// Assert(str).Equals("   Hello, world!   ");
+    /// ```
+    // !::mutable::!
+    public function PadInPlace(count: UnsignedInt): String {
+        return Invoke(Injunction.StrPadInPlace(this, count));
+    }
+    /// Adds text to the start of the string.
+    /// ## Usage
+    /// ```
+    /// str := "world!"
+    /// str.Prepend("Hello, ");
+    /// 
+    /// Assert(str).Equals("Hello, world!");
+    /// ```
+    // !::mutable::!
+    public function Prepend(prefix: String) {
+        return Invoke(Injunction.StrPrepend(this, prefix));
+    }
+    /// Returns a String value that is made from a number of copies of the original string.
+    /// If count is 0, the empty string is returned.
+    /// ## Usage
+    /// ```
+    /// str := "Whirlwind";
+    /// 
+    /// str2 := str.Repeat(3);
+    /// Assert(str2).Equals("WhirlwindWhirlwindWhirlwind"); // 3 copies.
+    /// 
+    /// str3 := str.Repeat(1);
+    /// Assert(str3).Equals("Whirlwind"); // One copy.
+    /// 
+    /// str3 := str.Repeat(0);
+    /// AssertThat(str2.IsEmpty()); // No copies.
+    /// ```
+    public function Repeat(count: UnsignedInt): String {
+        return Invoke(Injunction.StrRepeat(this, count));
+    }
+    /// Replaces all instances of a substring and returns the new string.
+    /// ## Usage
+    /// ```
+    /// str := "John goes to school. John buys a book.";
+    /// 
+    /// str2 := str.Replace("John", "Mike");
+    /// 
+    /// Assert(str2).Equals("Mike goes to school. Mike buys a book.")
+    /// ```
+    public function Replace(substr: String, newstr: String): String {
+        return Invoke(Injunction.StrReplace(this, substr, newstr));
+    }
+    /// Returns a reversed version of the string.
+    /// ## Usage
+    /// ```
+    /// str := "pandemonium";
+    /// 
+    /// str2 := str.Reverse();
+    /// 
+    /// Assert(str2).Equals("muinomednap");
+    /// ```
+    public function Reverse(): String {
+        return Invoke(Injunction.StrReverse(this));
+    }
+    /// Returns a section of the string.
+    /// The range argument is exclusive, meaning it goes from the left index all the way to one before the right.
+    /// ## Usage
+    /// ```
+    /// str := "Hello, world!";
+    /// 
+    /// Assert(str.Slice(0..5)).Equals("Hello"); // index 0 to 4.
+    /// ```
+    public function Slice(bounds: Range<Int>): Maybe<&String> {
+        return Invoke(Injunction.StrSlice(this, bounds));
+    }
+    /// Divides the string into a list of substrings based on a delimeter.
+    /// ## Usage
+    /// ```
+    /// str := "Ring around the rosy";
+    /// words := str.Split(" ");
+    /// 
+    /// Assert(words).Equals(["Ring", "Around", "The", "Rosy"]);
+    /// ```
+    public function Split(delim: String): Array<String> {
+        return Invoke(Injunction.StrSplit(this, delim));
+    }
+    /// Changes the first character of every word in the string to upper case.
+    /// ## Usage
+    /// ```
+    /// str := "jonathan is a boy";
+    /// str2 := str.ToCapitalCase();
+    /// 
+    /// Assert(str2).Equals("Jonathan Is A Boy");
+    /// ```
+    public function ToCapitalCase(): String {
+        return Invoke(Injunction.StrCapitalCase(this));
+    }
+    /// Changes the case of all letters in the string to lower case.
+    /// ## Usage
+    /// ```
+    /// str := "HELLO, WORLD!";
+    /// str2 := str.ToLowerCase();
+    /// 
+    /// Assert(str2).Equals("hello, world!");
+    /// ```
+    public function ToLowerCase(): String {
+        return Invoke(Injunction.StrLowercase(this));
+    }
+    /// Changes only the first character in the string to upper case.
+    /// ## Usage
+    /// ```
+    /// str := "nice to meet you, where you been?";
+    /// str2 := str.ToSentenceCase();
+    /// 
+    /// Assert(str2).Equals("Nice to meet you, where you been?");
+    /// ```
+    public function ToSentenceCase(): String {
+        return Invoke(Injunction.StrSentenceCase(this));
+    }
+    /// Changes the case of all letters in the string to upper case.
+    /// ## Usage
+    /// ```
+    /// str := "hello, world!";
+    /// str2 := str.ToUpperCase();
+    /// 
+    /// Assert(str2).Equals("HELLO, WORLD!");
+    /// ```
+    public function ToUpperCase(): String {
+        return Invoke(Injunction.StrUppercase(this));
+    }
+    /// Returns a version of the string without left or right whitespace padding.
+    /// ## Usage
+    /// ```
+    /// str := "\n\n\nWhat then shall we say?  \n\n\n\r\t";
+    /// 
+    /// Assert(str.Trim()).Equals("What then shall we say?");
+    /// ```
+    public function Trim(): String {
+        return Invoke(Injunction.StrTrim(this));
+    }  
+    /// Mutates the string in place and removes left or right whitespace padding.
+    /// ## Usage
+    /// ```
+    /// str := "\n\n\nWhat then shall we say?  \n\n\n\r\t";
+    /// 
+    /// str.TrimInPlace();
+    /// 
+    /// Assert(str).Equals("What then shall we say?");
+    /// ```
+    // !::mutable::!
+    public function TrimInPlace(): String {
+        return Invoke(Injunction.StrTrimInPlace(this));
+    }   
+    /// Returns a version of the string without left whitespace padding.
+    /// ## Usage
+    /// ```
+    /// str := "\n\n\nWhat then shall we say?\n";
+    /// 
+    /// Assert(str.TrimStart()).Equals("What then shall we say?\n");
+    /// ```
+    public function TrimStart(): String {
+        return Invoke(Injunction.StrTrimStart(this));
+    } 
+    /// Returns a version of the string without right whitespace padding.
+    /// ## Usage
+    /// ```
+    /// str := "\nWhat then shall we say?\n\n\n";
+    /// 
+    /// Assert(str.TrimEnd()).Equals("\nWhat then shall we say?");
+    /// ```
+    public function TrimEnd(): String {
+        return Invoke(Injunction.TrimEnd(this));
+    }
+}
 
+public model Chars implements Iteratable<&String> {
+    var idx: UnsignedInt;
+    var string: String;
+    new(string: String) {
+        this.idx = 0;
+        this.string = string;
+    }
+    /// Returns the next character.
+    public function [Iteratable.Next](): Maybe<&String> {
+        nextChar := this.string.At(this.idx);
+        this.idx += 1;
+        return nextChar;
+    }
+}
 
-public model String implements Addition {
-
+/// Calculates the edit distance between two strings using the [Levenshtein's Algorithm](http://example.com).
+public function LevenshteinEditRatio(str1: &String, str2: &String): Int {
+    Todo()
 }

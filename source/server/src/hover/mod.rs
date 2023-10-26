@@ -1,8 +1,8 @@
 #![allow(unused)]
 use crate::message_store::MessageStore;
 use analyzer::{
-    IntermediateType, SemanticSymbolKind, Standpoint, SymbolIndex, TypedCallExpr, TypedIdent,
-    TypedModule, TypedThisExpr, TypedTypeDeclaration, TypedVisitorNoArgs,
+    IntermediateType, SemanticSymbol, SemanticSymbolKind, Standpoint, SymbolIndex, TypedCallExpr,
+    TypedIdent, TypedModule, TypedThisExpr, TypedTypeDeclaration, TypedVisitorNoArgs,
 };
 use ast::Span;
 use printer::SymbolWriter;
@@ -48,18 +48,34 @@ impl HoverInfo {
 impl From<(&Standpoint, SymbolIndex)> for HoverInfo {
     fn from(tuple: (&Standpoint, SymbolIndex)) -> Self {
         let mut contents = vec![];
-
-        let mut symbol = tuple.0.symbol_table.get(tuple.1).unwrap();
+        let symbol_table = &tuple.0.symbol_table;
+        let symbol = symbol_table.get(tuple.1).unwrap();
         let writer = SymbolWriter::new(tuple.0);
         let string = writer.print_symbol_with_idx(tuple.1);
 
         // Import and property redirection.
-        symbol = match &symbol.kind {
+        let symbol = match &symbol.kind {
             SemanticSymbolKind::Import {
-                source: Some(origin),
+                source: Some(source),
                 ..
+            } => {
+                let mut origin = source;
+                let mut parent = symbol_table.get(*source);
+                while let Some(SemanticSymbol {
+                    kind:
+                        SemanticSymbolKind::Import {
+                            source: Some(source),
+                            ..
+                        },
+                    ..
+                }) = parent
+                {
+                    origin = source;
+                    parent = symbol_table.get(*source);
+                }
+                parent.unwrap()
             }
-            | SemanticSymbolKind::Property {
+            SemanticSymbolKind::Property {
                 resolved: Some(origin),
             } => tuple.0.symbol_table.get(*origin).unwrap(),
             _ => symbol,
@@ -245,56 +261,17 @@ impl<'a> HoverFinder<'a> {
 }
 
 impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
-    //     /// Hover over a use import.
-    //     fn use_declaration(&self, use_decl: &ast::UseDeclaration) -> Option<HoverInfo> {
-    //         return self.use_target_hover(&use_decl.target);
-    //     }
-    //     /// Hover over a trait declaration.
-    //     fn trait_declaraion(&self, trait_decl: &ast::TraitDeclaration) -> Option<HoverInfo> {
-    //         let module_ambience = &self.module.ambience;
-    //         let scope = module_ambience.get_scope(trait_decl.address.scope_id)?;
-    //         let trait_ = scope.get_trait(trait_decl.address.entry_no)?;
-    //         // hover over model name.
-    //         name_hover!(trait_, scope, self);
-    //         // hover over trait impl.
-    //         for implentation in &trait_.implementations {
-    //             type_hover!(implentation, scope, self);
-    //         }
-    //         // hover over an attribute, method or implementation.
-    //         for property in &trait_decl.body.properties {
-    //             if property.span.contains(self.pos) {
-    //                 match &property._type {
-    //                     TraitPropertyType::Signature => {
-    //                         let method = trait_.methods.get(property.index)?;
-    //                         // Hovering over a method name.
-    //                         sub_name_hover!(method, trait_, scope, method, self);
-    //                         let body = Block::empty(scope.id, Span::default());
-    //                         // Other hovers.
-    //                         return self.fn_parts_hover(
-    //                             &method.params,
-    //                             &method.return_type,
-    //                             &body,
-    //                             scope.id,
-    //                         );
-    //                     }
-    //                     TraitPropertyType::Method { body } => {
-    //                         let method = trait_.methods.get(property.index)?;
-    //                         // Hovering over a method name.
-    //                         sub_name_hover!(method, trait_, scope, method, self);
-    //                         // Other hovers.
-    //                         return self.fn_parts_hover(
-    //                             &method.params,
-    //                             &method.return_type,
-    //                             &body,
-    //                             scope.id,
-    //                         );
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //         return None;
-    //     }
-
+    /// Hover over a use import.
+    fn use_declaration(&self, use_decl: &analyzer::TypedUseDeclaration) -> Option<HoverInfo> {
+        within!(use_decl.span, self);
+        for import in &use_decl.imports {
+            let symbol = self.standpoint.symbol_table.get(import.symbol_idx)?;
+            if symbol.ident_span().contains(self.pos) {
+                return Some(HoverInfo::from((self.standpoint, import.symbol_idx)));
+            }
+        }
+        None
+    }
     /// Hovering over a variable declaration.
     fn var_decl(&self, var_decl: &analyzer::TypedVariableDeclaration) -> Option<HoverInfo> {
         within!(var_decl.span, self);
@@ -493,11 +470,6 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
         None
     }
 
-    fn use_declaration(&self, use_decl: &analyzer::TypedUseDeclaration) -> Option<HoverInfo> {
-        within!(use_decl.span, self);
-        <Option<HoverInfo>>::default()
-    }
-
     fn module_declaration(&self, module: &analyzer::TypedModuleDeclaration) -> Option<HoverInfo> {
         within!(module.span, self);
         return Some(HoverInfo::from((self.standpoint, self.module.symbol_idx)));
@@ -672,7 +644,88 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
                     }
                     _ => return None,
                 },
-                analyzer::TypedModelPropertyType::TraitImpl { trait_target, body } => return None,
+                analyzer::TypedModelPropertyType::TraitImpl { trait_target, body } => {
+                    for trait_target_unit in trait_target {
+                        maybe!(self.type_hover(trait_target_unit))
+                    }
+                    match &symbol.kind {
+                        SemanticSymbolKind::Method {
+                            params,
+                            generic_params,
+                            return_type,
+                            ..
+                        } => {
+                            return self.fn_parts_hover(
+                                generic_params,
+                                params,
+                                return_type,
+                                Some(body),
+                            )
+                        }
+                        _ => return None,
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    fn trait_declaration(&self, trait_: &analyzer::TypedTraitDeclaration) -> Option<HoverInfo> {
+        within!(trait_.span, self);
+        // hovering over a trait name.
+        let model_symbol = self.standpoint.symbol_table.get(trait_.name.symbol_idx)?;
+        if model_symbol.ident_span().contains(self.pos) {
+            return Some(HoverInfo::from((self.standpoint, trait_.name.symbol_idx)));
+        }
+        // hovering over a generic parameter.
+        let (generic_params, impls) = match &model_symbol.kind {
+            SemanticSymbolKind::Trait {
+                generic_params,
+                implementations,
+                ..
+            } => (generic_params, implementations),
+            _ => return None,
+        };
+        for generic_param in generic_params {
+            maybe!(self.generic_parameter(*generic_param))
+        }
+        // hovering over an implementation.
+        for _impl in impls {
+            maybe!(self.type_hover(_impl))
+        }
+        // hovering over the trait body.
+        within!(trait_.body.span, self);
+        // hovering in a property.
+        for property in trait_.body.properties.iter() {
+            if !property.span.contains(self.pos) {
+                continue;
+            }
+            let symbol = self.standpoint.symbol_table.get(property.name.symbol_idx)?;
+            // Hovering over the property name.
+            if symbol.ident_span().contains(self.pos) {
+                return Some(HoverInfo::from((self.standpoint, property.name.symbol_idx)));
+            }
+            match &property._type {
+                analyzer::TypedTraitPropertyType::Method { body } => match &symbol.kind {
+                    SemanticSymbolKind::Method {
+                        params,
+                        generic_params,
+                        return_type,
+                        ..
+                    } => {
+                        return self.fn_parts_hover(generic_params, params, return_type, Some(body))
+                    }
+                    _ => return None,
+                },
+                analyzer::TypedTraitPropertyType::Signature => match &symbol.kind {
+                    SemanticSymbolKind::Method {
+                        params,
+                        generic_params,
+                        return_type,
+                        ..
+                    } => return self.fn_parts_hover(generic_params, params, return_type, None),
+                    _ => panic!("{symbol:?}"),
+                },
             }
         }
         None

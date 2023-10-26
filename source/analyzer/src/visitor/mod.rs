@@ -176,7 +176,7 @@ pub trait TypedVisitorNoArgs<Output: Default = ()> {
             TypedStmnt::ShorthandVariableDeclaration(v) => self.shorthand_var_decl(v),
             TypedStmnt::ExpressionStatement(e) => self.expr_statement(e),
             TypedStmnt::FreeExpression(e) => self.free_expr(e),
-            // TypedStmnt::TraitDeclaration(t) => self.trait_declaraion(t),
+            TypedStmnt::TraitDeclaration(t) => self.trait_declaration(t),
             TypedStmnt::ModuleDeclaration(m) => self.module_declaration(m),
             TypedStmnt::UseDeclaration(u) => self.use_declaration(u),
             TypedStmnt::ConstantDeclaration(c) => self.constant(c),
@@ -186,9 +186,8 @@ pub trait TypedVisitorNoArgs<Output: Default = ()> {
             TypedStmnt::ForStatement(for_stat) => self.for_statement(for_stat),
             TypedStmnt::WhileStatement(whilestat) => self.while_statement(whilestat),
             TypedStmnt::ContinueStatement(continue_) => self.continue_statement(continue_),
-            TypedStmnt::RecordDeclaration => todo!(),
             TypedStmnt::VariableDeclaration(variable) => self.var_decl(variable),
-            TypedStmnt::TraitDeclaration(_) => todo!(),
+            TypedStmnt::RecordDeclaration => todo!(),
         }
     }
     fn use_declaration(&self, use_decl: &TypedUseDeclaration) -> Output {
@@ -197,9 +196,9 @@ pub trait TypedVisitorNoArgs<Output: Default = ()> {
     fn module_declaration(&self, module: &TypedModuleDeclaration) -> Output {
         Output::default()
     }
-    // fn trait_declaraion(&self, _trait: &TraitDeclaration) -> Output {
-    //     Output::default()
-    // }
+    fn trait_declaration(&self, _trait: &TypedTraitDeclaration) -> Output {
+        Output::default()
+    }
     fn expr_statement(&self, exp: &TypedExpression) -> Output {
         self.expr(exp)
     }

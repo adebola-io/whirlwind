@@ -84,6 +84,57 @@ impl Standpoint {
                 .flatten(),
         )
     }
+    /// Check if the standpoint is empty.
+    pub fn is_empty(&self) -> bool {
+        self.module_map.len() == 0
+    }
+    /// Get the module in a directory using its module name.
+    /// The module is freshly analyzed if it exists but it has not been added to the standpoint yet.
+    pub fn get_or_create_module_in_dir(&mut self, dir: &Path, name: &str) -> Option<PathIndex> {
+        let (name, dir_map) = if name == "Package" {
+            return Some(self.entry_module);
+        } else if name == "Super" {
+            let parent_folder_of_dir = get_parent_dir(dir)?;
+            let dir_map = self.directories.get(parent_folder_of_dir)?;
+            (parent_folder_of_dir.file_stem()?.to_str()?, dir_map)
+        } else if name == "Core" && self.corelib_path.is_some() {
+            return self.corelib_path;
+        } else {
+            (name, self.directories.get(dir)?)
+        };
+
+        match dir_map.get(name) {
+            // Retrieved successfully.
+            Some(path_index) => return Some(*path_index),
+            None => {
+                // Path either doesn't exist, or has not been added to the standpoint
+                // or might be nested in a named directory.
+                // Traverse through the entire folder to determine the path.
+                return self.create_module_or_retrieve_nested(dir, name);
+            }
+        }
+    }
+    /// Return mutable reference to a (typed) module at a specific path, if it exists.
+    pub fn get_mut_module_at_path(&mut self, path_buf: &PathBuf) -> Option<&mut TypedModule> {
+        self.module_map
+            .paths_mut()
+            .find(|tuple| tuple.1.path_buf == *path_buf)
+            .map(|tuple| tuple.1)
+    }
+    /// Adds an error to the error list.
+    /// Deduplicates doubled import errors.
+    fn add_error(&mut self, error: ProgramError) {
+        if matches!(&error.error_type, Importing(_)) {
+            if self.errors.iter().any(|prior_error| *prior_error == error) {
+                return;
+            }
+        }
+        self.errors.push(error);
+    }
+}
+
+// IMPORT OPERATIONS
+impl Standpoint {
     // Resolve the imports of a module given its path index.
     fn resolve_imports_of(&mut self, root_path_idx: PathIndex) -> Result<(), String> {
         // The module requesting imports.
@@ -235,8 +286,25 @@ impl Standpoint {
             SemanticSymbolKind::Module { symbols, .. } => Some(symbols),
             // Imported redirection.
             SemanticSymbolKind::Import { source, .. } => {
-                if let Some(imported_idx) = source {
-                    return self.look_for_symbol_in_module(*imported_idx, root, target, sub_target);
+                if source.is_some() {
+                    let mut source = source.clone();
+                    while source.is_some() {
+                        let imported_symbol =
+                            self.symbol_table.get(source.clone().unwrap()).unwrap();
+                        match imported_symbol.kind {
+                            SemanticSymbolKind::Import {
+                                source: parent_source,
+                                ..
+                            } => source = parent_source,
+                            _ => break,
+                        }
+                    }
+                    return self.look_for_symbol_in_module(
+                        source.unwrap(),
+                        root,
+                        target,
+                        sub_target,
+                    );
                 } else {
                     // Errors have to be checked to ensure they are not duplicated.
                     // Duplicated can happen when list targets are scattered, and each distinct target encounters the same
@@ -292,53 +360,6 @@ impl Standpoint {
             offending_file,
             error_type: Importing(error),
         })
-    }
-    /// Check if the standpoint is empty.
-    pub fn is_empty(&self) -> bool {
-        self.module_map.len() == 0
-    }
-    /// Get the module in a directory using its module name.
-    /// The module is freshly analyzed if it exists but it has not been added to the standpoint yet.
-    pub fn get_or_create_module_in_dir(&mut self, dir: &Path, name: &str) -> Option<PathIndex> {
-        let (name, dir_map) = if name == "Package" {
-            return Some(self.entry_module);
-        } else if name == "Super" {
-            let parent_folder_of_dir = get_parent_dir(dir)?;
-            let dir_map = self.directories.get(parent_folder_of_dir)?;
-            (parent_folder_of_dir.file_stem()?.to_str()?, dir_map)
-        } else if name == "Core" && self.corelib_path.is_some() {
-            return self.corelib_path;
-        } else {
-            (name, self.directories.get(dir)?)
-        };
-
-        match dir_map.get(name) {
-            // Retrieved successfully.
-            Some(path_index) => return Some(*path_index),
-            None => {
-                // Path either doesn't exist, or has not been added to the standpoint
-                // or might be nested in a named directory.
-                // Traverse through the entire folder to determine the path.
-                return self.create_module_or_retrieve_nested(dir, name);
-            }
-        }
-    }
-    /// Return mutable reference to a (typed) module at a specific path, if it exists.
-    pub fn get_mut_module_at_path(&mut self, path_buf: &PathBuf) -> Option<&mut TypedModule> {
-        self.module_map
-            .paths_mut()
-            .find(|tuple| tuple.1.path_buf == *path_buf)
-            .map(|tuple| tuple.1)
-    }
-    /// Adds an error to the error list.
-    /// Deduplicates doubled import errors.
-    fn add_error(&mut self, error: ProgramError) {
-        if matches!(&error.error_type, Importing(_)) {
-            if self.errors.iter().any(|prior_error| *prior_error == error) {
-                return;
-            }
-        }
-        self.errors.push(error);
     }
 }
 
@@ -692,6 +713,9 @@ mod tests {
                 public function Honk() {
 
                 }
+                public function [Vehicle.Start]<U>() {
+
+                }
             }
         ";
         let mut module = Module::from_text(format!("{text}"));
@@ -705,6 +729,30 @@ mod tests {
             .symbol_table
             .find(|symbol| symbol.name == "Honk")
             .is_some());
+        println!("{:#?}", standpoint.symbol_table);
+    }
+
+    #[test]
+    fn bind_traits() {
+        let text = "
+            module Test;
+
+            public trait Vehicle {
+                public function Start(): This;
+            }
+        ";
+        let mut module = Module::from_text(format!("{text}"));
+        module.module_path = Some(PathBuf::from("testing://Test.wrl"));
+        let standpoint = Standpoint::build_from_module(module, false).unwrap();
+        assert!(standpoint
+            .symbol_table
+            .find(|symbol| symbol.name == "Vehicle")
+            .is_some());
+        assert!(standpoint
+            .symbol_table
+            .find(|symbol| symbol.name == "Start")
+            .is_some());
+        println!("{:#?}", standpoint.symbol_table);
     }
 
     #[test]

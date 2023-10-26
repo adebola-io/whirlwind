@@ -21,7 +21,7 @@ mod statements {
         statement: &mut TypedStmnt,
         symboltable: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-    ) -> Vec<TypeError> {
+    ) {
         match statement {
             TypedStmnt::RecordDeclaration => todo!(),
             TypedStmnt::TestDeclaration(_) => todo!(),

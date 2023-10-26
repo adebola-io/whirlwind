@@ -1,17 +1,25 @@
 module Process;
 
-use Internals.never;
-use Core.Prelude.String;
+use Super.{
+    Internals.never, 
+    Primitives.String
+};
 
 public model Error {
     new(message?: String) {
-        
+
     }
 }
 
-/// Removes a layer of the stack trace and panics.
-public function PanicOnCaller(error?: Error): never {
-    PanicOnCaller()// Compiler built in.
+/// Mock function for panicking.
+public function PanicOnCaller(message: String): never  {
+    // Compiler built-in.
+    return PanicOnCaller(message);
+}
+
+/// Mock function for compile-time stuff.
+public function Halt(message: String): never {
+    return Halt(message);
 }
 
 /// Indicates that the current piece of code is unfinished.
@@ -24,5 +32,5 @@ public function PanicOnCaller(error?: Error): never {
 /// ```
 /// ```
 public function Todo(message?: String): never {
-    return PanicOnCaller(new Error(message.UnwrapOr("Entered unfinished code.")));
+    return PanicOnCaller(message.UnwrapOr("Entered unfinished code."));
 }

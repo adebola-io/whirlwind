@@ -245,6 +245,7 @@ impl DocumentManager {
     /// Hover over support.
     pub fn get_hover_info(&self, params: HoverParams) -> WithMessages<Option<HoverInfo>> {
         let mut messages = MessageStore::new();
+        let time = std::time::Instant::now();
         let uri = params.text_document_position_params.text_document.uri;
         let path_buf = match uri_to_absolute_path(uri) {
             Ok(p) => p,
@@ -279,7 +280,9 @@ impl DocumentManager {
         let hover_finder = HoverFinder::new(module, main_context, pos, messages);
         for statement in module.statements.iter() {
             if let Some(hover) = hover_finder.statement(statement) {
-                return (hover_finder.message_store.take(), Some(hover));
+                let mut messages = hover_finder.message_store.take();
+                messages.inform(format!("Retreived hover info in {:?}", time.elapsed()));
+                return (messages, Some(hover));
             }
         }
         return (hover_finder.message_store.take(), None);
@@ -655,10 +658,21 @@ pub fn match_pos_to_symbol<'a>(
                         } = &symbol.kind
                         {
                             // Import redirection.
-                            standpoint
-                                .symbol_table
-                                .get(*source)
-                                .map(|symbol| (*source, symbol))
+                            let mut origin = source;
+                            let mut parent = standpoint.symbol_table.get(*source);
+                            while let Some(SemanticSymbol {
+                                kind:
+                                    SemanticSymbolKind::Import {
+                                        source: Some(source),
+                                        ..
+                                    },
+                                ..
+                            }) = parent
+                            {
+                                origin = source;
+                                parent = standpoint.symbol_table.get(*source);
+                            }
+                            parent.map(|symbol| (*origin, symbol))
                         } else if let SemanticSymbolKind::Property {
                             resolved: Some(source),
                         } = &symbol.kind

@@ -310,6 +310,20 @@ impl ScopeEntry {
         }
     }
 
+    pub fn _trait(&self) -> &TraitSignature {
+        match self {
+            ScopeEntry::Trait(t) => t,
+            _ => panic!("{} is not a trait!", self.name()),
+        }
+    }
+
+    pub fn _trait_mut(&mut self) -> &mut TraitSignature {
+        match self {
+            ScopeEntry::Trait(t) => t,
+            _ => panic!("{} is not a trait!", self.name()),
+        }
+    }
+
     /// Returns `true` if the scope entry is [`Parameter`].
     ///
     /// [`Parameter`]: ScopeEntry::Parameter

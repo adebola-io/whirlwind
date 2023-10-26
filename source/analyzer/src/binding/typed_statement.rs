@@ -115,7 +115,7 @@ pub struct TypedTraitBody {
 
 #[derive(Debug, PartialEq)]
 pub struct TypedTraitProperty {
-    pub index: usize,
+    pub name: SymbolLocator,
     pub _type: TypedTraitPropertyType,
     pub span: Span,
 }

@@ -342,7 +342,29 @@ mod bind_utils {
                 }
                 index
             }
-            ScopeEntry::Trait(_) => todo!(),
+            ScopeEntry::Trait(_trait) => {
+                let symbol = SemanticSymbol {
+                    name: _trait.name.name.to_owned(),
+                    kind: SemanticSymbolKind::Trait {
+                        is_public: _trait.is_public,
+                        // The values after are written later and not now
+                        // to prevent trait-implements-itself recursive loops.
+                        generic_params: vec![],
+                        implementations: vec![],
+                        methods: vec![],
+                    },
+                    references: vec![SymbolReferenceList {
+                        module_path: binder.path,
+                        starts: vec![_trait.name.span.start],
+                    }],
+                    doc_info: _trait.info.clone(), // todo.
+                    origin_span,
+                };
+                let index = symbol_table.add(symbol);
+                let span = _trait.name.span;
+                binder.known_values.insert(span, index);
+                index
+            }
             ScopeEntry::UseImport(use_signature) => {
                 // Full path is added later.
                 let symbol =
@@ -607,6 +629,8 @@ mod bind_utils {
 
 /// Statements
 mod statements {
+    use ast::{TraitBody, TraitPropertyType};
+
     use super::{
         bind_utils::{add_ctx_error, handle_scope_entry, last_reference_no},
         expressions::{bind_block, bind_expression},
@@ -722,7 +746,14 @@ mod statements {
             ),
             Statement::RecordDeclaration => todo!(),
             Statement::TraitDeclaration(trait_decl) => {
-                TypedStmnt::TraitDeclaration(trait_declaration(trait_decl))
+                TypedStmnt::TraitDeclaration(bind_trait_declaration(
+                    trait_decl,
+                    binder,
+                    symbol_table,
+                    errors,
+                    literals,
+                    ambience,
+                ))
             }
             Statement::ForStatement(for_stat) => TypedStmnt::ForStatement(for_statement(for_stat)),
             Statement::VariableDeclaration(variable) => {
@@ -1031,7 +1062,74 @@ mod statements {
                 literals,
                 ambience,
             ),
-            ModelPropertyType::TraitImpl { .. } => todo!(),
+            ModelPropertyType::TraitImpl {
+                trait_target: trait_target_prior,
+                body,
+            } => {
+                let mut trait_target = vec![];
+                if let Some(discrete_type) = trait_target_prior.first() {
+                    trait_target.push(types::bind_discrete_type(
+                        discrete_type,
+                        binder,
+                        symbol_table,
+                        errors,
+                        ambience,
+                    ));
+                }
+                for property_type in trait_target_prior.iter().skip(1) {
+                    // Same as in access expressions, properties cannot be bound
+                    // until imports are resolved and types are inferred.
+                    // So, a placeholder is used.
+                    let mut property_symbol = SemanticSymbol {
+                        name: property_type.name.name.to_owned(),
+                        kind: SemanticSymbolKind::Property { resolved: None },
+                        references: vec![],
+                        doc_info: None,
+                        origin_span: property_type.name.span,
+                    };
+                    property_symbol.add_reference(binder.path, property_type.name.span);
+                    let property_symbol_idx = symbol_table.add(property_symbol);
+                    // Collect generics.
+                    let mut generic_args = vec![];
+                    if let Some(ref arguments) = property_type.generic_args {
+                        for argument in arguments {
+                            generic_args.push(bind_type_expression(
+                                argument,
+                                binder,
+                                symbol_table,
+                                errors,
+                                ambience,
+                            ))
+                        }
+                    }
+
+                    let final_property_type = IntermediateType::SimpleType {
+                        value: property_symbol_idx,
+                        generic_args,
+                        span: property_type.span,
+                    };
+                    trait_target.push(final_property_type);
+                }
+                let mut property = bind_model_method(
+                    property.index,
+                    property.span,
+                    owner,
+                    body,
+                    binder,
+                    symbol_table,
+                    errors,
+                    literals,
+                    ambience,
+                );
+                // convert method property to trait property.
+                property._type = match property._type {
+                    TypedModelPropertyType::TypedMethod { body } => {
+                        TypedModelPropertyType::TraitImpl { trait_target, body }
+                    }
+                    _ => unreachable!("Bound method as something else."),
+                };
+                return property;
+            }
         }
     }
 
@@ -1588,8 +1686,395 @@ mod statements {
     }
 
     /// Binds a trait declaration.
-    pub fn trait_declaration(_trait_decl: ast::TraitDeclaration) -> TypedTraitDeclaration {
-        todo!()
+    pub fn bind_trait_declaration(
+        trait_decl: ast::TraitDeclaration,
+        binder: &mut Binder,
+        symbol_table: &mut SymbolTable,
+        errors: &mut Vec<ProgramError>,
+        literals: &mut Vec<Literal>,
+        ambience: &mut ModuleAmbience,
+    ) -> TypedTraitDeclaration {
+        let binding_result = handle_scope_entry(
+            binder,
+            symbol_table,
+            errors,
+            ambience,
+            trait_decl.address,
+            trait_decl.span,
+            true, // traits can be hoisted.
+        );
+        let signature = ambience.get_entry_unguarded(trait_decl.address)._trait();
+        binder.push_generic_pool(); // List of parameters.
+        let generic_param_idxs = bind_generic_parameters(
+            signature.generic_params.as_ref(),
+            binder,
+            symbol_table,
+            errors,
+            &ambience,
+        );
+        let implementation_idxs = signature
+            .implementations
+            .iter()
+            .map(|implementation| {
+                bind_type_expression(implementation, binder, symbol_table, errors, &ambience)
+            })
+            .collect();
+        let symbol_idx = match binding_result {
+            Ok(symbol_idx) => {
+                // Add generic parameters, if the binding to this type was successful.
+                if let Some(SemanticSymbol {
+                    kind:
+                        SemanticSymbolKind::Trait {
+                            implementations,
+                            generic_params,
+                            ..
+                        },
+                    ..
+                }) = &mut symbol_table.get_mut(symbol_idx)
+                {
+                    // Generic parameters should always be first.
+                    *generic_params = generic_param_idxs;
+                    *implementations = implementation_idxs;
+                }
+                symbol_idx
+            }
+            Err(idx) => idx,
+        };
+        binder.this_type.push(symbol_idx); // Set meaning of `This`.
+        let ref_number = last_reference_no(&symbol_table, symbol_idx);
+        let typed_trait_declaration = TypedTraitDeclaration {
+            name: SymbolLocator {
+                symbol_idx,
+                ref_number,
+            },
+            body: trait_body(
+                trait_decl.body,
+                symbol_idx,
+                binder,
+                symbol_table,
+                errors,
+                literals,
+                ambience,
+            ),
+            span: trait_decl.span,
+        };
+        binder.pop_generic_pool();
+        binder.this_type.pop(); // Remove meaning of This.
+        return typed_trait_declaration;
+    }
+
+    /// Bind a model body.
+    fn trait_body(
+        body: TraitBody,
+        owner_idx: SymbolIndex,
+        binder: &mut Binder,
+        symbol_table: &mut SymbolTable,
+        errors: &mut Vec<ProgramError>,
+        literals: &mut Vec<Literal>,
+        ambience: &mut ModuleAmbience,
+    ) -> TypedTraitBody {
+        TypedTraitBody {
+            properties: body
+                .properties
+                .into_iter()
+                .map(|property| {
+                    bind_trait_property(
+                        property,
+                        owner_idx,
+                        binder,
+                        symbol_table,
+                        errors,
+                        literals,
+                        ambience,
+                    )
+                })
+                .collect(),
+            span: body.span,
+        }
+    }
+
+    fn bind_trait_property(
+        property: ast::TraitProperty,
+        owner: SymbolIndex,
+        binder: &mut Binder,
+        symbol_table: &mut SymbolTable,
+        errors: &mut Vec<ProgramError>,
+        literals: &mut Vec<Literal>,
+        ambience: &mut ModuleAmbience,
+    ) -> TypedTraitProperty {
+        match property._type {
+            // bind a model attribute.
+            TraitPropertyType::Signature => bind_trait_signature(
+                property.index,
+                property.span,
+                owner,
+                binder,
+                symbol_table,
+                errors,
+                literals,
+                ambience,
+            ),
+            TraitPropertyType::Method { body } => bind_trait_method(
+                property.index,
+                property.span,
+                owner,
+                body,
+                binder,
+                symbol_table,
+                errors,
+                literals,
+                ambience,
+            ),
+        }
+    }
+
+    fn bind_trait_signature(
+        index: usize,
+        span: Span,
+        owner: SymbolIndex,
+        binder: &mut Binder,
+        symbol_table: &mut SymbolTable,
+        errors: &mut Vec<ProgramError>,
+        literals: &mut Vec<Literal>,
+        ambience: &mut ModuleAmbience,
+    ) -> TypedTraitProperty {
+        // find first instance of an attribute name that matches this one.
+        let shadow = ambience.create_shadow(binder.current_scope);
+        let address_of_owner_trait = shadow
+            .lookaround(&symbol_table.get(owner).unwrap().name)
+            .unwrap()
+            .construct_address(binder.path.0 as usize);
+        let parent_trait = ambience
+            .get_entry_unguarded_mut(address_of_owner_trait)
+            ._trait_mut();
+        binder.push_generic_pool(); // Add a list of reachable generic parameters.
+        let method = parent_trait
+            .methods
+            .get(index)
+            .expect("Could not find method with correct index.");
+        let first_instance = parent_trait
+            .methods
+            .iter()
+            .find(|meth| meth.name.name == method.name.name)
+            .unwrap();
+        let symbol_idx = if !std::ptr::eq(first_instance, method) {
+            // first instance is not equal to this method.
+            bind_utils::add_ctx_error(
+                binder,
+                errors,
+                errors::duplicate_property(method.name.to_owned()),
+            );
+            let symbol_index = *binder.known_values.get(&first_instance.name.span).unwrap();
+            let symbol = symbol_table.get_mut(symbol_index).unwrap();
+            symbol.add_reference(binder.path, method.name.span);
+            symbol_index
+        } else {
+            // first property with this name to be bound.
+            let symbol = SemanticSymbol {
+                name: method.name.name.to_owned(),
+                kind: SemanticSymbolKind::Method {
+                    is_public: method.is_public,
+                    is_static: method.is_static,
+                    is_async: method.is_async,
+                    owner_model_or_trait: owner,
+                    property_index: index,
+                    params: vec![],
+                    generic_params: vec![],
+                    return_type: None,
+                },
+                references: vec![SymbolReferenceList {
+                    module_path: binder.path,
+                    starts: vec![method.name.span.start],
+                }],
+                doc_info: method.info.clone(), //todo.
+                origin_span: span,
+            };
+            let index = symbol_table.add(symbol);
+            binder.known_values.insert(method.name.span, index);
+            index
+        };
+
+        let method = parent_trait
+            .methods
+            .get_mut(index)
+            .expect("Could not find method with correct index.");
+        let ref_number = last_reference_no(&symbol_table, symbol_idx);
+        let method_generic_params = method.generic_params.take();
+        let method_params = take(&mut method.params);
+        let return_type = method.return_type.take();
+        // Add return type, generic parameters and parameters.
+        let generic_params_solved = bind_generic_parameters(
+            method_generic_params.as_ref(),
+            binder,
+            symbol_table,
+            errors,
+            ambience,
+        );
+        let (_, parameters) = bind_function_block(
+            // Fake block to uphold the function.
+            {
+                ambience.enter(ScopeType::Local);
+                let scope_id = ambience.current_scope();
+                ambience.leave_scope();
+                Block {
+                    scope_id,
+                    statements: vec![],
+                    span: Span::default(),
+                }
+            },
+            method_params,
+            binder,
+            symbol_table,
+            errors,
+            literals,
+            ambience,
+        );
+        let return_type_solved = return_type.as_ref().map(|rtype| {
+            types::bind_type_expression(rtype, binder, symbol_table, errors, ambience)
+        });
+
+        if let SemanticSymbolKind::Method {
+            params,
+            generic_params,
+            return_type,
+            ..
+        } = &mut symbol_table.get_mut(symbol_idx).unwrap().kind
+        {
+            *generic_params = generic_params_solved;
+            *return_type = return_type_solved;
+            *params = parameters;
+        }
+        let method = TypedTraitProperty {
+            name: SymbolLocator {
+                symbol_idx,
+                ref_number,
+            },
+            _type: TypedTraitPropertyType::Signature,
+            span,
+        };
+        binder.pop_generic_pool(); // Remove list of reachable generic parameters.
+        return method;
+    }
+
+    /// Binds a trait method.
+    fn bind_trait_method(
+        index: usize,
+        span: Span,
+        owner: SymbolIndex,
+        body: Block,
+        binder: &mut Binder,
+        symbol_table: &mut SymbolTable,
+        errors: &mut Vec<ProgramError>,
+        literals: &mut Vec<Literal>,
+        ambience: &mut ModuleAmbience,
+    ) -> TypedTraitProperty {
+        // find first instance of an attribute name that matches this one.
+        let shadow = ambience.create_shadow(binder.current_scope);
+        let address_of_owner_trait = shadow
+            .lookaround(&symbol_table.get(owner).unwrap().name)
+            .unwrap()
+            .construct_address(binder.path.0 as usize);
+        let parent_trait = ambience
+            .get_entry_unguarded_mut(address_of_owner_trait)
+            ._trait_mut();
+        binder.push_generic_pool(); // Add a list of reachable generic parameters.
+        let method = parent_trait
+            .methods
+            .get(index)
+            .expect("Could not find method with correct index.");
+        let first_instance = parent_trait
+            .methods
+            .iter()
+            .find(|meth| meth.name.name == method.name.name)
+            .unwrap();
+        let symbol_idx = if !std::ptr::eq(first_instance, method) {
+            // first instance is not equal to this method.
+            bind_utils::add_ctx_error(
+                binder,
+                errors,
+                errors::duplicate_property(method.name.to_owned()),
+            );
+            let symbol_index = *binder.known_values.get(&first_instance.name.span).unwrap();
+            let symbol = symbol_table.get_mut(symbol_index).unwrap();
+            symbol.add_reference(binder.path, method.name.span);
+            symbol_index
+            // block method and attribute clashes.
+        } else {
+            // first property with this name to be bound.
+            let symbol = SemanticSymbol {
+                name: method.name.name.to_owned(),
+                kind: SemanticSymbolKind::Method {
+                    is_public: method.is_public,
+                    is_static: method.is_static,
+                    is_async: method.is_async,
+                    owner_model_or_trait: owner,
+                    property_index: index,
+                    params: vec![],
+                    generic_params: vec![],
+                    return_type: None,
+                },
+                references: vec![SymbolReferenceList {
+                    module_path: binder.path,
+                    starts: vec![method.name.span.start],
+                }],
+                doc_info: method.info.clone(), //todo.
+                origin_span: span,
+            };
+            let index = symbol_table.add(symbol);
+            binder.known_values.insert(method.name.span, index);
+            index
+        };
+
+        let method = parent_trait
+            .methods
+            .get_mut(index)
+            .expect("Could not find method with correct index.");
+        let ref_number = last_reference_no(&symbol_table, symbol_idx);
+        let method_generic_params = method.generic_params.take();
+        let method_params = take(&mut method.params);
+        let return_type = method.return_type.take();
+        // Add return type, generic parameters and parameters.
+        let generic_params_solved = bind_generic_parameters(
+            method_generic_params.as_ref(),
+            binder,
+            symbol_table,
+            errors,
+            ambience,
+        );
+        let (body, parameters) = bind_function_block(
+            body,
+            method_params,
+            binder,
+            symbol_table,
+            errors,
+            literals,
+            ambience,
+        );
+        let return_type_solved = return_type.as_ref().map(|rtype| {
+            types::bind_type_expression(rtype, binder, symbol_table, errors, ambience)
+        });
+
+        if let SemanticSymbolKind::Method {
+            params,
+            generic_params,
+            return_type,
+            ..
+        } = &mut symbol_table.get_mut(symbol_idx).unwrap().kind
+        {
+            *generic_params = generic_params_solved;
+            *return_type = return_type_solved;
+            *params = parameters;
+        }
+        let method = TypedTraitProperty {
+            name: SymbolLocator {
+                symbol_idx,
+                ref_number,
+            },
+            _type: TypedTraitPropertyType::Method { body },
+            span,
+        };
+        binder.pop_generic_pool(); // Remove list of reachable generic parameters.
+        return method;
     }
 
     /// Binds a type declaration.

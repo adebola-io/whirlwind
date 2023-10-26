@@ -1,5 +1,9 @@
 module Prelude;
 
+public use Iteratable.{
+    Iteratable,
+    AsIterator
+};
 public use Outcome.{
     Ok,
     Err,
@@ -10,13 +14,17 @@ public use Maybe.{
     Some,
     Maybe,
 };
-public use Core.Primitives.{
-    String,
-    Array,
-    Number,
-    Int,
-    Float,
-    UnsignedInt,
-    Bool,
+public use Super.{
+    Primitives.{
+        String,
+        Array,
+        Number,
+        Int,
+        Float,
+        UnsignedInt,
+        Bool,
+    },
+    Process.Todo,
+    Internals.never
 };
-public use Core.Process.Todo;
+public use Range.Range;
