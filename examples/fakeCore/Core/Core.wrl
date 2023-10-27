@@ -6,3 +6,4 @@ public use Internals;
 public use Primitives;
 public use Memory;
 public use Prelude;
+public use Async;

@@ -1,9 +1,12 @@
+/// The `Prelude` module
 module Prelude;
 
 public use Iteratable.{
     Iteratable,
     AsIterator
 };
+public use Default.Default;
+public use Traits.{ Guaranteed, Try };
 public use Outcome.{
     Ok,
     Err,
@@ -15,6 +18,10 @@ public use Maybe.{
     Maybe,
 };
 public use Super.{
+    Async.{
+        Eventual,
+        Prospect
+    },
     Primitives.{
         String,
         Array,
@@ -25,6 +32,6 @@ public use Super.{
         Bool,
     },
     Process.Todo,
-    Internals.never
+    Internals.never,
 };
 public use Range.Range;

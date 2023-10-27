@@ -4,6 +4,7 @@ public use String.{String, Chars};
 public use Array.Array;
 public use Bool.Bool;
 public use Numeric;
+public use Ops;
 public use Numeric.{
     UInt8,
     UInt16,

@@ -1,8 +1,19 @@
 module Range;
 
 use Super.Prelude.Iteratable;
+use Super.Prelude.{Maybe, None, Some};
+use Super.Primitives.Ops.Sequenced;
 
-public model Range<T> implements Iteratable<T> {
+public model Range<T implements Sequenced> implements Iteratable<T> {
     public var start: T;
     public var end: T;
+
+    public function [Iteratable.Next](): Maybe<T> {
+        this.start = this.start.NextItem();
+        if this.start == this.end {
+            None()
+        } else {
+            Some(this.start)
+        }
+    }
 }

@@ -1,7 +1,7 @@
 module String;
 
 
-use Ops.Addition;
+use Ops.{Addition, Sequenced};
 use Bool.Bool;
 use Super.{ 
     Internals.{ Invoke, Injunction }, 
@@ -11,9 +11,13 @@ use Super.{
 };
 use Numeric.{ Int, UnsignedInt };
 use Array.Array;
-
+ 
 /// Model for creating, manipulating and formatting text sequences.
-public model String implements Addition + AsIterator<&String, Chars> {
+public model String implements Addition + AsIterator<&String, Chars> + Sequenced {
+    /// Returns the next character alphabetically in a sequence.
+    public function [Sequenced.NextItem](): Maybe<String> {
+        return Invoke(Injunction.NextChar(this));
+    }
     /// Adds two strings together.
     /// ## Usage
     /// ```
@@ -352,8 +356,8 @@ public model String implements Addition + AsIterator<&String, Chars> {
 
 public model Chars implements Iteratable<&String> {
     var idx: UnsignedInt;
-    var string: String;
-    new(string: String) {
+    var string: &String;
+    new(string: &String) {
         this.idx = 0;
         this.string = string;
     }

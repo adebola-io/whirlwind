@@ -1,0 +1,80 @@
+/// The `Async` module contains all primitive constructs in the Whirl language for the creation 
+/// and utilization of concurrent processes.
+module Async;
+
+use Super.Prelude.Bool;
+use Super.Prelude.Guaranteed;
+use Super.Process.Panic;
+use Super.Internals.Injunction;
+
+/// Asynchronous functions do not run automatically in Whirlwind. Instead, calling an
+/// async function produces a `Prospect`, which is essentially a lazy execution 
+/// context for the called function.
+/// 
+/// A prospect provides an interface for specifying how and when the function should run,
+/// the manner in which the values should be produced, the callbacks to be invoked,
+/// interaction with other prospects, etc.
+/// 
+/// ## Usage
+/// ```
+/// use Core.Io.Println;
+/// 
+/// async function DoStuff(): UnsignedInt {
+///     Println("Hello from a prospect!");
+///     Core.Time.Sleep(5000); // Sleep for 5 seconds.
+///     return 0;
+/// }
+/// 
+/// function Main() {
+///     prospect := DoStuff();
+///     prospect.Run();
+///     Println("Hello, world!"); // Will print before the prospect.
+/// }
+/// ```
+public model Prospect<T> {
+    public function Then<U>(next: fn (prior: T): U): Prospect<U> {
+
+    }
+    /// Runs the prospect.
+    public function Run(): Eventual<T> {
+        new Eventual(this.value)
+    }
+}
+
+
+/// An eventual is an asynchronously running operation,
+/// produced by calling `.Run()` on a `Prospect`.
+public model Eventual<T> implements Guaranteed<T> {
+    var value: T;
+    /// Whether or not the eventual is resolved.
+    public var resolved: Bool;
+    /// Whether or not the eventual has been aborted.
+    public var aborted: Bool;
+    public function [Guaranteed.Guarantee](): T {
+        this.Unwrap()
+    }
+    /// Cancels the running of the eventual and discards its value.
+    public function Abort() {
+        this.aborted = true;
+    }
+    /// Blocks the current execution thread until the eventual is resolved.
+    /// ### Usage
+    /// ```
+    /// ```
+    public function Await(): T {
+        if this.aborted {
+            Panic("Called Await on an aborted Eventual.");
+        };
+        Injunction.Await(this)
+    }
+    /// Forces the eventual to be resolved, and panics if it isn't.
+    public function Unwrap(): T {
+        if this.aborted {
+            Panic("Called Unwrap() on an aborted eventual.");
+        }
+        if not this.resolved {
+            Panic("Called Unwrap() on an unresolved eventual.");
+        }
+        return this.value;
+    }
+}

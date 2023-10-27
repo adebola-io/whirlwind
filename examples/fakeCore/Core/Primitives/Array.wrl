@@ -11,6 +11,6 @@ public model Array<T> {
 /// A fixed-size list of items.
 public model StaticArray<T> {
     new(size: Int) {
-
+        // Compiler built in.
     }
 }

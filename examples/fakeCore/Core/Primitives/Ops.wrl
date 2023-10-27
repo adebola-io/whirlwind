@@ -1,6 +1,21 @@
 module Ops;
 
+use Bool.Bool;
+use Super.Prelude.Maybe;
+
 public trait Addition {
     /// Adds two items together.
     public function Add(other: This): This;
+}
+
+public trait Magnitude {
+    /// Compares two values together.
+    public function Max(other: &This): Bool;
+}
+
+/// This trait concerns all items that can exist in a sequence,
+/// most notably letters and numbers.
+public trait Sequenced {
+    /// Returns the next item in a sequence.
+    public function NextItem(): Maybe<This>;
 }

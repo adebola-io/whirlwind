@@ -34,3 +34,14 @@ public function Halt(message: String): never {
 public function Todo(message?: String): never {
     return PanicOnCaller(message.UnwrapOr("Entered unfinished code."));
 }
+
+/// Panic is used to create and throw an exception.
+/// ## Panic
+/// This function will *always* panic.
+/// ## Usage
+/// ```
+/// 
+/// ```
+public function Panic(message?: String): never {
+    // Compiler built in.
+}

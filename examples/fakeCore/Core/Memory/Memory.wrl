@@ -1,14 +1,16 @@
 module Memory;
 
-use Super.Prelude.{
-    UnsignedInt,
-    Iteratable
+use Super.{
+    Primitives.{
+        UInt8,
+    },
+    Prelude.Iteratable
 };
 
 public model CharSpace {
 
 }
 
-public model Bytes implements Iteratable<UnsignedInt> {
+public model Bytes implements Iteratable<UInt8> {
 
 }

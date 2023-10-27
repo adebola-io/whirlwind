@@ -4,6 +4,7 @@ use Super.{
     Internals.never,
     Prelude.Range,
     Process.Halt,
+    Async.Eventual,
     Primitives.{
         String,
         Int,
@@ -12,7 +13,7 @@ use Super.{
 };
  
 /// List of variants that can be called with `Invoke()`.
-public enum Injunction {
+public enum Injunction<T> {
     // Strings.
     StrAdd(String, String),
     StrAt(String, Int),
@@ -39,6 +40,8 @@ public enum Injunction {
     StrTrimInPlace(String),
     StrTrimStart(String),
     StrTrimEnd(String),
+    // Eventuals.
+    Await(Eventual<T>)
 }
 
 /// Compile time function to call underlying dynamic libraries.
