@@ -1774,10 +1774,21 @@ impl<L: Lexer> Parser<L> {
                 }
             }
         }
-        expect_or_return!(TokenType::Bracket(RCurly), self);
-        let end = self.token().unwrap().span.end;
+        // Persist body if it is unclosed.
+        let end = if self
+            .token()
+            .is_some_and(|token| token._type == TokenType::Bracket(RCurly))
+        {
+            let end = self.token().unwrap().span.end;
+            self.advance(); // Move past }
+            end
+        } else {
+            properties
+                .last()
+                .map(|property| property.span.end)
+                .unwrap_or(start)
+        };
         let span = Span::from([start, end]);
-        self.advance(); // Move past }
         properties.append(&mut attribute_properties);
         properties.sort_by(|a, b| a.span.start.partial_cmp(&b.span.start).unwrap());
         let body = ModelBody {
@@ -2303,10 +2314,21 @@ impl<L: Lexer> Parser<L> {
                 }
             }
         }
-        expect_or_return!(TokenType::Bracket(RCurly), self);
-        let end = self.token().unwrap().span.end;
+        // Persist body if it is unclosed.
+        let end = if self
+            .token()
+            .is_some_and(|token| token._type == TokenType::Bracket(RCurly))
+        {
+            let end = self.token().unwrap().span.end;
+            self.advance(); // Move past }
+            end
+        } else {
+            properties
+                .last()
+                .map(|property| property.span.end)
+                .unwrap_or(start)
+        };
         let span = Span::from([start, end]);
-        self.advance(); // Move past }
         let body = TraitBody { properties, span };
         Partial {
             value: Some((body, method_signatures)),
@@ -3087,7 +3109,13 @@ impl<L: Lexer> Parser<L> {
         let start = self.token().unwrap().span.start;
         self.advance(); // Move past &
         self.push_precedence(ExpressionPrecedence::Referencing);
-        let value = Box::new(self.regular_type_or_union()?);
+        let value = Box::new(match self.token() {
+            Some(Token {
+                _type: TokenType::Keyword(This),
+                ..
+            }) => self.this_type()?,
+            _ => self.regular_type_or_union()?,
+        });
         let end = value.span().end;
         let span = Span { start, end };
         self.precedence_stack.borrow_mut().pop();
