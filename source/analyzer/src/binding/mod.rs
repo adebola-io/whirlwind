@@ -102,14 +102,14 @@ pub fn bind(
         name: module_name,
         kind: SemanticSymbolKind::Module {
             parent_modules: vec![],
-            imports: binder
+            external_symbols: binder
                 .imported_values
                 .iter()
                 .map(|tuple| tuple.1.iter())
                 .flatten()
                 .map(|idx| *idx)
                 .collect(),
-            symbols: binder.module_symbols,
+            global_declaration_symbols: binder.module_symbols,
         },
         references: vec![SymbolReferenceList {
             module_path: path_idx,
@@ -539,8 +539,10 @@ mod bind_utils {
                     // As a last resort, check the public declarations in the prelude.
                     if let Some(idx) = binder.prelude_symbol_idx {
                         let prelude_module_symbol = symbol_table.get(idx).expect("Something went wrong. Loaded prelude module but could not retrive it as a symbol.");
-                        if let SemanticSymbolKind::Module { symbols, .. } =
-                            &prelude_module_symbol.kind
+                        if let SemanticSymbolKind::Module {
+                            global_declaration_symbols: symbols,
+                            ..
+                        } = &prelude_module_symbol.kind
                         {
                             for symbol_idx in symbols {
                                 let declared_symbol_in_prelude = symbol_table

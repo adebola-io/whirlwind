@@ -78,8 +78,10 @@ pub enum VariablePatternForm {
 pub enum SemanticSymbolKind {
     Module {
         parent_modules: Vec<SymbolIndex>,
-        imports: Vec<SymbolIndex>,
-        symbols: Vec<SymbolIndex>,
+        /// Declarations from other modules that are referenced in this module.
+        external_symbols: Vec<SymbolIndex>,
+        /// The declarations in the global scope of this module.
+        global_declaration_symbols: Vec<SymbolIndex>,
     },
     Trait {
         is_public: bool,

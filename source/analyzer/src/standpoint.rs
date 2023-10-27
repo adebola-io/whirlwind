@@ -283,7 +283,10 @@ impl Standpoint {
         // drop mutable reference.
         let imported_module_symbol = self.symbol_table.get(imported_idx)?;
         let symbols_in_imported_module = match &imported_module_symbol.kind {
-            SemanticSymbolKind::Module { symbols, .. } => Some(symbols),
+            SemanticSymbolKind::Module {
+                global_declaration_symbols: symbols,
+                ..
+            } => Some(symbols),
             // Imported redirection.
             SemanticSymbolKind::Import { source, .. } => {
                 if source.is_some() {

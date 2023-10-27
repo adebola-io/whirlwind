@@ -39,8 +39,8 @@ impl<'a> SymbolWriter<'a> {
         match &symbol.kind {
             SemanticSymbolKind::Module {
                 parent_modules,
-                imports,
-                symbols: exports,
+                global_declaration_symbols: exports,
+                ..
             } => {
                 string.push_str("module "); // todo: print full path.
                 string.push_str(&symbol.name);
