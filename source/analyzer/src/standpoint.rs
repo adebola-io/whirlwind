@@ -520,16 +520,20 @@ impl Standpoint {
         // Update all modules.
         // todo: there should be a better way to do this.
         if self.auto_update {
-            let all_paths = self
-                .module_map
-                .paths()
-                .map(|(idx, _)| idx)
-                .collect::<Vec<_>>();
-            for idx in all_paths {
-                self.resolve_imports_of(idx).unwrap();
-            }
+            self.refresh_imports();
         }
         Some(stale_module)
+    }
+
+    fn refresh_imports(&mut self) {
+        let all_paths = self
+            .module_map
+            .paths()
+            .map(|(idx, _)| idx)
+            .collect::<Vec<_>>();
+        for idx in all_paths {
+            self.resolve_imports_of(idx).unwrap();
+        }
     }
 
     /// Changes the content of a single module and updates the entire standpoint accordingly.
@@ -554,16 +558,8 @@ impl Standpoint {
         }
 
         // Update all modules.
-        // todo: there should be a better way to do this.
         if self.auto_update {
-            let all_paths = self
-                .module_map
-                .paths()
-                .map(|(idx, _)| idx)
-                .collect::<Vec<_>>();
-            for idx in all_paths {
-                self.resolve_imports_of(idx).unwrap();
-            }
+            self.refresh_imports();
         }
         Some(())
     }

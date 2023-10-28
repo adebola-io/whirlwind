@@ -1,7 +1,6 @@
 module String;
 
-
-use Ops.{Addition, Sequenced};
+use Ops.{ Addition, Sequenced };
 use Bool.Bool;
 use Super.{ 
     Internals.{ Invoke, Injunction }, 

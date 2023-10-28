@@ -24,9 +24,10 @@ public model Nullptr {
 }
 
 public enum Flow<T> {
-    Return(T),
-    Continue(T),
-    Break(T),
+    Return,
+    ReturnWithValue(T),
+    Continue,
+    Break,
     Normal(T)
 }
 

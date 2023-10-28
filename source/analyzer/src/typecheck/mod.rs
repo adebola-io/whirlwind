@@ -1,3 +1,5 @@
+mod tests;
+
 use crate::{ProgramError, SymbolTable, TypedModule, TypedStmnt};
 use errors::TypeError;
 

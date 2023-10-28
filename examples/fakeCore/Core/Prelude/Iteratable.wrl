@@ -26,7 +26,7 @@ public trait Iteratable<I> {
     /// Gathers all the items left in the iterator into an array.
     public function Collect(): Array<I> {
         array := [];
-        // for item in this as label {
+        // for item in this {
         //     array.Push(item);
         // }
         array

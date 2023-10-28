@@ -13,7 +13,7 @@ use Super.{
 };
  
 /// List of variants that can be called with `Invoke()`.
-public enum Injunction<T> {
+public enum Injunction {
     // Strings.
     StrAdd(String, String),
     StrAt(String, Int),
@@ -41,7 +41,7 @@ public enum Injunction<T> {
     StrTrimStart(String),
     StrTrimEnd(String),
     // Eventuals.
-    Await(Eventual<T>)
+    // Await(Eventual<T>)
 }
 
 /// Compile time function to call underlying dynamic libraries.

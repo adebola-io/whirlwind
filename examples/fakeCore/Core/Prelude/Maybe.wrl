@@ -2,28 +2,32 @@ module Maybe;
 
 use Super.{
     Primitives.Bool,
-    Internals.{ IsNull, Nullptr, Flow },
-    Process.{ PanicOnCaller, Error },
+    Internals.Flow,
+    Process.PanicOnCaller,
 }; 
 use Outcome.{ Ok, Err, Outcome }; 
 use Traits.{ Guaranteed, Try };
 
 /// Creates a `Maybe` with no value.
 public function None<T>(): Maybe<T> {
-    new Maybe(Nullptr)
+    // Maybe {
+    //     inner := MaybeVal.Some(value)
+    // }
 }
 
 /// Creates a `Maybe` with an internal value.
 public function Some<T>(value: T): Maybe<T> {
-    new Maybe(value)
+    // Maybe {
+    //     inner := MaybeVal.Some(value)
+    // }
 }
 
 /// A value that may or may not exist.
 public model Maybe<T> implements Guaranteed<T> + Try<T> {
-    var value: T;
+    var inner: MaybeVal<T>;
 
-    new(value: T) {
-        this.value = value;
+    new(value: MaybeVal<T>) {
+        this.inner = value;
     }
     /// Implementation of `Guarantee` trait.
     public function [Guaranteed.Guarantee](): T {
@@ -31,10 +35,10 @@ public model Maybe<T> implements Guaranteed<T> + Try<T> {
     }
     /// Implementation of `Try` trait.
     public function [Try.Try]<U>(): Outcome<Flow<T>, Flow<Maybe<U>>> {
-        if this.IsSome() { 
-            Ok(Flow.Normal(this.value)) 
-        } 
-        else Err(Flow.Return(None()))
+        // this.inner => {
+        //     .Some(value) => Flow.Normal(value),
+        //     .None => Flow.ReturnWithValue(None())
+        // }
     }
     /// Returns a Bool indicating if the Maybe contains no value.
     /// ### Usage
@@ -46,7 +50,10 @@ public model Maybe<T> implements Guaranteed<T> + Try<T> {
     /// AssertThat(!stringValue.IsNone());
     /// ```
     public function IsNone(): Bool {
-        IsNull(this.value)
+        // this.inner => {
+        //     .None => true,
+        //     _ => false,
+        // }
     }
     /// Returns a Bool indicating whether there is a value contained or not.
     /// ### Usage
@@ -58,7 +65,31 @@ public model Maybe<T> implements Guaranteed<T> + Try<T> {
     /// AssertThat(!noValue.IsSome());
     /// ```
     public function IsSome(): Bool {
-        !IsNull(this.value)
+        // this.inner => {
+        //     .Some(_) => true,
+        //     .None => false,
+        // }
+    }
+    /// Returns a Bool indicating whether there is a value contained, and it
+    /// upholds a given predicate.
+    /// ### Usage
+    /// ```
+    /// predicate := fn(value: &Int) value == 42;
+    /// 
+    /// maybeInt := Some(42);
+    /// AssertThat(maybeInt.IsSomeAnd(predicate));
+    /// 
+    /// maybeInt2 := Some(100);
+    /// AssertThat(!maybeInt2.IsSomeAnd(predicate));
+    /// 
+    /// maybeInt3 := None()
+    /// AssertThat(!maybeInt3.IsSomeAnd(predicate));
+    /// ```
+    public function IsSomeAnd(predicate: fn(value: &T): Bool): Bool {
+        // this.inner => {
+        //     .Some(value) => predicate(&value),
+        //     .None => false
+        // }
     }
     /// Ignores the maybe and returns the internal value. 
     /// It will throw an error if no value is present.
@@ -73,22 +104,33 @@ public model Maybe<T> implements Guaranteed<T> + Try<T> {
     /// ### Panics
     /// It panics if called on a `Maybe` with no value.
     public function Unwrap(): T {
-        if this.IsNone() {
-            PanicOnCaller(new Error("Called Unwrap on a None Value"))
-        } else { 
-            this.value 
-        }
+        // this.inner => {
+        //     .None => PanicOnCaller("Called Unwrap on a None Value"),
+        //     .Some(value) => value,
+        // }
     }
     /// Returns the internal value, or another given value.
     public function UnwrapOr(value: T): T {
-        if this.IsNone() { value } else { this.value }
+        // this.inner => {
+        //     .Some(innerValue) => innerValue,
+        //     .None => value
+        // }
     }
     /// Returns the internal value, or computes another given value.
     public function UnwrapOrElse(fallback: fn(): T): T {
-        if this.IsNone() { fallback() } else { this.value }
+        // this.inner => {
+        //     .Some(value) => value,
+        //     .None => fallback()
+        // }
     }
     /// Converts a `Maybe<T>` to a `Maybe<E>` by applying a function.
     public function Map<U>(func: fn(former: T): U): Maybe<U> {
         Some(func(this?))
     }   
+}
+
+
+enum MaybeVal<T> {
+    Some(T),
+    None
 }

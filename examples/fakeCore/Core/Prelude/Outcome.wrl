@@ -2,7 +2,8 @@ module Outcome;
 
 use Super.{
     Primitives.Bool,
-    Internals.{ IsNull, Injunction },
+    Prelude.{ Try, Guaranteed, Maybe, Todo },
+    Internals.{ Flow },
 };
 
 /// An `Outcome` is a generic (enumerated) model 
@@ -20,9 +21,17 @@ use Super.{
 /// - connecting to a server.
 /// 
 /// It presents a way to handle errors predictably.
-public model Outcome<T, E> {
-    var inner: T;
-    var error: E;
+public model Outcome<T, E> implements Guaranteed<T> + Try<T> {
+    var inner: OutcomeVal<T, E>;
+
+    /// Implementation of the `Try` trait.
+    public function [Try.Try]<U>(): Outcome<Flow<T>, Flow<Outcome<U, E>>> {
+        // this.inner => {
+        //     .Ok(value) => Ok(Flow.Normal(value)),
+        //     .Err(error) => Err(Flow.ReturnWithValue(Err(error)))
+        // }
+        Todo()
+    }
 
     /// Returns true if the outcome is `Ok` 
     /// i.e. The operation was successful.
@@ -32,7 +41,11 @@ public model Outcome<T, E> {
     /// AssertThat(outcome.IsOk())
     /// ```
     public function IsOk(): Bool {
-        return IsNull(this.error) and !IsNull(this.inner);
+        // this.inner => {
+        //     .Ok => true,
+        //     .Err => false,
+        // }
+        Todo()
     }
 
     /// Returns true if the outcome is an `Err`.
@@ -43,7 +56,7 @@ public model Outcome<T, E> {
     /// AssertThat(outcome.IsErr())
     /// ```
     public function IsErr(): Bool {
-        return !this.IsOk();
+        !this.IsOk()
     }
 
     /// Checks if the outcome was successful and checks its internal value as well.
@@ -52,8 +65,12 @@ public model Outcome<T, E> {
     /// outcome := Ok(42);
     /// AssertThat(outcome.IsOkAnd(fn(value) value == 42));
     /// ```
-    public function IsOkAnd(predicate: fn(value: T): Bool): Bool {
-        return this.IsOk() and predicate(this.inner);
+    public function IsOkAnd(predicate: fn(value: &T): Bool): Bool {
+        // return this.inner => {
+        //     .Ok(value) => predicate(&value),
+        //     _ => false,
+        // };
+        Todo()
     }
 
     /// Checks if the outcome failed and checks the error value as well.
@@ -62,8 +79,17 @@ public model Outcome<T, E> {
     /// outcome := Err("Something went wrong.");
     /// AssertThat(outcome.IsErrAnd(fn(e) e == "Something went wrong."));
     /// ```
-    public function IsErrAnd(predicate: fn(value: E): Bool): Bool {
-        return this.Err() and predicate(this.error);
+    public function IsErrAnd(predicate: fn(value: &E): Bool): Bool {
+        // return this.inner => {
+        //     .Err(error) => predicate(&error),
+        //     _ => false,
+        // };
+        Todo()
+    }
+
+    /// Converts an `Outcome<T, E>` to a `Maybe<T>`.
+    public function Ok(): Maybe<T, E> {
+        Todo()
     }
 
     /// Converts an `Outcome<T, E>` to an `Outcome<U, E>` by applying a function.
@@ -84,6 +110,11 @@ public model Outcome<T, E> {
 
 }
 
+enum OutcomeVal<T, E> {
+    Ok(T),
+    Err(E)
+}
+
 /// Returns an `Outcome` with a value;
 /// ### Usage
 /// ```
@@ -91,7 +122,7 @@ public model Outcome<T, E> {
 /// AssertThat(outcome.IsOk())
 /// ```
 public function Ok<T, U>(value: T): Outcome<T, U> {
-    Injunction.Ok(T)
+    // new Outcome(OutcomeVal.Ok(value))
 }
 
 /// Returns an `Outcome` with an error.
@@ -101,5 +132,5 @@ public function Ok<T, U>(value: T): Outcome<T, U> {
 /// AssertThat(outcome.IsErr())
 /// ```
 public function Err<T, U>(errorValue: T): Outcome<T, U> {
-    Injunction.Err(U)
+    // new Outcome(OutcomeVal.Err(errorValue))
 }

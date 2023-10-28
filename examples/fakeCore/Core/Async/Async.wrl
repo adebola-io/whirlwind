@@ -1,4 +1,4 @@
-/// The `Async` module contains all primitive constructs in the Whirl language for the creation 
+/// The `Async` module contains all primitive constructs in the Whirlwind language for the creation 
 /// and utilization of concurrent processes.
 module Async;
 
