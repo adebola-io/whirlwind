@@ -1,6 +1,6 @@
 module Math;
 
-use Core.Primitives.Magnitude;
+use Core.Primitives.Ops.Magnitude;
 
 
 /// Returns the largest value in an array.

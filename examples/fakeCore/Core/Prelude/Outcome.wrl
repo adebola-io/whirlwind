@@ -115,7 +115,7 @@ enum OutcomeVal<T, E> {
     Err(E)
 }
 
-/// Returns an `Outcome` with a value;
+/// Returns an `Outcome` with a value.
 /// ### Usage
 /// ```
 /// outcome := Ok(9)
@@ -123,6 +123,7 @@ enum OutcomeVal<T, E> {
 /// ```
 public function Ok<T, U>(value: T): Outcome<T, U> {
     // new Outcome(OutcomeVal.Ok(value))
+    Todo()
 }
 
 /// Returns an `Outcome` with an error.
@@ -133,4 +134,5 @@ public function Ok<T, U>(value: T): Outcome<T, U> {
 /// ```
 public function Err<T, U>(errorValue: T): Outcome<T, U> {
     // new Outcome(OutcomeVal.Err(errorValue))
+    Todo()
 }

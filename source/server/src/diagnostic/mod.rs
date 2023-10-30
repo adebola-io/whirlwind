@@ -1,14 +1,14 @@
-use analyzer::{ProgramError, ProgramErrorType};
+use analyzer::{ProgramError, ProgramErrorType, Standpoint};
 use ast::Span;
 use errors::LexErrorPos;
 use printer::{
     stringify_context_error, stringify_import_error, stringify_lex_error, stringify_parse_error,
-    stringify_type_error,
+    stringify_type_error, SymbolWriter,
 };
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range};
 
 /// Convert a program error to a diagnostic.
-pub fn error_to_diagnostic(error: &ProgramError) -> Diagnostic {
+pub fn error_to_diagnostic(error: &ProgramError, standpoint: &Standpoint) -> Diagnostic {
     let (message, range) = match &error.error_type {
         ProgramErrorType::Lexical(lex_error) => (
             stringify_lex_error(&lex_error.error_type),
@@ -21,10 +21,13 @@ pub fn error_to_diagnostic(error: &ProgramError) -> Diagnostic {
             stringify_parse_error(&parse_error._type),
             to_range(parse_error.span),
         ),
-        ProgramErrorType::Typing(type_error) => (
-            stringify_type_error(&type_error._type),
-            to_range(type_error.span),
-        ),
+        ProgramErrorType::Typing(type_error) => {
+            let writer = SymbolWriter::new(standpoint);
+            (
+                stringify_type_error(&type_error._type, writer),
+                to_range(type_error.span),
+            )
+        }
         ProgramErrorType::Importing(resolve_error) => (
             stringify_import_error(&resolve_error._type),
             to_range(resolve_error.span.unwrap_or_default()),

@@ -7,3 +7,5 @@ public use Primitives;
 public use Memory;
 public use Prelude;
 public use Async;
+public use Testing;
+public use Io;

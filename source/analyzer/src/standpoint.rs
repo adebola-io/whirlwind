@@ -1,6 +1,6 @@
 use super::{symbols::*, ProgramError};
 use crate::{
-    bind, Module, ModuleMap, PathIndex,
+    bind, typecheck, Module, ModuleMap, PathIndex,
     ProgramErrorType::{self, Importing},
     TypedModule, PRELUDE_PATH,
 };
@@ -451,6 +451,7 @@ impl Standpoint {
         // Get just added module and resolve imports.
         if self.auto_update {
             self.resolve_imports_of(path_idx).unwrap();
+            self.check_module(path_idx).unwrap()
         }
 
         // Mark the prelude module.
@@ -494,7 +495,7 @@ impl Standpoint {
             })
             .collect::<Vec<_>>();
         for symbol_idx in symbols_to_remove {
-            self.symbol_table.remove(symbol_idx)?;
+            self.symbol_table.remove(symbol_idx).unwrap();
         }
         for symbol_idx in symbols_to_prune {
             if let Some(symbol) = self.symbol_table.get_mut(symbol_idx) {
@@ -505,10 +506,8 @@ impl Standpoint {
         }
         // delete stale errors.
         self.errors.retain(|error| {
-            !(matches!(
-                error.error_type,
-                ProgramErrorType::Importing(_) | ProgramErrorType::Typing(_)
-            ) || error.offending_file == path_idx)
+            !(matches!(error.error_type, ProgramErrorType::Importing(_))
+                || error.offending_file == path_idx)
         });
         let stale_module = self.module_map.remove(path_idx)?;
         let parent_directory = get_parent_dir(&stale_module.path_buf)?;
@@ -525,22 +524,26 @@ impl Standpoint {
         Some(stale_module)
     }
 
-    fn refresh_imports(&mut self) {
+    pub fn refresh_imports(&mut self) {
         let all_paths = self
             .module_map
             .paths()
             .map(|(idx, _)| idx)
             .collect::<Vec<_>>();
-        for idx in all_paths {
-            self.resolve_imports_of(idx).unwrap();
+        for idx in &all_paths {
+            self.resolve_imports_of(*idx).unwrap();
         }
     }
 
     /// Changes the content of a single module and updates the entire standpoint accordingly.
-    pub fn refresh_module(&mut self, path: &PathBuf, text: String) -> Option<()> {
-        // todo: find more performant ways to implement this.
-        let path_idx = self.module_map.map_path_to_index(path)?;
-        // Disabling auto aupdate prevents unecessary import solving.
+    pub fn refresh_module(
+        &mut self,
+        path_idx: PathIndex,
+        text: String,
+        should_recompute_imports: bool,
+    ) -> Option<()> {
+        let path = self.module_map.get(path_idx)?.path_buf.clone();
+        // // Disabling auto update prevents unecessary import solving.
         self.auto_update = false;
         self.remove_module(path_idx)?;
         self.auto_update = true;
@@ -557,8 +560,9 @@ impl Standpoint {
             self.corelib_path = Some(new_path_idx);
         }
 
+        // // todo: find more performant ways to implement this.
         // Update all modules.
-        if self.auto_update {
+        if should_recompute_imports && self.auto_update {
             self.refresh_imports();
         }
         Some(())
@@ -627,6 +631,21 @@ impl Standpoint {
             .paths()
             .find(|tuple| tuple.1.path_buf == *path_buf)
             .map(|tuple| tuple.1)
+    }
+}
+
+// TYPE OPERATIONS
+impl Standpoint {
+    /// Runs the typechecker on a module.
+    pub fn check_module(&mut self, module_path_idx: PathIndex) -> Option<()> {
+        let module = self.module_map.get_mut(module_path_idx)?;
+        typecheck(
+            module,
+            &mut self.symbol_table,
+            &mut self.errors,
+            &self.literals,
+        );
+        Some(())
     }
 }
 

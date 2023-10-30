@@ -1,9 +1,6 @@
 use ast::Span;
 
-use crate::{
-    EvaluatedType, IntermediateType, LiteralIndex, SymbolIndex, SymbolLocator, TypedExpression,
-    TypedIdent,
-};
+use crate::{IntermediateType, LiteralIndex, SymbolIndex, TypedExpression, TypedIdent};
 
 #[derive(Debug, PartialEq)]
 pub enum TypedStmnt {
@@ -30,30 +27,39 @@ pub enum TypedStmnt {
     WhileStatement(TypedWhileStatement),
     ContinueStatement(TypedContinueStatement),
 }
+impl TypedStmnt {
+    /// Returns `true` if the typed stmnt is [`FreeExpression`].
+    ///
+    /// [`FreeExpression`]: TypedStmnt::FreeExpression
+    #[must_use]
+    pub fn is_free_expression(&self) -> bool {
+        matches!(self, Self::FreeExpression(..))
+    }
+}
 
 #[derive(Debug, PartialEq)]
 pub struct TypedUseDeclaration {
     pub is_public: bool,
-    pub imports: Vec<SymbolLocator>,
+    pub imports: Vec<SymbolIndex>,
     pub span: Span,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct TypedVariableDeclaration {
-    pub names: Vec<SymbolLocator>,
+    pub names: Vec<SymbolIndex>,
     pub value: Option<TypedExpression>,
     pub span: Span,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct TypedEnumDeclaration {
-    pub name: SymbolLocator,
+    pub name: SymbolIndex,
     pub span: Span,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct TypedUseTarget {
-    pub name: SymbolLocator,
+    pub name: SymbolIndex,
     pub path: TypedUsePath,
 }
 
@@ -74,27 +80,26 @@ pub struct TypedTestDeclaration {
 
 #[derive(Debug, PartialEq)]
 pub struct TypedTypeDeclaration {
-    pub name: SymbolLocator,
+    pub name: SymbolIndex,
     pub span: Span,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct TypedBlock {
     pub statements: Vec<TypedStmnt>,
-    pub return_type: EvaluatedType,
     pub span: Span,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct TypedShorthandVariableDeclaration {
-    pub name: SymbolLocator,
+    pub name: SymbolIndex,
     pub value: TypedExpression,
     pub span: Span,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct TypedFunctionDeclaration {
-    pub name: SymbolLocator,
+    pub name: SymbolIndex,
     pub body: TypedBlock,
     pub span: Span,
 }
@@ -102,7 +107,7 @@ pub struct TypedFunctionDeclaration {
 /// A node for a trait declaration in the AST.
 #[derive(Debug, PartialEq)]
 pub struct TypedTraitDeclaration {
-    pub name: SymbolLocator,
+    pub name: SymbolIndex,
     pub body: TypedTraitBody,
     pub span: Span,
 }
@@ -115,7 +120,7 @@ pub struct TypedTraitBody {
 
 #[derive(Debug, PartialEq)]
 pub struct TypedTraitProperty {
-    pub name: SymbolLocator,
+    pub name: SymbolIndex,
     pub _type: TypedTraitPropertyType,
     pub span: Span,
 }
@@ -130,14 +135,14 @@ pub enum TypedTraitPropertyType {
 
 #[derive(Debug, PartialEq)]
 pub struct TypedConstantDeclaration {
-    pub name: SymbolLocator,
+    pub name: SymbolIndex,
     pub value: TypedExpression,
     pub span: Span,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct TypedModelDeclaration {
-    pub name: SymbolLocator,
+    pub name: SymbolIndex,
     pub body: TypedModelBody,
     pub span: Span,
 }
@@ -157,7 +162,7 @@ pub struct TypedModelConstructor {
 
 #[derive(Debug, PartialEq)]
 pub struct TypedModelProperty {
-    pub name: SymbolLocator,
+    pub name: SymbolIndex,
     pub _type: TypedModelPropertyType,
     pub span: Span,
 }

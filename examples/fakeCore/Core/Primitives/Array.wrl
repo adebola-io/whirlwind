@@ -1,11 +1,146 @@
 module Array;
 
-use Primitives.Int;
-
+use Bool.Bool;
+use Numeric.{ Int, UnsignedInt };
+use Super.Prelude.{ Todo, Maybe, None };
+use Super.Primitives.Ops.Magnitude;
 
 /// A contiguous, growable list of items.
 public model Array<T> {
+    /// Returns the item at a particular index in the array, if it exists.
+    /// Indexes are zero-based, meaning that the first item is at
+    /// ### Usage
+    /// ```
+    /// arr := [1, 2, 3, 4];
+    /// Assert(arr.At(0)).Equals(Some(1));
+    /// Assert(arr.Ar(1)).Equals(Some(2));
+    /// ```
+    /// Elements can also be indexed from behind the array.
+    /// Backward indexes are one-based, meaning the index -1 is the
+    /// last item in the array.
+    /// ```
+    /// arr := [15, 25, 35, 45, 55];
+    /// Assert(arr.At(-1)).Equals(Some(55))
+    /// ```
+    public function At(index: Int): Maybe<T> {
+        Todo()
+    }
+    /// Checks if an item is contained in the array.
+    /// ### Usage
+    /// ```
+    /// str := "Hello, world";
+    /// array := [];
+    /// array.Push(str);
+    /// 
+    /// AssertThat(array.Contains(&str));
+    /// ```
+    /// The method checks referential equality, meaning it will only return true
+    /// if the checked item is in the array,
+    /// and **not** if it is equivalent to an item in the array.
+    /// 
+    /// ```
+    /// num := 24;
+    /// array := [24];
+    /// 
+    /// AssertThat(array.Contains(&num)) // This will fail, because the 24 in the array is different from the num 24.
+    /// ```
+    public function Contains(value: &T): Bool {
+        Todo()
+    }
+    /// Removes all elements in the array.
+    /// ### Usage
+    /// ```
+    /// arr := [1, 2, 3, 4];
+    /// 
+    /// arr.Clear();
+    /// AssertThat(arr.Length() == 0);
+    /// AssertThat(arr == []);
+    /// ```
+    public function Clear() {
+        Todo()
+    }
+    /// Returns the zero-based index of a value in the array.
+    /// Like the `.Contains` method, this method checks 
+    /// for referential equality.
+    /// ### Usage
+    /// ```
+    /// str1 := "Hello, world!";
+    /// str2 := "Welcome to a new era!";
+    /// str3 := "This is the future!";
+    /// 
+    /// arr := [str1, str2, str3];
+    /// Assert(arr.IndexOf(&str2)).Equals(Some(1)).
+    /// ```
+    public function IndexOf(value: &T): Maybe<UnsignedInt> {
+        Todo()
+    }
+    /// Returns the number of items in the array.
+    /// ### Usage
+    /// ```
+    /// arr := [1, 2, 3, 4];
+    /// Assert(arr.Length()).Equals(4);
+    /// ```
+    public function Length(): UnsignedInt {
+        Todo()
+    }
+    /// Adds an item to the end of the array.
+    /// ### Usage
+    /// ```
+    /// array := [2, 4, 6, 8];
+    /// Assert(array.Length()).Equals(4);
+    /// 
+    /// array.Push(10);
+    /// Assert(array.Length()).Equals(5);
+    /// Assert(array.At(4)).Equals(Some(10)); // 10 is at index 4.
+    /// ```
+    public function Push(value: T) {
+        Todo()
+    }
+    /// Removes an item from the end of the array.
+    /// ### Usage
+    /// ```
+    /// array := [1, 2, 3];
+    /// 
+    /// array.Pop();
+    /// Assert(array).Equals([1, 2]);
+    /// 
+    /// array.Pop();
+    /// Assert(array).Equals([1]);
+    /// ```
+    public function Pop(): Maybe<T> {
+        Todo()
+    }
+    /// Removes the first item in the array
+    /// and shifts all the other items backward
+    /// by one index.
+    /// 
+    /// This operation has a time complexity of _O(n)_.
+    /// ### Usage
+    /// ```
+    /// arr := [1, 2, 3, 4];
+    /// firstItem := arr.Shift();
+    /// 
+    /// Assert(arr).Equals([2, 3, 4]);
+    /// Assert(firstItem).Equals(Some(1));
+    /// ```
+    /// If there is no element in the array,
+    /// then None() is returned, and the operation 
+    /// does nothing.
+    /// ```
+    /// arr := [];
+    /// firstItem := arr.Shift();
+    /// 
+    /// Assert(arr).Equals([]);
+    /// Assert(firstItem).Equals(None());
+    /// ```
+    public function Shift(): Maybe<T> {
+        Todo()
+    }
+}
 
+/// Sorts an array in place.
+public function SortArrayInPlace<T implements Magnitude>(array: &Array<T>) {
+    // Todo()
 }
 
 /// A fixed-size list of items.

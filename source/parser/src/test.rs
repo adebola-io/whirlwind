@@ -2246,3 +2246,28 @@ fn parse_break_statement() {
         })
     );
 }
+
+// #[test]
+// fn parse_expression_statement() {
+//     let mut parser = parse_text(
+//         "public function Main() {
+//     app := new Server(\"main-app\", 8080);
+
+//     app.Get(\"/user\", CreateUser)!;
+
+//     // app.Start().Then(fn() {
+//     //     Core.Io.Printf(\"Server is listening on port %d\" + app.port);
+//     // }).Run().Await()!;
+
+//     app.Start();
+// }",
+//     );
+//     parser.debug_allow_global_expressions = true;
+//     assert_eq!(
+//         parser.next().unwrap().expect(|err| format!("{err:?}")),
+//         Statement::ExpressionStatement(Expression::NumberLiteral(WhirlNumber {
+//             value: ast::Number::Decimal(format!("1")),
+//             span: [1, 1, 1, 1].into()
+//         }))
+//     )
+// }

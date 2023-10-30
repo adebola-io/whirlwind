@@ -1,0 +1,19 @@
+module Testing;
+
+use Super.Prelude.Bool;
+use Super.Prelude.Todo;
+
+/// Creates an assertion object.
+public function Assert<T>(): Assertion<T> {
+    Todo()
+}
+
+/// This model represents an assertion object, 
+/// which is the base object for testing operations.
+public model Assertion<T> {
+    /// Checks if the contained value equals another.
+    public function Equals(other: T) {
+        return this == other;
+    }
+}
+

@@ -43,5 +43,5 @@ public function Todo(message?: String): never {
 /// 
 /// ```
 public function Panic(message?: String): never {
-    // Compiler built in.
+    return Halt("Compiler built in.");
 }

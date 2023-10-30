@@ -80,6 +80,10 @@ pub enum TypeErrorType {
         model_name: String,
         method_name: String,
     },
+    MismatchedReturnType {
+        expected: String,
+        found: String,
+    },
 }
 
 pub fn assigned_invalid(span: Span) -> TypeError {

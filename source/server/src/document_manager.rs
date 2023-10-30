@@ -6,7 +6,7 @@ use crate::{
 };
 use analyzer::{
     Module, PathIndex, SemanticSymbol, SemanticSymbolDeclaration, SemanticSymbolKind, Standpoint,
-    SymbolIndex, TypedVisitorNoArgs, CORE_LIBRARY_PATH,
+    SymbolIndex, TypedModule, TypedVisitorNoArgs, CORE_LIBRARY_PATH,
 };
 use ast::{is_keyword_or_operator, is_valid_identifier, is_valid_identifier_start, Span};
 use std::{
@@ -28,27 +28,6 @@ use tower_lsp::{
 };
 use utils::get_parent_dir;
 
-macro_rules! find_standpoint {
-    ($uri: expr, $msgs: expr, $standpoints: expr) => {{
-        let path = match uri_to_absolute_path($uri) {
-            Ok(path) => path,
-            Err(_) => {
-                $msgs.inform("Could not convert URI to path!!");
-                return ($msgs, None);
-            }
-        };
-        let standpoint_opt = $standpoints
-            .iter()
-            .find(|standpoint| standpoint.contains_file(&path));
-        if standpoint_opt.is_none() {
-            $msgs.inform("Could not find standpoint containing path");
-            return ($msgs, None);
-        }
-        let standpoint = standpoint_opt.unwrap();
-        (path, standpoint)
-    }};
-}
-
 /// Adds an error message to a message store and immediately returns the message store.
 macro_rules! log_error {
     ($messages: expr, $($arg:tt)*) => {{
@@ -61,6 +40,12 @@ macro_rules! log_error {
 pub struct DocumentManager {
     pub standpoints: RwLock<Vec<Standpoint>>,
     pub corelib_path: Option<PathBuf>,
+    /// Boolean stopper to prevent unnecessary workspace diagnostic refreshes.
+    was_updated: RwLock<bool>,
+    /// Cached workspace diagnostic report.
+    diagnostic_report: RwLock<WorkspaceDiagnosticReportResult>,
+    /// Last opened standpoint module.
+    last_opened: RwLock<Option<(usize, PathIndex)>>,
 }
 
 impl DocumentManager {
@@ -69,7 +54,94 @@ impl DocumentManager {
         DocumentManager {
             standpoints: RwLock::new(vec![]),
             corelib_path: Some(PathBuf::from(CORE_LIBRARY_PATH)),
+            was_updated: RwLock::new(true),
+            diagnostic_report: RwLock::new(WorkspaceDiagnosticReportResult::Report(
+                Default::default(),
+            )),
+            last_opened: RwLock::new(None),
         }
+    }
+
+    /// Sets the open module.
+    pub fn open_document(&self, uri: Url) -> MessageStore {
+        let mut msgs = MessageStore::new();
+        let path_buf = match uri_to_absolute_path(uri) {
+            Ok(path_buf) => path_buf,
+            Err(err) => {
+                log_error!(
+                    msgs,
+                    "Could not convert URI to an absolute file path. ERROR: {err:?}"
+                )
+            }
+        };
+        let standpoints = self.standpoints.read().unwrap();
+        match self.get_cached(&standpoints) {
+            Some((_, module)) => {
+                if module.path_buf == path_buf {
+                    // Document/module is already opened.
+                    return msgs;
+                }
+                self.update_cached(&standpoints, path_buf, &mut msgs);
+            }
+            None => self.update_cached(&standpoints, path_buf, &mut msgs),
+        };
+        msgs
+    }
+
+    /// Update the cached module.
+    fn update_cached(
+        &self,
+        standpoints: &Vec<Standpoint>,
+        path_buf: PathBuf,
+        msgs: &mut MessageStore,
+    ) {
+        let context = standpoints
+            .iter()
+            .enumerate()
+            .find(|(_, context)| context.contains_file(&path_buf));
+        let (index, standpoint) = match context {
+            Some(context) => context,
+            None => {
+                msgs.error(format!(
+                    "Could not find module with this file, and therefore no changes are handled."
+                ));
+                return;
+            }
+        };
+        let module_idx = match standpoint.module_map.map_path_to_index(&path_buf) {
+            Some(path_idx) => path_idx,
+            None => {
+                msgs.error("Could not retrieve cached module.");
+                return;
+            }
+        };
+        let mut last_opened = self.last_opened.write().unwrap();
+        *last_opened = Some((index, module_idx));
+    }
+
+    /// Return the cached module.
+    fn get_cached<'a>(
+        &self,
+        standpoints: &'a Vec<Standpoint>,
+    ) -> Option<(&'a Standpoint, &'a TypedModule)> {
+        let last_opened = self.last_opened.read().unwrap();
+        let last_opened = last_opened.as_ref()?;
+        let last_opened_standpoint = standpoints.get(last_opened.0)?;
+        let last_opened_module = last_opened_standpoint.module_map.get(last_opened.1)?;
+        Some((last_opened_standpoint, last_opened_module))
+    }
+
+    /// Return the cached module, mutably.
+    fn get_cached_mut<'a>(
+        &self,
+        standpoints: &'a mut Vec<Standpoint>,
+    ) -> Option<(&'a mut Standpoint, PathIndex)> {
+        let last_opened = self.last_opened.read().unwrap();
+        let last_opened = last_opened.as_ref()?;
+        let last_opened_standpoint = standpoints.get_mut(last_opened.0)?;
+        let last_opened_module = last_opened_standpoint.module_map.get_mut(last_opened.1)?;
+        let idx = last_opened_module.path_idx.clone();
+        Some((last_opened_standpoint, idx))
     }
 
     /// Add a new document to be tracked.
@@ -222,15 +294,10 @@ impl DocumentManager {
                 } else {
                     standpoint.module_map.map_path_to_index(&path_buf).unwrap()
                 };
-                let module_path = standpoint
-                    .module_map
-                    .get(index_of_current_module)
-                    .map(|t_module| &t_module.path_buf);
+
                 // todo: this is a hack to overshadow ghost initial errors. fix.
-                if let Some(path_buf) = module_path.cloned() {
-                    msgs.inform("Module added successfully.");
-                    standpoint.refresh_module(&path_buf, params.text_document.text);
-                }
+                msgs.inform("Module added successfully.");
+                standpoint.refresh_module(index_of_current_module, params.text_document.text, true);
             } else {
                 // Root not found, skip project altogether.
                 log_error!(msgs, "Could not determine main module for project.")
@@ -244,40 +311,21 @@ impl DocumentManager {
 
     /// Hover over support.
     pub fn get_hover_info(&self, params: HoverParams) -> WithMessages<Option<HoverInfo>> {
-        let mut messages = MessageStore::new();
+        let mut messages =
+            self.open_document(params.text_document_position_params.text_document.uri);
         let time = std::time::Instant::now();
-        let uri = params.text_document_position_params.text_document.uri;
-        let path_buf = match uri_to_absolute_path(uri) {
-            Ok(p) => p,
-            Err(error) => {
-                let message = format!("Could not convert uri for hover in file. ERROR: {error:?}");
-                messages.error(message);
-                return (messages, None);
-            }
-        };
-        let contexts = self.standpoints.read().unwrap();
-        let main_context = match contexts
-            .iter()
-            .find(|context| context.contains_file(&path_buf))
-        {
-            Some(context) => context,
+        let standpoints = self.standpoints.read().unwrap();
+        let (main_standpoint, module) = match self.get_cached(&standpoints) {
+            Some(t) => t,
             None => {
-                messages.error(format!("Could not find context for {path_buf:?}"));
-                return (messages, None);
-            }
-        };
-        let module = match main_context.get_module_at_path(&path_buf) {
-            Some(m) => m,
-            None => {
-                let message = format!("Could not find module with path {path_buf:?} in context.");
-                messages.error(message);
+                messages.error("Could not retrieve the cached module index");
                 return (messages, None);
             }
         };
         let position = params.text_document_position_params.position;
         // Editor ranges are zero-based, for some reason.
         let pos = [position.line + 1, position.character + 1];
-        let hover_finder = HoverFinder::new(module, main_context, pos, messages);
+        let hover_finder = HoverFinder::new(module, main_standpoint, pos, messages);
         for statement in module.statements.iter() {
             if let Some(hover) = hover_finder.statement(statement) {
                 let mut messages = hover_finder.message_store.take();
@@ -333,35 +381,25 @@ impl DocumentManager {
 
     /// Handles didChange event.
     pub fn handle_change(&self, mut params: DidChangeTextDocumentParams) -> MessageStore {
-        let mut msgs = MessageStore::new();
+        let mut msgs = self.open_document(params.text_document.uri);
         msgs.inform("Handling text update...");
-        let uri = params.text_document.uri;
-        let path_buf = match uri_to_absolute_path(uri) {
-            Ok(path) => path,
-            Err(err) => log_error!(
-                msgs,
-                "Error converting URI to absolute path during change: {err:?}"
-            ),
-        };
-        let mut contexts = self.standpoints.write().unwrap();
-        let context = contexts
-            .iter_mut()
-            .find(|context| context.contains_file(&path_buf));
-        let standpoint = match context {
-            Some(context) => context,
-            None => log_error!(
-                msgs,
-                "Could not find module with this file, and therefore no changes are handled."
-            ),
+        let mut standpoints = self.standpoints.write().unwrap();
+        let (standpoint, path_idx) = match self.get_cached_mut(&mut standpoints) {
+            Some(t) => t,
+            None => {
+                msgs.error("Could not retrieve the cached module index");
+                return msgs;
+            }
         };
         let last = params.content_changes.len() - 1;
         let most_current = std::mem::take(&mut params.content_changes[last].text);
-        msgs.inform(format!("Refreshing module {path_buf:?}"));
+        msgs.inform(format!("Refreshing open document..."));
         let time = std::time::Instant::now();
-        if let None = standpoint.refresh_module(&path_buf, most_current) {
+        if let None = standpoint.refresh_module(path_idx, most_current, false) {
             log_error!(msgs, "Something went wrong while refreshing user text.")
         };
-        msgs.inform(format!("Module refreshed in {:?}", time.elapsed()));
+        msgs.inform(format!("Document refreshed in {:?}", time.elapsed()));
+        *self.was_updated.write().unwrap() = true;
         msgs
     }
 
@@ -370,20 +408,19 @@ impl DocumentManager {
         &self,
         params: GotoDeclarationParams,
     ) -> WithMessages<Option<GotoDeclarationResponse>> {
-        let mut msgs = MessageStore::new();
+        let mut msgs = self.open_document(params.text_document_position_params.text_document.uri);
         msgs.inform("Retreiving symbol declaration...");
-        let time = std::time::Instant::now();
-        let uri = params.text_document_position_params.text_document.uri;
         let position = params.text_document_position_params.position;
         let standpoints = self.standpoints.read().unwrap();
-        let (pathbuf, standpoint) = find_standpoint!(uri, msgs, standpoints);
-        let path_idx_opt = standpoint.module_map.map_path_to_index(&pathbuf);
-        if path_idx_opt.is_none() {
-            msgs.inform("Found standpoint, but could not map path to index");
-            return (msgs, None);
-        }
-        let path_idx = path_idx_opt.unwrap();
-        let response = match_pos_to_symbol(standpoint, path_idx, position)
+        let (standpoint, module) = match self.get_cached(&standpoints) {
+            Some(t) => t,
+            None => {
+                msgs.error("Could not retrieve the cached module index");
+                return (msgs, None);
+            }
+        };
+        let time = std::time::Instant::now();
+        let response = match_pos_to_symbol(standpoint, module.path_idx, position)
             .map(|(_, symbol)| {
                 let declaration_opt =
                     symbol
@@ -444,7 +481,7 @@ impl DocumentManager {
                         .errors
                         .iter()
                         .filter(|error| error.offending_file == path_idx)
-                        .map(|p| error_to_diagnostic(p))
+                        .map(|p| error_to_diagnostic(p, standpoint))
                         .collect::<Vec<Diagnostic>>(),
                 },
             })
@@ -456,83 +493,52 @@ impl DocumentManager {
         &self,
         _params: WorkspaceDiagnosticParams,
     ) -> WithMessages<WorkspaceDiagnosticReportResult> {
-        let standpoints = self.standpoints.read().unwrap();
-        let mut msgs = MessageStore::new();
-        msgs.inform("Retrieving workspace diagnostics...");
-        let result = WorkspaceDiagnosticReportResult::Report(WorkspaceDiagnosticReport {
-            items: match standpoints.first() {
-                Some(standpoint) => standpoint
-                    .module_map
-                    .paths()
-                    .filter_map(|(path_idx, module)| {
-                        Some(WorkspaceDocumentDiagnosticReport::Full(
-                            WorkspaceFullDocumentDiagnosticReport {
-                                uri: path_to_uri(&module.path_buf).ok()?,
-                                version: None,
-                                full_document_diagnostic_report: FullDocumentDiagnosticReport {
-                                    result_id: None,
-                                    items: standpoint
-                                        .errors
-                                        .iter()
-                                        .filter(|error| error.offending_file == path_idx)
-                                        .map(|p| error_to_diagnostic(p))
-                                        .collect::<Vec<Diagnostic>>(),
-                                },
-                            },
-                        ))
-                    })
-                    .collect(),
-
-                None => {
-                    return (
-                        msgs,
-                        WorkspaceDiagnosticReportResult::Report(WorkspaceDiagnosticReport {
-                            items: vec![],
-                        }),
-                    )
-                }
-            },
-        });
-
-        (msgs, result)
+        let msgs = MessageStore::new();
+        // let time = std::time::Instant::now();
+        let report_result = self.get_or_compute_workspace_diagnostics();
+        // msgs.inform(format!(
+        //     "Retreived workspace diagnostics in {:?}",
+        //     time.elapsed()
+        // ));
+        (msgs, report_result)
     }
 
     /// Gets the references for a symbol.
     pub fn get_references(&self, params: ReferenceParams) -> WithMessages<Option<Vec<Location>>> {
-        let uri = params.text_document_position.text_document.uri;
+        let mut msgs = self.open_document(params.text_document_position.text_document.uri);
         let position = params.text_document_position.position;
-        let mut msgs = MessageStore::new();
         let standpoints = self.standpoints.read().unwrap();
-        let (path, standpoint) = find_standpoint!(uri, msgs, standpoints);
-        let path_idx_opt = standpoint.module_map.map_path_to_index(&path);
-        if path_idx_opt.is_none() {
-            msgs.inform("Found standpoint, but could not map path to index");
-            return (msgs, None);
-        }
-        let path_idx = path_idx_opt.unwrap();
-        let response = match_pos_to_symbol(standpoint, path_idx, position).map(|(_, symbol)| {
-            let mut locations = vec![];
-            for reference in &symbol.references {
-                let module_path_index = reference.module_path;
-                let module_path = match standpoint.module_map.get(module_path_index) {
-                    Some(module) => &module.path_buf,
-                    None => continue,
-                };
-                let uri = match path_to_uri(&module_path) {
-                    Ok(uri) => uri,
-                    Err(()) => continue,
-                };
-                for start in &reference.starts {
-                    let span = Span::on_line(*start, symbol.name.len() as u32);
-                    let location = Location {
-                        uri: uri.clone(),
-                        range: to_range(span),
-                    };
-                    locations.push(location);
-                }
+        let (standpoint, module) = match self.get_cached(&standpoints) {
+            Some(t) => t,
+            None => {
+                msgs.error("Could not retrieve the cached module index");
+                return (msgs, None);
             }
-            locations
-        });
+        };
+        let response =
+            match_pos_to_symbol(standpoint, module.path_idx, position).map(|(_, symbol)| {
+                let mut locations = vec![];
+                for reference in &symbol.references {
+                    let module_path_index = reference.module_path;
+                    let module_path = match standpoint.module_map.get(module_path_index) {
+                        Some(module) => &module.path_buf,
+                        None => continue,
+                    };
+                    let uri = match path_to_uri(&module_path) {
+                        Ok(uri) => uri,
+                        Err(()) => continue,
+                    };
+                    for start in &reference.starts {
+                        let span = Span::on_line(*start, symbol.name.len() as u32);
+                        let location = Location {
+                            uri: uri.clone(),
+                            range: to_range(span),
+                        };
+                        locations.push(location);
+                    }
+                }
+                locations
+            });
 
         (msgs, response)
     }
@@ -621,6 +627,51 @@ impl DocumentManager {
             }
         });
         return (msgs, Ok(response));
+    }
+
+    /// Returns the last workspace diagnostics report, or computes another one if there was a file change.
+    fn get_or_compute_workspace_diagnostics(&self) -> WorkspaceDiagnosticReportResult {
+        let mut standpoints = self.standpoints.write().unwrap();
+        let mut was_updated = self.was_updated.write().unwrap();
+        let mut diagnostic_report = self.diagnostic_report.write().unwrap();
+        if *was_updated {
+            standpoints
+                .iter_mut()
+                .for_each(|standpoint| standpoint.refresh_imports());
+            *diagnostic_report =
+                WorkspaceDiagnosticReportResult::Report(WorkspaceDiagnosticReport {
+                    items: match standpoints.first() {
+                        Some(standpoint) => standpoint
+                            .module_map
+                            .paths()
+                            .filter_map(|(path_idx, module)| {
+                                Some(WorkspaceDocumentDiagnosticReport::Full(
+                                    WorkspaceFullDocumentDiagnosticReport {
+                                        uri: path_to_uri(&module.path_buf).ok()?,
+                                        version: None,
+                                        full_document_diagnostic_report:
+                                            FullDocumentDiagnosticReport {
+                                                result_id: None,
+                                                items: standpoint
+                                                    .errors
+                                                    .iter()
+                                                    .filter(|error| {
+                                                        error.offending_file == path_idx
+                                                    })
+                                                    .map(|p| error_to_diagnostic(p, standpoint))
+                                                    .collect::<Vec<Diagnostic>>(),
+                                            },
+                                    },
+                                ))
+                            })
+                            .collect(),
+
+                        None => vec![],
+                    },
+                });
+            *was_updated = false;
+        }
+        diagnostic_report.clone()
     }
 }
 

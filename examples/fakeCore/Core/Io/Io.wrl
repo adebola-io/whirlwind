@@ -1,0 +1,16 @@
+module Io;
+
+
+use Super.Primitives.String;
+
+public function Fmt(templateString: String): FormatObject {
+    new FormatObject(templateString)
+}
+
+public model FormatObject {
+    
+}
+
+public function Println(message: String) {
+    
+}

@@ -233,6 +233,7 @@ impl<L: Lexer> Parser<L> {
             ))
         }
 
+        // println!("Current token = {:?}", self.token());
         match self.token() {
             Some(t) => match t._type {
                 TokenType::Operator(SemiColon) => {

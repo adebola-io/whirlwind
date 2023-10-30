@@ -4,6 +4,9 @@ const { LanguageClient } = require("vscode-languageclient/node");
 /** @type {string} */
 let server_path;
 
+/** @type {ReturnType<typeof setTimeout>} */
+let timeout;
+
 function getStatusBar() {
    if (this.statusBar === undefined) {
       this.statusBar = vscode.window.createStatusBarItem(
@@ -56,6 +59,10 @@ exports.stopLanguageServer = async () => {
    const client = getLanguageClient();
    statusBar.text = "Stopping server";
    await client.stop();
+   if (timeout !== undefined) {
+      clearTimeout(timeout);
+      timeout = undefined;
+   }
    statusBar.dispose();
 };
 
@@ -81,7 +88,7 @@ exports.activate = async (context) => {
       "whirlwind-server-restart",
       exports.restartServer
    );
-   // exports.startLanguageServer();
+   exports.startLanguageServer();
 };
 
 exports.deactivate = async () => {

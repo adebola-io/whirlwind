@@ -84,6 +84,17 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     public function Bytes(): Bytes {
         return Invoke(Injunction.StrBytes(this));
     }
+    /// Changes the first character of every word in the string to upper case.
+    /// ## Usage
+    /// ```
+    /// str := "jonathan is a boy";
+    /// str2 := str.ToCapitalCase();
+    /// 
+    /// Assert(str2).Equals("Jonathan Is A Boy");
+    /// ```
+    public function CapitalCase(): String {
+        return Invoke(Injunction.StrCapitalCase(this));
+    }
     /// Returns an iterator over the valid characters in the string.
     /// ## Usage
     /// ```
@@ -143,7 +154,18 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     public function Length(): UnsignedInt {
         return Invoke(Injunction.StrLength(this));
     }
-     /// Returns a version of the string with padding on both sides.
+    /// Changes the case of all letters in the string to lower case.
+    /// ## Usage
+    /// ```
+    /// str := "HELLO, WORLD!";
+    /// str2 := str.LowerCase();
+    /// 
+    /// Assert(str2).Equals("hello, world!");
+    /// ```
+    public function LowerCase(): String {
+        return Invoke(Injunction.StrLowercase(this));
+    }
+    /// Returns a version of the string with padding on both sides.
     /// ## Usage
     /// ```
     /// str := "Alright";
@@ -169,9 +191,9 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     /// ## Usage
     /// ```
     /// str := "Alright";
-    /// str2 := str.PadLeft(3);
+    /// str2 := str.PadRight(3);
     /// 
-    /// Assert(str2).Equals("   Alright"); // 3 spaces before.
+    /// Assert(str2).Equals("Alright   "); // 3 spaces before.
     /// ```
     public function PadRight(count: UnsignedInt): String {
         return Invoke(Injunction.StrPadRight(this, count));
@@ -248,7 +270,7 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     /// ```
     /// str := "Hello, world!";
     /// 
-    /// Assert(str.Slice(0..5)).Equals("Hello"); // index 0 to 4.
+    /// Assert(str.Slice(0..5)).Equals(Some(&"Hello")); // index 0 to 4.
     /// ```
     public function Slice(bounds: Range<Int>): Maybe<&String> {
         return Invoke(Injunction.StrSlice(this, bounds));
@@ -259,54 +281,21 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     /// str := "Ring around the rosy";
     /// words := str.Split(" ");
     /// 
-    /// Assert(words).Equals(["Ring", "Around", "The", "Rosy"]);
+    /// Assert(words).Equals([&"Ring", &"Around", &"The", &"Rosy"]);
     /// ```
-    public function Split(delim: String): Array<String> {
+    public function Split(delim: String): Array<&String> {
         return Invoke(Injunction.StrSplit(this, delim));
-    }
-    /// Changes the first character of every word in the string to upper case.
-    /// ## Usage
-    /// ```
-    /// str := "jonathan is a boy";
-    /// str2 := str.ToCapitalCase();
-    /// 
-    /// Assert(str2).Equals("Jonathan Is A Boy");
-    /// ```
-    public function ToCapitalCase(): String {
-        return Invoke(Injunction.StrCapitalCase(this));
-    }
-    /// Changes the case of all letters in the string to lower case.
-    /// ## Usage
-    /// ```
-    /// str := "HELLO, WORLD!";
-    /// str2 := str.ToLowerCase();
-    /// 
-    /// Assert(str2).Equals("hello, world!");
-    /// ```
-    public function ToLowerCase(): String {
-        return Invoke(Injunction.StrLowercase(this));
     }
     /// Changes only the first character in the string to upper case.
     /// ## Usage
     /// ```
     /// str := "nice to meet you, where you been?";
-    /// str2 := str.ToSentenceCase();
+    /// str2 := str.SentenceCase();
     /// 
     /// Assert(str2).Equals("Nice to meet you, where you been?");
     /// ```
-    public function ToSentenceCase(): String {
+    public function SentenceCase(): String {
         return Invoke(Injunction.StrSentenceCase(this));
-    }
-    /// Changes the case of all letters in the string to upper case.
-    /// ## Usage
-    /// ```
-    /// str := "hello, world!";
-    /// str2 := str.ToUpperCase();
-    /// 
-    /// Assert(str2).Equals("HELLO, WORLD!");
-    /// ```
-    public function ToUpperCase(): String {
-        return Invoke(Injunction.StrUppercase(this));
     }
     /// Returns a version of the string without left or right whitespace padding.
     /// ## Usage
@@ -350,6 +339,15 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     /// ```
     public function TrimEnd(): String {
         return Invoke(Injunction.TrimEnd(this));
+    }
+    /// Changes the case of all letters in the string to upper case.
+    /// ## Usage
+    /// ```
+    /// str := "hello, world!";
+    /// Assert(str.UpperCase()).Equals("HELLO, WORLD!");
+    /// ```
+    public function UpperCase(): String {
+        return Invoke(Injunction.StrUppercase(this));
     }
 }
 

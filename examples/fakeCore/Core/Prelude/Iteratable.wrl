@@ -1,6 +1,8 @@
 module Iteratable;
 
 use Super.Primitives.Array;
+use Prelude.Bool;
+use Prelude.Todo;
 use Maybe.Maybe;
 
 /// ## The Iteratable trait
@@ -31,10 +33,21 @@ public trait Iteratable<I> {
         // }
         array
     }
+    /// Returns an iterator that only yields items that match a predicate.
+    /// ### Usage
+    /// ```
+    /// ```
+    public function Filter(predicate: fn(value: &I): Bool): Filter<I> {
+        Todo()
+    }
 }
 
 /// This trait specifies that a model can be made into an iterator.
 public trait AsIterator<I, T implements Iteratable<I>> {
     /// Turn a model into an iterator.
     public function Convert(): T;
+}
+
+public model Filter<I> {
+
 }

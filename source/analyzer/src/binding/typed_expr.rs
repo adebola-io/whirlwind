@@ -1,4 +1,4 @@
-use super::{LiteralIndex, SymbolLocator};
+use super::LiteralIndex;
 use crate::{IntermediateType, SymbolIndex, TypedBlock};
 use ast::{AssignOperator, BinOperator, LogicOperator, Span, UnaryOperator, UpdateOperator};
 
@@ -24,7 +24,8 @@ pub enum TypedExpression {
 
 #[derive(Debug, PartialEq)]
 pub struct TypedIdent {
-    pub value: SymbolLocator,
+    pub value: SymbolIndex,
+    pub start: [u32; 2],
 }
 
 #[derive(Debug, PartialEq)]
@@ -44,6 +45,7 @@ pub struct TypedThisExpr {
 pub struct TypedCallExpr {
     pub caller: TypedExpression,
     pub arguments: Vec<TypedExpression>,
+    pub span: Span,
 }
 
 #[derive(Debug, PartialEq)]

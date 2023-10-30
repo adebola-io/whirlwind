@@ -1,0 +1,20 @@
+module Http;
+
+model Endpoints {
+
+}
+
+public model Server {
+    public var endpoints: Endpoints;
+}
+
+public model Response {
+    /// Build a response object from a request.
+    public static function From(request: Request): This {
+
+    }
+}
+
+public model Request {
+
+}

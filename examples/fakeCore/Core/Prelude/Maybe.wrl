@@ -3,7 +3,7 @@ module Maybe;
 use Super.{
     Primitives.Bool,
     Internals.Flow,
-    Process.PanicOnCaller,
+    Process.{PanicOnCaller, Todo},
 }; 
 use Outcome.{ Ok, Err, Outcome }; 
 use Traits.{ Guaranteed, Try };
@@ -13,6 +13,7 @@ public function None<T>(): Maybe<T> {
     // Maybe {
     //     inner := MaybeVal.Some(value)
     // }
+    Todo()
 }
 
 /// Creates a `Maybe` with an internal value.
@@ -20,6 +21,7 @@ public function Some<T>(value: T): Maybe<T> {
     // Maybe {
     //     inner := MaybeVal.Some(value)
     // }
+    Todo()
 }
 
 /// A value that may or may not exist.
@@ -39,6 +41,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T> {
         //     .Some(value) => Flow.Normal(value),
         //     .None => Flow.ReturnWithValue(None())
         // }
+        Todo()
     }
     /// Returns a Bool indicating if the Maybe contains no value.
     /// ### Usage
@@ -54,6 +57,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T> {
         //     .None => true,
         //     _ => false,
         // }
+        Todo()
     }
     /// Returns a Bool indicating whether there is a value contained or not.
     /// ### Usage
@@ -69,6 +73,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T> {
         //     .Some(_) => true,
         //     .None => false,
         // }
+        Todo()
     }
     /// Returns a Bool indicating whether there is a value contained, and it
     /// upholds a given predicate.

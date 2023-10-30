@@ -4,8 +4,8 @@ mod typed_statement;
 
 use crate::{
     EvaluatedType, IntermediateType, Literal, LiteralIndex, Module, PathIndex, ProgramError,
-    ProgramErrorType, SemanticSymbol, SemanticSymbolKind, SymbolIndex, SymbolLocator,
-    SymbolReferenceList, SymbolTable,
+    ProgramErrorType, SemanticSymbol, SemanticSymbolKind, SymbolIndex, SymbolReferenceList,
+    SymbolTable,
 };
 use ast::{
     Block, ConstantDeclaration, EnumDeclaration, EnumVariant, Expression, FunctionExpr,
@@ -408,7 +408,7 @@ mod bind_utils {
                             kind: SemanticSymbolKind::Variable {
                                 is_public: variable.is_public,
                                 declared_type: None,
-                                inferred_type: EvaluatedType::Unknown { candidates: vec![] },
+                                inferred_type: EvaluatedType::Unknown,
                                 pattern_type: VariablePatternForm::Normal,
                             },
                             references: vec![SymbolReferenceList {
@@ -430,7 +430,7 @@ mod bind_utils {
                                 kind: SemanticSymbolKind::Variable {
                                     is_public: variable.is_public,
                                     declared_type: None,
-                                    inferred_type: EvaluatedType::Unknown { candidates: vec![] },
+                                    inferred_type: EvaluatedType::Unknown,
                                     pattern_type: VariablePatternForm::DestructuredFromObject {
                                     from_property: // bind property symbol if it exists.
                                     alias.as_ref().map(|_| {
@@ -463,7 +463,7 @@ mod bind_utils {
                             kind: SemanticSymbolKind::Variable {
                                 is_public: variable.is_public,
                                 declared_type: None,
-                                inferred_type: EvaluatedType::Unknown { candidates: vec![] },
+                                inferred_type: EvaluatedType::Unknown,
                                 pattern_type: VariablePatternForm::DestructuredFromArray,
                             },
                             references: vec![SymbolReferenceList {
@@ -591,10 +591,18 @@ mod bind_utils {
         return index;
     }
 
-    /// Returns the reference number for the last reference added to the symbol.
-    pub fn last_reference_no(symbol_table: &SymbolTable, symbol_idx: SymbolIndex) -> usize {
-        symbol_table.get(symbol_idx).unwrap().references.len() - 1
-    }
+    // /// Returns the reference number for the last reference added to the symbol.
+    // pub fn last_reference_no(symbol_table: &SymbolTable, symbol_idx: SymbolIndex) -> usize {
+    //     let symbol = symbol_table.get(symbol_idx).unwrap();
+    //     let mut ref_no = 0;
+    //     for (idx, ref_list) in symbol.references.iter().enumerate() {
+    //         ref_no += ref_list.starts.len();
+    //         if idx == symbol.references.len() - 1 {
+    //             return ref_no - 1;
+    //         }
+    //     }
+    //     unreachable!()
+    // }
 
     /// Collect the import, syntax and lexing errors,
     pub fn collect_prior_errors(
@@ -634,7 +642,7 @@ mod statements {
     use ast::{TraitBody, TraitPropertyType};
 
     use super::{
-        bind_utils::{add_ctx_error, handle_scope_entry, last_reference_no},
+        bind_utils::{add_ctx_error, handle_scope_entry},
         expressions::{bind_block, bind_expression},
         literals::bind_string,
         types::{bind_generic_parameters, bind_type_expression},
@@ -726,16 +734,17 @@ mod statements {
                     ambience,
                 ))
             }
-            Statement::ExpressionStatement(expression) | Statement::FreeExpression(expression) => {
-                TypedStmnt::FreeExpression(bind_expression(
-                    expression,
-                    binder,
-                    symbol_table,
-                    errors,
-                    literals,
-                    ambience,
-                ))
-            }
+            Statement::ExpressionStatement(expression) => TypedStmnt::ExpressionStatement(
+                bind_expression(expression, binder, symbol_table, errors, literals, ambience),
+            ),
+            Statement::FreeExpression(expression) => TypedStmnt::FreeExpression(bind_expression(
+                expression,
+                binder,
+                symbol_table,
+                errors,
+                literals,
+                ambience,
+            )),
             Statement::BreakStatement(_break) => TypedStmnt::BreakStatement(bind_break_statement(
                 _break,
                 binder,
@@ -818,13 +827,7 @@ mod statements {
         }
         let typed_use_decl = TypedUseDeclaration {
             is_public: usedecl.is_public,
-            imports: imports
-                .iter()
-                .map(|import| SymbolLocator {
-                    symbol_idx: *import,
-                    ref_number: last_reference_no(&symbol_table, *import),
-                })
-                .collect(),
+            imports: imports.clone(),
             span: usedecl.span,
         };
         // Add imported values so they can be resolved later.
@@ -852,12 +855,8 @@ mod statements {
         ) {
             Ok(idx) | Err(idx) => idx,
         };
-        let ref_number = last_reference_no(&symbol_table, symbol_idx);
         return TypedShorthandVariableDeclaration {
-            name: SymbolLocator {
-                symbol_idx,
-                ref_number,
-            },
+            name: symbol_idx,
             value: bind_expression(
                 shorthand.value,
                 binder,
@@ -890,12 +889,8 @@ mod statements {
         ) {
             Ok(idx) | Err(idx) => idx,
         };
-        let ref_number = last_reference_no(&symbol_table, symbol_idx);
         return TypedConstantDeclaration {
-            name: SymbolLocator {
-                symbol_idx,
-                ref_number,
-            },
+            name: symbol_idx,
             value: bind_expression(
                 constant.value,
                 binder,
@@ -966,12 +961,8 @@ mod statements {
             Err(idx) => idx,
         };
         binder.this_type.push(symbol_idx); // Set meaning of `This`.
-        let ref_number = last_reference_no(&symbol_table, symbol_idx);
         let typed_model_declaration = TypedModelDeclaration {
-            name: SymbolLocator {
-                symbol_idx,
-                ref_number,
-            },
+            name: symbol_idx,
             body: model_body(
                 model.body,
                 symbol_idx,
@@ -1222,7 +1213,7 @@ mod statements {
                         errors,
                         ambience,
                     ),
-                    inferred_type: EvaluatedType::unknown(),
+                    inferred_type: EvaluatedType::Unknown,
                     owner_model: owner,
                     property_index: index,
                 },
@@ -1238,12 +1229,8 @@ mod statements {
             binder.known_values.insert(attribute.name.span, index);
             index
         };
-        let ref_number = last_reference_no(&symbol_table, symbol_idx);
         TypedModelProperty {
-            name: SymbolLocator {
-                symbol_idx,
-                ref_number,
-            },
+            name: symbol_idx,
             _type: TypedModelPropertyType::TypedAttribute,
             span,
         }
@@ -1337,7 +1324,6 @@ mod statements {
             .methods
             .get_mut(index)
             .expect("Could not find method with correct index.");
-        let ref_number = last_reference_no(&symbol_table, symbol_idx);
         let method_generic_params = method.generic_params.take();
         let method_params = take(&mut method.params);
         let return_type = method.return_type.take();
@@ -1374,10 +1360,7 @@ mod statements {
             *params = parameters;
         }
         let method = TypedModelProperty {
-            name: SymbolLocator {
-                symbol_idx,
-                ref_number,
-            },
+            name: symbol_idx,
             _type: TypedModelPropertyType::TypedMethod { body },
             span,
         };
@@ -1456,12 +1439,8 @@ mod statements {
             Err(idx) => (idx, body),
         };
         binder.pop_generic_pool();
-        let ref_number = last_reference_no(&symbol_table, symbol_idx);
         TypedFunctionDeclaration {
-            name: SymbolLocator {
-                symbol_idx,
-                ref_number,
-            },
+            name: symbol_idx,
             body,
             span: func.span,
         }
@@ -1613,12 +1592,8 @@ mod statements {
                 idx
             }
         };
-        let ref_number = last_reference_no(&symbol_table, symbol_idx);
         let enum_declaration = TypedEnumDeclaration {
-            name: SymbolLocator {
-                symbol_idx,
-                ref_number,
-            },
+            name: symbol_idx,
             span: enumdecl.span,
         };
         binder.this_type.pop(); // Remove meaning of This.
@@ -1743,12 +1718,8 @@ mod statements {
             Err(idx) => idx,
         };
         binder.this_type.push(symbol_idx); // Set meaning of `This`.
-        let ref_number = last_reference_no(&symbol_table, symbol_idx);
         let typed_trait_declaration = TypedTraitDeclaration {
-            name: SymbolLocator {
-                symbol_idx,
-                ref_number,
-            },
+            name: symbol_idx,
             body: trait_body(
                 trait_decl.body,
                 symbol_idx,
@@ -1900,7 +1871,6 @@ mod statements {
             .methods
             .get_mut(index)
             .expect("Could not find method with correct index.");
-        let ref_number = last_reference_no(&symbol_table, symbol_idx);
         let method_generic_params = method.generic_params.take();
         let method_params = take(&mut method.params);
         let return_type = method.return_type.take();
@@ -1947,10 +1917,7 @@ mod statements {
             *params = parameters;
         }
         let method = TypedTraitProperty {
-            name: SymbolLocator {
-                symbol_idx,
-                ref_number,
-            },
+            name: symbol_idx,
             _type: TypedTraitPropertyType::Signature,
             span,
         };
@@ -2031,7 +1998,6 @@ mod statements {
             .methods
             .get_mut(index)
             .expect("Could not find method with correct index.");
-        let ref_number = last_reference_no(&symbol_table, symbol_idx);
         let method_generic_params = method.generic_params.take();
         let method_params = take(&mut method.params);
         let return_type = method.return_type.take();
@@ -2068,10 +2034,7 @@ mod statements {
             *params = parameters;
         }
         let method = TypedTraitProperty {
-            name: SymbolLocator {
-                symbol_idx,
-                ref_number,
-            },
+            name: symbol_idx,
             _type: TypedTraitPropertyType::Method { body },
             span,
         };
@@ -2126,12 +2089,8 @@ mod statements {
             }
             Err(idx) => idx,
         };
-        let ref_number = last_reference_no(&symbol_table, symbol_idx);
         TypedTypeDeclaration {
-            name: SymbolLocator {
-                symbol_idx,
-                ref_number,
-            },
+            name: symbol_idx,
             span: type_decl.span,
         }
     }
@@ -2237,7 +2196,6 @@ mod statements {
             ) {
                 Ok(idx) | Err(idx) => idx,
             };
-            let ref_number = last_reference_no(symbol_table, symbol_idx);
             // Bind type expression.
             let entry = ambience.get_entry_unguarded(address).var();
             if declared_type_solved.is_none() {
@@ -2256,11 +2214,7 @@ mod statements {
             {
                 *declared_type = declared_type_solved.clone().flatten();
             }
-            let name = SymbolLocator {
-                symbol_idx,
-                ref_number,
-            };
-            names.push(name);
+            names.push(symbol_idx);
         }
         return TypedVariableDeclaration {
             names,
@@ -2278,7 +2232,7 @@ mod statements {
 
 /// Expressions.
 mod expressions {
-    use super::{bind_utils::last_reference_no, statements::bind_function_block, *};
+    use super::{statements::bind_function_block, *};
     // Binds an expression.
     pub fn bind_expression(
         expression: Expression,
@@ -2416,12 +2370,10 @@ mod expressions {
     ) -> TypedIdent {
         let symbol_index =
             bind_utils::find_or_create(binder, symbol_table, errors, ambience, &identifier, false);
-        let ref_number = bind_utils::last_reference_no(&symbol_table, symbol_index);
+
         TypedIdent {
-            value: SymbolLocator {
-                symbol_idx: symbol_index,
-                ref_number,
-            },
+            value: symbol_index,
+            start: identifier.span.start,
         }
     }
 
@@ -2498,6 +2450,7 @@ mod expressions {
                 .into_iter()
                 .map(|argument| bind_expression(argument))
                 .collect(),
+            span: call.span,
         }
     }
     /// Bind a function expression.
@@ -2606,7 +2559,6 @@ mod expressions {
                     )
                 })
                 .collect(),
-            return_type: EvaluatedType::unknown(),
             span: block.span,
         };
         binder.current_scope = prior_scope;
@@ -2798,13 +2750,10 @@ mod expressions {
         };
         property_symbol.add_reference(binder.path, property_ident.span);
         let symbol_idx = symbol_table.add(property_symbol);
-        let ref_number = last_reference_no(symbol_table, symbol_idx);
 
         let property = TypedExpression::Identifier(TypedIdent {
-            value: SymbolLocator {
-                symbol_idx,
-                ref_number,
-            },
+            value: symbol_idx,
+            start: property_ident.span.start,
         });
         Box::new(TypedAccessExpr {
             object,
@@ -3173,7 +3122,6 @@ mod types {
                 // traits and default values are bound later.
                 traits: vec![],
                 default_value: None,
-                solutions: vec![],
             },
             references: vec![SymbolReferenceList {
                 module_path: binder.path,

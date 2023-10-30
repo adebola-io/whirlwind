@@ -1,6 +1,5 @@
-#![allow(unused)]
 use analyzer::{
-    EvaluatedType, IntermediateType, SemanticSymbolKind, Standpoint, SymbolIndex,
+    EvaluatedType, IntermediateType, ParameterType, SemanticSymbolKind, Standpoint, SymbolIndex,
     VariablePatternForm,
 };
 
@@ -37,11 +36,7 @@ impl<'a> SymbolWriter<'a> {
             };
         }
         match &symbol.kind {
-            SemanticSymbolKind::Module {
-                parent_modules,
-                global_declaration_symbols: exports,
-                ..
-            } => {
+            SemanticSymbolKind::Module { .. } => {
                 string.push_str("module "); // todo: print full path.
                 string.push_str(&symbol.name);
             }
@@ -72,7 +67,7 @@ impl<'a> SymbolWriter<'a> {
             SemanticSymbolKind::Enum {
                 is_public,
                 generic_params,
-                variants,
+                ..
             } => {
                 if *is_public {
                     string.push_str("public ");
@@ -83,8 +78,8 @@ impl<'a> SymbolWriter<'a> {
             }
             SemanticSymbolKind::Variant {
                 owner_enum,
-                variant_index,
                 tagged_types,
+                ..
             } => {
                 let name_of_owner = &self
                     .standpoint
@@ -118,22 +113,26 @@ impl<'a> SymbolWriter<'a> {
                 }
                 string.push_str("var ");
                 string.push_str(&symbol.name);
+                string.push_str(": ");
                 // Always favor displaying the inferred type over the declared one.
                 if !matches!(inferred_type, EvaluatedType::Unknown { .. }) {
-                    todo!()
+                    let type_as_string = self
+                        .standpoint
+                        .symbol_table
+                        .format_evaluated_type(inferred_type);
+                    string.push_str(&type_as_string);
                 } else if let Some(typ) = declared_type {
-                    string.push_str(": ");
                     string.push_str(&self.print_intermediate_type(typ));
                     match pattern_type {
                         VariablePatternForm::Normal => {}
-                        VariablePatternForm::DestructuredFromObject { from_property } => {
+                        VariablePatternForm::DestructuredFromObject { .. } => {
                             string.push_str("  [(property)]")
                         }
                         VariablePatternForm::DestructuredFromArray => string.push_str("[item]"),
                     }
                 } else {
                     // could not infer type
-                    string.push_str(": {{unknown}}")
+                    string.push_str("{{unknown}}")
                 }
             }
             SemanticSymbolKind::Constant {
@@ -146,11 +145,15 @@ impl<'a> SymbolWriter<'a> {
                 }
                 string.push_str("const ");
                 string.push_str(&symbol.name);
+                string.push_str(": ");
                 // Always favor displaying the inferred type over the declared one.
                 if !matches!(inferred_type, EvaluatedType::Unknown { .. }) {
-                    todo!()
+                    let type_as_string = self
+                        .standpoint
+                        .symbol_table
+                        .format_evaluated_type(inferred_type);
+                    string.push_str(&type_as_string);
                 } else {
-                    string.push_str(": ");
                     string.push_str(&self.print_intermediate_type(declared_type))
                 }
             }
@@ -175,10 +178,10 @@ impl<'a> SymbolWriter<'a> {
                 is_static,
                 is_async,
                 owner_model_or_trait,
-                property_index,
                 params,
                 generic_params,
                 return_type,
+                ..
             } => {
                 string = self.print_symbol_with_idx(*owner_model_or_trait);
                 string.push('\n');
@@ -215,7 +218,7 @@ impl<'a> SymbolWriter<'a> {
             SemanticSymbolKind::GenericParameter {
                 traits,
                 default_value,
-                solutions,
+                ..
             } => {
                 string.push_str(&symbol.name);
                 if traits.len() > 0 {
@@ -252,12 +255,6 @@ impl<'a> SymbolWriter<'a> {
                 self.print_parameters_into_string(&mut string, params);
                 self.maybe_print_return_type_into_string(&mut string, return_type.as_ref());
             }
-            SemanticSymbolKind::FnExpr {
-                is_async,
-                params,
-                generic_params,
-                return_type,
-            } => unreachable!("Attempting to print a function expression. Thats...not possible."),
             SemanticSymbolKind::TypeName {
                 is_public,
                 generic_params,
@@ -346,7 +343,7 @@ impl<'a> SymbolWriter<'a> {
             IntermediateType::FunctionType {
                 params,
                 return_type,
-                span,
+                ..
             } => {
                 let mut string = String::from("fn(");
                 for (i, param) in params.iter().enumerate() {
@@ -365,9 +362,9 @@ impl<'a> SymbolWriter<'a> {
             IntermediateType::SimpleType {
                 value,
                 generic_args,
-                span,
+                ..
             } => {
-                let mut symbol = self.standpoint.symbol_table.get(*value).unwrap();
+                let symbol = self.standpoint.symbol_table.get(*value).unwrap();
                 let mut string = symbol.name.clone();
                 if generic_args.len() > 0 {
                     string.push('<');
@@ -408,9 +405,7 @@ impl<'a> SymbolWriter<'a> {
                 unreachable!("Attempted to print a placeholder intermediate type.")
             }
             IntermediateType::MemberType {
-                object,
-                property,
-                span,
+                object, property, ..
             } => {
                 format!(
                     "{}.{}",
@@ -421,7 +416,7 @@ impl<'a> SymbolWriter<'a> {
         }
     }
 
-    pub fn print_parameter_type(&self, param: &analyzer::ParameterType) -> String {
+    pub fn print_parameter_type(&self, param: &ParameterType) -> String {
         let mut string = String::new();
         string.push_str(&param.name);
         if param.is_optional {

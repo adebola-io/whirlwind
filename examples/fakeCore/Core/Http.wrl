@@ -1,9 +1,0 @@
-module Http;
-
-model Endpoints {
-
-}
-
-public model Server {
-    public var endpoints: Endpoints;
-}

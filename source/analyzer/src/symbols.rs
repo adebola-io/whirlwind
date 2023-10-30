@@ -1,4 +1,4 @@
-use crate::PathIndex;
+use crate::{typecheck, PathIndex};
 use ast::{
     ConstantSignature, EnumSignature, ShorthandVariableSignature, Span, TypeSignature, WhirlNumber,
     WhirlString,
@@ -23,7 +23,7 @@ pub struct SymbolIndex(pub usize);
 #[derive(Debug, PartialEq)]
 pub struct SymbolLocator {
     pub symbol_idx: SymbolIndex,
-    pub ref_number: usize,
+    pub start: [u32; 2],
 }
 
 #[derive(Debug, Default)]
@@ -147,16 +147,9 @@ pub enum SemanticSymbolKind {
     GenericParameter {
         traits: Vec<IntermediateType>,
         default_value: Option<IntermediateType>,
-        solutions: Vec<EvaluatedType>,
     },
     Function {
         is_public: bool,
-        is_async: bool,
-        params: Vec<SymbolIndex>,
-        generic_params: Vec<SymbolIndex>,
-        return_type: Option<IntermediateType>,
-    },
-    FnExpr {
         is_async: bool,
         params: Vec<SymbolIndex>,
         generic_params: Vec<SymbolIndex>,
@@ -229,6 +222,20 @@ pub enum IntermediateType {
     Placeholder,
 }
 
+impl IntermediateType {
+    pub fn span(&self) -> Span {
+        match self {
+            IntermediateType::FunctionType { span, .. }
+            | IntermediateType::MemberType { span, .. }
+            | IntermediateType::SimpleType { span, .. }
+            | IntermediateType::UnionType { span, .. }
+            | IntermediateType::This { span, .. }
+            | IntermediateType::BorrowedType { span, .. } => *span,
+            _ => unreachable!("Cannot retrieve span of placeholder."),
+        }
+    }
+}
+
 /// A type expression, as is.
 #[derive(Debug, PartialEq, Clone)]
 pub enum EvaluatedType {
@@ -237,7 +244,28 @@ pub enum EvaluatedType {
         model: SymbolIndex,
         generic_arguments: Vec<EvaluatedType>,
     },
-    Constant(SymbolIndex),
+    /// An instance of an enum created by assigning a variant.
+    EnumInstance {
+        enum_: SymbolIndex,
+        generic_arguments: Vec<EvaluatedType>,
+    },
+    /// A named or anonymous function.
+    Function {
+        function: SymbolIndex,
+        generic_arguments: Vec<EvaluatedType>,
+    },
+    FunctionExpression {
+        is_async: bool,
+        params: Vec<(SymbolIndex, EvaluatedType)>,
+        return_type: Box<EvaluatedType>,
+    },
+    /// A method.
+    Method {
+        method: SymbolIndex,
+        trait_or_model_generic_arguments: Vec<EvaluatedType>,
+        generic_arguments: Vec<EvaluatedType>,
+    },
+    /// A model value.
     Model(SymbolIndex),
     Trait(SymbolIndex),
     Enum(SymbolIndex),
@@ -250,14 +278,16 @@ pub enum EvaluatedType {
     },
     Void,
     Never,
-    Unknown {
-        candidates: Vec<EvaluatedType>,
+    Unknown,
+    Generic {
+        base: SymbolIndex,
+        traits: Vec<EvaluatedType>,
     },
 }
 
 impl EvaluatedType {
-    pub fn unknown() -> Self {
-        Self::Unknown { candidates: vec![] }
+    pub fn is_unknown(&self) -> bool {
+        matches!(self, Self::Unknown)
     }
 }
 
@@ -325,7 +355,7 @@ impl SemanticSymbol {
                 pattern_type: VariablePatternForm::Normal,
                 is_public: false,
                 declared_type: None,
-                inferred_type: EvaluatedType::unknown(),
+                inferred_type: EvaluatedType::Unknown,
             },
             references: vec![SymbolReferenceList {
                 module_path: path_to_module,
@@ -347,7 +377,7 @@ impl SemanticSymbol {
             kind: SemanticSymbolKind::Constant {
                 is_public: constant.is_public,
                 declared_type: IntermediateType::Placeholder,
-                inferred_type: EvaluatedType::unknown(),
+                inferred_type: EvaluatedType::Unknown,
             },
             references: vec![SymbolReferenceList {
                 module_path: path_to_module,
@@ -518,6 +548,19 @@ impl SymbolTable {
             SymbolEntry::Symbol(symbol) => Some(symbol),
         }
     }
+    /// A modified version of the `get()` method that also accounts for import and property redirections.
+    pub fn get_forwarded(&self, idx: SymbolIndex) -> Option<&SemanticSymbol> {
+        let base = self.get(idx)?;
+        match &base.kind {
+            SemanticSymbolKind::Property {
+                resolved: Some(next),
+            }
+            | SemanticSymbolKind::Import {
+                source: Some(next), ..
+            } => self.get_forwarded(*next),
+            _ => Some(base),
+        }
+    }
     /// Remove a symbol using its index.
     pub fn remove(&mut self, index: SymbolIndex) -> Option<SemanticSymbol> {
         let symbolentry = std::mem::take(self.symbols.get_mut(index.0)?);
@@ -535,17 +578,223 @@ impl SymbolTable {
     pub fn len(&self) -> usize {
         self.symbols.len() - self.holes.len()
     }
+
+    /// Prints a list of generic types.
+    fn format_generics_into(&self, generics: &[EvaluatedType], string: &mut String) {
+        if generics.len() > 0 {
+            string.push('<');
+            for (index, genarg) in generics.iter().enumerate() {
+                string.push_str(&self.format_evaluated_type(genarg));
+                if index + 1 < generics.len() {
+                    string.push_str(", ")
+                }
+            }
+            string.push('>');
+        }
+    }
+
+    /// Prints an evaluated type using the symbol table.
+    pub fn format_evaluated_type(&self, eval_type: &EvaluatedType) -> String {
+        let mut string = String::new();
+        match eval_type {
+            EvaluatedType::ModelInstance {
+                model,
+                generic_arguments,
+            } => {
+                let symbol = self.get(*model).unwrap();
+                string = symbol.name.clone();
+                self.format_generics_into(&generic_arguments, &mut string);
+            }
+            EvaluatedType::Model(_) => string.push_str("{{model}}"),
+            EvaluatedType::Trait(_) => string.push_str("{{trait}}"),
+            EvaluatedType::EnumInstance {
+                enum_,
+                generic_arguments,
+            } => {
+                let symbol = self.get(*enum_).unwrap();
+                string = symbol.name.clone();
+                self.format_generics_into(&generic_arguments, &mut string);
+            }
+            EvaluatedType::Function {
+                function,
+                generic_arguments,
+            } => {
+                self.format_function_details(function, &mut string, generic_arguments);
+            }
+            EvaluatedType::FunctionExpression {
+                is_async,
+                params,
+                return_type,
+            } => {
+                if *is_async {
+                    string.push_str("async ")
+                }
+                string.push_str("fn(");
+                for (idx, (param_idx, evaluated)) in params.iter().enumerate() {
+                    let parameter_symbol = self.get(*param_idx).unwrap();
+                    string.push_str(&parameter_symbol.name);
+                    if let SemanticSymbolKind::Parameter { is_optional, .. } =
+                        &parameter_symbol.kind
+                    {
+                        if *is_optional {
+                            string.push('?');
+                        }
+                        string.push_str(": ");
+                        string.push_str(&self.format_evaluated_type(&evaluated));
+                    }
+                    if idx != params.len() - 1 {
+                        string.push_str(", ");
+                    }
+                }
+                string.push_str(")");
+                if !return_type.is_unknown() {
+                    string.push_str(&format!(": {}", self.format_evaluated_type(return_type)));
+                }
+            }
+            EvaluatedType::Method {
+                method,
+                trait_or_model_generic_arguments,
+                generic_arguments,
+            } => {
+                // Also keep track of model/trait generic solutions.
+                let mut generic_arguments = generic_arguments.clone();
+                generic_arguments.append(&mut trait_or_model_generic_arguments.clone());
+                self.format_function_details(method, &mut string, &generic_arguments);
+            }
+            EvaluatedType::Enum(_enum) => {
+                string.push_str("{{enum ");
+                let symbol = self.get(*_enum).unwrap();
+                string.push_str(&symbol.name);
+                string.push_str("}}");
+            }
+            EvaluatedType::Module(module) => {
+                string.push_str("{{module ");
+                let symbol = self.get(*module).unwrap();
+                string.push_str(&symbol.name);
+                string.push_str("}}");
+            }
+            EvaluatedType::Generic { base, .. } => {
+                string.push_str("{{type ");
+                let symbol = self.get(*base).unwrap();
+                string.push_str(&symbol.name);
+                string.push_str("}}");
+            }
+            EvaluatedType::OpaqueType { collaborators, .. } => {
+                for (index, collaborator) in collaborators.iter().enumerate() {
+                    let name = &self.get(*collaborator).unwrap().name;
+                    string.push_str(name);
+                    if index + 1 < collaborators.len() {
+                        string.push_str(" | ");
+                    }
+                    // Show at most 5 types + the last one.
+                    if index == 4 && collaborators.len() > 6 {
+                        let len = collaborators.len();
+                        string.push_str("... ");
+                        string.push_str(&(len - 6).to_string());
+                        string.push_str(" more ... | ");
+                        let name = &self.get(*collaborators.last().unwrap()).unwrap().name;
+                        string.push_str(name);
+                        break;
+                    }
+                }
+            }
+            EvaluatedType::Void => string.push_str("{{void}}"),
+            EvaluatedType::Never => string.push_str("never"),
+            EvaluatedType::Unknown { .. } => string.push_str("{{unknown}}"),
+        }
+        string
+    }
+
+    /// Prints out a functional evaluated type.
+    fn format_function_details(
+        &self,
+        function: &SymbolIndex,
+        string: &mut String,
+        generic_arguments: &Vec<EvaluatedType>,
+    ) {
+        let function_symbol = self.get(*function).unwrap();
+        let (is_async, generic_params, params, return_type) = match &function_symbol.kind {
+            SemanticSymbolKind::Function {
+                is_async,
+                params,
+                generic_params,
+                return_type,
+                ..
+            }
+            | SemanticSymbolKind::Method {
+                is_async,
+                params,
+                generic_params,
+                return_type,
+                ..
+            } => (*is_async, generic_params, params, return_type),
+            _ => unreachable!(),
+        };
+        if is_async {
+            string.push_str("async ");
+        }
+        string.push_str("fn(");
+        let unknown = EvaluatedType::Unknown;
+        // create matching between generic parameter and generic argument.
+        let mut solved_generics: Vec<_> = generic_params
+            .iter()
+            .enumerate()
+            .map(|(index, param)| (param, generic_arguments.get(index).unwrap_or(&unknown)))
+            .collect();
+        // if the symbol kind is method, also account for the evaluated types of its parent model or trait.
+        if let SemanticSymbolKind::Method {
+            owner_model_or_trait,
+            ..
+        } = &function_symbol.kind
+        {
+            let model_or_trait = self.get(*owner_model_or_trait).unwrap();
+            if let SemanticSymbolKind::Model { generic_params, .. }
+            | SemanticSymbolKind::Trait { generic_params, .. } = &model_or_trait.kind
+            {
+                for (index, generic_parameter) in generic_params.iter().enumerate() {
+                    solved_generics.push((
+                        generic_parameter,
+                        generic_arguments.get(index).unwrap_or(&unknown),
+                    ));
+                }
+            }
+        }
+        // format (evaluated) parameter types.
+        for (idx, param) in params.iter().enumerate() {
+            let parameter_symbol = self.get(*param).unwrap();
+            string.push_str(&parameter_symbol.name);
+            if let SemanticSymbolKind::Parameter {
+                is_optional,
+                param_type,
+            } = &parameter_symbol.kind
+            {
+                if *is_optional {
+                    string.push('?');
+                }
+                string.push_str(": ");
+                match param_type {
+                    Some(typ) => {
+                        let evaluated =
+                            typecheck::unify::evaluate(typ, self, Some(&solved_generics));
+                        string.push_str(&self.format_evaluated_type(&evaluated));
+                    }
+                    None => string.push_str("{{unknown}}"),
+                }
+            }
+            if idx != params.len() - 1 {
+                string.push_str(", ");
+            }
+        }
+        string.push(')');
+        if let Some(typ) = return_type {
+            string.push_str(": ");
+            let evaluated = typecheck::unify::evaluate(typ, self, Some(&solved_generics));
+            string.push_str(&self.format_evaluated_type(&evaluated));
+        }
+    }
 }
 
 impl EvaluatedType {
-    /// Returns `true` if the evaluated type is [`Constant`].
-    ///
-    /// [`Constant`]: EvaluatedType::Constant
-    #[must_use]
-    pub fn is_constant(&self) -> bool {
-        matches!(self, Self::Constant(..))
-    }
-
     /// Returns `true` if the evaluated type is [`Model`].
     ///
     /// [`Model`]: EvaluatedType::Model
@@ -584,6 +833,13 @@ impl EvaluatedType {
     #[must_use]
     pub fn is_model_instance(&self) -> bool {
         matches!(self, Self::ModelInstance { .. })
+    }
+    /// Returns `true` if the evaluated type is [`Void`].
+    ///
+    /// [`Void`]: EvaluatedType::Void
+    #[must_use]
+    pub fn is_void(&self) -> bool {
+        matches!(self, Self::Void)
     }
 }
 

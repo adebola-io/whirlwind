@@ -1,8 +1,10 @@
 
 use errors::{LexErrorType, ParserErrorType, TypeErrorType, ImportErrorType, ContextErrorType};
 
+use crate::SymbolWriter;
+
 /// Stringify a type error.
-pub fn stringify_type_error(error: &TypeErrorType) -> String {
+pub fn stringify_type_error(error: &TypeErrorType, _writer: SymbolWriter) -> String {
     match error {
         TypeErrorType::InvalidBinary {
             left,
@@ -50,6 +52,9 @@ pub fn stringify_type_error(error: &TypeErrorType) -> String {
         TypeErrorType::AccessingOnTrait { trait_ } => format!("{trait_} refers to a trait, thus its methods cannot be directly accessed. Consider implementing them on models instead."),
         TypeErrorType::TypeAsValue { type_ } => format!("{type_} refers to an abstract type or a type alias, but it is being used as a value here."),
         TypeErrorType::InstanceStaticMethodAccess { model_name, method_name } => format!("{method_name} refers a static function, so it cannot be called by instances of {model_name}."),
+        TypeErrorType::MismatchedReturnType { expected, found } => format!("Expected a return type of {expected} but found {found}"),
+        
+        
     }
 }
 

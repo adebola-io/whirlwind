@@ -265,9 +265,9 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
     fn use_declaration(&self, use_decl: &analyzer::TypedUseDeclaration) -> Option<HoverInfo> {
         within!(use_decl.span, self);
         for import in &use_decl.imports {
-            let symbol = self.standpoint.symbol_table.get(import.symbol_idx)?;
+            let symbol = self.standpoint.symbol_table.get(*import)?;
             if symbol.ident_span().contains(self.pos) {
-                return Some(HoverInfo::from((self.standpoint, import.symbol_idx)));
+                return Some(HoverInfo::from((self.standpoint, *import)));
             }
         }
         None
@@ -277,13 +277,13 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
         within!(var_decl.span, self);
         let mut type_already_checked = false;
         for name in &var_decl.names {
-            let symbol = self.standpoint.symbol_table.get(name.symbol_idx)?;
+            let symbol = self.standpoint.symbol_table.get(*name)?;
             // Hovering over variable name.
             if symbol.ident_span().contains(self.pos) {
                 self.message_store
                     .borrow_mut()
                     .inform("Hovering over variable name...");
-                return Some(HoverInfo::from((self.standpoint, name.symbol_idx)));
+                return Some(HoverInfo::from((self.standpoint, *name)));
             };
             if !type_already_checked {
                 let typ = match &symbol.kind {
@@ -306,19 +306,13 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
     /// Hovering over a type declaration.:
     fn type_decl(&self, type_decl: &TypedTypeDeclaration) -> Option<HoverInfo> {
         within!(type_decl.span, self);
-        let symbol = self
-            .standpoint
-            .symbol_table
-            .get(type_decl.name.symbol_idx)?;
+        let symbol = self.standpoint.symbol_table.get(type_decl.name)?;
         // Hovering over the type name.
         if symbol.ident_span().contains(self.pos) {
             self.message_store
                 .borrow_mut()
                 .inform("Hovering over a type name...");
-            return Some(HoverInfo::from((
-                self.standpoint,
-                type_decl.name.symbol_idx,
-            )));
+            return Some(HoverInfo::from((self.standpoint, type_decl.name)));
         };
         let (generic_params, value) = match &symbol.kind {
             SemanticSymbolKind::TypeName {
@@ -342,10 +336,10 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
         var_decl: &analyzer::TypedShorthandVariableDeclaration,
     ) -> Option<HoverInfo> {
         within!(var_decl.span, self);
-        let symbol = self.standpoint.symbol_table.get(var_decl.name.symbol_idx)?;
+        let symbol = self.standpoint.symbol_table.get(var_decl.name)?;
         // Hovering over a variable name.
         if symbol.ident_span().contains(self.pos) {
-            return Some(HoverInfo::from((self.standpoint, var_decl.name.symbol_idx)));
+            return Some(HoverInfo::from((self.standpoint, var_decl.name)));
         }
         // Hovering over variable type.
         let declared_type = match &symbol.kind {
@@ -361,13 +355,13 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
     /// Hovering over a function.
     fn function(&self, function: &analyzer::TypedFunctionDeclaration) -> Option<HoverInfo> {
         within!(function.span, self);
-        let symbol = self.standpoint.symbol_table.get(function.name.symbol_idx)?;
+        let symbol = self.standpoint.symbol_table.get(function.name)?;
         // Hovering over the function name.
         if symbol.ident_span().contains(self.pos) {
             self.message_store
                 .borrow_mut()
                 .inform("Hovering over a function name...");
-            return Some(HoverInfo::from((self.standpoint, function.name.symbol_idx)));
+            return Some(HoverInfo::from((self.standpoint, function.name)));
         };
         let (params, generic_params, return_type) = match &symbol.kind {
             SemanticSymbolKind::Function {
@@ -385,19 +379,13 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
     /// Hover over an enum declaration.
     fn enum_decl(&self, enum_decl: &analyzer::TypedEnumDeclaration) -> Option<HoverInfo> {
         within!(enum_decl.span, self);
-        let symbol = self
-            .standpoint
-            .symbol_table
-            .get(enum_decl.name.symbol_idx)?;
+        let symbol = self.standpoint.symbol_table.get(enum_decl.name)?;
         // Hovering over the enum name.
         if symbol.ident_span().contains(self.pos) {
             self.message_store
                 .borrow_mut()
                 .inform("Hovering over a enum name...");
-            return Some(HoverInfo::from((
-                self.standpoint,
-                enum_decl.name.symbol_idx,
-            )));
+            return Some(HoverInfo::from((self.standpoint, enum_decl.name)));
         };
         // Hovering over a generic param.
         let (generic_params, variants) = match &symbol.kind {
@@ -452,7 +440,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
     }
     /// Hovering over an identifier.
     fn identifier(&self, ident: &TypedIdent) -> Option<HoverInfo> {
-        let symbol_idx = ident.value.symbol_idx;
+        let symbol_idx = ident.value;
         let symbol = self.standpoint.symbol_table.get(symbol_idx)?;
         let references = symbol
             .references
@@ -562,10 +550,10 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
 
     fn constant(&self, constant: &analyzer::TypedConstantDeclaration) -> Option<HoverInfo> {
         within!(constant.span, self);
-        let symbol = self.standpoint.symbol_table.get(constant.name.symbol_idx)?;
+        let symbol = self.standpoint.symbol_table.get(constant.name)?;
         // Hovering over a variable name.
         if symbol.ident_span().contains(self.pos) {
-            return Some(HoverInfo::from((self.standpoint, constant.name.symbol_idx)));
+            return Some(HoverInfo::from((self.standpoint, constant.name)));
         }
         // Hovering over variable type.
         let declared_type = match &symbol.kind {
@@ -584,9 +572,9 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
     fn model_decl(&self, model: &analyzer::TypedModelDeclaration) -> Option<HoverInfo> {
         within!(model.span, self);
         // hovering over a model name.
-        let model_symbol = self.standpoint.symbol_table.get(model.name.symbol_idx)?;
+        let model_symbol = self.standpoint.symbol_table.get(model.name)?;
         if model_symbol.ident_span().contains(self.pos) {
-            return Some(HoverInfo::from((self.standpoint, model.name.symbol_idx)));
+            return Some(HoverInfo::from((self.standpoint, model.name)));
         }
         // hovering over a generic parameter.
         let (generic_params, impls) = match &model_symbol.kind {
@@ -619,10 +607,10 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
             if !property.span.contains(self.pos) {
                 continue;
             }
-            let symbol = self.standpoint.symbol_table.get(property.name.symbol_idx)?;
+            let symbol = self.standpoint.symbol_table.get(property.name)?;
             // Hovering over the property name.
             if symbol.ident_span().contains(self.pos) {
-                return Some(HoverInfo::from((self.standpoint, property.name.symbol_idx)));
+                return Some(HoverInfo::from((self.standpoint, property.name)));
             }
             match &property._type {
                 analyzer::TypedModelPropertyType::TypedAttribute => {
@@ -673,9 +661,9 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
     fn trait_declaration(&self, trait_: &analyzer::TypedTraitDeclaration) -> Option<HoverInfo> {
         within!(trait_.span, self);
         // hovering over a trait name.
-        let model_symbol = self.standpoint.symbol_table.get(trait_.name.symbol_idx)?;
+        let model_symbol = self.standpoint.symbol_table.get(trait_.name)?;
         if model_symbol.ident_span().contains(self.pos) {
-            return Some(HoverInfo::from((self.standpoint, trait_.name.symbol_idx)));
+            return Some(HoverInfo::from((self.standpoint, trait_.name)));
         }
         // hovering over a generic parameter.
         let (generic_params, impls) = match &model_symbol.kind {
@@ -700,10 +688,10 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
             if !property.span.contains(self.pos) {
                 continue;
             }
-            let symbol = self.standpoint.symbol_table.get(property.name.symbol_idx)?;
+            let symbol = self.standpoint.symbol_table.get(property.name)?;
             // Hovering over the property name.
             if symbol.ident_span().contains(self.pos) {
-                return Some(HoverInfo::from((self.standpoint, property.name.symbol_idx)));
+                return Some(HoverInfo::from((self.standpoint, property.name)));
             }
             match &property._type {
                 analyzer::TypedTraitPropertyType::Method { body } => match &symbol.kind {
