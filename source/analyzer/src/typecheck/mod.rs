@@ -430,10 +430,7 @@ mod expressions {
         for param in &f.params {
             let parameter_symbol = symboltable.get(*param).unwrap();
             let param_type = match &parameter_symbol.kind {
-                SemanticSymbolKind::Parameter {
-                    is_optional,
-                    param_type,
-                } => param_type,
+                SemanticSymbolKind::Parameter { param_type, .. } => param_type,
                 _ => unreachable!(),
             };
             match param_type {

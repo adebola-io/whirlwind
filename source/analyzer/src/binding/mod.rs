@@ -2497,6 +2497,8 @@ mod expressions {
                 }
             }
             body => {
+                let former_ambience_scope = ambience.current_scope();
+                ambience.jump_to_scope(binder.current_scope);
                 ambience.enter(ScopeType::Functional);
                 let fake_scope_id = ambience.current_scope();
                 let fakeblock = Block {
@@ -2513,8 +2515,7 @@ mod expressions {
                     literals,
                     ambience,
                 );
-                ambience.jump_to_scope(fake_scope_id);
-                ambience.leave_scope();
+                ambience.jump_to_scope(former_ambience_scope);
                 TypedFnExpr {
                     is_async: func.is_async,
                     generic_params,

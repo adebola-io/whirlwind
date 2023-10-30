@@ -647,7 +647,7 @@ impl SymbolTable {
                     }
                 }
                 string.push_str(")");
-                if !return_type.is_unknown() {
+                if !return_type.is_void() {
                     string.push_str(&format!(": {}", self.format_evaluated_type(return_type)));
                 }
             }
@@ -787,9 +787,11 @@ impl SymbolTable {
         }
         string.push(')');
         if let Some(typ) = return_type {
-            string.push_str(": ");
             let evaluated = typecheck::unify::evaluate(typ, self, Some(&solved_generics));
-            string.push_str(&self.format_evaluated_type(&evaluated));
+            if !evaluated.is_void() {
+                string.push_str(": ");
+                string.push_str(&self.format_evaluated_type(&evaluated));
+            }
         }
     }
 }

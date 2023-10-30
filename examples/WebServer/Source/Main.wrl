@@ -1,21 +1,22 @@
 module Main;
 
 use Core.Http.{ Server, Response, Request };
-use Core.Io.{ Fmt, Println };
+use Core.Io.{ Fmt, Print };
 
 public function Main() {
     app := new Server("main-app", 8080);
 
     app.Get("/hello", Greeting);
 
-    welcomeMessage := fn() {
-        message := Fmt("%s server is listening on port %d")
-            .Fill(app.name)
-            .Fill(app.port)
-            .Finish()!;
-        Println(message)
-    };
-    app.Start().Then(welcomeMessage).Run().Await()!;
+    welcomeMessage := Fmt("%s server is listening on port %d")
+        .Fill(app.name)
+        .Fill(app.port)
+        .Finish()!;
+
+    app.Start()
+      .Then(fn() Print(welcomeMessage))
+      .Run()
+      .Await()!;
 }
 
 /// Handler function for the `/hello` endpoint.
