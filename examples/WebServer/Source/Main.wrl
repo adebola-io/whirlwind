@@ -12,9 +12,8 @@ public function Main() {
 
     app.Get("/hello", Greeting);
 
-
     app.Start()
-      .Then(printMessage)
+      .Then(printMessage, "")
       .Run()
       .Await();
 }

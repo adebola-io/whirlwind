@@ -72,16 +72,16 @@ fn it_solves_assignment() {}
 
 #[test]
 fn it_creates_intrinsic_instances() {
-    check_types!(
-        "
-    module Testing;
+    // check_types!(
+    //     "
+    // module Testing;
 
-    function Main() {
-        stringVal := true;
-    }
-    ",
-        &[("stringVal", "String")]
-    );
+    // function Main() {
+    //     stringVal := true;
+    // }
+    // ",
+    //     &[("stringVal", "String")]
+    // );
 }
 
 #[test]

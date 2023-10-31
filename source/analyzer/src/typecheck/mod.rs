@@ -214,14 +214,16 @@ mod statements {
         let inference_result = if let Some(declared) = declared_type {
             match unify(&declared, &type_of_value, symboltable) {
                 Ok(eval_type) => eval_type,
-                Err(error) => {
-                    checker_ctx.add_error(
-                        TypeError {
-                            _type: error,
-                            span: shorthand_variable.span,
-                        },
-                        errors,
-                    );
+                Err(errortypes) => {
+                    for error in errortypes {
+                        checker_ctx.add_error(
+                            TypeError {
+                                _type: error,
+                                span: shorthand_variable.span,
+                            },
+                            errors,
+                        );
+                    }
                     declared
                 }
             }
@@ -285,13 +287,15 @@ mod statements {
                     }
                     // Unification failed.
                     Err(errortype) => {
-                        checker_ctx.add_error(
-                            TypeError {
-                                _type: errortype,
-                                span: retstat.span,
-                            },
-                            errors,
-                        );
+                        for errortype in errortype {
+                            checker_ctx.add_error(
+                                TypeError {
+                                    _type: errortype,
+                                    span: retstat.span,
+                                },
+                                errors,
+                            );
+                        }
                         checker_ctx.add_error(
                             TypeError {
                                 _type: TypeErrorType::MismatchedReturnType {
@@ -367,13 +371,16 @@ mod statements {
                         .map(|s| span_of_statement(s, symboltable, literals))
                 })
                 .unwrap_or_else(|| function.body.span);
-            checker_ctx.add_error(
-                TypeError {
-                    _type: typeerrortype,
-                    span,
-                },
-                errors,
-            );
+
+            for errortype in typeerrortype {
+                checker_ctx.add_error(
+                    TypeError {
+                        _type: errortype,
+                        span,
+                    },
+                    errors,
+                );
+            }
             checker_ctx.add_error(
                 TypeError {
                     _type: TypeErrorType::MismatchedReturnType {
@@ -655,20 +662,24 @@ mod expressions {
                     break;
                 }
             };
-            match unify(argument_type, parameter_type, &symboltable) {
+            match unify(parameter_type, argument_type, &symboltable) {
                 Ok(result_type) => {
                     // Solve for generics.
                     if let EvaluatedType::Generic { base } = parameter_type {
                         generic_arguments.push((*base, result_type));
                     }
                 }
-                Err(errortype) => checker_ctx.add_error(
-                    TypeError {
-                        _type: errortype,
-                        span: span_of_expr(&callexp.arguments[i], &symboltable, literals),
-                    },
-                    errors,
-                ),
+                Err(errortype) => {
+                    for errortype in errortype {
+                        checker_ctx.add_error(
+                            TypeError {
+                                _type: errortype,
+                                span: span_of_expr(&callexp.arguments[i], &symboltable, literals),
+                            },
+                            errors,
+                        )
+                    }
+                }
             }
             i += 1;
         }

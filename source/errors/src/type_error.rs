@@ -102,6 +102,12 @@ pub enum TypeErrorType {
         found: usize,
         least_required: Option<usize>,
     },
+    /// Assigning a function with an incorrect number of parameters.
+    MismatchedFunctionParams {
+        expected: usize,
+        found: usize,
+        least_required: Option<usize>,
+    },
     /// One of the instrinsic symbols is not available.
     MissingIntrinsic {
         name: String,

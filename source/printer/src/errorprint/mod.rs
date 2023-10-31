@@ -48,8 +48,12 @@ pub fn stringify_type_error(error: &TypeErrorType, _writer: SymbolWriter) -> Str
         TypeErrorType::NotCallable { caller } => format!("{caller} is not a callable type."),
         TypeErrorType::IllegalModelCall { name } => format!("'{name}' refers to a model, which can be constructed, rather than called. Did you mean to contruct it with `new {name}(...)`?"),
         TypeErrorType::MismatchedFunctionArgs { expected, found, least_required } => match least_required {
-            Some(least) => format!("This function requires at least {least} argument{}, but {found} {} given.", if *least == 1 {""} else {"s"}, if *found < 2 {"was"} else {"were"}),
-            None => format!("This function expects {expected} argument{}, but {found} {} given.", if *expected == 1 {""} else {"s"}, if *found < 2 {"was"} else {"were"}),
+            Some(least) => format!("Requires at least {least} argument{}, but {found} {} given.", if *least == 1 {""} else {"s"}, if *found < 2 {"was"} else {"were"}),
+            None => format!("Expects {expected} argument{}, but {found} {} given.", if *expected == 1 {""} else {"s"}, if *found < 2 {"was"} else {"were"}),
+        },
+        TypeErrorType::MismatchedFunctionParams { expected, found, least_required } => match least_required {
+            Some(least) => format!("Requires at least {least} parameter{}, but this function has only {found}.", if *least == 1 {""} else {"s"}),
+            None => format!("Expects {expected} parameter{}, but this function has {found}.", if *expected == 1 {""} else {"s"},),
         },
         TypeErrorType::MissingIntrinsic { name } => format!("Intrinsic symbol '{name}' could not be resolved. The core library might have been altered or installed incorrectly."),
         TypeErrorType::AsyncMismatch { async_func, non_async_func } => format!("Cannot assign '{async_func}' to '{non_async_func}', because the first function is asynchronous, while the other is not."),   

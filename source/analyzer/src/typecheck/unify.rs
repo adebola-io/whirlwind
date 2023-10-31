@@ -21,11 +21,15 @@ pub fn unify(
     left: &EvaluatedType,
     right: &EvaluatedType,
     symboltable: &SymbolTable,
-) -> Result<EvaluatedType, TypeErrorType> {
+) -> Result<EvaluatedType, Vec<TypeErrorType>> {
     // Types are directly equal.
     if left == right {
         return Ok(left.clone());
     }
+    let default_error = || TypeErrorType::MismatchedAssignment {
+        left: symboltable.format_evaluated_type(left),
+        right: symboltable.format_evaluated_type(right),
+    };
     match (left, right) {
         // Either type is generic.
         (Generic { base }, free_type) | (free_type, Generic { base }) => {
@@ -80,10 +84,13 @@ pub fn unify(
                                 .is_some()
                         });
                         if !trait_is_implemented {
-                            return Err(TypeErrorType::UnimplementedTrait {
-                                offender: symboltable.format_evaluated_type(free_type),
-                                _trait: symboltable.format_evaluated_type(&trait_evaluated),
-                            });
+                            return Err(vec![
+                                default_error(),
+                                TypeErrorType::UnimplementedTrait {
+                                    offender: symboltable.format_evaluated_type(free_type),
+                                    _trait: symboltable.format_evaluated_type(&trait_evaluated),
+                                },
+                            ]);
                         }
                     }
                     Ok(free_type.clone())
@@ -106,20 +113,26 @@ pub fn unify(
             let first_model_symbol = symboltable.get(*first).unwrap();
             let second_model_symbol = symboltable.get(*second).unwrap();
             if !std::ptr::eq(first_model_symbol, second_model_symbol) {
-                return Err(TypeErrorType::MismatchedAssignment {
-                    left: symboltable.format_evaluated_type(left),
-                    right: symboltable.format_evaluated_type(right),
-                });
+                return Err(vec![default_error()]);
             }
             if first_gen_args.len() != second_gen_args.len() {
-                return Err(TypeErrorType::MismatchedGenericArgs {
-                    name: first_model_symbol.name.clone(),
-                    expected: first_gen_args.len(),
-                    assigned: second_gen_args.len(),
-                });
+                return Err(vec![
+                    default_error(),
+                    TypeErrorType::MismatchedGenericArgs {
+                        name: first_model_symbol.name.clone(),
+                        expected: first_gen_args.len(),
+                        assigned: second_gen_args.len(),
+                    },
+                ]);
             }
             let mut final_generic_arguments =
-                unify_generic_arguments(first_gen_args, second_gen_args, symboltable)?;
+                match unify_generic_arguments(first_gen_args, second_gen_args, symboltable) {
+                    Ok(args) => args,
+                    Err(mut errors) => {
+                        errors.insert(0, default_error());
+                        return Err(errors);
+                    }
+                };
             let mut i = 0;
 
             return Ok(ModelInstance {
@@ -140,11 +153,17 @@ pub fn unify(
                 distill_function_type(right, symboltable);
 
             /// Confirm that there are no generic mismatches between the two functions.
-            let generic_args = unify_generic_arguments(
+            let generic_args = match unify_generic_arguments(
                 left_generic_arguments,
                 right_generic_arguments,
                 symboltable,
-            )?;
+            ) {
+                Ok(args) => args,
+                Err(mut errors) => {
+                    errors.insert(0, default_error());
+                    return Err(errors);
+                }
+            };
 
             let right_returns_prospect = is_prospective_type(&right_return_type, symboltable);
             let left_returns_prospect = is_prospective_type(&left_return_type, symboltable);
@@ -153,47 +172,60 @@ pub fn unify(
                 (true, true) => true,
                 (false, false) => false,
                 (true, false) if !right_returns_prospect => {
-                    return Err(TypeErrorType::AsyncMismatch {
-                        async_func: symboltable.format_evaluated_type(left),
-                        non_async_func: symboltable.format_evaluated_type(right),
-                    })
+                    return Err(vec![
+                        default_error(),
+                        TypeErrorType::AsyncMismatch {
+                            async_func: symboltable.format_evaluated_type(left),
+                            non_async_func: symboltable.format_evaluated_type(right),
+                        },
+                    ])
                 }
                 (false, true) if !left_returns_prospect => {
-                    return Err((TypeErrorType::AsyncMismatch {
-                        async_func: symboltable.format_evaluated_type(right),
-                        non_async_func: symboltable.format_evaluated_type(left),
-                    }))
+                    return Err(vec![
+                        default_error(),
+                        TypeErrorType::AsyncMismatch {
+                            async_func: symboltable.format_evaluated_type(left),
+                            non_async_func: symboltable.format_evaluated_type(right),
+                        },
+                    ])
                 }
                 _ => false,
             };
 
             /// PARAMETERS.
             if left_params.len() < right_params.len() {
-                return Err(TypeErrorType::MismatchedFunctionArgs {
-                    expected: left_params.len(),
-                    found: right_params.len(),
-                    least_required: None,
-                });
+                return Err(vec![
+                    default_error(),
+                    TypeErrorType::MismatchedFunctionParams {
+                        expected: left_params.len(),
+                        found: right_params.len(),
+                        least_required: None,
+                    },
+                ]);
             }
-            let param_results =
-                left_params
-                    .iter()
-                    .zip(right_params.iter())
-                    .map(|(left_param, right_param)| {
-                        Ok(ParameterType {
-                            name: left_param.name.clone(),
-                            is_optional: left_param.is_optional || right_param.is_optional, // todo.
-                            type_label: None,
-                            inferred_type: unify(
-                                &left_param.inferred_type,
-                                &right_param.inferred_type,
-                                symboltable,
-                            )?,
-                        })
-                    });
+            let param_results = left_params.iter().zip(right_params.iter()).map(
+                |(left_param, right_param)| -> Result<ParameterType, Vec<TypeErrorType>> {
+                    Ok(ParameterType {
+                        name: left_param.name.clone(),
+                        is_optional: left_param.is_optional || right_param.is_optional, // todo.
+                        type_label: None,
+                        inferred_type: unify(
+                            &left_param.inferred_type,
+                            &right_param.inferred_type,
+                            symboltable,
+                        )?,
+                    })
+                },
+            );
             let mut params = vec![];
             for result in param_results {
-                params.push(result?)
+                params.push(match result {
+                    Ok(param) => param,
+                    Err(mut errors) => {
+                        errors.insert(0, default_error());
+                        return Err(errors);
+                    }
+                })
             }
 
             // RETURN TYPES.
@@ -213,10 +245,10 @@ pub fn unify(
                 generic_args,
             });
         }
-        _ => Err(TypeErrorType::MismatchedAssignment {
+        _ => Err(vec![TypeErrorType::MismatchedAssignment {
             left: symboltable.format_evaluated_type(left),
             right: symboltable.format_evaluated_type(right),
-        }),
+        }]),
     }
 }
 
@@ -243,8 +275,9 @@ pub fn unify_generic_arguments(
     left_generic_arguments: &Vec<(SymbolIndex, EvaluatedType)>,
     right_generic_arguments: &Vec<(SymbolIndex, EvaluatedType)>,
     symboltable: &SymbolTable,
-) -> Result<Vec<(SymbolIndex, EvaluatedType)>, TypeErrorType> {
+) -> Result<Vec<(SymbolIndex, EvaluatedType)>, Vec<TypeErrorType>> {
     let mut generic_args = vec![];
+    let mut errors = vec![];
     let arguments_in_both_lists =
         left_generic_arguments
             .iter()
@@ -284,7 +317,13 @@ pub fn unify_generic_arguments(
 
         generic_args.push((
             *symbol_index,
-            unify(left_evaluated_type, right_evaluated_type, symboltable)?,
+            match unify(left_evaluated_type, right_evaluated_type, symboltable) {
+                Ok(arg) => arg,
+                Err(mut suberrors) => {
+                    errors.append(&mut suberrors);
+                    EvaluatedType::Unknown
+                }
+            },
         ));
     }
     for arr_idx in arguments_in_only_left {
@@ -292,6 +331,9 @@ pub fn unify_generic_arguments(
     }
     for arr_idx in arguments_in_only_right {
         generic_args.push((right_generic_arguments.get(arr_idx).unwrap()).clone());
+    }
+    if errors.len() > 0 {
+        return Err(errors);
     }
     Ok(generic_args)
 }
@@ -586,13 +628,15 @@ fn generate_generics_from_arguments(
                     match unify(&generic_param_evaluated, &argument_evaluated, symboltable) {
                         Ok(value) => value,
                         Err(error) => {
-                            add_error_if_possible(
-                                &mut error_tracker,
-                                TypeError {
-                                    _type: error,
-                                    span: generic_args[i].span(),
-                                },
-                            );
+                            for error in error {
+                                add_error_if_possible(
+                                    &mut error_tracker,
+                                    TypeError {
+                                        _type: error,
+                                        span: generic_args[i].span(),
+                                    },
+                                );
+                            }
                             Unknown
                         }
                     };
