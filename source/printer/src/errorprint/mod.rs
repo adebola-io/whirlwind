@@ -10,36 +10,26 @@ pub fn stringify_type_error(error: &TypeErrorType, _writer: SymbolWriter) -> Str
             left,
             operator,
             right,
-        } => format!(
-            "Operator '{:?}' is not defined for {left} and {right}.",
-            operator,
-        ),
-        TypeErrorType::AssignedInvalid => {
-            format!("The invalid type cannot be used as an expression.")
-        }
-        TypeErrorType::UnknownType { name } => {
-            format!("Cannot resolve type '{name}'")
-        }
-        TypeErrorType::ValueAsType => {
-            format!("This refers to a value, but it is being used as a type.")
+        } => format!("Operator '{operator:?}' is not defined for {left} and {right}."),
+        TypeErrorType::ValueAsType {name} => {
+            format!("{name} refers to a value, but it is being used as a type here.")
         }
         TypeErrorType::UnexpectedGenericArgs { name } => format!("'{name}' is not generic."),
         TypeErrorType::MismatchedGenericArgs {
             name,
             expected,
             assigned,
-        } => format!("'{name}' expects {expected} generic arguments, but got {assigned} instead."),
+        } => format!("'{name}' expects {expected} generic argument{}, but got {assigned} instead.", if *expected == 1 {""} else {"s"}),
         TypeErrorType::MismatchedAssignment { left, right } => format!(
-            "Cannot assign '{left}' to '{right}'.",
+            "Cannot assign '{right}' to '{left}'.",
         ),
         TypeErrorType::TraitAsType { name } => {
             format!("{name} refers to a trait, but it is being used as a type here.")
         }
-        
         TypeErrorType::EnumInModelPlace { name } => format!("{name} refers to an enum, but it is being used as a model here."),
         TypeErrorType::TypeInModelPlace => format!("Type aliases cannot be used in model instantiations."),
         TypeErrorType::InvalidNewExpression => format!("This expression is not constructable."),
-        TypeErrorType::ExpectedModelGotAbstract(name) => format!("Expected a model, got abstract type '{name}'"),
+        TypeErrorType::ExpectedImplementableGotSomethingElse(name) => format!("Expected a model or a trait, got '{name}'."),
         TypeErrorType::UnconstructableModel(name) => format!("'{name}' has no constructor, and therefore cannot be instantiated."),
         TypeErrorType::MismatchedModelArgs { name, expected, assigned } => {
             format!("'{name}' expects {expected} constructor arguments, but got {assigned}.")
@@ -50,10 +40,19 @@ pub fn stringify_type_error(error: &TypeErrorType, _writer: SymbolWriter) -> Str
         TypeErrorType::ConstructorNonStaticMethodAccess { model_name, method_name } => format!("{method_name} is not a static method on {model_name}, but it is being used in a static context."),
         TypeErrorType::PrivatePropertyLeak { model_name, property_name } => format!("{property_name} exists on {model_name}, but it cannot be accessed publicly."),
         TypeErrorType::AccessingOnTrait { trait_ } => format!("{trait_} refers to a trait, thus its methods cannot be directly accessed. Consider implementing them on models instead."),
-        TypeErrorType::TypeAsValue { type_ } => format!("{type_} refers to an abstract type or a type alias, but it is being used as a value here."),
+        TypeErrorType::TypeAsValue { type_ } => format!("{type_} refers to an abstract type, generic parameter or a type alias, but it is being used as a value here."),
         TypeErrorType::InstanceStaticMethodAccess { model_name, method_name } => format!("{method_name} refers a static function, so it cannot be called by instances of {model_name}."),
-        TypeErrorType::MismatchedReturnType { expected, found } => format!("Expected a return type of {expected} but found {found}"),
-        
+        TypeErrorType::MismatchedReturnType { expected, found } => format!("Expected a return type of {expected} but found {found}."),
+        TypeErrorType::NoSuchProperty { base_type, property } => format!("Property '{property}' does not exist on a value of type '{base_type}'."),
+        TypeErrorType::UnimplementedTrait { offender, _trait } => format!("Assignment failed because the type '{offender}' does not implement '{_trait}'."),
+        TypeErrorType::NotCallable { caller } => format!("{caller} is not a callable type."),
+        TypeErrorType::IllegalModelCall { name } => format!("'{name}' refers to a model, which can be constructed, rather than called. Did you mean to contruct it with `new {name}(...)`?"),
+        TypeErrorType::MismatchedFunctionArgs { expected, found, least_required } => match least_required {
+            Some(least) => format!("This function requires at least {least} argument{}, but {found} {} given.", if *least == 1 {""} else {"s"}, if *found < 2 {"was"} else {"were"}),
+            None => format!("This function expects {expected} argument{}, but {found} {} given.", if *expected == 1 {""} else {"s"}, if *found < 2 {"was"} else {"were"}),
+        },
+        TypeErrorType::MissingIntrinsic { name } => format!("Intrinsic symbol '{name}' could not be resolved. The core library might have been altered or installed incorrectly."),
+        TypeErrorType::AsyncMismatch { async_func, non_async_func } => format!("Cannot assign '{async_func}' to '{non_async_func}', because the first function is asynchronous, while the other is not."),   
         
     }
 }

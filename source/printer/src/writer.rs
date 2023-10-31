@@ -132,7 +132,7 @@ impl<'a> SymbolWriter<'a> {
                     }
                 } else {
                     // could not infer type
-                    string.push_str("{{unknown}}")
+                    string.push_str("{unknown}")
                 }
             }
             SemanticSymbolKind::Constant {
@@ -271,7 +271,7 @@ impl<'a> SymbolWriter<'a> {
             }
             SemanticSymbolKind::UndeclaredValue => {
                 string.push_str(&symbol.name);
-                string.push_str(": {{unknown}}");
+                string.push_str(": {unknown}");
             }
             SemanticSymbolKind::Import { is_public, source } => match source {
                 Some(source) => return self.print_symbol_with_idx(*source),
@@ -281,7 +281,7 @@ impl<'a> SymbolWriter<'a> {
                     }
                     string.push_str("use ");
                     string.push_str(&symbol.name);
-                    string.push_str(": {{unknown}}");
+                    string.push_str(": {unknown}");
                 }
             },
             SemanticSymbolKind::Property { resolved } => match resolved {
@@ -291,7 +291,7 @@ impl<'a> SymbolWriter<'a> {
                 _ => {
                     string.push_str("(property) ");
                     string.push_str(&symbol.name);
-                    string.push_str(": {{unknown}}")
+                    string.push_str(": {unknown}")
                 }
             },
         };

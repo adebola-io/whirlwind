@@ -16,14 +16,10 @@ pub enum TypeErrorType {
         operator: BinOperator,
         right: String,
     },
-    /// Annotating with `: invalid`.
-    AssignedInvalid,
-    /// Using an undeclared type.
-    UnknownType {
+    /// Using a variable name in a type annotation.
+    ValueAsType {
         name: String,
     },
-    /// Using a variable name in a type annotation.
-    ValueAsType,
     /// Giving generic arguments to a type that is not generic.
     UnexpectedGenericArgs {
         name: String,
@@ -49,7 +45,7 @@ pub enum TypeErrorType {
     },
     TypeInModelPlace,
     InvalidNewExpression,
-    ExpectedModelGotAbstract(String),
+    ExpectedImplementableGotSomethingElse(String),
     UnconstructableModel(String),
     MismatchedModelArgs {
         name: String,
@@ -84,13 +80,37 @@ pub enum TypeErrorType {
         expected: String,
         found: String,
     },
-}
-
-pub fn assigned_invalid(span: Span) -> TypeError {
-    TypeError {
-        _type: TypeErrorType::AssignedInvalid,
-        span,
-    }
+    NoSuchProperty {
+        base_type: String,
+        property: String,
+    },
+    UnimplementedTrait {
+        offender: String,
+        _trait: String,
+    },
+    /// Calling a non-callable type.
+    NotCallable {
+        caller: String,
+    },
+    /// Calling a model.
+    IllegalModelCall {
+        name: String,
+    },
+    /// Calling a function with an incorrect number of arguments.
+    MismatchedFunctionArgs {
+        expected: usize,
+        found: usize,
+        least_required: Option<usize>,
+    },
+    /// One of the instrinsic symbols is not available.
+    MissingIntrinsic {
+        name: String,
+    },
+    /// One of the functions tabled for unification is not async, while the other is.
+    AsyncMismatch {
+        async_func: String,
+        non_async_func: String,
+    },
 }
 
 pub fn invalid_binary(left: String, operator: BinOperator, right: String, span: Span) -> TypeError {
@@ -104,16 +124,9 @@ pub fn invalid_binary(left: String, operator: BinOperator, right: String, span: 
     }
 }
 
-pub fn unknown_type(name: String, span: Span) -> TypeError {
+pub fn value_as_type(name: String, span: Span) -> TypeError {
     TypeError {
-        _type: TypeErrorType::UnknownType { name },
-        span,
-    }
-}
-
-pub fn value_as_type(span: Span) -> TypeError {
-    TypeError {
-        _type: TypeErrorType::ValueAsType,
+        _type: TypeErrorType::ValueAsType { name },
         span,
     }
 }
@@ -169,9 +182,9 @@ pub fn type_in_model_place(span: ast::Span) -> TypeError {
     }
 }
 
-pub fn expected_model_got_abstract(name: String, span: Span) -> TypeError {
+pub fn expected_implementable(name: String, span: Span) -> TypeError {
     TypeError {
-        _type: TypeErrorType::ExpectedModelGotAbstract(name),
+        _type: TypeErrorType::ExpectedImplementableGotSomethingElse(name),
         span,
     }
 }

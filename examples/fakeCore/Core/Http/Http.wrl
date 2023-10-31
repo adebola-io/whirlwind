@@ -1,11 +1,28 @@
 module Http;
 
+use Super.Prelude.String;
+use Super.Prelude.Outcome;
+use Super.Prelude.Prospect;
+use Super.Primitives.Ops.Addition;
+
 model Endpoints {
 
 }
 
 public model Server {
     public var endpoints: Endpoints;
+
+    /// Registers a `GET` route.
+    public function Get(
+        route: String, 
+        handler: fn(request: Request): Prospect<Outcome<Response, ServerError>>
+    ) {
+        this.endpoints.register("GET", route, handler);
+    }
+
+    public function Post(route: String, handler: fn(): Prospect<Outcome<Response>>) {
+
+    }
 }
 
 public model Response {
@@ -16,5 +33,9 @@ public model Response {
 }
 
 public model Request {
+
+}
+
+public model ServerError {
 
 }

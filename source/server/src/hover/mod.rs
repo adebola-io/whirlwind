@@ -435,7 +435,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
         within!(span, self);
         match _this.model_or_trait {
             Some(meaning) => Some(HoverInfo::from((self.standpoint, meaning))),
-            None => Some(HoverInfo::from_str("this: {{unknown}}")),
+            None => Some(HoverInfo::from_str("this: {nknown}")),
         }
     }
     /// Hovering over an identifier.
@@ -825,7 +825,7 @@ impl HoverFinder<'_> {
                 if let Some(meaning) = meaning {
                     return Some(HoverInfo::from((self.standpoint, *meaning)));
                 } else {
-                    return Some(HoverInfo::from_str("This : {{unknown}}"));
+                    return Some(HoverInfo::from_str("This: {unknown}"));
                 }
             }
             IntermediateType::BorrowedType { value, span } => {

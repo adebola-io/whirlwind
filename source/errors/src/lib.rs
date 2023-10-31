@@ -240,3 +240,40 @@ pub fn mismatched_file_and_module_name(
         span: Some(module_ident_span),
     }
 }
+
+pub fn not_callable(caller: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::NotCallable { caller },
+        span,
+    }
+}
+
+pub fn illegal_model_call(name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::IllegalModelCall { name },
+        span,
+    }
+}
+
+pub fn mismatched_function_args(
+    span: ast::Span,
+    expected: usize,
+    found: usize,
+    least_required: Option<usize>,
+) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::MismatchedFunctionArgs {
+            expected,
+            found,
+            least_required,
+        },
+        span,
+    }
+}
+
+pub fn missing_intrinsic(name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::MissingIntrinsic { name },
+        span,
+    }
+}

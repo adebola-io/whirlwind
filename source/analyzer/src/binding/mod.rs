@@ -3,7 +3,7 @@ mod typed_module;
 mod typed_statement;
 
 use crate::{
-    EvaluatedType, IntermediateType, Literal, LiteralIndex, Module, PathIndex, ProgramError,
+    CurrentModuleType, IntermediateType, Literal, LiteralIndex, Module, PathIndex, ProgramError,
     ProgramErrorType, SemanticSymbol, SemanticSymbolKind, SymbolIndex, SymbolReferenceList,
     SymbolTable,
 };
@@ -47,6 +47,8 @@ pub struct Binder {
     corelib_symbol_idx: Option<SymbolIndex>,
     // The index of the core library prelude module, if it is allowed.
     prelude_symbol_idx: Option<SymbolIndex>,
+    // The nature of the module, whether intrinsic or otherwise.
+    current_module_type: CurrentModuleType,
 }
 
 pub struct TemporaryParameterDetails {
@@ -78,11 +80,18 @@ pub fn bind(
     corelib_symbol_idx: Option<SymbolIndex>,
     // The symbol index of the prelude module in the core library.
     prelude_symbol_idx: Option<SymbolIndex>,
+    // The nature of the module being bound.
+    current_module_type: CurrentModuleType,
 ) -> Option<TypedModule> {
-    let mut binder = Binder::new(path_idx, corelib_symbol_idx, prelude_symbol_idx);
     bind_utils::collect_prior_errors(path_idx, &mut module, errors);
-    let line_lengths = module._line_lens;
     let path_buf = module.module_path?;
+    let mut binder = Binder::new(
+        path_idx,
+        current_module_type,
+        corelib_symbol_idx,
+        prelude_symbol_idx,
+    );
+    let line_lengths = module._line_lens;
 
     let mut statements = vec![];
     let module_statements = take(&mut module.statements);
@@ -139,7 +148,7 @@ pub fn bind(
 mod bind_utils {
     use ast::VariablePattern;
 
-    use crate::VariablePatternForm;
+    use crate::{EvaluatedType, VariablePatternForm};
 
     use super::*;
 
@@ -273,7 +282,7 @@ mod bind_utils {
         entry: &ScopeEntry,
         origin_span: Span,
     ) -> SymbolIndex {
-        match entry {
+        let index = match entry {
             ScopeEntry::Function(function) => {
                 let symbol = SemanticSymbol::from_function(function, binder.path, origin_span);
                 let index = symbol_table.add(symbol);
@@ -483,7 +492,32 @@ mod bind_utils {
             }
             ScopeEntry::LoopVariable(_) => todo!(),
             ScopeEntry::LoopLabel(_) => todo!(),
-        }
+        };
+        // Account for intrinsic types.
+        *(match binder.current_module_type {
+            CurrentModuleType::String if entry.name() == "String" && entry.is_public() => {
+                &mut symbol_table.string_symbol
+            }
+            CurrentModuleType::Array if entry.name() == "Array" && entry.is_public() => {
+                &mut symbol_table.array_symbol
+            }
+            CurrentModuleType::Bool if entry.name() == "Bool" && entry.is_public() => {
+                &mut symbol_table.bool_symbol
+            }
+            CurrentModuleType::Async if entry.name() == "Prospect" && entry.is_public() => {
+                &mut symbol_table.prospect_symbol
+            }
+            // CurrentModuleType::Numeric => todo!(),
+            // CurrentModuleType::Internal => todo!(),
+            // CurrentModuleType::Ops => todo!(),
+            // CurrentModuleType::Traits => todo!(),
+            // CurrentModuleType::Iteratable => todo!(),
+            // CurrentModuleType::Range => todo!(),
+            // CurrentModuleType::Default => todo!(),
+            // CurrentModuleType::Maybe => todo!(),
+            _ => return index,
+        }) = Some(index);
+        return index;
     }
 
     /// Finds an already existing symbol or creates a new one.
@@ -1213,7 +1247,6 @@ mod statements {
                         errors,
                         ambience,
                     ),
-                    inferred_type: EvaluatedType::Unknown,
                     owner_model: owner,
                     property_index: index,
                 },
@@ -1226,6 +1259,14 @@ mod statements {
                 origin_span: span,
             };
             let index = symbol_table.add(symbol);
+            // Add it to the list of attributes in the parent model as well.
+            if let Some(SemanticSymbol {
+                kind: SemanticSymbolKind::Model { attributes, .. },
+                ..
+            }) = symbol_table.get_mut(owner)
+            {
+                attributes.push(index);
+            }
             binder.known_values.insert(attribute.name.span, index);
             index
         };
@@ -1316,6 +1357,14 @@ mod statements {
                 origin_span: span,
             };
             let index = symbol_table.add(symbol);
+            // Add it to the list of methods in the parent model as well.
+            if let Some(SemanticSymbol {
+                kind: SemanticSymbolKind::Model { methods, .. },
+                ..
+            }) = symbol_table.get_mut(owner)
+            {
+                methods.push(index);
+            }
             binder.known_values.insert(method.name.span, index);
             index
         };
@@ -2895,7 +2944,7 @@ mod literals {
 
 /// Types
 mod types {
-    use crate::ParameterType;
+    use crate::{EvaluatedType, ParameterType};
 
     use super::*;
 
@@ -2927,6 +2976,7 @@ mod types {
                         type_label: param.type_label.as_ref().map(|type_exp| {
                             bind_type_expression(type_exp, binder, symbol_table, errors, ambience)
                         }),
+                        inferred_type: EvaluatedType::Unknown,
                     };
                     params.push(parametertype);
                 }
@@ -3142,6 +3192,7 @@ impl Binder {
     /// Create new binder for a module path.
     pub fn new(
         path: PathIndex,
+        current_module_type: CurrentModuleType,
         corelib_symbol_idx: Option<SymbolIndex>,
         prelude_symbol_idx: Option<SymbolIndex>,
     ) -> Self {
@@ -3157,6 +3208,7 @@ impl Binder {
             module_decl_span: None,
             corelib_symbol_idx,
             prelude_symbol_idx,
+            current_module_type,
         }
     }
 }

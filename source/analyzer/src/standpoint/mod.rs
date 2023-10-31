@@ -1,8 +1,11 @@
+#[cfg(test)]
+mod tests;
+
 use super::{symbols::*, ProgramError};
 use crate::{
-    bind, typecheck, Module, ModuleMap, PathIndex,
+    bind, typecheck, CurrentModuleType, IntrinsicPaths, Module, ModuleMap, PathIndex,
     ProgramErrorType::{self, Importing},
-    TypedModule, PRELUDE_PATH,
+    TypedModule, BASE_CORE_PATH, PRELUDE_PATH,
 };
 use ast::UseTarget;
 use std::{
@@ -31,6 +34,8 @@ pub struct Standpoint {
     pub prelude_path: Option<PathIndex>,
     // pub warnings: Vec<Warnings>,
 }
+
+impl IntrinsicPaths for Standpoint {}
 
 impl Standpoint {
     /// Creates a new standpoint.
@@ -374,11 +379,6 @@ impl Standpoint {
         let module_file_name = module_path.file_stem()?.to_str()?;
         let module_directory = get_parent_dir(&module_path)?;
 
-        // // Block file duplication.
-        // if self.contains_file(&module_path) {
-        //     return self.module_map.map_path_to_index(&module_path);
-        // }
-
         let directories = &mut self.directories;
         let module_ident_span = module
             .ambience
@@ -422,6 +422,32 @@ impl Standpoint {
             .prelude_path
             .and_then(|path| self.module_map.get(path))
             .map(|t_module| t_module.symbol_idx);
+
+        // intrinsic paths.
+        let current_module_type = if let Ok(path) = module_path.strip_prefix(BASE_CORE_PATH) {
+            if let Some(path_str) = path.to_str() {
+                match path_str {
+                    Self::ARRAY => CurrentModuleType::Array,
+                    Self::ASYNC => CurrentModuleType::Async,
+                    Self::BOOL => CurrentModuleType::Bool,
+                    Self::NUMERIC => CurrentModuleType::Numeric,
+                    Self::INTERNAL => CurrentModuleType::Internal,
+                    Self::ITERATABLE => CurrentModuleType::Iteratable,
+                    Self::OPS => CurrentModuleType::Ops,
+                    Self::TRAITS => CurrentModuleType::Traits,
+                    Self::RANGE => CurrentModuleType::Range,
+                    Self::STRING => CurrentModuleType::String,
+                    Self::DEFAULT => CurrentModuleType::Default,
+                    Self::MAYBE => CurrentModuleType::Maybe,
+                    _ => CurrentModuleType::Regular,
+                }
+            } else {
+                CurrentModuleType::Regular
+            }
+        } else {
+            CurrentModuleType::Regular
+        };
+
         let typed_module = bind(
             module_name.clone(),
             module,
@@ -431,6 +457,7 @@ impl Standpoint {
             &mut self.literals,
             corelib_symbol_idx,
             prelude_symbol_idx,
+            current_module_type,
         )?;
 
         // Module names and file names must be equal.
@@ -451,7 +478,6 @@ impl Standpoint {
         // Get just added module and resolve imports.
         if self.auto_update {
             self.resolve_imports_of(path_idx).unwrap();
-            self.check_module(path_idx).unwrap()
         }
 
         // Mark the prelude module.
@@ -524,14 +550,20 @@ impl Standpoint {
         Some(stale_module)
     }
 
+    /// Refreshes all import resolutions in the entire standpoint.
     pub fn refresh_imports(&mut self) {
         let all_paths = self
             .module_map
             .paths()
             .map(|(idx, _)| idx)
             .collect::<Vec<_>>();
-        for idx in &all_paths {
-            self.resolve_imports_of(*idx).unwrap();
+        for idx in all_paths {
+            // Remove all stale errors.
+            self.errors.retain(|error| {
+                !(error.offending_file == idx
+                    && (matches!(error.error_type, ProgramErrorType::Importing(_))))
+            });
+            self.resolve_imports_of(idx).unwrap();
         }
     }
 
@@ -564,8 +596,9 @@ impl Standpoint {
         // Update all modules.
         if should_recompute_imports && self.auto_update {
             self.refresh_imports();
+            self.check_all_modules();
         }
-        Some(())
+        self.check_module(path_idx)
     }
 
     /// Recursively search for and add a module in a directory to the module map.
@@ -639,6 +672,11 @@ impl Standpoint {
     /// Runs the typechecker on a module.
     pub fn check_module(&mut self, module_path_idx: PathIndex) -> Option<()> {
         let module = self.module_map.get_mut(module_path_idx)?;
+        // Remove all stale errors.
+        self.errors.retain(|error| {
+            !(error.offending_file == module_path_idx
+                && (matches!(error.error_type, ProgramErrorType::Typing(_))))
+        });
         typecheck(
             module,
             &mut self.symbol_table,
@@ -647,445 +685,16 @@ impl Standpoint {
         );
         Some(())
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use std::path::PathBuf;
-
-    // todo: use virtual fs.
-    use crate::{Module, PathIndex, Standpoint};
-
-    #[test]
-    fn bind_variables_and_constants() {
-        let text = "
-            module Test; 
-
-            public function Main() {
-                greeting := \"Say Hello\";
-                const CONSTANT: Number = 9090;
-            }
-        ";
-        let mut module = Module::from_text(format!("{text}"));
-        module.module_path = Some(PathBuf::from("testing://Test.wrl"));
-        let standpoint = Standpoint::build_from_module(module, false).unwrap();
-        assert!(standpoint.errors.len() == 1);
-        assert!(standpoint
-            .symbol_table
-            .find(|symbol| symbol.name == "greeting")
-            .is_some());
-        assert!(standpoint
-            .symbol_table
-            .find(|symbol| symbol.name == "CONSTANT")
-            .is_some());
-        println!(
-            "{:#?}",
-            standpoint
-                .symbol_table
-                .in_module(PathIndex(0))
-                .map(|symbol| (&symbol.name, &symbol.kind, &symbol.references))
-                .collect::<Vec<_>>()
-        );
-        println!(
-            "ERRORS: \n\n\n{:#?}",
-            standpoint
-                .errors
-                .iter()
-                .filter(|error| error.offending_file == PathIndex(0))
-                .collect::<Vec<_>>()
-        );
-    }
-
-    #[test]
-    fn bind_call_expression() {
-        let text = "
-            module Test;
-
-            public function Main() {
-                greeting := \"Say Hello\";
-                Println(greeting);
-            }
-        ";
-        let mut module = Module::from_text(format!("{text}"));
-        module.module_path = Some(PathBuf::from("testing://Test.wrl"));
-        let standpoint = Standpoint::build_from_module(module, false).unwrap();
-        assert!(standpoint.errors.len() == 1);
-        assert!(standpoint
-            .symbol_table
-            .find(|symbol| symbol.name == "Println")
-            .is_some());
-        assert!(standpoint
-            .symbol_table
-            .find(|symbol| symbol.name == "greeting")
-            .is_some());
-    }
-
-    #[test]
-    fn bind_models() {
-        let text = "
-            module Test;
-
-            public model Car {
-                var make: String,
-                var year: UnsignedInt,
-                public function Honk() {
-
-                }
-                public function [Vehicle.Start]<U>() {
-
-                }
-            }
-        ";
-        let mut module = Module::from_text(format!("{text}"));
-        module.module_path = Some(PathBuf::from("testing://Test.wrl"));
-        let standpoint = Standpoint::build_from_module(module, false).unwrap();
-        assert!(standpoint
-            .symbol_table
-            .find(|symbol| symbol.name == "Car")
-            .is_some());
-        assert!(standpoint
-            .symbol_table
-            .find(|symbol| symbol.name == "Honk")
-            .is_some());
-        println!("{:#?}", standpoint.symbol_table);
-    }
-
-    #[test]
-    fn bind_traits() {
-        let text = "
-            module Test;
-
-            public trait Vehicle {
-                public function Start(): This;
-            }
-        ";
-        let mut module = Module::from_text(format!("{text}"));
-        module.module_path = Some(PathBuf::from("testing://Test.wrl"));
-        let standpoint = Standpoint::build_from_module(module, false).unwrap();
-        assert!(standpoint
-            .symbol_table
-            .find(|symbol| symbol.name == "Vehicle")
-            .is_some());
-        assert!(standpoint
-            .symbol_table
-            .find(|symbol| symbol.name == "Start")
-            .is_some());
-        println!("{:#?}", standpoint.symbol_table);
-    }
-
-    #[test]
-    fn bind_this() {
-        let text = "
-            module Test;
-
-            public model Unit {
-                public function Clone(): This {
-                    return this;
-                }
-            }
-        ";
-        let mut module = Module::from_text(format!("{text}"));
-        module.module_path = Some(PathBuf::from("testing://Test.wrl"));
-        let standpoint = Standpoint::build_from_module(module, false).unwrap();
-        assert!(standpoint.errors.len() == 0);
-    }
-
-    #[test]
-    fn test_enum_type() {
-        let text = "
-            module Test;
-
-            public enum Color {
-                Red,
-                Orange(Color),
-                Green
-            }
-        ";
-        let mut module = Module::from_text(format!("{text}"));
-        module.module_path = Some(PathBuf::from("testing://Test.wrl"));
-        let standpoint = Standpoint::build_from_module(module, false).unwrap();
-        println!(
-            "{:#?}",
-            standpoint
-                .symbol_table
-                .in_module(PathIndex(0))
-                .map(|symbol| (&symbol.name, &symbol.kind, &symbol.references))
-                .collect::<Vec<_>>()
-        );
-        println!(
-            "ERRORS: \n\n\n{:#?}",
-            standpoint
-                .errors
-                .iter()
-                .filter(|error| error.offending_file == PathIndex(0))
-                .collect::<Vec<_>>()
-        );
-        assert!(standpoint.errors.len() == 0);
-    }
-
-    #[test]
-    fn test_fn_expr() {
-        let text = "
-            module Test;
-
-            function Main() {
-                square := fn(a) a * 2;
-            }
-        ";
-        let mut module = Module::from_text(format!("{text}"));
-        module.module_path = Some(PathBuf::from("testing://Test.wrl"));
-        let standpoint = Standpoint::build_from_module(module, false).unwrap();
-        println!(
-            "{:#?}",
-            standpoint
-                .symbol_table
-                .in_module(PathIndex(0))
-                .map(|symbol| (&symbol.name, &symbol.kind, &symbol.references))
-                .collect::<Vec<_>>()
-        );
-        println!(
-            "ERRORS: \n\n\n{:#?}",
-            standpoint
-                .errors
-                .iter()
-                .filter(|error| error.offending_file == PathIndex(0))
-                .collect::<Vec<_>>()
-        );
-        assert!(standpoint.errors.len() == 0);
-    }
-
-    #[test]
-    fn test_use_import() {
-        let text = "
-            module Test;
-
-            use Core.Io.Println;
-
-            function Main() {
-                Println(\"Hello, world!\");
-            }
-        ";
-        let mut module = Module::from_text(format!("{text}"));
-        module.module_path = Some(PathBuf::from("testing://Test.wrl"));
-        let standpoint = Standpoint::build_from_module(module, false).unwrap();
-        assert!(standpoint
-            .symbol_table
-            .find(|symbol| symbol.name == "Println")
-            .is_some());
-        assert!(standpoint
-            .symbol_table
-            .find(|symbol| symbol.name == "Main")
-            .is_some());
-        assert!(standpoint.errors.len() == 0);
-        println!(
-            "{:#?}",
-            standpoint
-                .symbol_table
-                .in_module(PathIndex(0))
-                .map(|symbol| (&symbol.name, &symbol.kind, &symbol.references))
-                .collect::<Vec<_>>()
-        );
-    }
-
-    #[test]
-    fn test_function() {
-        let text = "
-        module Main;
-
-function Main() {
-}
-
-/// Adds two numbers together.
-function Add(a: Int, b: Int): Int {
-    return a + b;
-}
-
-        ";
-
-        let mut module = Module::from_text(format!("{text}"));
-        module.module_path = Some(PathBuf::from("testing://Test.wrl"));
-        let standpoint = Standpoint::build_from_module(module, true).unwrap();
-        println!(
-            "{:#?}",
-            standpoint
-                .symbol_table
-                .in_module(PathIndex(0))
-                .collect::<Vec<_>>()
-        );
-    }
-
-    #[test]
-    fn show_imports() {
-        let text = "
-        module Test;
-
-        use Utils.Sum;
-
-        public function Main() {
-            return Sum(1, 2);
+    /// Typecheck all modules in the standpoint.
+    pub fn check_all_modules(&mut self) {
+        let all_paths = self
+            .module_map
+            .paths()
+            .map(|(idx, _)| idx)
+            .collect::<Vec<_>>();
+        for idx in all_paths {
+            self.check_module(idx).unwrap();
         }
-        ";
-
-        let mut module = Module::from_text(format!("{text}"));
-        module.module_path = Some(PathBuf::from("testing://Test.wrl"));
-        let standpoint = Standpoint::build_from_module(module, true).unwrap();
-        println!(
-            "{:#?}",
-            standpoint
-                .symbol_table
-                .in_module(PathIndex(0))
-                .collect::<Vec<_>>()
-        );
-        println!("{:#?}", standpoint.errors);
-    }
-
-    #[test]
-    fn resolve_single_module_imports() {
-        let module0_text = "
-    module Main;
-
-    use Test.Utils.Add;
-
-    
-        ";
-        let module1_text = "
-    module Utils;
-
-    type Int = Int;
-
-    public function Add(a: Int, b: Int): Int {
-        return a + b;
-    }
-    ";
-
-        let module2_text = "
-    module Test;
-
-    public use Utils;
-    public use Utils.Add;
-
-    public function Main() {
-        return Add(1, 2);
-    }
-    ";
-
-        let mut main_module = Module::from_text(format!("{module0_text}"));
-        main_module.module_path = Some(PathBuf::from("testing://Main.wrl"));
-        let mut utils_module = Module::from_text(format!("{module1_text}"));
-        utils_module.module_path = Some(PathBuf::from("testing://Utils.wrl"));
-        let mut test_module = Module::from_text(format!("{module2_text}"));
-        test_module.module_path = Some(PathBuf::from("testing://Test.wrl"));
-
-        let mut standpoint = Standpoint::build_from_module(utils_module, false).unwrap();
-        standpoint.auto_update = true;
-        standpoint.add_module(test_module);
-        standpoint.add_module(main_module);
-
-        println!(
-            "{:#?}",
-            standpoint
-                .symbol_table
-                .symbols()
-                .map(|(_, symbol)| symbol)
-                .collect::<Vec<_>>()
-        );
-        println!("{:#?}", standpoint.errors);
-        assert!(standpoint.errors.len() == 0);
-    }
-
-    #[test]
-    fn resolve_mutliple_module_imports() {
-        let module0_text = "
-    module Main;
-
-    use Test.{Utils.Add, Divide};
-
-    
-        ";
-        let module1_text = "
-    module Utils;
-
-    type Int = Int;
-
-    public function Add(a: Int, b: Int): Int {
-        return a + b;
-    }
-
-    public function Divide(a: Int, b: Int): Int {
-        return a / b;
-    }
-    ";
-
-        let module2_text = "
-    module Test;
-
-    public use Utils;
-    public use Utils.Add;
-    public use Utils.Divide;
-
-    public type Function = fn (a: Function): Function;
-
-    public function Main() {
-        return Add(1, 2);
-    }
-    ";
-
-        let mut main_module = Module::from_text(format!("{module0_text}"));
-        main_module.module_path = Some(PathBuf::from("testing://Main.wrl"));
-        let mut utils_module = Module::from_text(format!("{module1_text}"));
-        utils_module.module_path = Some(PathBuf::from("testing://Utils.wrl"));
-        let mut test_module = Module::from_text(format!("{module2_text}"));
-        test_module.module_path = Some(PathBuf::from("testing://Test.wrl"));
-
-        let mut standpoint = Standpoint::build_from_module(utils_module, false).unwrap();
-        standpoint.auto_update = true;
-        standpoint.add_module(test_module);
-        standpoint.add_module(main_module);
-
-        println!(
-            "{:?}",
-            standpoint
-                .symbol_table
-                .symbols()
-                .map(|(_, symbol)| (&symbol.name, &symbol.references, &symbol.kind))
-                .collect::<Vec<_>>()
-        );
-        println!("{:#?}", standpoint.errors);
-        assert!(standpoint.errors.len() == 0);
-    }
-
-    #[test]
-    fn test_duplication() {
-        let text = "
-            module Test;
-
-            public type Maybe = Maybe;
-
-            public model Maybe<T> implements Assertable<T> + Try<T> {}
-
-        ";
-        let mut module = Module::from_text(format!("{text}"));
-        module.module_path = Some(PathBuf::from("testing://Test.wrl"));
-        let standpoint = Standpoint::build_from_module(module, false).unwrap();
-        println!("{:#?}", standpoint);
-    }
-
-    #[test]
-    fn test_variable_binding() {
-        let text = "
-            module Test;
-
-            type String = String;
-
-            public function Main() {
-                var { x, y }: Position;
-                var name: String = \"Sefunmi\";
-                var [arrayItem1, arrayItem2] = new Array().FillWith(0, 3);
-            }
-        ";
-        let mut module = Module::from_text(format!("{text}"));
-        module.module_path = Some(PathBuf::from("testing:://Test.wrl"));
-        let standpoint = Standpoint::build_from_module(module, false).unwrap();
-        println!("{:#?}", standpoint.symbol_table);
     }
 }

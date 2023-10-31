@@ -635,9 +635,10 @@ impl DocumentManager {
         let mut was_updated = self.was_updated.write().unwrap();
         let mut diagnostic_report = self.diagnostic_report.write().unwrap();
         if *was_updated {
-            standpoints
-                .iter_mut()
-                .for_each(|standpoint| standpoint.refresh_imports());
+            standpoints.iter_mut().for_each(|standpoint| {
+                standpoint.refresh_imports();
+                standpoint.check_all_modules();
+            });
             *diagnostic_report =
                 WorkspaceDiagnosticReportResult::Report(WorkspaceDiagnosticReport {
                     items: match standpoints.first() {

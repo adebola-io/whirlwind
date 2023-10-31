@@ -14,6 +14,20 @@ impl ProgramError {
             error_type: ProgramErrorType::Context(error),
         }
     }
+
+    pub fn typing(
+        offending_file: PathIndex,
+        errortype: errors::TypeErrorType,
+        span: ast::Span,
+    ) -> ProgramError {
+        ProgramError {
+            offending_file,
+            error_type: ProgramErrorType::Typing(TypeError {
+                _type: errortype,
+                span,
+            }),
+        }
+    }
 }
 
 #[derive(PartialEq, Debug)]

@@ -3,7 +3,7 @@ module Io;
 
 use Super.Primitives.String;
 
-public function Fmt(templateString: String): FormatObject {
+public function Format(templateString: String): FormatObject {
     new FormatObject(templateString)
 }
 
