@@ -2,6 +2,7 @@ module Http;
 
 use Super.Prelude.String;
 use Super.Prelude.Outcome;
+use Super.Prelude.UnsignedInt;
 use Super.Prelude.Prospect;
 use Super.Prelude.Todo;
 use Super.Primitives.Ops.Addition;
@@ -12,6 +13,10 @@ model Endpoints {
 
 public model Server {
     public var endpoints: Endpoints;
+
+    new(name: String, port: UnsignedInt) {
+ 
+    }
 
     /// Registers a `GET` route.
     public function Get(

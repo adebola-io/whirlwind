@@ -3,12 +3,15 @@ module Io;
 
 use Super.Primitives.String;
 
-public function Format(templateString: String): FormatObject {
-    new FormatObject(templateString)
+/// Creates a new format object.
+public function Format(template: String): FormatObject {
+    new FormatObject(template)
 }
 
 public model FormatObject {
-    
+    new(template: String) {
+        
+    }
 }
 
 public function Println(message: String) {

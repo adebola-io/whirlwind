@@ -62,6 +62,16 @@ pub fn arrify(typ: EvaluatedType, symboltable: &SymbolTable) -> EvaluatedType {
     }
 }
 
+/// Returns true if a type is evaluated to an array.
+pub fn is_array(typ: &EvaluatedType, symboltable: &SymbolTable) -> bool {
+    match symboltable.array_symbol {
+        Some(array_symbol) => {
+            matches!(typ, EvaluatedType::ModelInstance { model,.. } if *model == array_symbol)
+        }
+        None => false,
+    }
+}
+
 /// Coerce generics in a type according to a generic list.
 pub fn coerce(typ: EvaluatedType, args: &Vec<(SymbolIndex, EvaluatedType)>) -> EvaluatedType {
     match typ {

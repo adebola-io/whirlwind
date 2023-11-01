@@ -93,6 +93,7 @@ pub enum SemanticSymbolKind {
         is_public: bool,
         is_constructable: bool,
         generic_params: Vec<SymbolIndex>,
+        constructor_parameters: Option<Vec<SymbolIndex>>,
         implementations: Vec<IntermediateType>,
         methods: Vec<SymbolIndex>,
         attributes: Vec<SymbolIndex>,

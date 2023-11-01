@@ -9,3 +9,4 @@ public use Prelude;
 public use Async;
 public use Testing;
 public use Io;
+public use Collections;

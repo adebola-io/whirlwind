@@ -277,3 +277,24 @@ pub fn missing_intrinsic(name: String, span: ast::Span) -> TypeError {
         span,
     }
 }
+
+pub fn invalid_index_subject(name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::InvalidIndexSubject { name },
+        span,
+    }
+}
+
+pub fn model_not_constructable(name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::ModelNotConstructable { name },
+        span,
+    }
+}
+
+pub fn calling_new_on_identifier(name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::NewOnIdentifier { name },
+        span,
+    }
+}

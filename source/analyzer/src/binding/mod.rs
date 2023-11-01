@@ -310,6 +310,7 @@ mod bind_utils {
                         // to prevent model-implements-itself or attribute-refers-to-parent-model recursive loops.
                         // Allowing jumps and hoisting makes many things hard.
                         is_constructable: false,
+                        constructor_parameters: None,
                         generic_params: vec![],
                         implementations: vec![],
                         methods: vec![],
@@ -976,6 +977,7 @@ mod statements {
                 bind_type_expression(implementation, binder, symbol_table, errors, &ambience)
             })
             .collect();
+        let binding_was_successful = binding_result.is_ok();
         let symbol_idx = match binding_result {
             Ok(symbol_idx) => {
                 // Add generic parameters, if the binding to this type was successful.
@@ -1000,24 +1002,37 @@ mod statements {
             Err(idx) => idx,
         };
         binder.this_type.push(symbol_idx); // Set meaning of `This`.
+        let (body, constructor_parameters_solved) = model_body(
+            model.body,
+            symbol_idx,
+            signature.parameters.clone(), // todo:
+            binder,
+            symbol_table,
+            errors,
+            literals,
+            ambience,
+        );
+        // Add constructor parameter list to the model symbol.
+        if binding_was_successful {
+            if let SemanticSymbolKind::Model {
+                constructor_parameters,
+                ..
+            } = &mut symbol_table.get_mut(symbol_idx).unwrap().kind
+            {
+                *constructor_parameters = constructor_parameters_solved;
+            }
+        }
         let typed_model_declaration = TypedModelDeclaration {
             name: symbol_idx,
-            body: model_body(
-                model.body,
-                symbol_idx,
-                signature.parameters.clone(), // todo:
-                binder,
-                symbol_table,
-                errors,
-                literals,
-                ambience,
-            ),
+            body,
             span: model.span,
         };
         binder.pop_generic_pool();
         binder.this_type.pop(); // Remove meaning of This.
         return typed_model_declaration;
     }
+
+    type ConstructorParameterList = Vec<SymbolIndex>;
 
     /// Bind a model body.
     fn model_body(
@@ -1029,37 +1044,43 @@ mod statements {
         errors: &mut Vec<ProgramError>,
         literals: &mut Vec<Literal>,
         ambience: &mut ModuleAmbience,
-    ) -> TypedModelBody {
-        TypedModelBody {
-            constructor: body.constructor.map(|constructor_block| {
-                let (block, parameters) = bind_function_block(
-                    constructor_block,
-                    constructor_params.unwrap(),
-                    binder,
-                    symbol_table,
-                    errors,
-                    literals,
-                    ambience,
-                );
-                TypedModelConstructor { parameters, block }
-            }),
-            properties: body
-                .properties
-                .into_iter()
-                .map(|property| {
-                    bind_model_property(
-                        property,
-                        owner_idx,
-                        binder,
-                        symbol_table,
-                        errors,
-                        literals,
-                        ambience,
-                    )
-                })
-                .collect(),
-            span: body.span,
-        }
+    ) -> (TypedModelBody, Option<ConstructorParameterList>) {
+        let (constructor, params) = if let Some(constructor_block) = body.constructor {
+            let (block, parameters) = bind_function_block(
+                constructor_block,
+                constructor_params.unwrap(),
+                binder,
+                symbol_table,
+                errors,
+                literals,
+                ambience,
+            );
+            (Some(block), Some(parameters))
+        } else {
+            (None, None)
+        };
+        (
+            TypedModelBody {
+                constructor,
+                properties: body
+                    .properties
+                    .into_iter()
+                    .map(|property| {
+                        bind_model_property(
+                            property,
+                            owner_idx,
+                            binder,
+                            symbol_table,
+                            errors,
+                            literals,
+                            ambience,
+                        )
+                    })
+                    .collect(),
+                span: body.span,
+            },
+            params,
+        )
     }
 
     /// Binds a model property.

@@ -1,21 +1,9 @@
 module TypeTest;
 
 use Core.Primitives.Ops.Addition;
+use Core.Collections.{Tuple, Quadruple};
+use Core.Testing.Assert;
 
-model Tuple<T, U> {
-
-    public var first: T;
-    public var second: U;
-    
-    new(first: T, second: U) {
-        this.first = first;
-        this.second = second;
-    }
-
-    function Swap(): Tuple<U, T> {
-        new Tuple(this.second, this.first)
-    }
-}
 
 /// Returns the value itself.
 public function Identity<T>(value: T): T {
@@ -62,6 +50,16 @@ function Main () {
     array2 := [1, 2, 3, 4, 5, 6, 7, 8];
     arrayStringified := Map(array2, fn(value) "string");
 
-    tuple: Tuple<String, Bool> := Todo();
+    tuple := new Tuple(true, ["Hello there..."]);
     swappedTuple := tuple.Swap();
+
+    quadruple := new Quadruple("Hello there", true, Some("string"), [true]);
+    tuplified := quadruple.ToTuple().second.Swap().first[0];
+
+     
+    quadruple2 := new Quadruple(Some(true), "Sefunmi", true, [false]);
+    split := quadruple2.ToTuple();
+    
+    Assert(split.first).Equals(new Tuple(Some(true), "Sefunmi"));
+    Assert(split.second.Swap()).Equals(new Tuple([false], true));
 }

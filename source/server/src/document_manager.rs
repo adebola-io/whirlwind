@@ -89,19 +89,13 @@ impl DocumentManager {
     }
 
     /// Handles a file save in the editor.
-    pub fn save_file(&self, params: DidSaveTextDocumentParams) -> MessageStore {
-        let mut msgs = self.open_document(params.text_document.uri);
+    pub fn save_file(&self, _params: DidSaveTextDocumentParams) -> MessageStore {
+        let mut msgs = MessageStore::new();
         msgs.inform("Saving file...");
-        let mut standpoints = self.standpoints.write().unwrap();
-        let (standpoint, _) = match self.get_cached_mut(&mut standpoints) {
-            Some(t) => t,
-            None => {
-                msgs.error("Could not retrieve the cached module index");
-                return msgs;
-            }
-        };
-        standpoint.refresh_imports();
-        standpoint.check_all_modules();
+        for standpoint in self.standpoints.write().unwrap().iter_mut() {
+            standpoint.refresh_imports();
+            standpoint.check_all_modules();
+        }
         msgs
     }
 
@@ -166,7 +160,7 @@ impl DocumentManager {
         let mut msgs = MessageStore::new();
         let mut standpoints = self.standpoints.write().unwrap();
         let uri = params.text_document.uri;
-        let path_buf = match uri_to_absolute_path(uri) {
+        let path_buf = match uri_to_absolute_path(uri.clone()) {
             Ok(path_buf) => path_buf,
             Err(err) => {
                 log_error!(
@@ -658,7 +652,6 @@ impl DocumentManager {
         if *was_updated {
             standpoints.iter_mut().for_each(|standpoint| {
                 standpoint.refresh_imports();
-                // standpoint.check_all_modules();
             });
             *diagnostic_report =
                 WorkspaceDiagnosticReportResult::Report(WorkspaceDiagnosticReport {

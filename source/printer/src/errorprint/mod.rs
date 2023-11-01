@@ -57,8 +57,10 @@ pub fn stringify_type_error(error: &TypeErrorType, _writer: SymbolWriter) -> Str
         },
         TypeErrorType::MissingIntrinsic { name } => format!("Intrinsic symbol '{name}' could not be resolved. The core library might have been altered or installed incorrectly."),
         TypeErrorType::AsyncMismatch { async_func, non_async_func } => format!("Cannot assign '{async_func}' to '{non_async_func}', because the first function is asynchronous, while the other is not."),
-        TypeErrorType::HeterogeneousArray => format!("Array contains two or more values on different types."),   
-        
+        TypeErrorType::HeterogeneousArray => format!("Array contains two or more values on different types."),
+        TypeErrorType::InvalidIndexSubject { name } => format!("{name} is not an indexable type."),
+        TypeErrorType::ModelNotConstructable { name } =>  format!("The '{name}' model cannot be instantiated because it has no new() constructor."),
+        TypeErrorType::NewOnIdentifier { name } =>format!("Invalid new expression. To create an instance of '{name}', pass in an argument list, i.e. `new {name}(/* arguments */)`"),           
     }
 }
 

@@ -1,0 +1,46 @@
+module OrderedSet;
+
+
+/// A pair of items of individual types.
+public model Tuple<T, U> {
+    public var first: T;
+    public var second: U;
+    
+    new(first: T, second: U) {
+        this.first = first;
+        this.second = second;
+    }
+
+    function Swap(): Tuple<U, T> {
+        new Tuple(this.second, this.first)
+    }
+}
+
+/// A set containing four individual items.
+public model Quadruple<T, U, V, S> {
+    public var first: T;
+    public var second: U;
+    public var third: V;
+    public var fourth: S;
+
+    new(first: T, second: U, third: V, fourth: S) {
+        this.first = first;
+        this.second = second;
+        this.third = third;
+        this.fourth = fourth;
+    }
+    /// Groups the items in the quadruple to two tuples.
+    /// ###  Usage
+    /// ```
+    /// use Core.Collections.{Quadruple, Tuple};
+    /// 
+    /// quadruple := new Quadruple(1, "Sefunmi", true, [35.5]);
+    /// var { first, second } = quadruple.ToTuple();
+    /// 
+    /// Assert(first).Equals(new Tuple(1, "Sefunmi"));
+    /// Assert(second).Equals(new Tuple(true, [35.5]));
+    /// ```
+    function ToTuple(): Tuple<Tuple<T, U>, Tuple<V, S>> {
+        Todo()
+    }
+}

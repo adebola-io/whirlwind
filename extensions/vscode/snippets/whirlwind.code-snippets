@@ -3,21 +3,17 @@
       "prefix": "imp",
       "body": "implements "
    },
-   "Extends Keyword": {
-      "prefix": "ext",
-      "body": "extends "
-   },
    "Class Definition": {
-      "prefix": "class",
+      "prefix": "model",
       "isFileTemplate": true,
       "body": [
-         "class ${1:name} {",
-         "\t${1:name}(${2:parameters}) {",
+         "model ${1:name} {",
+         "\tnew(${2:parameters}) {",
          "\t\t$0",
          "\t}",
          "}"
       ],
-      "description": "Class Definition"
+      "description": "Model Definition"
    },
    "Public Function Definition": {
       "prefix": "public func",
@@ -31,17 +27,17 @@
    },
    "Print value": {
       "prefix": "pr",
-      "body": ["Core.Fmt.Print($1);", "$0"],
+      "body": ["Core.Io.Print($1);", "$0"],
       "description": "Print value"
    },
    "Print warning": {
       "prefix": "warn",
-      "body": ["Core.Fmt.PrintWarn($1);", "$0"],
+      "body": ["Core.Io.PrintWarn($1);", "$0"],
       "description": "Print warning"
    },
    "Print error": {
       "prefix": "err",
-      "body": ["Core.Fmt.PrintError($1);", "$0"],
+      "body": ["Core.Io.PrintErr($1);", "$0"],
       "description": "Print an error"
    },
    "Panic": {
@@ -52,7 +48,7 @@
    "For-In Loop": {
       "prefix": "for",
       "body": [
-         "for (const ${1:element} in ${2:iterator}) {",
+         "for ${1:element} in ${2:iterator} {",
          "\t$TM_SELECTED_TEXT$0",
          "}"
       ],
@@ -61,7 +57,7 @@
    "Function Statement": {
       "prefix": "func",
       "body": [
-         "function ${1:Name}(${2:params}:${3:type}) {",
+         "function ${1:Name}(${2:params}:${3:paramtype}) {",
          "\t$TM_SELECTED_TEXT$0",
          "}"
       ],
@@ -85,25 +81,8 @@
    },
    "New Statement": {
       "prefix": "new",
-      "body": ["${1:name} := new ${2:type}(${3:arguments});$0"],
+      "body": ["${1:name} := new ${2:Model}(${3:arguments});$0"],
       "description": "New Statement"
-   },
-   "Switch Statement": {
-      "prefix": "switch",
-      "body": [
-         "switch ${1:key} {",
-         "\tcase ${2:pattern} => {",
-         "\t\t$3",
-         "\t}",
-         "\tcase ${4:pattern} => {",
-         "\t\t$5",
-         "\t}",
-         "\telse => { ",
-         "\t\t$0",
-         "\t}",
-         "}"
-      ],
-      "description": "Switch Statement"
    },
    "While Statement": {
       "prefix": "while",

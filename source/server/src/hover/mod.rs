@@ -577,12 +577,13 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
             return Some(HoverInfo::from((self.standpoint, model.name)));
         }
         // hovering over a generic parameter.
-        let (generic_params, impls) = match &model_symbol.kind {
+        let (generic_params, impls, params) = match &model_symbol.kind {
             SemanticSymbolKind::Model {
                 generic_params,
                 implementations,
+                constructor_parameters,
                 ..
-            } => (generic_params, implementations),
+            } => (generic_params, implementations, constructor_parameters),
             _ => return None,
         };
         for generic_param in generic_params {
@@ -596,11 +597,10 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
         within!(model.body.span, self);
         // hovering inside the model constructor.
         maybe!(model.body.constructor.as_ref().and_then(|constructor| {
-            constructor
-                .parameters
-                .iter()
-                .find_map(|param| self.parameter(*param))
-                .or_else(|| self.block(&constructor.block))
+            params
+                .as_ref()
+                .and_then(|params| params.iter().find_map(|param| self.parameter(*param)))
+                .or_else(|| self.block(&constructor))
         }));
         // hovering in a property.
         for property in model.body.properties.iter() {

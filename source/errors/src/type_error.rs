@@ -119,6 +119,18 @@ pub enum TypeErrorType {
     },
     /// Array with multiple types.
     HeterogeneousArray,
+    /// Index subject cannot be used in an index expression.
+    InvalidIndexSubject {
+        name: String,
+    },
+    /// Calling new on a model without a new() function.
+    ModelNotConstructable {
+        name: String,
+    },
+    /// Calling new on a model name without passing parameters.
+    NewOnIdentifier {
+        name: String,
+    },
     // /// Type Alias references itself recursively.
     // InfiniteType,
 }

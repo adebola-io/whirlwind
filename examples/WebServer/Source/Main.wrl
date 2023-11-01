@@ -7,12 +7,12 @@ use Core.Io.Println;
 public function Main() {
     name := "simple-server";  
     port := 8080;
-    app: Server := new Server(name, port);
+    app := new Server(name, port);
     printMessage := fn() Println(name + " is listening on port " + port.ToStr());
 
     app.Get("/hello", Greeting);
  
-    app.Start()
+    app.Start() 
       .Then(printMessage)
       .Run()
       .Await()!;

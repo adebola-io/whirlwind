@@ -150,14 +150,8 @@ pub struct TypedModelDeclaration {
 #[derive(Debug, PartialEq)]
 pub struct TypedModelBody {
     pub properties: Vec<TypedModelProperty>,
-    pub constructor: Option<TypedModelConstructor>,
+    pub constructor: Option<TypedBlock>,
     pub span: Span,
-}
-
-#[derive(Debug, PartialEq)]
-pub struct TypedModelConstructor {
-    pub parameters: Vec<SymbolIndex>,
-    pub block: TypedBlock,
 }
 
 #[derive(Debug, PartialEq)]
