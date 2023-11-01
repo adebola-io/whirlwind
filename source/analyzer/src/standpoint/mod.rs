@@ -37,6 +37,11 @@ pub struct Standpoint {
 
 impl IntrinsicPaths for Standpoint {}
 
+pub enum StandpointStatus {
+    RefreshSuccessful,
+    Restarted,
+}
+
 impl Standpoint {
     /// Creates a new standpoint.
     pub fn new(should_resolve_imports: bool, corelib_path: Option<PathBuf>) -> Self {
@@ -135,6 +140,17 @@ impl Standpoint {
             }
         }
         self.errors.push(error);
+    }
+    /// Clears the entire standpoint and rebuilds it again.
+    pub fn restart(&mut self) -> Option<()> {
+        let entry_path = self.module_map.get(self.entry_module)?.path_buf.clone();
+        let core_lib_path = self
+            .corelib_path
+            .and_then(|path| self.module_map.get(path))
+            .map(|module| module.path_buf.clone());
+        *self = Standpoint::new(self.auto_update, core_lib_path);
+        self.entry_module = self.add_module(Module::from_path(entry_path).ok()?)?;
+        Some(())
     }
 }
 
@@ -573,12 +589,40 @@ impl Standpoint {
         path_idx: PathIndex,
         text: String,
         should_recompute_imports: bool,
-    ) -> Option<()> {
+    ) -> Option<StandpointStatus> {
         let path = self.module_map.get(path_idx)?.path_buf.clone();
         // // Disabling auto update prevents unecessary import solving.
         self.auto_update = false;
         self.remove_module(path_idx)?;
         self.auto_update = true;
+
+        // Reset intrinsics if necessary.
+        if let Ok(path) = path.strip_prefix(BASE_CORE_PATH) {
+            let is_intrinsic = if let Some(path_str) = path.to_str() {
+                match path_str {
+                    Self::ARRAY
+                    | Self::ASYNC
+                    | Self::BOOL
+                    | Self::NUMERIC
+                    | Self::INTERNAL
+                    | Self::ITERATABLE
+                    | Self::OPS
+                    | Self::TRAITS
+                    | Self::RANGE
+                    | Self::STRING
+                    | Self::DEFAULT
+                    | Self::MAYBE => true,
+                    _ => false,
+                }
+            } else {
+                false
+            };
+            if is_intrinsic {
+                self.restart();
+
+                return Some(StandpointStatus::Restarted);
+            }
+        }
 
         // Add updated module.
         let mut update = Module::from_text(text);
@@ -600,7 +644,7 @@ impl Standpoint {
         } else {
             self.check_module(path_idx);
         }
-        Some(())
+        Some(StandpointStatus::RefreshSuccessful)
     }
 
     /// Recursively search for and add a module in a directory to the module map.

@@ -131,7 +131,24 @@ pub enum TypeErrorType {
     NewOnIdentifier {
         name: String,
     },
-    // /// Type Alias references itself recursively.
+    /// Type Alias references itself recursively.
+    InfiniteType,
+    NonBooleanLogic {
+        name: String,
+    },
+    /// todo: this should be a syntax error.
+    InvalidAssignmentTarget,
+    MutatingMethod {
+        owner: String,
+        name: String,
+    },
+    AssigningToReference,
+    SeparateIfTypes {
+        first: String,
+        second: String,
+    },
+    VoidAssignment,
+    PartialTypeAssigmentIf,
     // InfiniteType,
 }
 

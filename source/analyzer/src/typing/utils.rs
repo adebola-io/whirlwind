@@ -18,6 +18,13 @@ pub fn prospectify(typ: EvaluatedType, symboltable: &SymbolTable) -> EvaluatedTy
     }
 }
 
+pub fn is_boolean(evaluated_type: &EvaluatedType, symboltable: &SymbolTable) -> bool {
+    matches!(
+        evaluated_type, EvaluatedType::ModelInstance { model, .. }
+        if symboltable.bool_symbol.is_some_and(|prospect| prospect == *model)
+    )
+}
+
 /// Returns true if an evaluated type is a prospect.
 pub fn is_prospective_type(evaluated_type: &EvaluatedType, symboltable: &SymbolTable) -> bool {
     matches!(
@@ -51,7 +58,7 @@ pub fn arrify(typ: EvaluatedType, symboltable: &SymbolTable) -> EvaluatedType {
         let maybe_symbol = symboltable.get(model).unwrap();
         let maybe_generic_parameter = match &maybe_symbol.kind {
             SemanticSymbolKind::Model { generic_params, .. } => generic_params[0],
-            _ => unreachable!(),
+            _ => unreachable!("{model:?} refers to a {:#?}", maybe_symbol),
         };
         return EvaluatedType::ModelInstance {
             model,

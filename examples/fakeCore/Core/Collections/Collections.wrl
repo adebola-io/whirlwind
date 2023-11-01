@@ -1,4 +1,6 @@
+/// This module contains useful.
 module Collections;
 
 public use OrderedSet.Tuple;
 public use OrderedSet.Quadruple;
+

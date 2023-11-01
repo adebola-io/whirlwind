@@ -1,10 +1,16 @@
-use std::collections::HashMap;
-
 use crate::{
     utils::is_prospective_type, EvaluatedType::*, SemanticSymbolKind, SymbolIndex, SymbolTable,
     UNKNOWN, *,
 };
 use errors::TypeErrorType;
+use std::collections::HashMap;
+
+#[derive(Clone, Copy)]
+pub enum UnifyOptions {
+    None,
+    AnyNever,
+    Conform,
+}
 
 /// Take two evaluated types and finds the most suitable type
 /// that upholds the properties of both.
@@ -17,6 +23,7 @@ pub fn unify_types(
     left: &EvaluatedType,
     right: &EvaluatedType,
     symboltable: &SymbolTable,
+    options: UnifyOptions,
     mut map: Option<&mut HashMap<SymbolIndex, EvaluatedType>>,
 ) -> Result<EvaluatedType, Vec<TypeErrorType>> {
     let default_error = || TypeErrorType::MismatchedAssignment {
@@ -31,92 +38,24 @@ pub fn unify_types(
     }
     match (left, right) {
         // Left type is a generic parameter.
-        (Generic { base }, right_type) => {
-            // If there is already a prior solution for the left type,
-            // check that it is unifiable with the right,
-            // and update its mapped value.
-            if let Some(map) = map.as_deref_mut() {
-                if let Some(already_assigned) = map.get(base).cloned() {
-                    match unify_types(&already_assigned, right_type, symboltable, Some(map)) {
-                        Ok(result_type) => {
-                            map.insert(*base, result_type.clone());
-                            return Ok(result_type);
-                        }
-                        Err(mut errors) => {
-                            errors.insert(0, default_error());
-                            return Err(errors);
-                        }
-                    }
-                }
-            }
-            let base_parameter = symboltable.get_forwarded(*base).unwrap();
-            match &base_parameter.kind {
-                SemanticSymbolKind::GenericParameter {
-                    traits,
-                    default_value,
-                } => {
-                    // Default generic type if other is unknown.
-                    if let Some(default) = default_value {
-                        if right_type.is_unknown() {
-                            return Ok(evaluate(default, symboltable, None, &mut None));
-                        }
-                    }
-                    for _trait in traits {
-                        let trait_evaluated = evaluate(_trait, symboltable, None, &mut None);
-                        // The trait guard does not refer to a trait.
-                        // Unification cannot continue, but it is not the problem of this process.
-                        if !trait_evaluated.is_trait_instance() {
-                            return Ok(Unknown);
-                        }
-                        let implementations = match right_type {
-                            ModelInstance { model: base, .. }
-                            | TraitInstance { trait_: base, .. }
-                            | Generic { base } => {
-                                match &symboltable.get_forwarded(*base).unwrap().kind {
-                                    SemanticSymbolKind::GenericParameter {
-                                        traits: implementations,
-                                        ..
-                                    }
-                                    | SemanticSymbolKind::Trait {
-                                        implementations, ..
-                                    }
-                                    | SemanticSymbolKind::Model {
-                                        implementations, ..
-                                    } => Some(implementations),
-                                    _ => None,
-                                }
-                            }
-                            _ => None,
-                        };
-                        let trait_is_implemented = implementations.is_some_and(|implementations| {
-                            implementations
-                                .iter()
-                                .find(|implementation| {
-                                    // todo: block infinite types.
-                                    evaluate(implementation, symboltable, None, &mut None)
-                                        == trait_evaluated
-                                })
-                                .is_some()
-                        });
-                        if !trait_is_implemented {
-                            return Err(vec![
-                                default_error(),
-                                TypeErrorType::UnimplementedTrait {
-                                    offender: symboltable.format_evaluated_type(right_type),
-                                    _trait: symboltable.format_evaluated_type(&trait_evaluated),
-                                },
-                            ]);
-                        }
-                    }
-                    // Generic parameter solved.
-                    if let Some(map) = map {
-                        map.insert(*base, right_type.clone());
-                    }
-                    Ok(right_type.clone())
-                }
-                // Something has gone wrong if this ever happens. Look into it.
-                _ => Ok(Unknown),
-            }
+        (Generic { base }, free_type) => solve_generic_type(
+            &mut map,
+            base,
+            free_type,
+            symboltable,
+            default_error,
+            options,
+        ),
+        // Right type is a generic parameter and conformity is requested.
+        (free_type, Generic { base }) if matches!(options, UnifyOptions::Conform) => {
+            solve_generic_type(
+                &mut map,
+                base,
+                free_type,
+                symboltable,
+                default_error,
+                options,
+            )
         }
         // Comparing generic types.
         (
@@ -144,14 +83,19 @@ pub fn unify_types(
                     },
                 ]);
             }
-            let final_generic_arguments =
-                match unify_generic_arguments(first_gen_args, second_gen_args, symboltable, map) {
-                    Ok(args) => args,
-                    Err(mut errors) => {
-                        errors.insert(0, default_error());
-                        return Err(errors);
-                    }
-                };
+            let final_generic_arguments = match unify_generic_arguments(
+                first_gen_args,
+                second_gen_args,
+                symboltable,
+                options,
+                map,
+            ) {
+                Ok(args) => args,
+                Err(mut errors) => {
+                    errors.insert(0, default_error());
+                    return Err(errors);
+                }
+            };
 
             return Ok(ModelInstance {
                 model: *first,
@@ -169,12 +113,12 @@ pub fn unify_types(
                 distill_function_type(left, symboltable);
             let (right_is_async, right_params, right_generic_arguments, mut right_return_type) =
                 distill_function_type(right, symboltable);
-
             // Confirm that there are no generic mismatches between the two functions.
             let generic_args = match unify_generic_arguments(
                 left_generic_arguments,
                 right_generic_arguments,
                 symboltable,
+                options,
                 map.as_deref_mut(),
             ) {
                 Ok(args) => args,
@@ -183,10 +127,8 @@ pub fn unify_types(
                     return Err(errors);
                 }
             };
-
             let right_returns_prospect = is_prospective_type(&right_return_type, symboltable);
             let left_returns_prospect = is_prospective_type(&left_return_type, symboltable);
-
             let is_async = match (left_is_async, right_is_async) {
                 (true, true) => true,
                 (false, false) => false,
@@ -210,7 +152,6 @@ pub fn unify_types(
                 }
                 _ => false,
             };
-
             // PARAMETERS.
             if left_params.len() < right_params.len() {
                 return Err(vec![
@@ -232,25 +173,31 @@ pub fn unify_types(
                         &maybify(left_inferred_type.clone()),
                         &maybify(right_inferred_type.clone()),
                         symboltable,
+                        options,
                         map,
                     ),
                     (true, false) => unify_types(
                         &maybify(left_inferred_type.clone()),
                         right_inferred_type,
                         symboltable,
+                        options,
                         map,
                     ),
                     (false, true) => unify_types(
                         left_inferred_type,
                         &maybify(right_inferred_type.clone()),
                         symboltable,
+                        options,
                         map,
                     ),
-                    (false, false) => {
-                        unify_types(left_inferred_type, right_inferred_type, symboltable, map)
-                    }
+                    (false, false) => unify_types(
+                        left_inferred_type,
+                        right_inferred_type,
+                        symboltable,
+                        options,
+                        map,
+                    ),
                 };
-
                 let result = ParameterType {
                     name: left_param.name.clone(),
                     is_optional: false,
@@ -265,7 +212,6 @@ pub fn unify_types(
                 };
                 params.push(result);
             }
-
             // RETURN TYPES.
             // If one function is async and the other returns a prospect, they are unifiable.
             if left_is_async {
@@ -278,9 +224,9 @@ pub fn unify_types(
                 &left_return_type,
                 &right_return_type,
                 symboltable,
+                options,
                 map,
             )?);
-
             return Ok(EvaluatedType::FunctionExpressionInstance {
                 is_async,
                 params,
@@ -291,13 +237,122 @@ pub fn unify_types(
         // Both types are borrowed.
         (Borrowed { base: left_type }, Borrowed { base: right_type }) => {
             return Ok(Borrowed {
-                base: Box::new(unify_types(&left_type, &right_type, symboltable, map)?),
+                base: Box::new(unify_types(
+                    &left_type,
+                    &right_type,
+                    symboltable,
+                    options,
+                    map,
+                )?),
             })
         }
+        // Left type is never.
+        (Never, right_type) => Ok(right_type.clone()),
+        // Either type is never.
+        (free, Never) if matches!(options, UnifyOptions::AnyNever) => Ok(free.clone()),
         _ => Err(vec![TypeErrorType::MismatchedAssignment {
             left: symboltable.format_evaluated_type(left),
             right: symboltable.format_evaluated_type(right),
         }]),
+    }
+}
+
+fn solve_generic_type(
+    map: &mut Option<&mut HashMap<SymbolIndex, EvaluatedType>>,
+    base: &SymbolIndex,
+    free_type: &EvaluatedType,
+    symboltable: &SymbolTable,
+    default_error: impl Fn() -> TypeErrorType,
+    options: UnifyOptions,
+) -> Result<EvaluatedType, Vec<TypeErrorType>> {
+    // If there is already a prior solution for the left type,
+    // check that it is unifiable with the right,
+    // and update its mapped value.
+    if let Some(map) = map.as_deref_mut() {
+        if let Some(already_assigned) = map.get(base).cloned() {
+            match unify_types(
+                &already_assigned,
+                free_type,
+                symboltable,
+                options,
+                Some(map),
+            ) {
+                Ok(result_type) => {
+                    map.insert(*base, result_type.clone());
+                    return Ok(result_type);
+                }
+                Err(mut errors) => {
+                    errors.insert(0, default_error());
+                    return Err(errors);
+                }
+            }
+        }
+    }
+    let base_parameter = symboltable.get_forwarded(*base).unwrap();
+    match &base_parameter.kind {
+        SemanticSymbolKind::GenericParameter {
+            traits,
+            default_value,
+        } => {
+            // Default generic type if other is unknown.
+            if let Some(default) = default_value {
+                if free_type.is_unknown() {
+                    return Ok(evaluate(default, symboltable, None, &mut None));
+                }
+            }
+            for _trait in traits {
+                let trait_evaluated = evaluate(_trait, symboltable, None, &mut None);
+                // The trait guard does not refer to a trait.
+                // Unification cannot continue, but it is not the problem of this process.
+                if !trait_evaluated.is_trait_instance() {
+                    return Ok(Unknown);
+                }
+                let implementations = match free_type {
+                    ModelInstance { model: base, .. }
+                    | TraitInstance { trait_: base, .. }
+                    | Generic { base } => match &symboltable.get_forwarded(*base).unwrap().kind {
+                        SemanticSymbolKind::GenericParameter {
+                            traits: implementations,
+                            ..
+                        }
+                        | SemanticSymbolKind::Trait {
+                            implementations, ..
+                        }
+                        | SemanticSymbolKind::Model {
+                            implementations, ..
+                        } => Some(implementations),
+                        _ => None,
+                    },
+                    _ => None,
+                };
+                let trait_is_implemented = implementations.is_some_and(|implementations| {
+                    implementations
+                        .iter()
+                        .find(|implementation| {
+                            // todo: block infinite types.
+                            evaluate(implementation, symboltable, None, &mut None)
+                                == trait_evaluated
+                        })
+                        .is_some()
+                });
+                if !trait_is_implemented {
+                    return Err(vec![
+                        default_error(),
+                        TypeErrorType::UnimplementedTrait {
+                            offender: symboltable.format_evaluated_type(free_type),
+                            _trait: symboltable.format_evaluated_type(&trait_evaluated),
+                        },
+                    ]);
+                }
+            }
+            // Generic parameter solved.
+            if let Some(map) = map.as_deref_mut() {
+                map.insert(*base, free_type.clone());
+            }
+            Ok(free_type.clone())
+        }
+        // Something has gone wrong if this ever happens. Look into it.
+        _ => Ok(Unknown),
     }
 }
 
@@ -307,6 +362,7 @@ pub fn unify_generic_arguments(
     left_generic_arguments: &Vec<(SymbolIndex, EvaluatedType)>,
     right_generic_arguments: &Vec<(SymbolIndex, EvaluatedType)>,
     symboltable: &SymbolTable,
+    options: UnifyOptions,
     mut map: Option<&mut HashMap<SymbolIndex, EvaluatedType>>,
 ) -> Result<Vec<(SymbolIndex, EvaluatedType)>, Vec<TypeErrorType>> {
     let mut generic_args = vec![];
@@ -353,6 +409,7 @@ pub fn unify_generic_arguments(
                 left_evaluated_type,
                 right_evaluated_type,
                 symboltable,
+                options,
                 map.as_mut().map(|m| &mut **m),
             ) {
                 Ok(arg) => arg,
@@ -476,4 +533,29 @@ pub fn zip<'a>(
         .enumerate()
         .map(|(index, param)| (*param, generic_arguments.get(index).unwrap_or(&UNKNOWN)))
         .collect()
+}
+
+/// Unifies a declaration.
+/// It is freer than unify_types, because generics and the never type can be transformed in either direction.
+pub fn unify_freely(
+    left: &EvaluatedType,
+    right: &EvaluatedType,
+    symboltable: &SymbolTable,
+    mut map: Option<&mut HashMap<SymbolIndex, EvaluatedType>>,
+) -> Result<EvaluatedType, Vec<TypeErrorType>> {
+    let default_error = || TypeErrorType::MismatchedAssignment {
+        left: symboltable.format_evaluated_type(left),
+        right: symboltable.format_evaluated_type(right),
+    };
+    match (left, right) {
+        (free_type, Generic { base }) => solve_generic_type(
+            &mut map,
+            base,
+            free_type,
+            symboltable,
+            default_error,
+            UnifyOptions::Conform,
+        ),
+        _ => unify_types(left, right, symboltable, UnifyOptions::Conform, map),
+    }
 }

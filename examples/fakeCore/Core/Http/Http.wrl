@@ -11,6 +11,8 @@ model Endpoints {
 
 }
 
+public type ServerOutcome = Outcome<Response, ServerError>;
+
 public model Server {
     public var endpoints: Endpoints;
 
@@ -21,7 +23,7 @@ public model Server {
     /// Registers a `GET` route.
     public function Get(
         route: String, 
-        handler: fn(request: Request): Prospect<Outcome<Response, ServerError>>
+        handler: fn(request: Request): Prospect<ServerOutcome>
     ) {
         this.endpoints.register("GET", route, handler);
     }
@@ -33,6 +35,10 @@ public model Server {
     /// Starts the server by listening at the specified port for changes.
     public async function Start() {
         Todo()
+    }
+
+    public function UseMiddleware(middleware: Middleware) {
+        
     }
 }
 
@@ -48,5 +54,13 @@ public model Request {
 }
 
 public model ServerError {
+    new() {
+        
+    }
+}
 
+public model Middleware {
+    new() {
+        
+    }
 }

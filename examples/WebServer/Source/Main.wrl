@@ -1,31 +1,42 @@
 module Main;
 
-use Core.Http.{ Server, Response, Request, ServerError };
+use Core.Http.{ Server, ServerOutcome, Response, Request, ServerError, Middleware };
 use Core.Io.Println;
 
-/// Entry into the program.
+/// Entry into the program. 
 public function Main() {
-    name := "simple-server";  
+    name := "simple-server";
     port := 8080;
-    app := new Server(name, port);
-    printMessage := fn() Println(name + " is listening on port " + port.ToStr());
+    app := new Server(name, port); 
+    middleware := new Middleware();
 
+    app.UseMiddleware(middleware);
+
+    // routes.
     app.Get("/hello", Greeting);
- 
-    app.Start() 
-      .Then(printMessage)
+    app.Get("/user/create", CreateUser); 
+
+    app.Start()
+      .Then(fn() Println(name + " is listening on port " + port.ToStr()))
       .Run()
-      .Await()!;
+      .Await()!
+      
 }
 
-
-
 /// Handler function for the `/hello` endpoint.
-async function Greeting(request: Request): Outcome<Response, ServerError> {
-    return Ok(
-        *Response
+async function Greeting(request: Request): ServerOutcome {
+     if true {
+        Ok(
+        *Response 
             .From(request)
             .Status(200)
             .Html("<h1>Hello, world!</h1>")
-    );
+    )
+     } else {
+        Err(new ServerError())
+     }
+}
+
+async function CreateUser(): ServerOutcome {
+    return Todo();
 }

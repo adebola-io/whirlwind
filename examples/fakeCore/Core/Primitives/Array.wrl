@@ -2,11 +2,19 @@ module Array;
 
 use Bool.Bool;
 use Numeric.{ Int, UnsignedInt };
-use Super.Prelude.{ Todo, Maybe, None };
+use Super.Prelude.{ Todo, Maybe, None, AsIterator };
 use Super.Primitives.Ops.Magnitude;
+use Super.Prelude.Iteratable;
+
+public model ArrayIter<T> implements Iteratable<T> {
+    
+}
 
 /// A contiguous, growable list of items.
-public model Array<T> {
+public model Array<T> implements AsIterator<T, ArrayIter> {
+    public function [AsIterator.Convert]() {
+        
+    }
     /// Returns the item at a particular index in the array, if it exists.
     /// Indexes are zero-based, meaning that the first item is at
     /// ### Usage

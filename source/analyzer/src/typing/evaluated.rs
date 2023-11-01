@@ -1,3 +1,7 @@
+use crate::{
+    unify_types, utils::coerce, IntermediateType, ParameterType, PathIndex, ProgramError,
+    SemanticSymbolKind, SymbolIndex, SymbolTable, UnifyOptions,
+};
 use ast::Span;
 use errors::{
     value_as_type,
@@ -5,14 +9,13 @@ use errors::{
     // TypeErrorType
 };
 
-use crate::{
-    unify_types, utils::coerce, IntermediateType, ParameterType, PathIndex, ProgramError,
-    SemanticSymbolKind, SymbolIndex, SymbolTable,
-};
-
 /// A type expression, as is.
 #[derive(Debug, PartialEq, Clone)]
 pub enum EvaluatedType {
+    /// A type that evolves to different values, based on control flow.
+    Partial {
+        types: Vec<EvaluatedType>,
+    },
     /// An instance created with `new A()`, or by labelling a value with `: A`.
     ModelInstance {
         model: SymbolIndex,
@@ -136,7 +139,17 @@ impl EvaluatedType {
     pub fn is_generic(&self) -> bool {
         matches!(self, Self::Generic { .. })
     }
+
+    /// Returns `true` if the evaluated type is [`Partial`].
+    ///
+    /// [`Partial`]: EvaluatedType::Partial
+    #[must_use]
+    pub fn is_partial(&self) -> bool {
+        matches!(self, Self::Partial { .. })
+    }
 }
+
+static mut RECURSION_DEPTH: u64 = 0;
 
 /// Converts an intermediate type into an evaluation.
 pub fn evaluate(
@@ -147,7 +160,7 @@ pub fn evaluate(
     // Error store from the standpoint, if it exists.
     mut error_tracker: &mut Option<(&mut Vec<ProgramError>, PathIndex)>,
 ) -> EvaluatedType {
-    match typ {
+    let evaltype = match typ {
         IntermediateType::FunctionType {
             params,
             return_type,
@@ -185,6 +198,15 @@ pub fn evaluate(
             generic_args,
             span,
         } => {
+            if symboltable
+                .never_symbol
+                .is_some_and(|never| never == *value)
+            {
+                unsafe {
+                    RECURSION_DEPTH = 0;
+                }
+                return EvaluatedType::Never;
+            }
             let value = symboltable.forward(*value);
             let typ = symboltable.get_forwarded(value).unwrap();
             let mut get_generics = |generic_params| {
@@ -214,9 +236,16 @@ pub fn evaluate(
                 },
                 SemanticSymbolKind::TypeName {
                     generic_params,
-                    // value,
+                    value,
                     ..
                 } => {
+                    if unsafe { RECURSION_DEPTH } == 2000 {
+                        add_error_if_possible(error_tracker, errors::infinite_type(*span));
+                        unsafe {
+                            RECURSION_DEPTH = 0;
+                        }
+                        return EvaluatedType::Unknown;
+                    }
                     let mut generic_arguments = vec![];
                     let empty = vec![];
                     for generic_param in generic_params {
@@ -231,13 +260,16 @@ pub fn evaluate(
                         ));
                     }
                     generic_arguments.append(&mut solved_generics.cloned().unwrap_or(empty));
-                    EvaluatedType::Unknown
+                    evaluate(value, symboltable, Some(&generic_arguments), error_tracker)
                 }
                 SemanticSymbolKind::GenericParameter { .. } => {
                     // check if this type already has a solution.
                     if let Some(solved_generics) = solved_generics {
                         for (generic_parameter, evaluated_type) in solved_generics {
                             if *generic_parameter == value {
+                                unsafe {
+                                    RECURSION_DEPTH = 0;
+                                }
                                 return (*evaluated_type).clone();
                             }
                         }
@@ -275,7 +307,13 @@ pub fn evaluate(
                                 span: Span::default(),
                             })
                             .collect(),
-                        _ => return EvaluatedType::Unknown,
+
+                        _ => {
+                            unsafe {
+                                RECURSION_DEPTH = 0;
+                            }
+                            return EvaluatedType::Unknown;
+                        }
                     };
                     let intermediate_type = IntermediateType::SimpleType {
                         value,
@@ -304,7 +342,11 @@ pub fn evaluate(
             unreachable!("Cannot evaluate placeholder intermediate type.")
         }
         _ => EvaluatedType::Unknown,
+    };
+    unsafe {
+        RECURSION_DEPTH = 0;
     }
+    evaltype
 }
 
 fn generate_generics_from_arguments(
@@ -361,6 +403,7 @@ fn generate_generics_from_arguments(
                     &generic_param_evaluated,
                     &argument_evaluated,
                     symboltable,
+                    UnifyOptions::None,
                     None,
                 ) {
                     Ok(value) => value,

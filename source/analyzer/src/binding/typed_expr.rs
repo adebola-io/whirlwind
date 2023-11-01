@@ -21,6 +21,11 @@ pub enum TypedExpression {
     LogicExpr(Box<TypedLogicExpr>),
     UpdateExpr(Box<TypedUpdateExpr>),
 }
+impl TypedExpression {
+    pub fn is_identifier(&self) -> bool {
+        matches!(self, Self::Identifier(_))
+    }
+}
 
 #[derive(Debug, PartialEq)]
 pub struct TypedIdent {

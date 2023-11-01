@@ -1,8 +1,7 @@
 module TypeTest;
 
 use Core.Primitives.Ops.Addition;
-use Core.Collections.{Tuple, Quadruple};
-use Core.Testing.Assert;
+use Core.Collections.{ Tuple, Quadruple };
 
 
 /// Returns the value itself.
@@ -15,51 +14,10 @@ public function Swap<T, U>(tuple: Tuple<T, U>): Tuple<U, T> {
     tuple.Swap()
 }
 
-/// Finds an item within an array.
-public function Find<T>(value: Array<T>, predicate: fn(value: &T): Bool): Maybe<T> {
-    i := 0;
-    while i < value.Len() {
-        item := &value[i];
-        if predicate(item) {
-            return Some(item);
-        }
-    }
-    return None();
-}
+test "test Testing" {
+    use Core.Testing.Assert;
 
-/// Transforms an array by applying a defined function on each of its elements.
-public function Map<T, U>(value: Array<T>, predicate: fn(value: T): U): Array<U> {
-    i := 0;
-    newArray := [];
-    while i < value.Len() {
-        item := value[i];
-        newValue := predicate(item);
-        newArray.push(newValue);
-    }
-    newArray
-}
+    str := "Hello, world!";
 
-
-function Main () {
-    identity: String := Identity("Hello");
-    maybeString: Maybe<String> := Some(identity);
-
-    array := ["hello", "from", "the", "other", "side"];
-    str := Find(array, fn(value) true).Unwrap().Chars().Next().Unwrap();
-
-    array2 := [1, 2, 3, 4, 5, 6, 7, 8];
-    arrayStringified := Map(array2, fn(value) "string");
-
-    tuple := new Tuple(true, ["Hello there..."]);
-    swappedTuple := tuple.Swap();
-
-    quadruple := new Quadruple("Hello there", true, Some("string"), [true]);
-    tuplified := quadruple.ToTuple().second.Swap().first[0];
-
-     
-    quadruple2 := new Quadruple(Some(true), "Sefunmi", true, [false]);
-    split := quadruple2.ToTuple();
-    
-    Assert(split.first).Equals(new Tuple(Some(true), "Sefunmi"));
-    Assert(split.second.Swap()).Equals(new Tuple([false], true));
+    // Assert(str.Chars().Next().Unwrap()).Equals(str)
 }

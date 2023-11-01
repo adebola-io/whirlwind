@@ -693,6 +693,14 @@ impl SymbolTable {
             EvaluatedType::Void => string.push_str("{void}"),
             EvaluatedType::Never => string.push_str("never"),
             EvaluatedType::Unknown { .. } => string.push_str("{unknown}"),
+            EvaluatedType::Partial { types } => {
+                for (idx, typ) in types.iter().enumerate() {
+                    string.push_str(&self.format_evaluated_type(&typ));
+                    if idx + 1 != types.len() {
+                        string.push_str(" | ");
+                    }
+                }
+            }
         }
         string
     }

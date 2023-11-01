@@ -512,7 +512,9 @@ mod bind_utils {
                 &mut symbol_table.maybe_symbol
             }
             // CurrentModuleType::Numeric => todo!(),
-            // CurrentModuleType::Internal => todo!(),
+            CurrentModuleType::Internal if entry.name() == "never" && entry.is_public() => {
+                &mut symbol_table.never_symbol
+            }
             // CurrentModuleType::Ops => todo!(),
             // CurrentModuleType::Traits => todo!(),
             // CurrentModuleType::Iteratable => todo!(),

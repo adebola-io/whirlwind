@@ -16,6 +16,18 @@ public model Tuple<T, U> {
     }
 }
 
+public model Triple<T, U, V> {
+    public var first: T;
+    public var second: U;
+    public var third: V;
+
+    new(first: T, second: U, third: U) {
+        this.first = first;
+        this.second = second;
+        this.third = third;
+    }
+}
+
 /// A set containing four individual items.
 public model Quadruple<T, U, V, S> {
     public var first: T;

@@ -21,7 +21,7 @@ pub fn stringify_type_error(error: &TypeErrorType, _writer: SymbolWriter) -> Str
             assigned,
         } => format!("'{name}' expects {expected} generic argument{}, but got {assigned} instead.", if *expected == 1 {""} else {"s"}),
         TypeErrorType::MismatchedAssignment { left, right } => format!(
-            "Cannot assign '{right}' to '{left}'.",
+            "Expected '{left}' but got a value of type '{right}'.",
         ),
         TypeErrorType::TraitAsType { name } => {
             format!("{name} refers to a trait, but it is being used as a type here.")
@@ -60,7 +60,15 @@ pub fn stringify_type_error(error: &TypeErrorType, _writer: SymbolWriter) -> Str
         TypeErrorType::HeterogeneousArray => format!("Array contains two or more values on different types."),
         TypeErrorType::InvalidIndexSubject { name } => format!("{name} is not an indexable type."),
         TypeErrorType::ModelNotConstructable { name } =>  format!("The '{name}' model cannot be instantiated because it has no new() constructor."),
-        TypeErrorType::NewOnIdentifier { name } =>format!("Invalid new expression. To create an instance of '{name}', pass in an argument list, i.e. `new {name}(/* arguments */)`"),           
+        TypeErrorType::NewOnIdentifier { name } =>format!("Invalid new expression. To create an instance of '{name}', pass in an argument list, i.e. `new {name}(/* arguments */)`"),
+        TypeErrorType::InfiniteType => format!("This expression generates a recursive type that is too complex to represent."),
+        TypeErrorType::NonBooleanLogic { name } => format!("{name} does not evaluate to a boolean expression."),
+        TypeErrorType::InvalidAssignmentTarget => format!("Invalid assignment target."),
+        TypeErrorType::MutatingMethod {owner, name} => format!("Cannot reassign a model or trait method, or use it as a standalone value. To use a function dynamically, consider changing '{owner}.{name}' to a function expression."),
+        TypeErrorType::AssigningToReference => format!("Cannot assign to a reference value. Consider dereferencing the value with '*' to assign to its source."),
+        TypeErrorType::SeparateIfTypes {first, second} => format!("If statement control flow resolves to different types, '{first}' and '{second}'"),
+        TypeErrorType::VoidAssignment => format!("Cannot assign void types to values."),
+        TypeErrorType::PartialTypeAssigmentIf => format!("This expression does not fully handle all cases. Consider adding an else clause for exhaustiveness."),
     }
 }
 

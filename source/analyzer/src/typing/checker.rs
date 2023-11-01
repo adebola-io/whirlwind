@@ -1,6 +1,6 @@
 use crate::{
     evaluate,
-    unify::unify_types,
+    unify::{unify_freely, unify_types},
     utils::{coerce, maybify, prospectify},
     EvaluatedType, Literal, ParameterType, PathIndex, ProgramError, SemanticSymbolKind,
     SymbolIndex, SymbolTable, TypedAccessExpr, TypedBlock, TypedCallExpr, TypedExpression,
@@ -117,7 +117,7 @@ pub fn typecheck(
 ) {
     let mut checker_ctx = TypecheckerContext {
         path_idx: module.path_idx,
-        current_function_return_type: vec![], // unknowns: vec![],
+        current_function_return_type: vec![],
         errors,
         literals,
     };
@@ -127,7 +127,12 @@ pub fn typecheck(
 }
 
 mod statements {
-    use super::*;
+    use crate::{utils::is_boolean, UnifyOptions};
+
+    use super::{
+        expressions::{typecheck_block, typecheck_expression},
+        *,
+    };
 
     pub fn typecheck_statement(
         statement: &mut TypedStmnt,
@@ -136,9 +141,10 @@ mod statements {
     ) {
         match statement {
             // TypedStmnt::RecordDeclaration => todo!(),
-            // TypedStmnt::TestDeclaration(_) => todo!(),
+            TypedStmnt::TestDeclaration(test) => {
+                typecheck_block(&mut test.body, false, checker_ctx, symboltable);
+            }
             // TypedStmnt::EnumDeclaration(_) => todo!(),
-            // TypedStmnt::UseDeclaration(_) => todo!(),
             // TypedStmnt::VariableDeclaration(_) => todo!(),
             TypedStmnt::ShorthandVariableDeclaration(shorthand_variable) => {
                 typecheck_shorthand_variable_declaration(
@@ -164,14 +170,32 @@ mod statements {
             }
             // TypedStmnt::BreakStatement(_) => todo!(),
             // TypedStmnt::ForStatement(_) => todo!(),
-            // TypedStmnt::WhileStatement(_) => todo!(),
+            TypedStmnt::WhileStatement(whil) => {
+                typecheck_while_statement(whil, checker_ctx, symboltable)
+            }
             // TypedStmnt::ContinueStatement(_) => todo!(),
             _ => {}
         }
     }
 
+    /// Typechecks a while statement.
+    fn typecheck_while_statement(
+        whil: &mut crate::TypedWhileStatement,
+        checker_ctx: &mut TypecheckerContext<'_>,
+        symboltable: &mut SymbolTable,
+    ) {
+        let condition_type = typecheck_expression(&mut whil.condition, checker_ctx, symboltable);
+        if !is_boolean(&condition_type, symboltable) {
+            checker_ctx.add_error(errors::non_boolean_logic(
+                symboltable.format_evaluated_type(&condition_type),
+                checker_ctx.span_of_expr(&whil.condition, symboltable),
+            ))
+        }
+        typecheck_block(&mut whil.body, false, checker_ctx, symboltable);
+    }
+
     /// Typechecks a shorthand variable declaration.
-    fn typecheck_shorthand_variable_declaration(
+    pub fn typecheck_shorthand_variable_declaration(
         shorthand_variable: &mut crate::TypedShorthandVariableDeclaration,
         checker_ctx: &mut TypecheckerContext,
         symboltable: &mut SymbolTable,
@@ -201,7 +225,7 @@ mod statements {
         // else attempt unification.
         // If unification fails, then carry on with the declared type value.
         let inference_result = if let Some(declared) = declared_type {
-            match unify_types(&declared, &type_of_value, symboltable, None) {
+            match unify_freely(&declared, &type_of_value, symboltable, None) {
                 Ok(eval_type) => eval_type,
                 Err(errortypes) => {
                     for error in errortypes {
@@ -217,6 +241,11 @@ mod statements {
             type_of_value
         };
         // todo: block partially evaluated types, such as those produced by conditional expressions.
+        if inference_result.is_void() {
+            checker_ctx.add_error(errors::void_assignment(shorthand_variable.span));
+        } else if inference_result.is_partial() {
+            checker_ctx.add_error(errors::partial_type_assignment(shorthand_variable.span));
+        }
         if let SemanticSymbolKind::Variable { inferred_type, .. } =
             &mut symboltable.get_mut(name).unwrap().kind
         {
@@ -225,7 +254,7 @@ mod statements {
     }
 
     /// Typechecks a return statement.
-    fn typecheck_return_statement(
+    pub fn typecheck_return_statement(
         retstat: &mut TypedReturnStatement,
         checker_ctx: &mut TypecheckerContext,
         symboltable: &mut SymbolTable,
@@ -261,7 +290,13 @@ mod statements {
                     .unwrap_or_else(|| &EvaluatedType::Void);
                 // returns with a value, and a type is assigned.
                 // coerce both types to match.
-                match unify_types(eval_type, ctx_return_type, symboltable, None) {
+                match unify_types(
+                    eval_type,
+                    ctx_return_type,
+                    symboltable,
+                    UnifyOptions::None,
+                    None,
+                ) {
                     // Unification was successful and return type can be updated.
                     Ok(typ) => {
                         let prior_evaluated_type =
@@ -290,7 +325,7 @@ mod statements {
     }
 
     /// Typechecks a function.
-    fn typecheck_function(
+    pub fn typecheck_function(
         function: &mut TypedFunctionDeclaration,
         checker_ctx: &mut TypecheckerContext,
         symboltable: &mut SymbolTable,
@@ -355,9 +390,23 @@ mod statements {
             });
         let block_return_type =
             expressions::typecheck_block(&mut function.body, true, checker_ctx, symboltable);
-        if let Err(typeerrortype) =
-            unify_types(&block_return_type, &return_type, &symboltable, None)
+        checker_ctx.current_function_return_type.pop();
+        // if last statement was a return, there is no need to check type again, since it will still show the apprioprate errors.
+        if function
+            .body
+            .statements
+            .last()
+            .is_some_and(|statement| matches!(statement, TypedStmnt::ReturnStatement(_)))
         {
+            return;
+        }
+        if let Err(typeerrortype) = unify_types(
+            &block_return_type,
+            &return_type,
+            &symboltable,
+            UnifyOptions::None,
+            None,
+        ) {
             let span = return_type_span
                 .or_else(|| {
                     function
@@ -382,18 +431,19 @@ mod statements {
                 span,
             });
         }
-        checker_ctx.current_function_return_type.pop();
     }
 }
 
 mod expressions {
     use std::collections::HashMap;
 
+    use ast::UnaryOperator;
     use errors::missing_intrinsic;
 
     use crate::{
-        utils::{arrify, is_array},
-        TypedIndexExpr, TypedNewExpr,
+        utils::{arrify, is_array, is_boolean},
+        TypedAssignmentExpr, TypedIfExpr, TypedIndexExpr, TypedLogicExpr, TypedNewExpr,
+        TypedThisExpr, UnifyOptions,
     };
 
     use super::*;
@@ -422,7 +472,7 @@ mod expressions {
             TypedExpression::NewExpr(newexp) => {
                 typecheck_new_expression(&mut *newexp, symboltable, checker_ctx)
             }
-            // TypedExpression::ThisExpr(_) => todo!(),
+            TypedExpression::ThisExpr(this) => typecheck_this_expression(this, symboltable),
             TypedExpression::CallExpr(c) => {
                 typecheck_call_expression(&mut *c, symboltable, checker_ctx)
             }
@@ -430,7 +480,9 @@ mod expressions {
                 typecheck_function_expression(&mut *f, symboltable, checker_ctx)
             }
             TypedExpression::Block(body) => typecheck_block(body, false, checker_ctx, symboltable),
-            // TypedExpression::IfExpr(_) => todo!(),
+            TypedExpression::IfExpr(ifexp) => {
+                typecheck_if_expression(ifexp, checker_ctx, symboltable)
+            }
             TypedExpression::AccessExpr(access) => {
                 typecheck_access_expression(&mut *access, symboltable, checker_ctx)
             }
@@ -441,11 +493,225 @@ mod expressions {
                 typecheck_index_expression(indexexp, symboltable, checker_ctx)
             }
             // TypedExpression::BinaryExpr(_) => todo!(),
-            // TypedExpression::AssignmentExpr(_) => todo!(),
+            TypedExpression::AssignmentExpr(assexp) => {
+                typecheck_assignment_expression(assexp, checker_ctx, symboltable)
+            }
             // TypedExpression::UnaryExpr(_) => todo!(),
-            // TypedExpression::LogicExpr(_) => todo!(),
+            TypedExpression::LogicExpr(logexp) => {
+                typecheck_logic_expression(logexp, checker_ctx, symboltable)
+            }
             // TypedExpression::UpdateExpr(_) => todo!(),
             _ => EvaluatedType::Unknown,
+        }
+    }
+
+    /// Typechecks if expression.
+    fn typecheck_if_expression(
+        ifexp: &mut TypedIfExpr,
+        checker_ctx: &mut TypecheckerContext<'_>,
+        symboltable: &mut SymbolTable,
+    ) -> EvaluatedType {
+        let condition_type = typecheck_expression(&mut ifexp.condition, checker_ctx, symboltable);
+        if !is_boolean(&condition_type, symboltable) {
+            checker_ctx.add_error(errors::non_boolean_logic(
+                symboltable.format_evaluated_type(&condition_type),
+                checker_ctx.span_of_expr(&ifexp.condition, symboltable),
+            ));
+        }
+        let block_type = typecheck_block(&mut ifexp.consequent, false, checker_ctx, symboltable);
+        if let Some(else_) = &mut ifexp.alternate {
+            let else_type = typecheck_expression(&mut else_.expression, checker_ctx, symboltable);
+            match unify_types(
+                &block_type,
+                &else_type,
+                symboltable,
+                UnifyOptions::AnyNever,
+                None,
+            ) {
+                Ok(result) => result,
+                Err(errors) => {
+                    checker_ctx.add_error(errors::separate_if_types(
+                        ifexp.span,
+                        symboltable.format_evaluated_type(&block_type),
+                        symboltable.format_evaluated_type(&else_type),
+                    ));
+                    for error in errors {
+                        checker_ctx.add_error(TypeError {
+                            _type: error,
+                            span: ifexp.span,
+                        })
+                    }
+                    EvaluatedType::Unknown
+                }
+            }
+        } else if block_type.is_void() {
+            EvaluatedType::Void
+        } else {
+            return EvaluatedType::Partial {
+                types: vec![block_type, EvaluatedType::Void],
+            };
+        }
+    }
+
+    /// Typechecks an assignment expression.
+    /// todo: handle constant values.
+    fn typecheck_assignment_expression(
+        assexp: &mut TypedAssignmentExpr,
+        checker_ctx: &mut TypecheckerContext<'_>,
+        symboltable: &mut SymbolTable,
+    ) -> EvaluatedType {
+        let left_type = typecheck_expression(&mut assexp.left, checker_ctx, symboltable);
+        let right_type = typecheck_expression(&mut assexp.right, checker_ctx, symboltable);
+
+        if !is_valid_lhs(&assexp.left) {
+            checker_ctx.add_error(errors::invalid_assignment_target(assexp.span));
+            return EvaluatedType::Unknown;
+        }
+        let mut generic_hashmap = HashMap::new();
+        let result_type = match &left_type {
+            EvaluatedType::ModelInstance { .. }
+            | EvaluatedType::EnumInstance { .. }
+            | EvaluatedType::Unknown
+            | EvaluatedType::OpaqueTypeInstance { .. } => {
+                if matches!(left_type, EvaluatedType::EnumInstance { .. })
+                    && !assexp.left.is_identifier()
+                {
+                    checker_ctx.add_error(errors::invalid_assignment_target(assexp.span));
+                    return EvaluatedType::Unknown;
+                }
+                match unify_types(
+                    &left_type,
+                    &right_type,
+                    symboltable,
+                    UnifyOptions::None,
+                    Some(&mut generic_hashmap),
+                ) {
+                    Ok(result_type) => result_type,
+                    Err(errortypes) => {
+                        for _type in errortypes {
+                            checker_ctx.add_error(TypeError {
+                                _type,
+                                span: assexp.span,
+                            })
+                        }
+                        return EvaluatedType::Unknown;
+                    }
+                }
+            }
+            EvaluatedType::MethodInstance { method, .. } => {
+                let method_symbol = symboltable.get_forwarded(*method).unwrap();
+                let name = method_symbol.name.clone();
+                let owner = match &method_symbol.kind {
+                    SemanticSymbolKind::Method {
+                        owner_model_or_trait,
+                        ..
+                    } => symboltable.get(*owner_model_or_trait).unwrap().name.clone(),
+                    _ => String::from("[Model]"),
+                };
+                checker_ctx.add_error(errors::mutating_method(owner, name, assexp.span));
+                return EvaluatedType::Unknown;
+            }
+            EvaluatedType::Borrowed { .. } => {
+                checker_ctx.add_error(errors::assigning_to_reference(assexp.span));
+                return EvaluatedType::Unknown;
+            }
+            _ => {
+                checker_ctx.add_error(errors::invalid_assignment_target(assexp.span));
+                return EvaluatedType::Unknown;
+            }
+        };
+        if let EvaluatedType::MethodInstance { method, .. } = right_type {
+            let method_symbol = symboltable.get_forwarded(method).unwrap();
+            let name = method_symbol.name.clone();
+            let owner = match &method_symbol.kind {
+                SemanticSymbolKind::Method {
+                    owner_model_or_trait,
+                    ..
+                } => symboltable.get(*owner_model_or_trait).unwrap().name.clone(),
+                _ => String::from("[Model]"),
+            };
+            checker_ctx.add_error(errors::mutating_method(owner, name, assexp.span));
+            return EvaluatedType::Unknown;
+        }
+
+        if right_type.is_void() {
+            checker_ctx.add_error(errors::void_assignment(assexp.span));
+        } else if right_type.is_partial() {
+            checker_ctx.add_error(errors::partial_type_assignment(assexp.span));
+        }
+
+        // Handling transforming the left hand side to the resulting type.
+        if let TypedExpression::Identifier(ident) = &assexp.left {
+            let identifier_symbol = symboltable.get_mut(ident.value).unwrap();
+            if let SemanticSymbolKind::Variable { inferred_type, .. } = &mut identifier_symbol.kind
+            {
+                *inferred_type = result_type
+            }
+        }
+        return EvaluatedType::Void;
+    }
+
+    /// Returns true if the left hand side is a valid assignment target, syntactically.
+    fn is_valid_lhs(expression: &TypedExpression) -> bool {
+        match expression {
+            TypedExpression::Identifier(_) => true,
+            TypedExpression::AccessExpr(accessexp) => is_valid_lhs(&accessexp.object),
+            TypedExpression::IndexExpr(indexp) => is_valid_lhs(&indexp.object),
+            TypedExpression::UnaryExpr(expr) => matches!(&expr.operator, UnaryOperator::Deref),
+            _ => false,
+        }
+    }
+
+    fn typecheck_logic_expression(
+        logexp: &mut TypedLogicExpr,
+        checker_ctx: &mut TypecheckerContext<'_>,
+        symboltable: &mut SymbolTable,
+    ) -> EvaluatedType {
+        let left = typecheck_expression(&mut logexp.left, checker_ctx, symboltable);
+        let right = typecheck_expression(&mut logexp.right, checker_ctx, symboltable);
+
+        if !is_boolean(&left, symboltable) {
+            checker_ctx.add_error(errors::non_boolean_logic(
+                symboltable.format_evaluated_type(&left),
+                checker_ctx.span_of_expr(&logexp.right, symboltable),
+            ));
+        }
+        if !is_boolean(&right, symboltable) {
+            checker_ctx.add_error(errors::non_boolean_logic(
+                symboltable.format_evaluated_type(&right),
+                checker_ctx.span_of_expr(&logexp.right, symboltable),
+            ));
+        }
+        if let Some(boolean_idx) = symboltable.bool_symbol {
+            return EvaluatedType::ModelInstance {
+                model: boolean_idx,
+                generic_arguments: vec![],
+            };
+        } else {
+            checker_ctx.add_error(errors::missing_intrinsic(format!("Bool"), logexp.span));
+            return EvaluatedType::Unknown;
+        }
+    }
+
+    fn typecheck_this_expression(
+        this: &mut TypedThisExpr,
+        symboltable: &mut SymbolTable,
+    ) -> EvaluatedType {
+        if this.model_or_trait.is_none() {
+            return EvaluatedType::Unknown;
+        }
+        let model_or_trait = this.model_or_trait.unwrap();
+        let symbol = symboltable.get_forwarded(model_or_trait).unwrap();
+        match &symbol.kind {
+            SemanticSymbolKind::Model { generic_params, .. } => EvaluatedType::ModelInstance {
+                model: model_or_trait,
+                generic_arguments: evaluate_generic_params(generic_params),
+            },
+            SemanticSymbolKind::Trait { generic_params, .. } => EvaluatedType::TraitInstance {
+                trait_: model_or_trait,
+                generic_arguments: evaluate_generic_params(generic_params),
+            },
+            _ => unreachable!("{symbol:#?} is not a model or trait."),
         }
     }
 
@@ -601,7 +867,13 @@ mod expressions {
         let mut i = 1;
         let mut errors_gotten = vec![];
         for evaluated_type in element_types {
-            match unify_types(&next_type, &evaluated_type, symboltable, None) {
+            match unify_types(
+                &next_type,
+                &evaluated_type,
+                symboltable,
+                UnifyOptions::None,
+                None,
+            ) {
                 Ok(new_type) => next_type = new_type,
                 Err(mut errortypes) => {
                     errors_gotten.append(&mut errortypes);
@@ -826,6 +1098,7 @@ mod expressions {
                     &maybify(parameter_type.clone(), symboltable),
                     argument_type,
                     symboltable,
+                    UnifyOptions::None,
                     Some(&mut generic_map),
                 )
             } else {
@@ -833,6 +1106,7 @@ mod expressions {
                     parameter_type,
                     argument_type,
                     symboltable,
+                    UnifyOptions::None,
                     Some(&mut generic_map),
                 )
             };
@@ -1251,22 +1525,17 @@ mod expressions {
                     let expression_type =
                         typecheck_expression(expression, checker_ctx, symboltable);
                     return expression_type;
-                } else if is_function_block {
-                    // todo: should never out.
-                    if let TypedStmnt::ReturnStatement(TypedReturnStatement {
-                        value: Some(expression),
-                        ..
-                    }) = statement
-                    {
-                        let expression_type =
-                            typecheck_expression(expression, checker_ctx, symboltable);
-                        return expression_type;
+                } else if let TypedStmnt::ReturnStatement(retstat) = statement {
+                    statements::typecheck_return_statement(retstat, checker_ctx, symboltable);
+                    if !is_function_block {
+                        return EvaluatedType::Never;
                     }
                 }
             }
             statements::typecheck_statement(statement, checker_ctx, symboltable);
             loopindex += 1;
         }
+
         EvaluatedType::Void
     }
 }

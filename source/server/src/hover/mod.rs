@@ -435,7 +435,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
         within!(span, self);
         match _this.model_or_trait {
             Some(meaning) => Some(HoverInfo::from((self.standpoint, meaning))),
-            None => Some(HoverInfo::from_str("this: {nknown}")),
+            None => Some(HoverInfo::from_str("this: {unknown}")),
         }
     }
     /// Hovering over an identifier.

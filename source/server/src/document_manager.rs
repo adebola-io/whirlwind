@@ -6,7 +6,7 @@ use crate::{
 };
 use analyzer::{
     Module, PathIndex, SemanticSymbol, SemanticSymbolDeclaration, SemanticSymbolKind, Standpoint,
-    SymbolIndex, TypedModule, TypedVisitorNoArgs, CORE_LIBRARY_PATH,
+    StandpointStatus, SymbolIndex, TypedModule, TypedVisitorNoArgs, CORE_LIBRARY_PATH,
 };
 use ast::{is_keyword_or_operator, is_valid_identifier, is_valid_identifier_start, Span};
 use std::{
@@ -20,8 +20,9 @@ use tower_lsp::{
         request::{GotoDeclarationParams, GotoDeclarationResponse},
         CompletionParams, CompletionResponse, Diagnostic, DidChangeTextDocumentParams,
         DidOpenTextDocumentParams, DidSaveTextDocumentParams, DocumentDiagnosticParams,
-        DocumentDiagnosticReport, FullDocumentDiagnosticReport, HoverParams, Location, Position,
-        ReferenceParams, RelatedFullDocumentDiagnosticReport, RenameParams, TextEdit, Url,
+        DocumentDiagnosticReport, FullDocumentDiagnosticReport, HoverParams, InlayHint,
+        InlayHintKind, InlayHintLabel, InlayHintParams, Location, Position, ReferenceParams,
+        RelatedFullDocumentDiagnosticReport, RenameParams, TextEdit, Url,
         WorkspaceDiagnosticParams, WorkspaceDiagnosticReport, WorkspaceDiagnosticReportResult,
         WorkspaceDocumentDiagnosticReport, WorkspaceEdit, WorkspaceFullDocumentDiagnosticReport,
     },
@@ -390,9 +391,10 @@ impl DocumentManager {
         None
     }
 
-    /// Handles didChange event.
+    /// Handles a change in the text of a module.
     pub fn handle_change(&self, mut params: DidChangeTextDocumentParams) -> MessageStore {
-        let mut msgs = self.open_document(params.text_document.uri.clone());
+        let uri = params.text_document.uri.clone();
+        let mut msgs = self.open_document(uri.clone());
         msgs.inform("Handling text update...");
         let mut standpoints = self.standpoints.write().unwrap();
         let (standpoint, path_idx) = match self.get_cached_mut(&mut standpoints) {
@@ -407,14 +409,20 @@ impl DocumentManager {
         std::mem::drop(params);
         msgs.inform(format!("Refreshing open document..."));
         let time = std::time::Instant::now();
-        if let None = standpoint.refresh_module(path_idx, most_current, false) {
-            log_error!(msgs, "Something went wrong while refreshing user text.")
+        match standpoint.refresh_module(path_idx, most_current, false) {
+            Some(StandpointStatus::Restarted) => {
+                msgs.inform("Modifying intrinsic module! Server restarted. Updates will not be applied until after save.");
+            }
+            Some(StandpointStatus::RefreshSuccessful) => {
+                msgs.inform(format!("Document refreshed in {:?}", time.elapsed()))
+            }
+            None => log_error!(msgs, "Something went wrong while refreshing user text."),
         };
-        msgs.inform(format!("Document refreshed in {:?}", time.elapsed()));
         *self.was_updated.write().unwrap() = true;
-        // if time.elapsed() > std::time::Duration::from_millis(500) {
-        //     standpoint.clear();
-        // }
+        // idk what to do here.
+        if time.elapsed() > std::time::Duration::from_millis(300) {
+            standpoint.restart();
+        };
         msgs
     }
 
@@ -642,6 +650,55 @@ impl DocumentManager {
             }
         });
         return (msgs, Ok(response));
+    }
+
+    /// Support for inlay hints.
+    pub fn get_hints(&self, params: InlayHintParams) -> WithMessages<Option<Vec<InlayHint>>> {
+        let mut msgs = self.open_document(params.text_document.uri);
+        let standpoints = self.standpoints.read().unwrap();
+        let (standpoint, module) = match self.get_cached(&standpoints) {
+            Some(t) => t,
+            None => {
+                msgs.error("Could not retrieve the cached module index");
+                return (msgs, None);
+            }
+        };
+        let mut hints: Vec<InlayHint> = vec![];
+        for symbol in standpoint.symbol_table.in_module(module.path_idx) {
+            if let SemanticSymbolKind::Variable {
+                declared_type,
+                inferred_type,
+                ..
+            } = &symbol.kind
+            {
+                let entry_span = Span::on_line(
+                    symbol.references.first().unwrap().starts[0],
+                    symbol.name.len() as u32,
+                );
+                let position = to_range(entry_span).end;
+                let label_text = format!(
+                    ": {}",
+                    standpoint.symbol_table.format_evaluated_type(inferred_type)
+                );
+                if label_text.len() > 40 {
+                    continue;
+                }
+                let label = InlayHintLabel::String(label_text);
+                if declared_type.is_none() {
+                    hints.push(InlayHint {
+                        position,
+                        label,
+                        kind: Some(InlayHintKind::TYPE),
+                        text_edits: None,
+                        tooltip: None,
+                        padding_left: None,
+                        padding_right: Some(true),
+                        data: None,
+                    })
+                }
+            }
+        }
+        (msgs, Some(hints))
     }
 
     /// Returns the last workspace diagnostics report, or computes another one if there was a file change.

@@ -298,3 +298,59 @@ pub fn calling_new_on_identifier(name: String, span: ast::Span) -> TypeError {
         span,
     }
 }
+
+pub fn infinite_type(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::InfiniteType,
+        span,
+    }
+}
+
+pub fn non_boolean_logic(name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::NonBooleanLogic { name },
+        span,
+    }
+}
+
+pub fn invalid_assignment_target(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::InvalidAssignmentTarget,
+        span,
+    }
+}
+
+pub fn mutating_method(owner: String, name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::MutatingMethod { owner, name },
+        span,
+    }
+}
+
+pub fn assigning_to_reference(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::AssigningToReference,
+        span,
+    }
+}
+
+pub fn separate_if_types(span: ast::Span, first: String, second: String) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::SeparateIfTypes { first, second },
+        span,
+    }
+}
+
+pub fn void_assignment(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::VoidAssignment,
+        span,
+    }
+}
+
+pub fn partial_type_assignment(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::PartialTypeAssigmentIf,
+        span,
+    }
+}

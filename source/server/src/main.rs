@@ -5,6 +5,8 @@ mod document_manager;
 mod hover;
 mod message_store;
 
+use std::sync::Mutex;
+
 use document_manager::DocumentManager;
 use message_store::MessageStore;
 use tower_lsp::jsonrpc::Result;
@@ -16,6 +18,7 @@ use tower_lsp::{Client, LanguageServer, LspService, Server};
 struct Backend {
     client: Client,
     docs: DocumentManager,
+    is_writing: Mutex<bool>,
 }
 
 #[tower_lsp::async_trait]
@@ -41,6 +44,7 @@ impl LanguageServer for Backend {
                 }),
                 definition_provider: Some(OneOf::Left(true)),
                 references_provider: Some(OneOf::Left(true)),
+                inlay_hint_provider: Some(OneOf::Left(true)),
                 rename_provider: Some(OneOf::Left(true)),
                 diagnostic_provider: Some(DiagnosticServerCapabilities::Options(
                     DiagnosticOptions {
@@ -82,8 +86,13 @@ impl LanguageServer for Backend {
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
+        self.log_message("changing...").await;
+        if self.wait().await {
+            return;
+        }
         let messages = self.docs.handle_change(params);
         self.log_all(messages).await;
+        self.release().await;
     }
 
     async fn goto_declaration(
@@ -93,6 +102,12 @@ impl LanguageServer for Backend {
         let (messages, declaration_response) = self.docs.get_declaration(params);
         self.log_all(messages).await;
         Ok(declaration_response)
+    }
+
+    async fn inlay_hint(&self, params: InlayHintParams) -> Result<Option<Vec<InlayHint>>> {
+        let (messages, inlay_response) = self.docs.get_hints(params);
+        self.log_all(messages).await;
+        Ok(inlay_response)
     }
 
     async fn goto_definition(
@@ -164,6 +179,19 @@ impl Backend {
             self.client.log_message(message.0, message.1).await
         }
     }
+    async fn wait(&self) -> bool {
+        let mut is_writing = self.is_writing.lock().unwrap();
+        if *is_writing {
+            return true;
+        }
+        *is_writing = true;
+        return false;
+    }
+
+    async fn release(&self) {
+        let mut is_writing = self.is_writing.lock().unwrap();
+        *is_writing = false;
+    }
 }
 
 #[tokio::main]
@@ -175,6 +203,7 @@ async fn main() {
     let (service, socket) = LspService::new(|client| Backend {
         client,
         docs: DocumentManager::new(),
+        is_writing: Mutex::new(false),
     });
     Server::new(stdin, stdout, socket).serve(service).await;
 }
