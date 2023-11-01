@@ -132,7 +132,7 @@ public function Ok<T, U>(value: T): Outcome<T, U> {
 /// outcome := Err("Something went wrong.");
 /// AssertThat(outcome.IsErr())
 /// ```
-public function Err<T, U>(errorValue: T): Outcome<T, U> {
+public function Err<T, U>(errorValue: U): Outcome<T, U> {
     // new Outcome(OutcomeVal.Err(errorValue))
     Todo()
 }

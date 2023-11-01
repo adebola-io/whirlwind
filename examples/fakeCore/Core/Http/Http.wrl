@@ -25,6 +25,7 @@ public model Server {
         Todo()
     }
 
+    /// Starts the server by listening at the specified port for changes.
     public async function Start() {
         Todo()
     }

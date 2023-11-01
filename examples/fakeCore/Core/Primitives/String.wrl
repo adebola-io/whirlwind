@@ -351,6 +351,8 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     }
 }
 
+
+/// A simple iterator over the characters in a string.
 public model Chars implements Iteratable<&String> {
     var idx: UnsignedInt;
     var string: &String;

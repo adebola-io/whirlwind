@@ -117,6 +117,10 @@ pub enum TypeErrorType {
         async_func: String,
         non_async_func: String,
     },
+    /// Array with multiple types.
+    HeterogeneousArray,
+    // /// Type Alias references itself recursively.
+    // InfiniteType,
 }
 
 pub fn invalid_binary(left: String, operator: BinOperator, right: String, span: Span) -> TypeError {

@@ -76,6 +76,11 @@ impl LanguageServer for Backend {
         }
     }
 
+    async fn did_save(&self, params: DidSaveTextDocumentParams) {
+        let messages = self.docs.save_file(params);
+        self.log_all(messages).await;
+    }
+
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let messages = self.docs.handle_change(params);
         self.log_all(messages).await;

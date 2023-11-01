@@ -1,4 +1,4 @@
-use crate::{typecheck::unify::evaluate, EvaluatedType, PathIndex};
+use crate::{evaluate, EvaluatedType, PathIndex};
 use ast::{
     ConstantSignature, EnumSignature, ShorthandVariableSignature, Span, TypeSignature, WhirlNumber,
     WhirlString,
@@ -16,7 +16,7 @@ impl From<usize> for PathIndex {
 pub struct LiteralIndex(pub usize);
 
 /// An index into the symbol table.
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Eq, Hash)]
 pub struct SymbolIndex(pub usize);
 
 /// An identifier, basically. Contains an index to the symbol name, and a reference number.
@@ -142,6 +142,7 @@ pub enum SemanticSymbolKind {
     Parameter {
         is_optional: bool,
         param_type: Option<IntermediateType>,
+        inferred_type: EvaluatedType,
     },
     GenericParameter {
         traits: Vec<IntermediateType>,
@@ -272,7 +273,7 @@ pub struct SymbolTable {
     pub prospect_symbol: Option<SymbolIndex>,
     pub never_symbol: Option<SymbolIndex>,
     pub addition_symbol: Option<SymbolIndex>,
-    // todo ...
+    pub maybe_symbol: Option<SymbolIndex>, // todo ...
 }
 
 impl SemanticSymbol {
@@ -730,20 +731,15 @@ impl SymbolTable {
             string.push_str(&parameter_symbol.name);
             if let SemanticSymbolKind::Parameter {
                 is_optional,
-                param_type,
+                inferred_type,
+                ..
             } = &parameter_symbol.kind
             {
                 if *is_optional {
                     string.push('?');
                 }
                 string.push_str(": ");
-                match param_type {
-                    Some(typ) => {
-                        let evaluated = evaluate(typ, self, Some(&generic_arguments), &mut None);
-                        string.push_str(&self.format_evaluated_type(&evaluated));
-                    }
-                    None => string.push_str("{unknown}"),
-                }
+                string.push_str(&self.format_evaluated_type(&inferred_type));
             }
             if idx != params.len() - 1 {
                 string.push_str(", ");

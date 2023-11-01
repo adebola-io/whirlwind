@@ -11,6 +11,6 @@ public model FormatObject {
     
 }
 
-public function Print(message: String) {
+public function Println(message: String) {
     
 }

@@ -1,22 +1,24 @@
 module Main;
 
 use Core.Http.{ Server, Response, Request, ServerError };
-use Core.Io.{ Format, Print };
+use Core.Io.Println;
 
+/// Entry into the program.
 public function Main() {
     name := "simple-server";  
     port := 8080;
     app: Server := new Server(name, port);
-
-    printMessage := fn() Print(name + " is listening on port " + port.ToStr());
+    printMessage := fn() Println(name + " is listening on port " + port.ToStr());
 
     app.Get("/hello", Greeting);
-
+ 
     app.Start()
-      .Then(printMessage, "")
+      .Then(printMessage)
       .Run()
-      .Await();
+      .Await()!;
 }
+
+
 
 /// Handler function for the `/hello` endpoint.
 async function Greeting(request: Request): Outcome<Response, ServerError> {

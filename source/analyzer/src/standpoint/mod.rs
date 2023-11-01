@@ -597,8 +597,10 @@ impl Standpoint {
         if should_recompute_imports && self.auto_update {
             self.refresh_imports();
             self.check_all_modules();
+        } else {
+            self.check_module(path_idx);
         }
-        self.check_module(path_idx)
+        Some(())
     }
 
     /// Recursively search for and add a module in a directory to the module map.

@@ -203,6 +203,7 @@ impl<'a> SymbolWriter<'a> {
             SemanticSymbolKind::Parameter {
                 is_optional,
                 param_type,
+                inferred_type,
             } => {
                 string.push_str(&symbol.name);
                 if *is_optional {
@@ -212,7 +213,12 @@ impl<'a> SymbolWriter<'a> {
                 if let Some(label) = param_type.as_ref() {
                     string.push_str(&self.print_intermediate_type(label));
                 } else {
-                    string.push_str("{unknown}")
+                    string.push_str(
+                        &self
+                            .standpoint
+                            .symbol_table
+                            .format_evaluated_type(inferred_type),
+                    );
                 }
             }
             SemanticSymbolKind::GenericParameter {

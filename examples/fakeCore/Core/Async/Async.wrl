@@ -58,9 +58,6 @@ public model Eventual<T> implements Guaranteed<T> {
         this.aborted = true;
     }
     /// Blocks the current execution thread until the eventual is resolved.
-    /// ### Usage
-    /// ```
-    /// ```
     public function Await(): T {
         if this.aborted {
             Panic("Called Await on an aborted Eventual.");

@@ -1,0 +1,67 @@
+module TypeTest;
+
+use Core.Primitives.Ops.Addition;
+
+model Tuple<T, U> {
+
+    public var first: T;
+    public var second: U;
+    
+    new(first: T, second: U) {
+        this.first = first;
+        this.second = second;
+    }
+
+    function Swap(): Tuple<U, T> {
+        new Tuple(this.second, this.first)
+    }
+}
+
+/// Returns the value itself.
+public function Identity<T>(value: T): T {
+    value
+}
+
+/// Takes in a tuple of values and returns a tuple with the values swapped.
+public function Swap<T, U>(tuple: Tuple<T, U>): Tuple<U, T> {
+    tuple.Swap()
+}
+
+/// Finds an item within an array.
+public function Find<T>(value: Array<T>, predicate: fn(value: &T): Bool): Maybe<T> {
+    i := 0;
+    while i < value.Len() {
+        item := &value[i];
+        if predicate(item) {
+            return Some(item);
+        }
+    }
+    return None();
+}
+
+/// Transforms an array by applying a defined function on each of its elements.
+public function Map<T, U>(value: Array<T>, predicate: fn(value: T): U): Array<U> {
+    i := 0;
+    newArray := [];
+    while i < value.Len() {
+        item := value[i];
+        newValue := predicate(item);
+        newArray.push(newValue);
+    }
+    newArray
+}
+
+
+function Main () {
+    identity: String := Identity("Hello");
+    maybeString: Maybe<String> := Some(identity);
+
+    array := ["hello", "from", "the", "other", "side"];
+    str := Find(array, fn(value) true).Unwrap().Chars().Next().Unwrap();
+
+    array2 := [1, 2, 3, 4, 5, 6, 7, 8];
+    arrayStringified := Map(array2, fn(value) "string");
+
+    tuple: Tuple<String, Bool> := Todo();
+    swappedTuple := tuple.Swap();
+}

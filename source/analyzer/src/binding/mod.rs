@@ -507,6 +507,9 @@ mod bind_utils {
             CurrentModuleType::Async if entry.name() == "Prospect" && entry.is_public() => {
                 &mut symbol_table.prospect_symbol
             }
+            CurrentModuleType::Maybe if entry.name() == "Maybe" && entry.is_public() => {
+                &mut symbol_table.maybe_symbol
+            }
             // CurrentModuleType::Numeric => todo!(),
             // CurrentModuleType::Internal => todo!(),
             // CurrentModuleType::Ops => todo!(),
@@ -674,6 +677,8 @@ mod bind_utils {
 /// Statements
 mod statements {
     use ast::{TraitBody, TraitPropertyType};
+
+    use crate::EvaluatedType;
 
     use super::{
         bind_utils::{add_ctx_error, handle_scope_entry},
@@ -1548,6 +1553,7 @@ mod statements {
                             ambience,
                         )
                     }),
+                    inferred_type: EvaluatedType::Unknown,
                 },
                 references: vec![],
                 doc_info: parameter.info.take(),

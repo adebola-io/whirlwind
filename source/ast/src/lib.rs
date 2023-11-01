@@ -7,7 +7,7 @@ mod span;
 mod statement;
 
 mod token;
-mod typing;
+mod types;
 mod visitor;
 
 pub use ambience::*;
@@ -18,5 +18,5 @@ pub use signature::*;
 pub use span::*;
 pub use statement::*;
 pub use token::*;
-pub use typing::*;
+pub use types::*;
 pub use visitor::*;

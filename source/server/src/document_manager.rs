@@ -19,9 +19,9 @@ use tower_lsp::{
     lsp_types::{
         request::{GotoDeclarationParams, GotoDeclarationResponse},
         CompletionParams, CompletionResponse, Diagnostic, DidChangeTextDocumentParams,
-        DidOpenTextDocumentParams, DocumentDiagnosticParams, DocumentDiagnosticReport,
-        FullDocumentDiagnosticReport, HoverParams, Location, Position, ReferenceParams,
-        RelatedFullDocumentDiagnosticReport, RenameParams, TextEdit, Url,
+        DidOpenTextDocumentParams, DidSaveTextDocumentParams, DocumentDiagnosticParams,
+        DocumentDiagnosticReport, FullDocumentDiagnosticReport, HoverParams, Location, Position,
+        ReferenceParams, RelatedFullDocumentDiagnosticReport, RenameParams, TextEdit, Url,
         WorkspaceDiagnosticParams, WorkspaceDiagnosticReport, WorkspaceDiagnosticReportResult,
         WorkspaceDocumentDiagnosticReport, WorkspaceEdit, WorkspaceFullDocumentDiagnosticReport,
     },
@@ -85,6 +85,23 @@ impl DocumentManager {
             }
             None => self.update_cached(&standpoints, path_buf, &mut msgs),
         };
+        msgs
+    }
+
+    /// Handles a file save in the editor.
+    pub fn save_file(&self, params: DidSaveTextDocumentParams) -> MessageStore {
+        let mut msgs = self.open_document(params.text_document.uri);
+        msgs.inform("Saving file...");
+        let mut standpoints = self.standpoints.write().unwrap();
+        let (standpoint, _) = match self.get_cached_mut(&mut standpoints) {
+            Some(t) => t,
+            None => {
+                msgs.error("Could not retrieve the cached module index");
+                return msgs;
+            }
+        };
+        standpoint.refresh_imports();
+        standpoint.check_all_modules();
         msgs
     }
 
@@ -381,7 +398,7 @@ impl DocumentManager {
 
     /// Handles didChange event.
     pub fn handle_change(&self, mut params: DidChangeTextDocumentParams) -> MessageStore {
-        let mut msgs = self.open_document(params.text_document.uri);
+        let mut msgs = self.open_document(params.text_document.uri.clone());
         msgs.inform("Handling text update...");
         let mut standpoints = self.standpoints.write().unwrap();
         let (standpoint, path_idx) = match self.get_cached_mut(&mut standpoints) {
@@ -393,6 +410,7 @@ impl DocumentManager {
         };
         let last = params.content_changes.len() - 1;
         let most_current = std::mem::take(&mut params.content_changes[last].text);
+        std::mem::drop(params);
         msgs.inform(format!("Refreshing open document..."));
         let time = std::time::Instant::now();
         if let None = standpoint.refresh_module(path_idx, most_current, false) {
@@ -400,6 +418,9 @@ impl DocumentManager {
         };
         msgs.inform(format!("Document refreshed in {:?}", time.elapsed()));
         *self.was_updated.write().unwrap() = true;
+        // if time.elapsed() > std::time::Duration::from_millis(500) {
+        //     standpoint.clear();
+        // }
         msgs
     }
 
@@ -637,7 +658,7 @@ impl DocumentManager {
         if *was_updated {
             standpoints.iter_mut().for_each(|standpoint| {
                 standpoint.refresh_imports();
-                standpoint.check_all_modules();
+                // standpoint.check_all_modules();
             });
             *diagnostic_report =
                 WorkspaceDiagnosticReportResult::Report(WorkspaceDiagnosticReport {

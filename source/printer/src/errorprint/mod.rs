@@ -56,7 +56,8 @@ pub fn stringify_type_error(error: &TypeErrorType, _writer: SymbolWriter) -> Str
             None => format!("Expects {expected} parameter{}, but this function has {found}.", if *expected == 1 {""} else {"s"},),
         },
         TypeErrorType::MissingIntrinsic { name } => format!("Intrinsic symbol '{name}' could not be resolved. The core library might have been altered or installed incorrectly."),
-        TypeErrorType::AsyncMismatch { async_func, non_async_func } => format!("Cannot assign '{async_func}' to '{non_async_func}', because the first function is asynchronous, while the other is not."),   
+        TypeErrorType::AsyncMismatch { async_func, non_async_func } => format!("Cannot assign '{async_func}' to '{non_async_func}', because the first function is asynchronous, while the other is not."),
+        TypeErrorType::HeterogeneousArray => format!("Array contains two or more values on different types."),   
         
     }
 }
