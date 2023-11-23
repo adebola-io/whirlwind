@@ -1,34 +1,59 @@
+// Define the main module.
 module Main;
 
-use Core.Http.{Server, ServerOutcome, Response, Request, Middleware};
-use Core.Async.ToSync;
-use Core.Io.Print;
+// Import necessary modules from the Core library.
+use Core.Http.{ 
+   Server, ServerOutcome, Response, Request, Middleware 
+};
+use Core.Io.Println;
 
-/// Entry into the program. 
+/// Entry point into the program.
 public function Main() {
+    // Set up server configurations.
     name := "simple-server";
     port := 8080;
     app := new Server(name, port); 
     middleware := new Middleware();
+    // Apply middleware to the server.
     app.UseMiddleware(middleware);
-    // routes.
-    app.Get("/hello", Greeting);
-    app.Get("/user/create", CreateUser); 
-    prospect := app.Start()
-        .Then(fn() Print(name + " is listening on port " + port.ToStr()));
-    ToSync(prospect);
+    // Define routes.
+    // Route 1: Basic "Hello, World!" response.
+    app.Get("/hello", HelloHandler);
+    // Route 2: Parameterized greeting.
+    app.Get("/greet/:name", GreetHandler);
+    // Route 3: Static file serving.
+    app.Get("/static/::filename", StaticFileHandler);
+    // Start the server and handle subsequent actions.
+    app.Start()
+      .Then(fn() Println(name + " is listening on port " + port.ToStr()))
+      .Run()
+      .Await()!
 }
 
-/// Handler function for the `/hello` endpoint.
-async function Greeting(request: Request): ServerOutcome {
-    return Ok(
-        *Response 
+/// Handler function for the "/hello" endpoint.
+async function HelloHandler(request: Request): ServerOutcome {
+    Ok(
+        *Response
             .From(request)
             .Status(200)
             .Html("<h1>Hello, world!</h1>")
-    );
+    )
 }
 
-async function CreateUser(): ServerOutcome {
+/// Handler function for the "/greet/:name" endpoint.
+async function GreetHandler(request: Request): ServerOutcome {
+    name := request.PathParams().Get("name");
+    if name.IsNone() {
+        return Err(new ServerError("Could not parse name from path."));
+    }
+    response := Response.From(request);
+    response.Status(200).Html("<h1>Hello, " + name.Unwrap() + "!</h1>");
+    Ok(response)
+}
+
+// Handler function for serving static files.
+async function StaticFileHandler(request: Request): ServerOutcome {
+    filename := request.PathParams().Get("filename");
+    // Implement logic to read and serve the specified static file.
     return Todo();
 }
