@@ -1,6 +1,5 @@
 module Io;
 
-
 use Super.Primitives.String;
 
 /// Creates a new format object.
@@ -14,6 +13,6 @@ public model FormatObject {
     }
 }
 
-public function Println(message: String) {
+public function Print(message: String) {
     
 }

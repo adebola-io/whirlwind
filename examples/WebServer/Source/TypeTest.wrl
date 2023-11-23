@@ -1,7 +1,7 @@
 module TypeTest;
 
 use Core.Primitives.Ops.Addition;
-use Core.Collections.{ Tuple, Quadruple };
+use Core.Collections.{Tuple, Quadruple};
 
 
 /// Returns the value itself.
@@ -9,15 +9,11 @@ public function Identity<T>(value: T): T {
     value
 }
 
-/// Takes in a tuple of values and returns a tuple with the values swapped.
-public function Swap<T, U>(tuple: Tuple<T, U>): Tuple<U, T> {
-    tuple.Swap()
+// firstChar := fn(str: String) str.Chars().Next();
+function FirstCharacter(str: String): Maybe<&String> {
+    return str.Chars().Next();
 }
 
-test "test Testing" {
-    use Core.Testing.Assert;
-
-    str := "Hello, world!";
-
-    // Assert(str.Chars().Next().Unwrap()).Equals(str)
+function AFunction() {
+    
 }

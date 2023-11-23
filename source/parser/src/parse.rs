@@ -1215,9 +1215,11 @@ impl<L: Lexer> Parser<L> {
         let start = self.token().unwrap().span.start;
         self.advance(); // Move past use.
         let name = check!(self.identifier());
-        let path = check!(self.use_path());
-
         let mut errors = vec![];
+        // More tolerant to allow auto-complete.
+        let (path, mut path_errors) = self.use_path().to_tuple();
+        errors.append(&mut path_errors);
+        let path = path.unwrap_or(UsePath::Me);
         let end;
         if self
             .token()
@@ -1266,59 +1268,73 @@ impl<L: Lexer> Parser<L> {
     }
 
     /// Parses a use path.
-    fn use_path(&self) -> Fallible<UsePath> {
-        self.ended(expected(
-            TokenType::Operator(SemiColon),
-            self.last_token_span(),
-        ))?;
+    fn use_path(&self) -> Imperfect<UsePath> {
+        if_ended!(
+            expected(TokenType::Operator(SemiColon), self.last_token_span(),),
+            self
+        );
 
         let token = self.token().unwrap();
+        let mut errors = vec![];
         match token._type {
             TokenType::Operator(Dot) => {
                 self.advance(); // Move past .
-                self.ended(errors::identifier_expected(self.last_token_span()))?;
+                if self.token().is_none() {
+                    errors.push(errors::identifier_expected(self.last_token_span()));
+                    return Partial::from_tuple((Some(UsePath::Me), errors));
+                }
                 let token = self.token().unwrap();
                 match token._type {
                     // Importing a single item.
-                    TokenType::Ident(_) => Ok(UsePath::Item(Box::new(UseTarget {
-                        name: self.identifier()?,
-                        path: self.use_path()?,
-                    }))),
+                    TokenType::Ident(_) => {
+                        let path = UsePath::Item(Box::new(UseTarget {
+                            name: check!(self.identifier()),
+                            path: {
+                                let (path, mut sub_errors) = self.use_path().to_tuple();
+                                errors.append(&mut sub_errors);
+                                path.unwrap_or(UsePath::Me)
+                            },
+                        }));
+                        Partial::from_tuple((Some(path), errors))
+                    }
                     // Importing a list of items.
                     TokenType::Bracket(LCurly) => {
                         let start = self.token().unwrap().span.start;
                         self.advance(); // Move past {
-                        let use_path = self.use_path_list()?;
-                        expect!(TokenType::Bracket(RCurly), self);
+                        let (use_path, mut suberrors) = self.use_path_list().to_tuple();
+                        let use_path = use_path.unwrap_or(UsePath::List(vec![]));
+                        errors.append(&mut suberrors);
+                        expect_or_return!(TokenType::Bracket(RCurly), self);
                         let end = self.token().unwrap().span.end;
                         if let UsePath::List(items) = &use_path {
                             if items.len() == 0 {
-                                return Err(errors::empty_path_list(Span::from([start, end])));
+                                errors.push(errors::empty_path_list(Span::from([start, end])));
                             }
                         }
                         self.advance(); // Move past }
-                        Ok(use_path)
+                        Partial::from_tuple((Some(use_path), errors))
                     }
-                    _ => return Err(errors::identifier_expected(token.span)),
+                    _ => return Partial::from_error(errors::identifier_expected(token.span)),
                 }
             }
             // Importing self.
-            _ => Ok(UsePath::Me),
+            _ => Partial::from_value(UsePath::Me),
         }
     }
 
     /// Parses a use path list. Assumes that the first target is the current token.
-    fn use_path_list(&self) -> Fallible<UsePath> {
+    fn use_path_list(&self) -> Imperfect<UsePath> {
         let mut items = vec![];
+        let mut errors = vec![];
         while self
             .token()
             .is_some_and(|token| token._type != TokenType::Bracket(RCurly))
         {
-            let target = UseTarget {
-                name: self.identifier()?,
-                path: self.use_path()?,
-            };
-            items.push(target);
+            let name = check!(self.identifier());
+            let (path, mut suberrors) = self.use_path().to_tuple();
+            let path = path.unwrap_or(UsePath::Me);
+            errors.append(&mut suberrors);
+            items.push(UseTarget { name, path });
             if self
                 .token()
                 .is_some_and(|token| token._type == TokenType::Operator(Comma))
@@ -1328,7 +1344,7 @@ impl<L: Lexer> Parser<L> {
             }
             break;
         }
-        Ok(UsePath::List(items))
+        Partial::from_value(UsePath::List(items))
     }
 
     /// Parses an enum declaration. Assumes that `enum` is the current token.

@@ -1,9 +1,9 @@
-use crate::{evaluate, EvaluatedType, PathIndex};
+use crate::{evaluate, utils::symbol_to_type, EvaluatedType, PathIndex, TypedExpression};
 use ast::{
     ConstantSignature, EnumSignature, ShorthandVariableSignature, Span, TypeSignature, WhirlNumber,
     WhirlString,
 };
-use std::path::Path;
+use std::{path::Path, vec};
 
 impl From<usize> for PathIndex {
     fn from(value: usize) -> Self {
@@ -495,6 +495,41 @@ impl SymbolTable {
         predicate: F,
     ) -> Option<&SemanticSymbol> {
         self.symbols().map(|(_, symbol)| symbol).find(predicate)
+    }
+    /// Returns the type of an expression.
+    pub fn get_expression_type(
+        &self,
+        expression: &TypedExpression,
+        literals: &Vec<Literal>,
+    ) -> Option<EvaluatedType> {
+        Some(match expression {
+            TypedExpression::Identifier(ident) => {
+                let symbol = self.get_forwarded(ident.value)?;
+                return symbol_to_type(symbol, ident.value, self).ok();
+            }
+            TypedExpression::Literal(literal) => EvaluatedType::ModelInstance {
+                model: match literals.get(literal.0)? {
+                    Literal::StringLiteral { .. } => self.string_symbol?,
+                    Literal::NumericLiteral { .. } => return Some(EvaluatedType::Unknown), // todo.
+                    Literal::BooleanLiteral { .. } => self.bool_symbol?,
+                },
+                generic_arguments: vec![],
+            },
+            TypedExpression::NewExpr(new) => new.inferred_type.clone(),
+            TypedExpression::ThisExpr(this) => this.inferred_type.clone(),
+            TypedExpression::CallExpr(call) => call.inferred_type.clone(),
+            TypedExpression::FnExpr(f) => f.inferred_type.clone(),
+            TypedExpression::Block(block) => block.inferred_type.clone(),
+            TypedExpression::IfExpr(if_) => if_.inferred_type.clone(),
+            TypedExpression::AccessExpr(access) => access.inferred_type.clone(),
+            TypedExpression::ArrayExpr(array) => array.inferred_type.clone(),
+            TypedExpression::IndexExpr(i) => i.inferred_type.clone(),
+            TypedExpression::BinaryExpr(b) => b.inferred_type.clone(),
+            TypedExpression::AssignmentExpr(a) => a.inferred_type.clone(),
+            TypedExpression::UnaryExpr(u) => u.inferred_type.clone(),
+            TypedExpression::LogicExpr(l) => l.inferred_type.clone(),
+            TypedExpression::UpdateExpr(u) => u.inferred_type.clone(),
+        })
     }
     /// Get a symbol mutably using its index.
     pub fn get_mut(&mut self, idx: SymbolIndex) -> Option<&mut SemanticSymbol> {

@@ -32,7 +32,7 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     /// str := "This is a string";
     /// 
     /// for char in str {
-    ///     Core.Io.Println(char);
+    ///     Print(char);
     /// }
     /// ```
     public function [AsIterator.Convert](): Chars {
@@ -78,7 +78,7 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     /// str := "adebola.xyz";
     /// 
     /// for byte in str.Bytes() {
-    ///     Core.Io.Println(byte)
+    ///     Print(byte)
     /// }
     /// ```
     public function Bytes(): Bytes {
@@ -88,7 +88,7 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     /// ## Usage
     /// ```
     /// str := "jonathan is a boy";
-    /// str2 := str.ToCapitalCase();
+    /// str2 := str.CapitalCase();
     /// 
     /// Assert(str2).Equals("Jonathan Is A Boy");
     /// ```
@@ -101,7 +101,7 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     /// str := "adebola.io"
     /// 
     /// for char in str.Chars() {
-    ///     Core.Io.Println(char);
+    ///     Print(char);
     /// }
     /// ```
     public function Chars(): Chars {
@@ -126,11 +126,23 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     /// ```
     /// str := "This is a world premiere.";
     /// 
-    /// AssertThat(str.Contains("world"));
-    /// AssertThat(str.Contains("premiere"));
+    /// AssertThat(str.Contains(&"world"));
+    /// AssertThat(str.Contains(&"premiere"));
     /// ```
     public function Contains(substr: &String): Bool {
         return Invoke(Injunction.StrContains(this, substr));
+    }
+    /// Returns true if the string is made up entirely of alphabetic and numeric characters.
+    /// ## Usage
+    /// ```
+    /// str := "helloworld1234";
+    /// AssertThat(str.IsAlphanumeric());
+    /// 
+    /// str2 := "%hello_world$";
+    /// AssertThat(!str2.IsAlphanumeric());
+    /// ```
+    public function IsAlphanumeric(): Bool {
+        return Invoke(Injunction.StrIsAlphanum(this));
     }
     /// Returns true if the string has no characters.
     /// ## Usage

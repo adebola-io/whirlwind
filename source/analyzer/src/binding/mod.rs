@@ -2310,6 +2310,8 @@ mod statements {
 
 /// Expressions.
 mod expressions {
+    use crate::EvaluatedType;
+
     use super::{statements::bind_function_block, *};
     // Binds an expression.
     pub fn bind_expression(
@@ -2474,6 +2476,7 @@ mod expressions {
                 ambience,
             ),
             span: new_expr.span,
+            inferred_type: EvaluatedType::Unknown,
         }
     }
 
@@ -2506,6 +2509,7 @@ mod expressions {
             model_or_trait: symbol_index,
             start_line: this.span.start[0],
             start_character: this.span.start[1],
+            inferred_type: EvaluatedType::Unknown,
         }
     }
 
@@ -2529,6 +2533,7 @@ mod expressions {
                 .map(|argument| bind_expression(argument))
                 .collect(),
             span: call.span,
+            inferred_type: EvaluatedType::Unknown,
         }
     }
     /// Bind a function expression.
@@ -2572,6 +2577,7 @@ mod expressions {
                     return_type,
                     body: TypedExpression::Block(body),
                     span: func.span,
+                    inferred_type: EvaluatedType::Unknown,
                 }
             }
             body => {
@@ -2605,6 +2611,7 @@ mod expressions {
                             "Did not enclose the expression of a block as an expression."
                         ),
                     },
+                    inferred_type: EvaluatedType::Unknown,
                     span: func.span,
                 }
             }
@@ -2638,6 +2645,7 @@ mod expressions {
                     )
                 })
                 .collect(),
+            inferred_type: EvaluatedType::Unknown,
             span: block.span,
         };
         binder.current_scope = prior_scope;
@@ -2671,6 +2679,7 @@ mod expressions {
                 literals,
                 ambience,
             ),
+            inferred_type: EvaluatedType::Unknown,
             span: binexp.span,
         })
     }
@@ -2709,8 +2718,10 @@ mod expressions {
                     literals,
                     ambience,
                 ),
+                inferred_type: EvaluatedType::Unknown,
                 span: _else.span,
             }),
+            inferred_type: EvaluatedType::Unknown,
             span: ifexpr.span,
         })
     }
@@ -2731,6 +2742,7 @@ mod expressions {
                     bind_expression(expression, binder, symbol_table, errors, literals, ambience)
                 })
                 .collect(),
+            inferred_type: EvaluatedType::Unknown,
             span: array.span,
         }
     }
@@ -2760,6 +2772,7 @@ mod expressions {
                 literals,
                 ambience,
             ),
+            inferred_type: EvaluatedType::Unknown,
             span: indexexp.span,
         })
     }
@@ -2790,6 +2803,7 @@ mod expressions {
                 literals,
                 ambience,
             ),
+            inferred_type: EvaluatedType::Unknown,
             span: assexp.span,
         })
     }
@@ -2838,6 +2852,7 @@ mod expressions {
             object,
             property,
             span: accessexp.span,
+            inferred_type: EvaluatedType::Unknown,
         })
     }
 
@@ -2861,6 +2876,7 @@ mod expressions {
                 ambience,
             ),
             span: unaryexp.span,
+            inferred_type: EvaluatedType::Unknown,
         })
     }
     /// Binds a logic expression.
@@ -2891,6 +2907,7 @@ mod expressions {
                 ambience,
             ),
             span: logicexp.span,
+            inferred_type: EvaluatedType::Unknown,
         })
     }
     /// Binds an update expression.
@@ -2913,6 +2930,7 @@ mod expressions {
                 ambience,
             ),
             span: updateexp.span,
+            inferred_type: EvaluatedType::Unknown,
         })
     }
 }

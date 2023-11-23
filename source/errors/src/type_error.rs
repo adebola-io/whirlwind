@@ -149,6 +149,20 @@ pub enum TypeErrorType {
     },
     VoidAssignment,
     PartialTypeAssigmentIf,
+    NeverAsDeclared,
+    MispelledName {
+        name: String,
+    },
+    /// Using a private symbol from another module.
+    PrivateSymbolLeak {
+        modulename: String,
+        property: String,
+    },
+    /// Accessing a nonexistent symbol from a module.
+    NoSuchSymbol {
+        modulename: String,
+        property: String,
+    },
     // InfiniteType,
 }
 

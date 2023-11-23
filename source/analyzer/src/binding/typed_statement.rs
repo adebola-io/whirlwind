@@ -1,6 +1,9 @@
 use ast::Span;
 
-use crate::{IntermediateType, LiteralIndex, SymbolIndex, TypedExpression, TypedIdent};
+use crate::{
+    span_of_typed_expression, EvaluatedType, IntermediateType, Literal, LiteralIndex, SymbolIndex,
+    SymbolTable, TypedExpression, TypedIdent,
+};
 
 #[derive(Debug, PartialEq)]
 pub enum TypedStmnt {
@@ -88,6 +91,7 @@ pub struct TypedTypeDeclaration {
 pub struct TypedBlock {
     pub statements: Vec<TypedStmnt>,
     pub span: Span,
+    pub inferred_type: EvaluatedType,
 }
 
 #[derive(Debug, PartialEq)]
@@ -210,4 +214,33 @@ pub struct TypedForStatement {
 pub struct TypedContinueStatement {
     pub label: Option<TypedIdent>,
     pub span: Span,
+}
+
+pub fn span_of_typed_statement(
+    s: &TypedStmnt,
+    symboltable: &SymbolTable,
+    literals: &[Literal],
+) -> Span {
+    match s {
+        TypedStmnt::TestDeclaration(t) => t.span,
+        TypedStmnt::UseDeclaration(u) => u.span,
+        TypedStmnt::VariableDeclaration(v) => v.span,
+        TypedStmnt::ConstantDeclaration(c) => c.span,
+        TypedStmnt::ModelDeclaration(c) => c.span,
+        TypedStmnt::FunctionDeclaration(f) => f.span,
+        TypedStmnt::RecordDeclaration => todo!(),
+        TypedStmnt::TraitDeclaration(t) => t.span,
+        TypedStmnt::EnumDeclaration(e) => e.span,
+        TypedStmnt::TypeDeclaration(t) => t.span,
+        TypedStmnt::WhileStatement(w) => w.span,
+        TypedStmnt::ForStatement(f) => f.span,
+        TypedStmnt::ExpressionStatement(e) | TypedStmnt::FreeExpression(e) => {
+            span_of_typed_expression(e, symboltable, literals)
+        }
+        TypedStmnt::ShorthandVariableDeclaration(v) => v.span,
+        TypedStmnt::ModuleDeclaration(m) => m.span,
+        TypedStmnt::ReturnStatement(r) => r.span,
+        TypedStmnt::ContinueStatement(c) => c.span,
+        TypedStmnt::BreakStatement(b) => b.span,
+    }
 }

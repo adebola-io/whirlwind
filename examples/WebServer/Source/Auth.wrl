@@ -1,0 +1,56 @@
+module Auth;
+
+use Utils.IsValidUsername;
+use Core.Async.ToSync;
+
+model User {
+    var id: String;
+    var username: String;
+    var email: String;
+    var db: &DatabaseHandle;
+    var session: UserSession;
+    new(id: String, db: &DatabaseHandle) {
+        this.id = id;
+        this.db = db;
+        users := ToSync(this.db.GetTable("users"))
+            .Expect("Could not retrieve users from database");
+        db_mirror := ToSync(users.GetById(this.id)).Expect("Could not retrieve this user type.");
+        this.username = db_mirror.username;
+        this.email = db_mirror.email;
+    }
+    /// Creates a new session for a user.
+    public function CreateSession(): SessionId {
+        this.session = new Session(this);
+        return this.session.id;
+    }
+    /// Returns true if the user is currently signed in.
+    public function IsSignedIn(): Bool {
+        this.session.IsActive()
+    }
+    /// Gets the username of this user.
+    public function GetUsername(): &String {
+        return this.username;
+    }
+    /// Changes the username.
+    public async function SetUserName(value: String): Outcome<Bool, OperationalError> {
+        if !IsValidUsername(&value) {
+            return Err("hello");
+        };
+        users := ToSync(this.db.GetTable("users"))?;
+        db_mirror := ToSync(users.GetById(this.id))?;
+        db_mirror.Update("username", value);
+    }
+}
+
+
+
+
+model OperationalError {}
+model DatabaseHandle {
+    new() {
+
+    }
+}
+model UserSession {}
+model Session {}
+type SessionId = Number;

@@ -2,7 +2,6 @@ module Math;
 
 use Core.Primitives.Ops.Magnitude;
 
-
 /// Returns the largest value in an array.
 /// It returns an empty value if the array is empty.
 /// ### Usage
@@ -32,9 +31,9 @@ public function Max<T implements Magnitude>(array: Array<T>): Maybe<T> {
 /// ### Usage
 /// ```
 /// array := [2, 3, 4, 5, 6, 7];
-/// largest := Max(array);
+/// smallest := Min(array);
 /// 
-/// Assert(largest == Some(7));
+/// Assert(smallest == Some(2));
 /// ```
 public function Min<T implements Magnitude>(array: Array<T>): Maybe<T> {
     if array.Len() == 0 {
@@ -55,9 +54,9 @@ public function Min<T implements Magnitude>(array: Array<T>): Maybe<T> {
 /// ### Usage
 /// ```
 /// array := [1, 2, 3, 4];
-/// sum = Sum(array)
+/// summed = Sum(array)
 /// 
-/// Assert(sum == 10);
+/// Assert(summed == 10);
 /// ```
 public function Sum(array: Array<Number>): Number {
     i := 1;

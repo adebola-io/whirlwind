@@ -18,18 +18,18 @@ use Super.Internals.Injunction;
 /// 
 /// ## Usage
 /// ```
-/// use Core.Io.Println;
+/// use Core.Io.println;
 /// 
-/// async function DoStuff(): UnsignedInt {
+/// async function doStuff(): UnsignedInt {
 ///     Println("Hello from a prospect!");
-///     Core.Time.Sleep(5000); // Sleep for 5 seconds.
+///     Core.Time.sleep(5000); // Sleep for 5 seconds.
 ///     return 0;
 /// }
 /// 
-/// function Main() {
-///     prospect := DoStuff();
-///     prospect.Run();
-///     Println("Hello, world!"); // Will print before the prospect.
+/// function main() {
+///     prospect := doStuff();
+///     prospect.run();
+///     println("Hello, world!"); // Will print before the prospect.
 /// }
 /// ```
 public model Prospect<T> {
@@ -50,7 +50,7 @@ public model Eventual<T> implements Guaranteed<T> {
     public var resolved: Bool;
     /// Whether or not the eventual has been aborted.
     public var aborted: Bool;
-    public function [Guaranteed.Guarantee](): T {
+    public function [Guaranteed.guarantee](): T {
         this.Unwrap()
     }
     /// Cancels the running of the eventual and discards its value.
@@ -74,4 +74,9 @@ public model Eventual<T> implements Guaranteed<T> {
         };
         Todo()
     }
+}
+
+/// Runs a prospect immediately, blocking the current execution context until it is finished.
+public function ToSync<T>(prospect: Prospect<T>): T {
+    prospect.Run().Await()
 }

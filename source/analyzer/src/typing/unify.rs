@@ -249,7 +249,9 @@ pub fn unify_types(
         // Left type is never.
         (Never, right_type) => Ok(right_type.clone()),
         // Either type is never.
-        (free, Never) if matches!(options, UnifyOptions::AnyNever) => Ok(free.clone()),
+        (free, Never) if matches!(options, UnifyOptions::AnyNever | UnifyOptions::Conform) => {
+            Ok(free.clone())
+        }
         _ => Err(vec![TypeErrorType::MismatchedAssignment {
             left: symboltable.format_evaluated_type(left),
             right: symboltable.format_evaluated_type(right),

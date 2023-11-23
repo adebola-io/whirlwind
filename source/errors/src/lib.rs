@@ -354,3 +354,17 @@ pub fn partial_type_assignment(span: ast::Span) -> TypeError {
         span,
     }
 }
+
+pub fn never_as_declared(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::NeverAsDeclared,
+        span,
+    }
+}
+
+pub fn mispelled_name(name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::MispelledName { name },
+        span,
+    }
+}

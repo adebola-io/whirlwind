@@ -282,7 +282,11 @@ impl Standpoint {
                 for (i, target) in all_paths.iter().enumerate() {
                     solutions.append(&mut self.solve_import_symbols(
                         &target,
-                        &[leaves[i]],
+                        &[match leaves.get(i) {
+                            Some(index) => *index,
+                            // Could be mismatched if there are values with same name.
+                            None => continue,
+                        }],
                         index,
                         root,
                     ))
@@ -313,13 +317,16 @@ impl Standpoint {
                 if source.is_some() {
                     let mut source = source.clone();
                     while source.is_some() {
-                        let imported_symbol =
-                            self.symbol_table.get(source.clone().unwrap()).unwrap();
-                        match imported_symbol.kind {
-                            SemanticSymbolKind::Import {
-                                source: parent_source,
+                        let imported_symbol = self.symbol_table.get(source.clone().unwrap());
+                        match imported_symbol {
+                            Some(SemanticSymbol {
+                                kind:
+                                    SemanticSymbolKind::Import {
+                                        source: parent_source,
+                                        ..
+                                    },
                                 ..
-                            } => source = parent_source,
+                            }) => source = *parent_source,
                             _ => break,
                         }
                     }
@@ -596,33 +603,33 @@ impl Standpoint {
         self.remove_module(path_idx)?;
         self.auto_update = true;
 
-        // Reset intrinsics if necessary.
-        if let Ok(path) = path.strip_prefix(BASE_CORE_PATH) {
-            let is_intrinsic = if let Some(path_str) = path.to_str() {
-                match path_str {
-                    Self::ARRAY
-                    | Self::ASYNC
-                    | Self::BOOL
-                    | Self::NUMERIC
-                    | Self::INTERNAL
-                    | Self::ITERATABLE
-                    | Self::OPS
-                    | Self::TRAITS
-                    | Self::RANGE
-                    | Self::STRING
-                    | Self::DEFAULT
-                    | Self::MAYBE => true,
-                    _ => false,
-                }
-            } else {
-                false
-            };
-            if is_intrinsic {
-                self.restart();
+        // // Reset intrinsics if necessary.
+        // if let Ok(path) = path.strip_prefix(BASE_CORE_PATH) {
+        //     let is_intrinsic = if let Some(path_str) = path.to_str() {
+        //         match path_str {
+        //             Self::ARRAY
+        //             | Self::ASYNC
+        //             | Self::BOOL
+        //             | Self::NUMERIC
+        //             | Self::INTERNAL
+        //             | Self::ITERATABLE
+        //             | Self::OPS
+        //             | Self::TRAITS
+        //             | Self::RANGE
+        //             | Self::STRING
+        //             | Self::DEFAULT
+        //             | Self::MAYBE => true,
+        //             _ => false,
+        //         }
+        //     } else {
+        //         false
+        //     };
+        //     if is_intrinsic {
+        //         self.restart();
 
-                return Some(StandpointStatus::Restarted);
-            }
-        }
+        //         return Some(StandpointStatus::Restarted);
+        //     }
+        // }
 
         // Add updated module.
         let mut update = Module::from_text(text);

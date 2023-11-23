@@ -1,3 +1,5 @@
+use errors::TypeErrorType;
+
 use crate::{EvaluatedType, ParameterType, SemanticSymbolKind, SymbolIndex, SymbolTable};
 
 /// Encloses an evaluated type as a prospect.
@@ -186,4 +188,66 @@ pub fn coerce(typ: EvaluatedType, args: &Vec<(SymbolIndex, EvaluatedType)>) -> E
         // todo: opaque type coercion.
         _ => typ,
     }
+}
+
+/// Converts a list of generic parameter indexes to a list of evaluated generic argument types.
+pub fn evaluate_generic_params(
+    generic_params: &Vec<SymbolIndex>,
+) -> Vec<(SymbolIndex, EvaluatedType)> {
+    generic_params
+        .iter()
+        .map(|idx| (*idx, EvaluatedType::Generic { base: *idx }))
+        .collect()
+}
+
+/// Convert a symbol to its inferred type.
+pub fn symbol_to_type(
+    symbol: &crate::SemanticSymbol,
+    name: SymbolIndex,
+    symboltable: &SymbolTable,
+) -> Result<EvaluatedType, Result<EvaluatedType, TypeErrorType>> {
+    let eval_type = match &symbol.kind {
+        SemanticSymbolKind::Module { .. } => EvaluatedType::Module(name),
+        SemanticSymbolKind::Trait { .. } => EvaluatedType::Trait(name),
+        SemanticSymbolKind::Model { .. } => EvaluatedType::Model(name),
+        SemanticSymbolKind::Enum { .. } => EvaluatedType::Enum(name),
+        SemanticSymbolKind::Variant { owner_enum, .. } => EvaluatedType::EnumInstance {
+            enum_: *owner_enum,
+            generic_arguments: {
+                // Try to create a space for unknown enum generics.
+                // todo: unify from tagged types.
+                let enum_symbol = symboltable.get_forwarded(*owner_enum).unwrap();
+                match &enum_symbol.kind {
+                    SemanticSymbolKind::Enum { generic_params, .. } => {
+                        evaluate_generic_params(generic_params)
+                    }
+                    _ => vec![],
+                }
+            },
+        },
+        SemanticSymbolKind::Variable { inferred_type, .. } => inferred_type.clone(),
+        SemanticSymbolKind::Constant { inferred_type, .. } => inferred_type.clone(),
+        SemanticSymbolKind::Parameter {
+            is_optional,
+            inferred_type,
+            ..
+        } => {
+            if *is_optional {
+                maybify(inferred_type.clone(), symboltable)
+            } else {
+                inferred_type.clone()
+            }
+        }
+        SemanticSymbolKind::GenericParameter { .. } | SemanticSymbolKind::TypeName { .. } => {
+            return Err(Err(TypeErrorType::TypeAsValue {
+                type_: symbol.name.clone(),
+            }));
+        }
+        SemanticSymbolKind::Function { generic_params, .. } => EvaluatedType::FunctionInstance {
+            function: name,
+            generic_arguments: evaluate_generic_params(generic_params),
+        }, //TODO
+        _ => EvaluatedType::Unknown,
+    };
+    Ok(eval_type)
 }

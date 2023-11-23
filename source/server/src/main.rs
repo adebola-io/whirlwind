@@ -1,6 +1,7 @@
 mod diagnostic;
 mod error;
 
+mod completion;
 mod document_manager;
 mod hover;
 mod message_store;
@@ -33,7 +34,7 @@ impl LanguageServer for Backend {
                 )),
                 completion_provider: Some(CompletionOptions {
                     resolve_provider: Some(true),
-                    trigger_characters: Some(vec![format!("."), format!("use ")]),
+                    trigger_characters: Some(vec![format!("."), format!(" "), format!("&")]),
                     all_commit_characters: None,
                     work_done_progress_options: WorkDoneProgressOptions {
                         work_done_progress: Some(true),
@@ -138,7 +139,13 @@ impl LanguageServer for Backend {
     }
 
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
-        Ok(self.docs.completion(params))
+        let (messages, completion) = self.docs.completion(params);
+        self.log_all(messages).await;
+        Ok(completion)
+    }
+
+    async fn completion_resolve(&self, params: CompletionItem) -> Result<CompletionItem> {
+        Ok(params)
     }
 
     async fn diagnostic(

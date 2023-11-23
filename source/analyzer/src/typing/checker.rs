@@ -1,5 +1,5 @@
 use crate::{
-    evaluate,
+    evaluate, span_of_typed_expression, span_of_typed_statement,
     unify::{unify_freely, unify_types},
     utils::{coerce, maybify, prospectify},
     EvaluatedType, Literal, ParameterType, PathIndex, ProgramError, SemanticSymbolKind,
@@ -44,67 +44,11 @@ impl<'a> TypecheckerContext<'a> {
     }
 
     fn span_of_expr(&self, expression: &TypedExpression, symboltable: &SymbolTable) -> Span {
-        match expression {
-            TypedExpression::Identifier(i) => {
-                let symbol = symboltable.get(i.value).unwrap();
-                Span::on_line(i.start, symbol.name.len() as u32)
-            }
-            TypedExpression::Literal(l) => match &self.literals[l.0] {
-                Literal::StringLiteral { value, .. } => value.span,
-                Literal::NumericLiteral { value, .. } => value.span,
-                Literal::BooleanLiteral {
-                    value,
-                    start_line,
-                    start_character,
-                    ..
-                } => Span {
-                    start: [*start_line, *start_character],
-                    end: [*start_line, *start_character + if *value { 4 } else { 5 }],
-                },
-            },
-            TypedExpression::CallExpr(c) => c.span,
-            TypedExpression::FnExpr(f) => f.span,
-            TypedExpression::Block(b) => b.span,
-            TypedExpression::IfExpr(i) => i.span,
-            TypedExpression::ArrayExpr(a) => a.span,
-            TypedExpression::IndexExpr(i) => i.span,
-            TypedExpression::BinaryExpr(b) => b.span,
-            TypedExpression::AssignmentExpr(a) => a.span,
-            TypedExpression::UnaryExpr(u) => u.span,
-            TypedExpression::LogicExpr(l) => l.span,
-            TypedExpression::AccessExpr(a) => a.span,
-            TypedExpression::ThisExpr(t) => Span {
-                start: [t.start_line, t.start_character],
-                end: [t.start_line, t.start_character + 4],
-            },
-            TypedExpression::NewExpr(n) => n.span,
-            TypedExpression::UpdateExpr(u) => u.span,
-        }
+        span_of_typed_expression(expression, symboltable, self.literals)
     }
 
     fn span_of_stmnt(&self, s: &TypedStmnt, symboltable: &mut SymbolTable) -> Span {
-        match s {
-            TypedStmnt::TestDeclaration(t) => t.span,
-            TypedStmnt::UseDeclaration(u) => u.span,
-            TypedStmnt::VariableDeclaration(v) => v.span,
-            TypedStmnt::ConstantDeclaration(c) => c.span,
-            TypedStmnt::ModelDeclaration(c) => c.span,
-            TypedStmnt::FunctionDeclaration(f) => f.span,
-            TypedStmnt::RecordDeclaration => todo!(),
-            TypedStmnt::TraitDeclaration(t) => t.span,
-            TypedStmnt::EnumDeclaration(e) => e.span,
-            TypedStmnt::TypeDeclaration(t) => t.span,
-            TypedStmnt::WhileStatement(w) => w.span,
-            TypedStmnt::ForStatement(f) => f.span,
-            TypedStmnt::ExpressionStatement(e) | TypedStmnt::FreeExpression(e) => {
-                self.span_of_expr(e, symboltable)
-            }
-            TypedStmnt::ShorthandVariableDeclaration(v) => v.span,
-            TypedStmnt::ModuleDeclaration(m) => m.span,
-            TypedStmnt::ReturnStatement(r) => r.span,
-            TypedStmnt::ContinueStatement(c) => c.span,
-            TypedStmnt::BreakStatement(b) => b.span,
-        }
+        span_of_typed_statement(s, symboltable, self.literals)
     }
 }
 
@@ -225,6 +169,9 @@ mod statements {
         // else attempt unification.
         // If unification fails, then carry on with the declared type value.
         let inference_result = if let Some(declared) = declared_type {
+            if declared.contains_never() {
+                checker_ctx.add_error(errors::never_as_declared(shorthand_variable.span))
+            }
             match unify_freely(&declared, &type_of_value, symboltable, None) {
                 Ok(eval_type) => eval_type,
                 Err(errortypes) => {
@@ -276,49 +223,51 @@ mod statements {
                         found: symboltable.format_evaluated_type(eval_type),
                     },
                     span: retstat.span,
-                })
-            } else if function_context.is_some_and(|ctx| ctx.return_type.is_unknown()) {
+                });
+                return;
+            }
+            if function_context.is_some_and(|ctx| ctx.return_type.is_unknown()) {
                 // If the current function context is unknown,
                 // but the result type of this return statement is known,
                 // coerce the function context's return type to whatever type is produced here.
                 let prior_evaluated_type =
                     checker_ctx.current_function_return_type.last_mut().unwrap();
                 prior_evaluated_type.return_type = maybe_eval_expr.unwrap();
-            } else {
-                let ctx_return_type = function_context
-                    .map(|ctx| &ctx.return_type)
-                    .unwrap_or_else(|| &EvaluatedType::Void);
-                // returns with a value, and a type is assigned.
-                // coerce both types to match.
-                match unify_types(
-                    eval_type,
-                    ctx_return_type,
-                    symboltable,
-                    UnifyOptions::None,
-                    None,
-                ) {
-                    // Unification was successful and return type can be updated.
-                    Ok(typ) => {
-                        let prior_evaluated_type =
-                            checker_ctx.current_function_return_type.last_mut().unwrap();
-                        prior_evaluated_type.return_type = typ;
-                    }
-                    // Unification failed.
-                    Err(errortype) => {
-                        for errortype in errortype {
-                            checker_ctx.add_error(TypeError {
-                                _type: errortype,
-                                span: retstat.span,
-                            });
-                        }
+                return;
+            }
+            let ctx_return_type = function_context
+                .map(|ctx| &ctx.return_type)
+                .unwrap_or_else(|| &EvaluatedType::Void);
+            // returns with a value, and a type is assigned.
+            // coerce both types to match.
+            match unify_types(
+                ctx_return_type,
+                eval_type,
+                symboltable,
+                UnifyOptions::Conform,
+                None,
+            ) {
+                // Unification was successful and return type can be updated.
+                Ok(typ) => {
+                    let prior_evaluated_type =
+                        checker_ctx.current_function_return_type.last_mut().unwrap();
+                    prior_evaluated_type.return_type = typ;
+                }
+                // Unification failed.
+                Err(errortype) => {
+                    for errortype in errortype {
                         checker_ctx.add_error(TypeError {
-                            _type: TypeErrorType::MismatchedReturnType {
-                                expected: symboltable.format_evaluated_type(&ctx_return_type),
-                                found: symboltable.format_evaluated_type(eval_type),
-                            },
+                            _type: errortype,
                             span: retstat.span,
-                        })
+                        });
                     }
+                    checker_ctx.add_error(TypeError {
+                        _type: TypeErrorType::MismatchedReturnType {
+                            expected: symboltable.format_evaluated_type(&ctx_return_type),
+                            found: symboltable.format_evaluated_type(eval_type),
+                        },
+                        span: retstat.span,
+                    })
                 }
             }
         }
@@ -401,10 +350,10 @@ mod statements {
             return;
         }
         if let Err(typeerrortype) = unify_types(
-            &block_return_type,
             &return_type,
+            &block_return_type,
             &symboltable,
-            UnifyOptions::None,
+            UnifyOptions::Conform,
             None,
         ) {
             let span = return_type_span
@@ -441,7 +390,7 @@ mod expressions {
     use errors::missing_intrinsic;
 
     use crate::{
-        utils::{arrify, is_array, is_boolean},
+        utils::{arrify, evaluate_generic_params, is_array, is_boolean, symbol_to_type},
         TypedAssignmentExpr, TypedIfExpr, TypedIndexExpr, TypedLogicExpr, TypedNewExpr,
         TypedThisExpr, UnifyOptions,
     };
@@ -511,46 +460,52 @@ mod expressions {
         checker_ctx: &mut TypecheckerContext<'_>,
         symboltable: &mut SymbolTable,
     ) -> EvaluatedType {
-        let condition_type = typecheck_expression(&mut ifexp.condition, checker_ctx, symboltable);
-        if !is_boolean(&condition_type, symboltable) {
-            checker_ctx.add_error(errors::non_boolean_logic(
-                symboltable.format_evaluated_type(&condition_type),
-                checker_ctx.span_of_expr(&ifexp.condition, symboltable),
-            ));
-        }
-        let block_type = typecheck_block(&mut ifexp.consequent, false, checker_ctx, symboltable);
-        if let Some(else_) = &mut ifexp.alternate {
-            let else_type = typecheck_expression(&mut else_.expression, checker_ctx, symboltable);
-            match unify_types(
-                &block_type,
-                &else_type,
-                symboltable,
-                UnifyOptions::AnyNever,
-                None,
-            ) {
-                Ok(result) => result,
-                Err(errors) => {
-                    checker_ctx.add_error(errors::separate_if_types(
-                        ifexp.span,
-                        symboltable.format_evaluated_type(&block_type),
-                        symboltable.format_evaluated_type(&else_type),
-                    ));
-                    for error in errors {
-                        checker_ctx.add_error(TypeError {
-                            _type: error,
-                            span: ifexp.span,
-                        })
+        ifexp.inferred_type = {
+            let condition_type =
+                typecheck_expression(&mut ifexp.condition, checker_ctx, symboltable);
+            if !is_boolean(&condition_type, symboltable) {
+                checker_ctx.add_error(errors::non_boolean_logic(
+                    symboltable.format_evaluated_type(&condition_type),
+                    checker_ctx.span_of_expr(&ifexp.condition, symboltable),
+                ));
+            }
+            let block_type =
+                typecheck_block(&mut ifexp.consequent, false, checker_ctx, symboltable);
+            if let Some(else_) = &mut ifexp.alternate {
+                let else_type =
+                    typecheck_expression(&mut else_.expression, checker_ctx, symboltable);
+                match unify_types(
+                    &block_type,
+                    &else_type,
+                    symboltable,
+                    UnifyOptions::AnyNever,
+                    None,
+                ) {
+                    Ok(result) => result,
+                    Err(errors) => {
+                        checker_ctx.add_error(errors::separate_if_types(
+                            ifexp.span,
+                            symboltable.format_evaluated_type(&block_type),
+                            symboltable.format_evaluated_type(&else_type),
+                        ));
+                        for error in errors {
+                            checker_ctx.add_error(TypeError {
+                                _type: error,
+                                span: ifexp.span,
+                            })
+                        }
+                        EvaluatedType::Unknown
                     }
-                    EvaluatedType::Unknown
+                }
+            } else if block_type.is_void() {
+                EvaluatedType::Void
+            } else {
+                EvaluatedType::Partial {
+                    types: vec![block_type, EvaluatedType::Void],
                 }
             }
-        } else if block_type.is_void() {
-            EvaluatedType::Void
-        } else {
-            return EvaluatedType::Partial {
-                types: vec![block_type, EvaluatedType::Void],
-            };
-        }
+        };
+        ifexp.inferred_type.clone()
     }
 
     /// Typechecks an assignment expression.
@@ -560,46 +515,69 @@ mod expressions {
         checker_ctx: &mut TypecheckerContext<'_>,
         symboltable: &mut SymbolTable,
     ) -> EvaluatedType {
-        let left_type = typecheck_expression(&mut assexp.left, checker_ctx, symboltable);
-        let right_type = typecheck_expression(&mut assexp.right, checker_ctx, symboltable);
+        assexp.inferred_type = (|| {
+            let left_type = typecheck_expression(&mut assexp.left, checker_ctx, symboltable);
+            let right_type = typecheck_expression(&mut assexp.right, checker_ctx, symboltable);
 
-        if !is_valid_lhs(&assexp.left) {
-            checker_ctx.add_error(errors::invalid_assignment_target(assexp.span));
-            return EvaluatedType::Unknown;
-        }
-        let mut generic_hashmap = HashMap::new();
-        let result_type = match &left_type {
-            EvaluatedType::ModelInstance { .. }
-            | EvaluatedType::EnumInstance { .. }
-            | EvaluatedType::Unknown
-            | EvaluatedType::OpaqueTypeInstance { .. } => {
-                if matches!(left_type, EvaluatedType::EnumInstance { .. })
-                    && !assexp.left.is_identifier()
-                {
+            if !is_valid_lhs(&assexp.left) {
+                checker_ctx.add_error(errors::invalid_assignment_target(assexp.span));
+                return EvaluatedType::Unknown;
+            }
+            let mut generic_hashmap = HashMap::new();
+            let result_type = match &left_type {
+                EvaluatedType::ModelInstance { .. }
+                | EvaluatedType::EnumInstance { .. }
+                | EvaluatedType::Unknown
+                | EvaluatedType::OpaqueTypeInstance { .. } => {
+                    if matches!(left_type, EvaluatedType::EnumInstance { .. })
+                        && !assexp.left.is_identifier()
+                    {
+                        checker_ctx.add_error(errors::invalid_assignment_target(assexp.span));
+                        return EvaluatedType::Unknown;
+                    }
+                    match unify_types(
+                        &left_type,
+                        &right_type,
+                        symboltable,
+                        UnifyOptions::None,
+                        Some(&mut generic_hashmap),
+                    ) {
+                        Ok(result_type) => result_type,
+                        Err(errortypes) => {
+                            for _type in errortypes {
+                                checker_ctx.add_error(TypeError {
+                                    _type,
+                                    span: assexp.span,
+                                })
+                            }
+                            return EvaluatedType::Unknown;
+                        }
+                    }
+                }
+                EvaluatedType::MethodInstance { method, .. } => {
+                    let method_symbol = symboltable.get_forwarded(*method).unwrap();
+                    let name = method_symbol.name.clone();
+                    let owner = match &method_symbol.kind {
+                        SemanticSymbolKind::Method {
+                            owner_model_or_trait,
+                            ..
+                        } => symboltable.get(*owner_model_or_trait).unwrap().name.clone(),
+                        _ => String::from("[Model]"),
+                    };
+                    checker_ctx.add_error(errors::mutating_method(owner, name, assexp.span));
+                    return EvaluatedType::Unknown;
+                }
+                EvaluatedType::Borrowed { .. } => {
+                    checker_ctx.add_error(errors::assigning_to_reference(assexp.span));
+                    return EvaluatedType::Unknown;
+                }
+                _ => {
                     checker_ctx.add_error(errors::invalid_assignment_target(assexp.span));
                     return EvaluatedType::Unknown;
                 }
-                match unify_types(
-                    &left_type,
-                    &right_type,
-                    symboltable,
-                    UnifyOptions::None,
-                    Some(&mut generic_hashmap),
-                ) {
-                    Ok(result_type) => result_type,
-                    Err(errortypes) => {
-                        for _type in errortypes {
-                            checker_ctx.add_error(TypeError {
-                                _type,
-                                span: assexp.span,
-                            })
-                        }
-                        return EvaluatedType::Unknown;
-                    }
-                }
-            }
-            EvaluatedType::MethodInstance { method, .. } => {
-                let method_symbol = symboltable.get_forwarded(*method).unwrap();
+            };
+            if let EvaluatedType::MethodInstance { method, .. } = right_type {
+                let method_symbol = symboltable.get_forwarded(method).unwrap();
                 let name = method_symbol.name.clone();
                 let owner = match &method_symbol.kind {
                     SemanticSymbolKind::Method {
@@ -611,44 +589,25 @@ mod expressions {
                 checker_ctx.add_error(errors::mutating_method(owner, name, assexp.span));
                 return EvaluatedType::Unknown;
             }
-            EvaluatedType::Borrowed { .. } => {
-                checker_ctx.add_error(errors::assigning_to_reference(assexp.span));
-                return EvaluatedType::Unknown;
-            }
-            _ => {
-                checker_ctx.add_error(errors::invalid_assignment_target(assexp.span));
-                return EvaluatedType::Unknown;
-            }
-        };
-        if let EvaluatedType::MethodInstance { method, .. } = right_type {
-            let method_symbol = symboltable.get_forwarded(method).unwrap();
-            let name = method_symbol.name.clone();
-            let owner = match &method_symbol.kind {
-                SemanticSymbolKind::Method {
-                    owner_model_or_trait,
-                    ..
-                } => symboltable.get(*owner_model_or_trait).unwrap().name.clone(),
-                _ => String::from("[Model]"),
-            };
-            checker_ctx.add_error(errors::mutating_method(owner, name, assexp.span));
-            return EvaluatedType::Unknown;
-        }
 
-        if right_type.is_void() {
-            checker_ctx.add_error(errors::void_assignment(assexp.span));
-        } else if right_type.is_partial() {
-            checker_ctx.add_error(errors::partial_type_assignment(assexp.span));
-        }
-
-        // Handling transforming the left hand side to the resulting type.
-        if let TypedExpression::Identifier(ident) = &assexp.left {
-            let identifier_symbol = symboltable.get_mut(ident.value).unwrap();
-            if let SemanticSymbolKind::Variable { inferred_type, .. } = &mut identifier_symbol.kind
-            {
-                *inferred_type = result_type
+            if right_type.is_void() {
+                checker_ctx.add_error(errors::void_assignment(assexp.span));
+            } else if right_type.is_partial() {
+                checker_ctx.add_error(errors::partial_type_assignment(assexp.span));
             }
-        }
-        return EvaluatedType::Void;
+
+            // Handling transforming the left hand side to the resulting type.
+            if let TypedExpression::Identifier(ident) = &assexp.left {
+                let identifier_symbol = symboltable.get_mut(ident.value).unwrap();
+                if let SemanticSymbolKind::Variable { inferred_type, .. } =
+                    &mut identifier_symbol.kind
+                {
+                    *inferred_type = result_type
+                }
+            }
+            return EvaluatedType::Void;
+        })();
+        assexp.inferred_type.clone()
     }
 
     /// Returns true if the left hand side is a valid assignment target, syntactically.
@@ -667,52 +626,58 @@ mod expressions {
         checker_ctx: &mut TypecheckerContext<'_>,
         symboltable: &mut SymbolTable,
     ) -> EvaluatedType {
-        let left = typecheck_expression(&mut logexp.left, checker_ctx, symboltable);
-        let right = typecheck_expression(&mut logexp.right, checker_ctx, symboltable);
+        logexp.inferred_type = (|| {
+            let left = typecheck_expression(&mut logexp.left, checker_ctx, symboltable);
+            let right = typecheck_expression(&mut logexp.right, checker_ctx, symboltable);
 
-        if !is_boolean(&left, symboltable) {
-            checker_ctx.add_error(errors::non_boolean_logic(
-                symboltable.format_evaluated_type(&left),
-                checker_ctx.span_of_expr(&logexp.right, symboltable),
-            ));
-        }
-        if !is_boolean(&right, symboltable) {
-            checker_ctx.add_error(errors::non_boolean_logic(
-                symboltable.format_evaluated_type(&right),
-                checker_ctx.span_of_expr(&logexp.right, symboltable),
-            ));
-        }
-        if let Some(boolean_idx) = symboltable.bool_symbol {
-            return EvaluatedType::ModelInstance {
-                model: boolean_idx,
-                generic_arguments: vec![],
-            };
-        } else {
-            checker_ctx.add_error(errors::missing_intrinsic(format!("Bool"), logexp.span));
-            return EvaluatedType::Unknown;
-        }
+            if !is_boolean(&left, symboltable) {
+                checker_ctx.add_error(errors::non_boolean_logic(
+                    symboltable.format_evaluated_type(&left),
+                    checker_ctx.span_of_expr(&logexp.right, symboltable),
+                ));
+            }
+            if !is_boolean(&right, symboltable) {
+                checker_ctx.add_error(errors::non_boolean_logic(
+                    symboltable.format_evaluated_type(&right),
+                    checker_ctx.span_of_expr(&logexp.right, symboltable),
+                ));
+            }
+            if let Some(boolean_idx) = symboltable.bool_symbol {
+                return EvaluatedType::ModelInstance {
+                    model: boolean_idx,
+                    generic_arguments: vec![],
+                };
+            } else {
+                checker_ctx.add_error(errors::missing_intrinsic(format!("Bool"), logexp.span));
+                return EvaluatedType::Unknown;
+            }
+        })();
+        logexp.inferred_type.clone()
     }
 
     fn typecheck_this_expression(
         this: &mut TypedThisExpr,
         symboltable: &mut SymbolTable,
     ) -> EvaluatedType {
-        if this.model_or_trait.is_none() {
-            return EvaluatedType::Unknown;
-        }
-        let model_or_trait = this.model_or_trait.unwrap();
-        let symbol = symboltable.get_forwarded(model_or_trait).unwrap();
-        match &symbol.kind {
-            SemanticSymbolKind::Model { generic_params, .. } => EvaluatedType::ModelInstance {
-                model: model_or_trait,
-                generic_arguments: evaluate_generic_params(generic_params),
-            },
-            SemanticSymbolKind::Trait { generic_params, .. } => EvaluatedType::TraitInstance {
-                trait_: model_or_trait,
-                generic_arguments: evaluate_generic_params(generic_params),
-            },
-            _ => unreachable!("{symbol:#?} is not a model or trait."),
-        }
+        this.inferred_type = (|| {
+            if this.model_or_trait.is_none() {
+                return EvaluatedType::Unknown;
+            }
+            let model_or_trait = this.model_or_trait.unwrap();
+            let symbol = symboltable.get_forwarded(model_or_trait).unwrap();
+            match &symbol.kind {
+                SemanticSymbolKind::Model { generic_params, .. } => EvaluatedType::ModelInstance {
+                    model: model_or_trait,
+                    generic_arguments: evaluate_generic_params(generic_params),
+                },
+                SemanticSymbolKind::Trait { generic_params, .. } => EvaluatedType::TraitInstance {
+                    trait_: model_or_trait,
+                    generic_arguments: evaluate_generic_params(generic_params),
+                },
+                _ => unreachable!("{symbol:#?} is not a model or trait."),
+            }
+        })();
+        this.inferred_type.clone()
     }
 
     /// Typechecks a new expression.
@@ -721,97 +686,90 @@ mod expressions {
         symboltable: &mut SymbolTable,
         checker_ctx: &mut TypecheckerContext,
     ) -> EvaluatedType {
-        match &mut newexp.value {
-            // Helper to fix code if new X is called without parenthesis.
-            TypedExpression::Identifier(ident) => {
-                let symbol = symboltable.get_forwarded(ident.value).unwrap();
-                if matches!(symbol.kind, SemanticSymbolKind::Model { .. }) {
-                    checker_ctx.add_error(errors::calling_new_on_identifier(
-                        symbol.name.clone(),
-                        Span::on_line(ident.start, symbol.name.len() as u32),
-                    ));
-                }
-                return EvaluatedType::Unknown;
-            }
-            TypedExpression::CallExpr(callexp) => {
-                let caller = &mut callexp.caller;
-                let evaluated_caller = typecheck_expression(caller, checker_ctx, symboltable);
-                let evaluated_args = callexp
-                    .arguments
-                    .iter_mut()
-                    .map(|arg| typecheck_expression(arg, checker_ctx, symboltable))
-                    .collect::<Vec<_>>();
-                match evaluated_caller {
-                    EvaluatedType::Model(model) => {
-                        let model_symbol = symboltable.get_forwarded(model).unwrap();
-                        let (mut generic_arguments, parameter_types) =
-                            if let SemanticSymbolKind::Model {
-                                generic_params,
-                                is_constructable,
-                                constructor_parameters,
-                                ..
-                            } = &model_symbol.kind
-                            {
-                                // if model does not have a new() function.
-                                let name = model_symbol.name.clone();
-                                let span = newexp.span;
-                                if !*is_constructable {
-                                    checker_ctx
-                                        .add_error(errors::model_not_constructable(name, span));
-                                    return EvaluatedType::Unknown;
-                                }
-                                let generic_arguments = evaluate_generic_params(generic_params);
-                                let parameter_types = convert_param_list_to_type(
-                                    constructor_parameters.as_ref().unwrap_or(&vec![]),
-                                    symboltable,
-                                    &generic_arguments,
-                                    checker_ctx,
-                                );
-                                (generic_arguments, parameter_types)
-                            } else {
-                                unreachable!()
-                            };
-                        zip_arguments(
-                            parameter_types,
-                            evaluated_args,
-                            checker_ctx,
-                            &callexp,
-                            symboltable,
-                            &mut generic_arguments,
-                        );
-                        let result_model_instance = EvaluatedType::ModelInstance {
-                            model,
-                            generic_arguments,
-                        };
-                        return result_model_instance;
-                    }
-                    _ => {
-                        checker_ctx.add_error(errors::invalid_new_expression(
-                            checker_ctx.span_of_expr(&callexp.caller, &symboltable),
+        newexp.inferred_type = (|| {
+            match &mut newexp.value {
+                // Helper to fix code if new X is called without parenthesis.
+                TypedExpression::Identifier(ident) => {
+                    let symbol = symboltable.get_forwarded(ident.value).unwrap();
+                    if matches!(symbol.kind, SemanticSymbolKind::Model { .. }) {
+                        checker_ctx.add_error(errors::calling_new_on_identifier(
+                            symbol.name.clone(),
+                            Span::on_line(ident.start, symbol.name.len() as u32),
                         ));
-                        return EvaluatedType::Unknown;
+                    }
+                    return EvaluatedType::Unknown;
+                }
+                TypedExpression::CallExpr(callexp) => {
+                    let caller = &mut callexp.caller;
+                    let evaluated_caller = typecheck_expression(caller, checker_ctx, symboltable);
+                    let evaluated_args = callexp
+                        .arguments
+                        .iter_mut()
+                        .map(|arg| typecheck_expression(arg, checker_ctx, symboltable))
+                        .collect::<Vec<_>>();
+                    match evaluated_caller {
+                        EvaluatedType::Model(model) => {
+                            let model_symbol = symboltable.get_forwarded(model).unwrap();
+                            let (mut generic_arguments, parameter_types) =
+                                if let SemanticSymbolKind::Model {
+                                    generic_params,
+                                    is_constructable,
+                                    constructor_parameters,
+                                    ..
+                                } = &model_symbol.kind
+                                {
+                                    // if model does not have a new() function.
+                                    let name = model_symbol.name.clone();
+                                    let span = newexp.span;
+                                    if !*is_constructable {
+                                        checker_ctx
+                                            .add_error(errors::model_not_constructable(name, span));
+                                        return EvaluatedType::Unknown;
+                                    }
+                                    let generic_arguments = evaluate_generic_params(generic_params);
+                                    let parameter_types = convert_param_list_to_type(
+                                        constructor_parameters.as_ref().unwrap_or(&vec![]),
+                                        symboltable,
+                                        &generic_arguments,
+                                        checker_ctx,
+                                    );
+                                    (generic_arguments, parameter_types)
+                                } else {
+                                    unreachable!()
+                                };
+                            zip_arguments(
+                                parameter_types,
+                                evaluated_args,
+                                checker_ctx,
+                                &callexp,
+                                symboltable,
+                                &mut generic_arguments,
+                            );
+                            let result_model_instance = EvaluatedType::ModelInstance {
+                                model,
+                                generic_arguments,
+                            };
+                            return result_model_instance;
+                        }
+                        _ => {
+                            checker_ctx.add_error(errors::invalid_new_expression(
+                                checker_ctx.span_of_expr(&callexp.caller, &symboltable),
+                            ));
+                            return EvaluatedType::Unknown;
+                        }
                     }
                 }
+                // Invalid new expressions.
+                _ => {
+                    checker_ctx.add_error(errors::invalid_new_expression(
+                        checker_ctx.span_of_expr(&newexp.value, &symboltable),
+                    ));
+                    typecheck_expression(&mut newexp.value, checker_ctx, symboltable);
+                    return EvaluatedType::Unknown;
+                }
             }
-            // Invalid new expressions.
-            _ => {
-                checker_ctx.add_error(errors::invalid_new_expression(
-                    checker_ctx.span_of_expr(&newexp.value, &symboltable),
-                ));
-                typecheck_expression(&mut newexp.value, checker_ctx, symboltable);
-                return EvaluatedType::Unknown;
-            }
-        }
-    }
-
-    /// Converts a list of generic parameter indexes to a list of evaluated generic argument types.
-    fn evaluate_generic_params(
-        generic_params: &Vec<SymbolIndex>,
-    ) -> Vec<(SymbolIndex, EvaluatedType)> {
-        generic_params
-            .iter()
-            .map(|idx| (*idx, EvaluatedType::Generic { base: *idx }))
-            .collect()
+        })();
+        newexp.inferred_type.clone()
     }
 
     /// Typechecks an index expression.
@@ -820,30 +778,35 @@ mod expressions {
         symboltable: &mut SymbolTable,
         checker_ctx: &mut TypecheckerContext,
     ) -> EvaluatedType {
-        let type_of_indexed = typecheck_expression(&mut indexexp.object, checker_ctx, symboltable);
-        let _type_of_indexer = typecheck_expression(&mut indexexp.index, checker_ctx, symboltable);
-        // todo: handle Index trait overloading.
-        if !is_array(&type_of_indexed, symboltable) {
-            checker_ctx.add_error(errors::invalid_index_subject(
-                symboltable.format_evaluated_type(&type_of_indexed),
-                indexexp.span,
-            ));
-            return EvaluatedType::Unknown;
-        }
-        // todo: check type of indexer as UnsignedInt.
-        match type_of_indexed {
-            EvaluatedType::ModelInstance {
-                mut generic_arguments,
-                ..
-            } => {
-                if generic_arguments.len() != 1 {
-                    EvaluatedType::Unknown
-                } else {
-                    generic_arguments.remove(0).1
-                }
+        indexexp.inferred_type = (|| {
+            let type_of_indexed =
+                typecheck_expression(&mut indexexp.object, checker_ctx, symboltable);
+            let _type_of_indexer =
+                typecheck_expression(&mut indexexp.index, checker_ctx, symboltable);
+            // todo: handle Index trait overloading.
+            if !is_array(&type_of_indexed, symboltable) {
+                checker_ctx.add_error(errors::invalid_index_subject(
+                    symboltable.format_evaluated_type(&type_of_indexed),
+                    indexexp.span,
+                ));
+                return EvaluatedType::Unknown;
             }
-            _ => EvaluatedType::Unknown,
-        }
+            // todo: check type of indexer as UnsignedInt.
+            match type_of_indexed {
+                EvaluatedType::ModelInstance {
+                    mut generic_arguments,
+                    ..
+                } => {
+                    if generic_arguments.len() != 1 {
+                        EvaluatedType::Unknown
+                    } else {
+                        generic_arguments.remove(0).1
+                    }
+                }
+                _ => EvaluatedType::Unknown,
+            }
+        })();
+        indexexp.inferred_type.clone()
     }
 
     /// Typechecks an array expression.
@@ -852,48 +815,51 @@ mod expressions {
         symboltable: &mut SymbolTable,
         checker_ctx: &mut TypecheckerContext,
     ) -> EvaluatedType {
-        if symboltable.array_symbol.is_none() {
-            checker_ctx.add_error(missing_intrinsic(format!("Array"), array.span));
-        }
-        let mut element_types = vec![];
-        for element in &mut array.elements {
-            element_types.push(typecheck_expression(element, checker_ctx, symboltable));
-        }
-        if element_types.len() == 0 {
-            return arrify(EvaluatedType::Unknown, &symboltable);
-        }
-        // Reduce individual types to determine final array form.
-        let mut next_type = element_types.remove(0);
-        let mut i = 1;
-        let mut errors_gotten = vec![];
-        for evaluated_type in element_types {
-            match unify_types(
-                &next_type,
-                &evaluated_type,
-                symboltable,
-                UnifyOptions::None,
-                None,
-            ) {
-                Ok(new_type) => next_type = new_type,
-                Err(mut errortypes) => {
-                    errors_gotten.append(&mut errortypes);
-                }
-            };
-            i += 1;
-        }
-        if errors_gotten.len() > 0 {
-            checker_ctx.add_error(TypeError {
-                _type: TypeErrorType::HeterogeneousArray,
-                span: array.span,
-            });
-            for error in errors_gotten {
-                checker_ctx.add_error(TypeError {
-                    _type: error,
-                    span: checker_ctx.span_of_expr(&array.elements[i], &symboltable),
-                });
+        array.inferred_type = (|| {
+            if symboltable.array_symbol.is_none() {
+                checker_ctx.add_error(missing_intrinsic(format!("Array"), array.span));
             }
-        }
-        arrify(next_type, symboltable)
+            let mut element_types = vec![];
+            for element in &mut array.elements {
+                element_types.push(typecheck_expression(element, checker_ctx, symboltable));
+            }
+            if element_types.len() == 0 {
+                return arrify(EvaluatedType::Unknown, &symboltable);
+            }
+            // Reduce individual types to determine final array form.
+            let mut next_type = element_types.remove(0);
+            let mut i = 1;
+            let mut errors_gotten = vec![];
+            for evaluated_type in element_types {
+                match unify_types(
+                    &next_type,
+                    &evaluated_type,
+                    symboltable,
+                    UnifyOptions::None,
+                    None,
+                ) {
+                    Ok(new_type) => next_type = new_type,
+                    Err(mut errortypes) => {
+                        errors_gotten.append(&mut errortypes);
+                    }
+                };
+                i += 1;
+            }
+            if errors_gotten.len() > 0 {
+                checker_ctx.add_error(TypeError {
+                    _type: TypeErrorType::HeterogeneousArray,
+                    span: array.span,
+                });
+                for error in errors_gotten {
+                    checker_ctx.add_error(TypeError {
+                        _type: error,
+                        span: checker_ctx.span_of_expr(&array.elements[i], &symboltable),
+                    });
+                }
+            }
+            arrify(next_type, symboltable)
+        })();
+        array.inferred_type.clone()
     }
 
     /// Typechecks a literal value.
@@ -1050,7 +1016,8 @@ mod expressions {
             symboltable,
             &mut generic_arguments,
         );
-        coerce(return_type, &generic_arguments)
+        callexp.inferred_type = coerce(return_type, &generic_arguments);
+        callexp.inferred_type.clone()
     }
 
     /// This function unifies a list of function parameters with a list of call arguments
@@ -1225,52 +1192,55 @@ mod expressions {
         symboltable: &mut SymbolTable,
         checker_ctx: &mut TypecheckerContext,
     ) -> EvaluatedType {
-        let mut parameter_types = vec![];
-        for param in &f.params {
-            let parameter_symbol = symboltable.get_forwarded(*param).unwrap();
-            let (param_type, is_optional) = match &parameter_symbol.kind {
-                SemanticSymbolKind::Parameter {
-                    param_type,
+        f.inferred_type = (|| {
+            let mut parameter_types = vec![];
+            for param in &f.params {
+                let parameter_symbol = symboltable.get_forwarded(*param).unwrap();
+                let (param_type, is_optional) = match &parameter_symbol.kind {
+                    SemanticSymbolKind::Parameter {
+                        param_type,
+                        is_optional,
+                        ..
+                    } => (param_type, *is_optional),
+                    _ => unreachable!(),
+                };
+                parameter_types.push(ParameterType {
+                    name: parameter_symbol.name.clone(),
                     is_optional,
-                    ..
-                } => (param_type, *is_optional),
-                _ => unreachable!(),
-            };
-            parameter_types.push(ParameterType {
-                name: parameter_symbol.name.clone(),
-                is_optional,
-                type_label: param_type.clone(),
-                inferred_type: param_type
-                    .as_ref()
-                    .map(|typ| evaluate(typ, symboltable, None, &mut checker_ctx.tracker()))
-                    .unwrap_or(EvaluatedType::Unknown),
-            });
-        }
-        let return_type = f
-            .return_type
-            .as_ref()
-            .map(|typ| evaluate(typ, &symboltable, None, &mut checker_ctx.tracker()));
-        let inferred_return_type = match &mut f.body {
-            // Function body is scoped to block.
-            TypedExpression::Block(block) => {
-                checker_ctx
-                    .current_function_return_type
-                    .push(CurrentFunctionContext {
-                        is_named: false,
-                        return_type: return_type.unwrap_or(EvaluatedType::Unknown),
-                    });
-                let ev_typ = typecheck_block(block, true, checker_ctx, symboltable);
-                checker_ctx.current_function_return_type.pop();
-                ev_typ
+                    type_label: param_type.clone(),
+                    inferred_type: param_type
+                        .as_ref()
+                        .map(|typ| evaluate(typ, symboltable, None, &mut checker_ctx.tracker()))
+                        .unwrap_or(EvaluatedType::Unknown),
+                });
             }
-            expression => typecheck_expression(expression, checker_ctx, symboltable),
-        };
-        EvaluatedType::FunctionExpressionInstance {
-            is_async: f.is_async,
-            params: parameter_types,
-            generic_args: vec![], // todo.
-            return_type: Box::new(inferred_return_type),
-        }
+            let return_type = f
+                .return_type
+                .as_ref()
+                .map(|typ| evaluate(typ, &symboltable, None, &mut checker_ctx.tracker()));
+            let inferred_return_type = match &mut f.body {
+                // Function body is scoped to block.
+                TypedExpression::Block(block) => {
+                    checker_ctx
+                        .current_function_return_type
+                        .push(CurrentFunctionContext {
+                            is_named: false,
+                            return_type: return_type.unwrap_or(EvaluatedType::Unknown),
+                        });
+                    let ev_typ = typecheck_block(block, true, checker_ctx, symboltable);
+                    checker_ctx.current_function_return_type.pop();
+                    ev_typ
+                }
+                expression => typecheck_expression(expression, checker_ctx, symboltable),
+            };
+            EvaluatedType::FunctionExpressionInstance {
+                is_async: f.is_async,
+                params: parameter_types,
+                generic_args: vec![], // todo.
+                return_type: Box::new(inferred_return_type),
+            }
+        })();
+        f.inferred_type.clone()
     }
 
     /// Typechecks an access expression.
@@ -1279,18 +1249,21 @@ mod expressions {
         symboltable: &mut SymbolTable,
         checker_ctx: &mut TypecheckerContext,
     ) -> EvaluatedType {
-        let object_type = typecheck_expression(&mut access.object, checker_ctx, symboltable);
-        let property_symbol_idx = match &access.property {
-            TypedExpression::Identifier(i) => i.value,
-            _ => unreachable!(),
-        };
-        extract_property_of(
-            object_type,
-            symboltable,
-            property_symbol_idx,
-            checker_ctx,
-            access,
-        )
+        access.inferred_type = (|| {
+            let object_type = typecheck_expression(&mut access.object, checker_ctx, symboltable);
+            let property_symbol_idx = match &access.property {
+                TypedExpression::Identifier(i) => i.value,
+                _ => unreachable!(),
+            };
+            extract_property_of(
+                object_type,
+                symboltable,
+                property_symbol_idx,
+                checker_ctx,
+                access,
+            )
+        })();
+        access.inferred_type.clone()
     }
 
     /// Extract a property based on the value of its object.
@@ -1338,7 +1311,59 @@ mod expressions {
             }
             // EvaluatedType::Trait(_) => todo!(),
             // EvaluatedType::Enum(_) => todo!(),
-            // EvaluatedType::Module(_) => todo!(),
+            EvaluatedType::Module(module) => {
+                let module = symboltable.get_forwarded(module).unwrap();
+                let property_symbol = symboltable.get_forwarded(property_symbol_idx).unwrap();
+                match &module.kind {
+                    SemanticSymbolKind::Module {
+                        global_declaration_symbols,
+                        ..
+                    } => {
+                        for idx in global_declaration_symbols {
+                            let symbol = match symboltable.get(*idx) {
+                                Some(symbol) => symbol,
+                                None => continue,
+                            };
+                            if symbol.name == property_symbol.name {
+                                if !symbol.kind.is_public() {
+                                    checker_ctx.add_error(TypeError {
+                                        _type: TypeErrorType::PrivateSymbolLeak {
+                                            modulename: module.name.clone(),
+                                            property: property_symbol.name.clone(),
+                                        },
+                                        span: property_span,
+                                    });
+                                }
+                                let actualidx = symboltable.forward(*idx);
+                                let actualsymbol = symboltable.get_forwarded(actualidx).unwrap();
+                                let evaluated_type =
+                                    symbol_to_type(actualsymbol, actualidx, symboltable)
+                                        .ok()
+                                        .unwrap_or(EvaluatedType::Unknown);
+                                // get mutably and resolve.
+                                let property_symbol =
+                                    symboltable.get_mut(property_symbol_idx).unwrap();
+                                if let SemanticSymbolKind::Property { resolved } =
+                                    &mut property_symbol.kind
+                                {
+                                    *resolved = Some(actualidx)
+                                }
+                                return evaluated_type;
+                            }
+                        }
+                        // No such symbol found.
+                        checker_ctx.add_error(TypeError {
+                            _type: TypeErrorType::NoSuchSymbol {
+                                modulename: module.name.clone(),
+                                property: property_symbol.name.clone(),
+                            },
+                            span: property_span,
+                        });
+                        return EvaluatedType::Unknown;
+                    }
+                    _ => return EvaluatedType::Unknown,
+                }
+            }
             // EvaluatedType::OpaqueType {
             //     methods,
             //     properties,
@@ -1410,7 +1435,7 @@ mod expressions {
                         property_span,
                     ))
                 }
-                // get mutably.
+                // get mutably and resolve.
                 let property_symbol = symboltable.get_mut(property_symbol_idx).unwrap();
                 if let SemanticSymbolKind::Property { resolved } = &mut property_symbol.kind {
                     *resolved = Some(method)
@@ -1445,6 +1470,31 @@ mod expressions {
                 return Some(result_type);
             }
         }
+
+        for method in methods {
+            let method = *method;
+            let method_symbol = symboltable.get_forwarded(method).unwrap();
+            if method_symbol.name.to_lowercase() == property_symbol.name.to_lowercase() {
+                checker_ctx.add_error(errors::mispelled_name(
+                    method_symbol.name.clone(),
+                    property_span,
+                ));
+                return None;
+            }
+        }
+
+        for attributes in attributes {
+            let attribute = *attributes;
+            let attribute_symbol = symboltable.get_forwarded(attribute).unwrap();
+            if attribute_symbol.name.to_lowercase() == property_symbol.name.to_lowercase() {
+                checker_ctx.add_error(errors::mispelled_name(
+                    attribute_symbol.name.clone(),
+                    property_span,
+                ));
+                return None;
+            }
+        }
+
         None
     }
 
@@ -1455,53 +1505,9 @@ mod expressions {
     ) -> Result<EvaluatedType, TypeErrorType> {
         let name = symboltable.forward(i.value);
         let symbol = symboltable.get_forwarded(name).unwrap();
-        let eval_type = match &symbol.kind {
-            SemanticSymbolKind::Module { .. } => EvaluatedType::Module(name),
-            SemanticSymbolKind::Trait { .. } => EvaluatedType::Trait(name),
-            SemanticSymbolKind::Model { .. } => EvaluatedType::Model(name),
-            SemanticSymbolKind::Enum { .. } => EvaluatedType::Enum(name),
-            SemanticSymbolKind::Variant { owner_enum, .. } => EvaluatedType::EnumInstance {
-                enum_: *owner_enum,
-                generic_arguments: {
-                    // Try to create a space for unknown enum generics.
-                    // todo: unify from tagged types.
-                    let enum_symbol = symboltable.get_forwarded(*owner_enum).unwrap();
-                    match &enum_symbol.kind {
-                        SemanticSymbolKind::Enum { generic_params, .. } => {
-                            evaluate_generic_params(generic_params)
-                        }
-                        _ => vec![],
-                    }
-                },
-            },
-            SemanticSymbolKind::Variable { inferred_type, .. } => inferred_type.clone(),
-            SemanticSymbolKind::Constant { inferred_type, .. } => inferred_type.clone(),
-            SemanticSymbolKind::Attribute { .. } | SemanticSymbolKind::Method { .. } => {
-                unreachable!("properties cannot exist independent of a model.")
-            }
-            SemanticSymbolKind::Parameter {
-                is_optional,
-                inferred_type,
-                ..
-            } => {
-                if *is_optional {
-                    maybify(inferred_type.clone(), symboltable)
-                } else {
-                    inferred_type.clone()
-                }
-            }
-            SemanticSymbolKind::GenericParameter { .. } | SemanticSymbolKind::TypeName { .. } => {
-                return Err(TypeErrorType::TypeAsValue {
-                    type_: symbol.name.clone(),
-                });
-            }
-            SemanticSymbolKind::Function { generic_params, .. } => {
-                EvaluatedType::FunctionInstance {
-                    function: name,
-                    generic_arguments: evaluate_generic_params(generic_params),
-                }
-            } //TODO
-            _ => EvaluatedType::Unknown,
+        let eval_type = match symbol_to_type(symbol, name, symboltable) {
+            Ok(value) => value,
+            Err(value) => return value,
         };
         Ok(eval_type)
     }
@@ -1513,29 +1519,35 @@ mod expressions {
         checker_ctx: &mut TypecheckerContext,
         symboltable: &mut SymbolTable,
     ) -> EvaluatedType {
-        let mut loopindex = 0;
-        let statements = &mut body.statements;
-        let no_of_statements = statements.len();
-        while loopindex < no_of_statements {
-            let statement = &mut statements[loopindex];
-            if loopindex == no_of_statements - 1 {
-                // Returns the type of the last expression in the block.
-                // todo: also check for expression statements for diagnostics.
-                if let TypedStmnt::FreeExpression(expression) = statement {
-                    let expression_type =
-                        typecheck_expression(expression, checker_ctx, symboltable);
-                    return expression_type;
-                } else if let TypedStmnt::ReturnStatement(retstat) = statement {
-                    statements::typecheck_return_statement(retstat, checker_ctx, symboltable);
-                    if !is_function_block {
-                        return EvaluatedType::Never;
+        body.inferred_type = (|| {
+            let mut loopindex = 0;
+            let statements = &mut body.statements;
+            let no_of_statements = statements.len();
+            while loopindex < no_of_statements {
+                let statement = &mut statements[loopindex];
+                if loopindex == no_of_statements - 1 {
+                    // Returns the type of the last expression in the block.
+                    // todo: also check for expression statements for diagnostics.
+                    if let TypedStmnt::FreeExpression(expression) = statement {
+                        let expression_type =
+                            typecheck_expression(expression, checker_ctx, symboltable);
+                        return expression_type;
+                    } else if let TypedStmnt::ReturnStatement(retstat) = statement {
+                        statements::typecheck_return_statement(retstat, checker_ctx, symboltable);
+                        if !is_function_block {
+                            return EvaluatedType::Never;
+                        } else {
+                            loopindex += 1;
+                            continue;
+                        }
                     }
                 }
+                statements::typecheck_statement(statement, checker_ctx, symboltable);
+                loopindex += 1;
             }
-            statements::typecheck_statement(statement, checker_ctx, symboltable);
-            loopindex += 1;
-        }
 
-        EvaluatedType::Void
+            EvaluatedType::Void
+        })();
+        body.inferred_type.clone()
     }
 }

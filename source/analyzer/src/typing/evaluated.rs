@@ -147,6 +147,48 @@ impl EvaluatedType {
     pub fn is_partial(&self) -> bool {
         matches!(self, Self::Partial { .. })
     }
+
+    pub(crate) fn contains_never(&self) -> bool {
+        match self {
+            EvaluatedType::Partial { types } => types.iter().any(|typ| typ.contains_never()),
+            EvaluatedType::ModelInstance {
+                generic_arguments, ..
+            }
+            | EvaluatedType::TraitInstance {
+                generic_arguments, ..
+            }
+            | EvaluatedType::EnumInstance {
+                generic_arguments, ..
+            }
+            | EvaluatedType::FunctionInstance {
+                generic_arguments, ..
+            }
+            | EvaluatedType::MethodInstance {
+                generic_arguments, ..
+            } => generic_arguments
+                .iter()
+                .map(|(_, typ)| typ)
+                .any(|typ| typ.contains_never()),
+            EvaluatedType::FunctionExpressionInstance {
+                params,
+                return_type,
+                generic_args,
+                ..
+            } => {
+                params
+                    .iter()
+                    .any(|param| param.inferred_type.contains_never())
+                    || return_type.contains_never()
+                    || generic_args
+                        .iter()
+                        .map(|(_, typ)| typ)
+                        .any(|typ| typ.contains_never())
+            }
+            EvaluatedType::OpaqueTypeInstance { .. } => false,
+            EvaluatedType::Borrowed { base } => base.contains_never(),
+            _ => false,
+        }
+    }
 }
 
 static mut RECURSION_DEPTH: u64 = 0;

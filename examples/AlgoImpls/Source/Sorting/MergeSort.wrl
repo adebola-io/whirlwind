@@ -1,4 +1,4 @@
 /// Sorts an array using merge sort.
-public function MergeSort(array: <Number>): <Number> {
+public function MergeSort(array: Array<Number>): Array<Number> {
     
 }

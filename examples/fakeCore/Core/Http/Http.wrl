@@ -5,31 +5,47 @@ use Super.Prelude.Outcome;
 use Super.Prelude.UnsignedInt;
 use Super.Prelude.Prospect;
 use Super.Prelude.Todo;
+use Super.Prelude.Some;
 use Super.Primitives.Ops.Addition;
 
-model Endpoints {
+enum HttpMethod {
+    Get,
+    Post,
+    Put,
+    Delete
+}
 
+model Endpoints {
+    public function Register(
+        method: HttpMethod, 
+        route: String, 
+        handler: fn(request: Request): Prospect<ServerOutcome>
+    ) {
+        Todo()
+    }
 }
 
 public type ServerOutcome = Outcome<Response, ServerError>;
 
 public model Server {
     public var endpoints: Endpoints;
+    var middleware: Middleware;
 
     new(name: String, port: UnsignedInt) {
  
     }
 
-    /// Registers a `GET` route.
+    /// Registers a route for a request with a `GET` method.
     public function Get(
         route: String, 
         handler: fn(request: Request): Prospect<ServerOutcome>
     ) {
-        this.endpoints.register("GET", route, handler);
+        this.endpoints.Register(HttpMethod.Get, route, handler);
     }
 
-    public function Post(route: String, handler: fn(): Prospect<Outcome<Response>>) {
-        Todo()
+    /// Registers a route for a request with a `POST` method.
+    public function Post(route: String, handler: fn(request: Request): Prospect<Outcome<Response>>) {
+        this.endpoints.Register(HttpMethod.Post, route, handler);
     }
 
     /// Starts the server by listening at the specified port for changes.
@@ -38,7 +54,7 @@ public model Server {
     }
 
     public function UseMiddleware(middleware: Middleware) {
-        
+        this.middleware = Some(middleware);
     }
 }
 
@@ -54,7 +70,7 @@ public model Request {
 }
 
 public model ServerError {
-    new() {
+    new(message: String) {
         
     }
 }

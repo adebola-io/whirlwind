@@ -95,6 +95,11 @@ impl Span {
             end: end as usize,
         }
     }
+
+    pub fn ends_directly_before(&self, position: [u32; 2]) -> bool {
+        position[0] == self.end[0] && position[1] == self.end[1] - 1
+    }
+
     /// Checks that a point exists immediately after or immediately before a span.
     pub fn is_adjacent_to(&self, position: [u32; 2]) -> bool {
         return (position[0] == self.start[0] && position[1] == self.start[1] - 1)
@@ -129,6 +134,11 @@ impl Span {
             }
         }
         return false;
+    }
+
+    /// Checks if a span exists after another.
+    pub fn is_after(&self, other: Span) -> bool {
+        !self.is_before(other) && !self.contains(other.start) && !self.contains(other.end)
     }
 }
 

@@ -21,7 +21,8 @@ pub fn stringify_type_error(error: &TypeErrorType, _writer: SymbolWriter) -> Str
             assigned,
         } => format!("'{name}' expects {expected} generic argument{}, but got {assigned} instead.", if *expected == 1 {""} else {"s"}),
         TypeErrorType::MismatchedAssignment { left, right } => format!(
-            "Expected '{left}' but got a value of type '{right}'.",
+            "Expected: '{left}'
+Got: '{right}'.",
         ),
         TypeErrorType::TraitAsType { name } => {
             format!("{name} refers to a trait, but it is being used as a type here.")
@@ -42,7 +43,9 @@ pub fn stringify_type_error(error: &TypeErrorType, _writer: SymbolWriter) -> Str
         TypeErrorType::AccessingOnTrait { trait_ } => format!("{trait_} refers to a trait, thus its methods cannot be directly accessed. Consider implementing them on models instead."),
         TypeErrorType::TypeAsValue { type_ } => format!("{type_} refers to an abstract type, generic parameter or a type alias, but it is being used as a value here."),
         TypeErrorType::InstanceStaticMethodAccess { model_name, method_name } => format!("{method_name} refers a static function, so it cannot be called by instances of {model_name}."),
-        TypeErrorType::MismatchedReturnType { expected, found } => format!("Expected a return type of {expected} but found {found}."),
+        TypeErrorType::MismatchedReturnType { expected, found } => if expected == "{void}" {
+            format!("The enclosing function has no return type, but '{found}' is being returned here.")
+        } else {format!("The enclosing function expects a return type of '{expected}' but found '{found}'.")},
         TypeErrorType::NoSuchProperty { base_type, property } => format!("Property '{property}' does not exist on a value of type '{base_type}'."),
         TypeErrorType::UnimplementedTrait { offender, _trait } => format!("Assignment failed because the type '{offender}' does not implement '{_trait}'."),
         TypeErrorType::NotCallable { caller } => format!("{caller} is not a callable type."),
@@ -69,6 +72,11 @@ pub fn stringify_type_error(error: &TypeErrorType, _writer: SymbolWriter) -> Str
         TypeErrorType::SeparateIfTypes {first, second} => format!("If statement control flow resolves to different types, '{first}' and '{second}'"),
         TypeErrorType::VoidAssignment => format!("Cannot assign void types to values."),
         TypeErrorType::PartialTypeAssigmentIf => format!("This expression does not fully handle all cases. Consider adding an else clause for exhaustiveness."),
+        TypeErrorType::NeverAsDeclared => format!("The never type is not allowed in variable type labels."),
+        TypeErrorType::MispelledName { name } => format!("Did you mean '{name}'?"),
+        TypeErrorType::PrivateSymbolLeak { modulename, property } => format!("'{property}' exists in module '{modulename}', but it is not denoted as public."),
+        TypeErrorType::NoSuchSymbol { modulename, property } => format!("{modulename} has no public member called '{property}'."),
+        
     }
 }
 

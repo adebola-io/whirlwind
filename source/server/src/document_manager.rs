@@ -1,12 +1,14 @@
 use crate::{
+    completion::{CompletionFinder, DotCompletionType},
     diagnostic::{error_to_diagnostic, to_range},
     error::DocumentError,
     hover::{HoverFinder, HoverInfo},
     message_store::{MessageStore, WithMessages},
 };
 use analyzer::{
-    Module, PathIndex, SemanticSymbol, SemanticSymbolDeclaration, SemanticSymbolKind, Standpoint,
-    StandpointStatus, SymbolIndex, TypedModule, TypedVisitorNoArgs, CORE_LIBRARY_PATH,
+    utils::symbol_to_type, Module, PathIndex, SemanticSymbol, SemanticSymbolDeclaration,
+    SemanticSymbolKind, Standpoint, StandpointStatus, SymbolIndex, TypedModule, TypedVisitorNoArgs,
+    CORE_LIBRARY_PATH,
 };
 use ast::{is_keyword_or_operator, is_valid_identifier, is_valid_identifier_start, Span};
 use std::{
@@ -364,31 +366,59 @@ impl DocumentManager {
     }
 
     /// Gets completion response.
-    pub fn completion(&self, _params: CompletionParams) -> Option<CompletionResponse> {
-        // let graphs = self.graphs.read().unwrap();
-
-        // let path = uri_to_absolute_path(params.text_document_position.text_document.uri).ok()?;
-        // let graph = graphs.iter().find(|graph| graph.contains_file(&path))?;
-        // let module = graph.get_module_at_path(&path)?;
-
-        // let position = params.text_document_position.position;
-        // let completion_context = params.context?;
-
-        // let position = [position.line + 1, position.character + 1];
-        // let statement = module
-        //     .statements()
-        //     .map(|statement| statement.closest_nodes_to(Span::at(position)))
-        //     .flatten()
-        //     .next()?;
-        // let label = match statement {
-        //     ast::Statement::UseDeclaration(u) => format!("Use"),
-        //     _ => format!("Else"),
-        // };
-        // Some(CompletionResponse::Array(vec![CompletionItem {
-        //     label,
-        //     ..Default::default()
-        // }]))
-        None
+    pub fn completion(&self, params: CompletionParams) -> WithMessages<Option<CompletionResponse>> {
+        let mut msgs = self.open_document(params.text_document_position.text_document.uri);
+        let standpoints = self.standpoints.read().unwrap();
+        let (standpoint, module) = match self.get_cached(&standpoints) {
+            Some(t) => t,
+            None => {
+                msgs.error("Could not retrieve the cached module index");
+                return (msgs, None);
+            }
+        };
+        let position = params.text_document_position.position;
+        // Editor ranges are zero-based, for some reason.
+        let pos = [position.line + 1, position.character + 1];
+        msgs.inform(format!("Gathering completions for {pos:?}..."));
+        let time = std::time::Instant::now();
+        let completion_finder =
+            CompletionFinder::new(module, standpoint, pos, msgs, params.context);
+        for (index, statement) in module.statements.iter().enumerate() {
+            completion_finder.next_statement_is(index + 1, &module.statements);
+            if let Some(completions) = completion_finder.statement(statement) {
+                let mut messages = completion_finder.message_store.take();
+                messages.inform(format!("Retreived completions in {:?}", time.elapsed()));
+                return (messages, Some(completions));
+            }
+        }
+        completion_finder
+            .message_store
+            .borrow_mut()
+            .inform("Could not complete by traversal. Checking all symbols...");
+        let symboltable = &standpoint.symbol_table;
+        for (index, symbol) in symboltable.symbols() {
+            for reference in &symbol.references {
+                if reference.module_path == module.path_idx {
+                    for start in &reference.starts {
+                        let span = Span::on_line(*start, symbol.name.len() as u32);
+                        if span.is_before(Span::at(pos)) && span.is_adjacent_to(pos) {
+                            let index = symboltable.forward(index);
+                            let symbol = symboltable.get_forwarded(index).unwrap();
+                            let inferred_type = match symbol_to_type(symbol, index, symboltable) {
+                                Ok(typ) => typ,
+                                Err(_) => return (completion_finder.message_store.take(), None),
+                            };
+                            if completion_finder.trigger_character_is(".") {
+                                let response = completion_finder
+                                    .complete_from_dot(inferred_type, DotCompletionType::Half);
+                                return (completion_finder.message_store.take(), response);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return (completion_finder.message_store.take(), None);
     }
 
     /// Handles a change in the text of a module.
@@ -410,13 +440,10 @@ impl DocumentManager {
         msgs.inform(format!("Refreshing open document..."));
         let time = std::time::Instant::now();
         match standpoint.refresh_module(path_idx, most_current, false) {
-            Some(StandpointStatus::Restarted) => {
-                msgs.inform("Modifying intrinsic module! Server restarted. Updates will not be applied until after save.");
-            }
             Some(StandpointStatus::RefreshSuccessful) => {
                 msgs.inform(format!("Document refreshed in {:?}", time.elapsed()))
             }
-            None => log_error!(msgs, "Something went wrong while refreshing user text."),
+            _ => log_error!(msgs, "Something went wrong while refreshing user text."),
         };
         *self.was_updated.write().unwrap() = true;
         // idk what to do here.
