@@ -3,9 +3,10 @@ module Main;
 
 // Import necessary modules from the Core library.
 use Core.Http.{ 
-   Server, ServerOutcome, Response, Request, Middleware 
+   Server, ServerOutcome, Response, Request, 
+   Middleware, ServerError
 };
-use Core.Io.Println;
+use Core.Io.Print;
 
 /// Entry point into the program.
 public function Main() {
@@ -25,7 +26,7 @@ public function Main() {
     app.Get("/static/::filename", StaticFileHandler);
     // Start the server and handle subsequent actions.
     app.Start()
-      .Then(fn() Println(name + " is listening on port " + port.ToStr()))
+      .Then(fn() Print(name + " is listening on port " + port.ToStr()))
       .Run()
       .Await()!
 }
@@ -45,7 +46,7 @@ async function GreetHandler(request: Request): ServerOutcome {
     name := request.PathParams().Get("name");
     if name.IsNone() {
         return Err(new ServerError("Could not parse name from path."));
-    }
+    };
     response := Response.From(request);
     response.Status(200).Html("<h1>Hello, " + name.Unwrap() + "!</h1>");
     Ok(response)

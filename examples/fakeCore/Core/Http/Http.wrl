@@ -6,6 +6,7 @@ use Super.Prelude.UnsignedInt;
 use Super.Prelude.Prospect;
 use Super.Prelude.Todo;
 use Super.Prelude.Some;
+use Super.Prelude.Maybe;
 use Super.Primitives.Ops.Addition;
 
 enum HttpMethod {
@@ -59,14 +60,34 @@ public model Server {
 }
 
 public model Response {
+    var status: UnsignedInt;
     /// Build a response object from a request.
     public static function From(request: Request): This {
 
     }
+    /// Sets the status code value of the response.
+    function Status(value: UnsignedInt): &This {
+        this.status = value;
+        return &this;
+    }
+    /// Sets the response type to HTML Text.
+    function Html(string: String): &This {
+        this.headers.Set("Content-Type", "text/html");
+        this.Write(string);
+        return &this;
+    }
+}
+
+model RequestParams {
+    function Get(name: String): Maybe<String> {
+        Todo()
+    }
 }
 
 public model Request {
+    function PathParams(): RequestParams {
 
+    }
 }
 
 public model ServerError {
