@@ -13,7 +13,7 @@ public model Tuple<T, U> {
         this.second = second;
     }
 
-    function Swap(): Tuple<U, T> {
+    public function Swap(): Tuple<U, T> {
         new Tuple(this.second, this.first)
     }
 }
@@ -54,7 +54,7 @@ public model Quadruple<T, U, V, S> {
     /// Assert(first).Equals(new Tuple(1, "Sefunmi"));
     /// Assert(second).Equals(new Tuple(true, [35.5]));
     /// ```
-    function ToTuple(): Tuple<Tuple<T, U>, Tuple<V, S>> {
+    public function ToTuple(): Tuple<Tuple<T, U>, Tuple<V, S>> {
         Todo()
     }
 }

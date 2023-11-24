@@ -1,34 +1,26 @@
 module Http;
-
-use Super.Prelude.String;
-use Super.Prelude.Outcome;
-use Super.Prelude.UnsignedInt;
-use Super.Prelude.Prospect;
-use Super.Prelude.Todo;
-use Super.Prelude.Some;
-use Super.Prelude.Maybe;
+use Super.Prelude.{
+    Bool, Todo, Outcome, Prospect, String,
+    Maybe, UnsignedInt, Some
+};
 use Super.Primitives.Ops.Addition;
+public use Request.{RequestParams, HttpRequest, HttpMethod, HttpRequestError};
 
-enum HttpMethod {
-    Get,
-    Post,
-    Put,
-    Delete
-}
 
 model Endpoints {
+    /// Registers a GET route.
     public function Register(
         method: HttpMethod, 
         route: String, 
-        handler: fn(request: Request): Prospect<ServerOutcome>
+        handler: fn(request: HttpRequest): Prospect<ServerOutcome>
     ) {
         Todo()
     }
 }
 
-public type ServerOutcome = Outcome<Response, ServerError>;
+public type ServerOutcome = Outcome<HttpResponse, HttpRequestError>;
 
-public model Server {
+public model HttpServer {
     public var endpoints: Endpoints;
     var middleware: Middleware;
 
@@ -36,16 +28,16 @@ public model Server {
  
     }
 
-    /// Registers a route for a request with a `GET` method.
+    /// Registers a route for a request with a `GET` method. 
     public function Get(
         route: String, 
-        handler: fn(request: Request): Prospect<ServerOutcome>
+        handler: fn(request: HttpRequest): Prospect<ServerOutcome>
     ) {
         this.endpoints.Register(HttpMethod.Get, route, handler);
     }
 
     /// Registers a route for a request with a `POST` method.
-    public function Post(route: String, handler: fn(request: Request): Prospect<Outcome<Response>>) {
+    public function Post(route: String, handler: fn(request: HttpRequest): Prospect<Outcome<HttpResponse>>) {
         this.endpoints.Register(HttpMethod.Post, route, handler);
     }
 
@@ -59,11 +51,11 @@ public model Server {
     }
 }
 
-public model Response {
+public model HttpResponse {
     var status: UnsignedInt;
     /// Build a response object from a request.
-    public static function From(request: Request): This {
-
+    public static function From(request: HttpRequest): This {
+        return Todo();
     }
     /// Sets the status code value of the response.
     function Status(value: UnsignedInt): &This {
@@ -73,26 +65,8 @@ public model Response {
     /// Sets the response type to HTML Text.
     function Html(string: String): &This {
         this.headers.Set("Content-Type", "text/html");
-        this.Write(string);
+        this.data = string;
         return &this;
-    }
-}
-
-model RequestParams {
-    function Get(name: String): Maybe<String> {
-        Todo()
-    }
-}
-
-public model Request {
-    function PathParams(): RequestParams {
-
-    }
-}
-
-public model ServerError {
-    new(message: String) {
-        
     }
 }
 
@@ -100,4 +74,16 @@ public model Middleware {
     new() {
         
     }
+
+    /// Adds a validator before the route handler of a route is run.
+    /// The restrictor will not run if the path is not registered by the server.
+    function Restrict(route: String, protector: fn (request: HttpRequest): MiddlewareResponse) {
+
+    }
 }
+
+public enum MiddlewareResponse {
+    Continue,
+    Stop(HttpRequestError)
+}
+

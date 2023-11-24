@@ -133,6 +133,7 @@ pub fn bind(
         }],
         doc_info: module.ambience.module_info,
         origin_span,
+        origin_scope_id: None,
     };
     let symbol_idx = symbol_table.add(module_symbol);
     Some(TypedModule {
@@ -148,7 +149,7 @@ pub fn bind(
 mod bind_utils {
     use ast::VariablePattern;
 
-    use crate::{EvaluatedType, VariablePatternForm};
+    use crate::{EvaluatedType, ScopeId, VariablePatternForm};
 
     use super::*;
 
@@ -185,12 +186,20 @@ mod bind_utils {
                         // No clashes in the current scope, and no previous usage.
                         // create new symbol for this constant.
                         .unwrap_or_else(|| {
-                            bind_signature(binder, symbol_table, errors, ambience, entry, span)
+                            bind_signature(
+                                binder,
+                                symbol_table,
+                                errors,
+                                ambience,
+                                Some(ScopeId(search.scope.id as u32)),
+                                entry,
+                                span,
+                            )
                         }),
                 )
             }
         } else {
-            unreachable!("Mismatched scope address. How is that possible?")
+            Err(SymbolIndex(0))
         };
         // mark a global value.
         if shadow.is_in_global_scope() && symbol_idx.is_ok() {
@@ -279,12 +288,18 @@ mod bind_utils {
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
         ambience: &ModuleAmbience,
+        origin_scope_id: Option<ScopeId>,
         entry: &ScopeEntry,
         origin_span: Span,
     ) -> SymbolIndex {
         let index = match entry {
             ScopeEntry::Function(function) => {
-                let symbol = SemanticSymbol::from_function(function, binder.path, origin_span);
+                let symbol = SemanticSymbol::from_function(
+                    function,
+                    binder.path,
+                    origin_span,
+                    origin_scope_id,
+                );
                 let index = symbol_table.add(symbol);
                 let span = function.name.span;
                 binder.known_values.insert(span, index);
@@ -292,7 +307,8 @@ mod bind_utils {
                 index
             }
             ScopeEntry::Type(_type) => {
-                let symbol = SemanticSymbol::from_type(_type, binder.path, origin_span);
+                let symbol =
+                    SemanticSymbol::from_type(_type, binder.path, origin_span, origin_scope_id);
                 let index = symbol_table.add(symbol);
                 let span = _type.name.span;
                 binder.known_values.insert(span, index);
@@ -322,6 +338,7 @@ mod bind_utils {
                     }],
                     doc_info: model.info.clone(), // todo.
                     origin_span,
+                    origin_scope_id,
                 };
                 let index = symbol_table.add(symbol);
                 let span = model.name.span;
@@ -329,15 +346,20 @@ mod bind_utils {
                 index
             }
             ScopeEntry::Enum(_enum) => {
-                let symbol = SemanticSymbol::from_enum(_enum, binder.path, origin_span);
+                let symbol =
+                    SemanticSymbol::from_enum(_enum, binder.path, origin_span, origin_scope_id);
                 let index = symbol_table.add(symbol);
                 let span = _enum.name.span;
                 binder.known_values.insert(span, index);
                 index
             }
             ScopeEntry::ShorthandVariable(variable) => {
-                let symbol =
-                    SemanticSymbol::from_shorthand_variable(variable, binder.path, origin_span);
+                let symbol = SemanticSymbol::from_shorthand_variable(
+                    variable,
+                    binder.path,
+                    origin_span,
+                    origin_scope_id,
+                );
                 let index = symbol_table.add(symbol);
                 let span = variable.name.span;
                 binder.known_values.insert(span, index);
@@ -369,6 +391,7 @@ mod bind_utils {
                     }],
                     doc_info: _trait.info.clone(), // todo.
                     origin_span,
+                    origin_scope_id,
                 };
                 let index = symbol_table.add(symbol);
                 let span = _trait.name.span;
@@ -377,8 +400,12 @@ mod bind_utils {
             }
             ScopeEntry::UseImport(use_signature) => {
                 // Full path is added later.
-                let symbol =
-                    SemanticSymbol::from_use_import(use_signature, binder.path, origin_span);
+                let symbol = SemanticSymbol::from_use_import(
+                    use_signature,
+                    binder.path,
+                    origin_span,
+                    origin_scope_id,
+                );
                 let index = symbol_table.add(symbol);
                 let span = use_signature.name.span;
                 binder.known_values.insert(span, index);
@@ -391,7 +418,12 @@ mod bind_utils {
                 unreachable!("Encountered a reserved space while binding.")
             }
             ScopeEntry::Constant(constant) => {
-                let symbol = SemanticSymbol::from_constant(constant, binder.path, origin_span);
+                let symbol = SemanticSymbol::from_constant(
+                    constant,
+                    binder.path,
+                    origin_span,
+                    origin_scope_id,
+                );
                 let index = symbol_table.add(symbol);
                 let span = constant.name.span;
                 binder.known_values.insert(span, index);
@@ -427,6 +459,7 @@ mod bind_utils {
                             }],
                             doc_info: variable.info.clone(),
                             origin_span,
+                            origin_scope_id,
                         },
                         i.span,
                     ),
@@ -450,6 +483,7 @@ mod bind_utils {
                                             references: vec![],
                                             doc_info: None,
                                             origin_span: real_name.span,
+                                            origin_scope_id
                                         };
                                         property_symbol.add_reference(binder.path, real_name.span);
                                         let symbol_idx = symbol_table.add(property_symbol);
@@ -463,6 +497,7 @@ mod bind_utils {
                                 }],
                                 doc_info: variable.info.clone(),
                                 origin_span,
+                                origin_scope_id,
                             },
                             real_name.span,
                         )
@@ -482,6 +517,7 @@ mod bind_utils {
                             }],
                             doc_info: variable.info.clone(),
                             origin_span,
+                            origin_scope_id,
                         },
                         i.span,
                     ),
@@ -544,8 +580,8 @@ mod bind_utils {
                 }
             }
             match shadow.lookup(&name.name) {
-                Some(entry) => {
-                    let entry = &entry.entry;
+                Some(search) => {
+                    let entry = &search.entry;
                     match binder.known_values.get(&entry.ident().unwrap().span) {
                         // Entry has been added the symbol table.
                         Some(index) => *index,
@@ -560,6 +596,7 @@ mod bind_utils {
                             symbol_table,
                             errors,
                             ambience,
+                            Some(ScopeId(search.scope.id as u32)),
                             entry,
                             Span::default(),
                         ),
@@ -616,6 +653,7 @@ mod bind_utils {
                         references: vec![],
                         doc_info: None,
                         origin_span: name.span,
+                        origin_scope_id: Some(ScopeId(binder.current_scope as u32)),
                     };
                     let index = symbol_table.add(new_symbol);
                     binder
@@ -681,7 +719,7 @@ mod bind_utils {
 mod statements {
     use ast::{TraitBody, TraitPropertyType};
 
-    use crate::EvaluatedType;
+    use crate::{EvaluatedType, ScopeId};
 
     use super::{
         bind_utils::{add_ctx_error, handle_scope_entry},
@@ -1141,6 +1179,7 @@ mod statements {
                         references: vec![],
                         doc_info: None,
                         origin_span: property_type.name.span,
+                        origin_scope_id: Some(crate::ScopeId(binder.current_scope as u32)),
                     };
                     property_symbol.add_reference(binder.path, property_type.name.span);
                     let property_symbol_idx = symbol_table.add(property_symbol);
@@ -1285,6 +1324,7 @@ mod statements {
                 }],
                 doc_info: attribute.info.clone(), //todo
                 origin_span: span,
+                origin_scope_id: None,
             };
             let index = symbol_table.add(symbol);
             // Add it to the list of attributes in the parent model as well.
@@ -1383,6 +1423,7 @@ mod statements {
                 }],
                 doc_info: method.info.clone(), //todo.
                 origin_span: span,
+                origin_scope_id: None,
             };
             let index = symbol_table.add(symbol);
             // Add it to the list of methods in the parent model as well.
@@ -1581,6 +1622,7 @@ mod statements {
                 references: vec![],
                 doc_info: parameter.info.take(),
                 origin_span: parameter.span,
+                origin_scope_id: Some(ScopeId(block.scope_id as u32)),
             };
             symbol.add_reference(binder.path, parameter.name.span);
             // add symbol.
@@ -1728,6 +1770,7 @@ mod statements {
                 }],
                 doc_info: None, // todo: doc info for variants.
                 origin_span: variant.span,
+                origin_scope_id: None,
             };
             let symbol_idx = symbol_table.add(symbol);
             binder.known_values.insert(variant.name.span, symbol_idx);
@@ -1939,6 +1982,7 @@ mod statements {
                 }],
                 doc_info: method.info.clone(), //todo.
                 origin_span: span,
+                origin_scope_id: None,
             };
             let index = symbol_table.add(symbol);
             binder.known_values.insert(method.name.span, index);
@@ -1993,6 +2037,14 @@ mod statements {
             *generic_params = generic_params_solved;
             *return_type = return_type_solved;
             *params = parameters;
+        }
+        // Add to owner trait's method list.
+        if let Some(SemanticSymbol {
+            kind: SemanticSymbolKind::Trait { methods, .. },
+            ..
+        }) = symbol_table.get_mut(owner)
+        {
+            methods.push(symbol_idx);
         }
         let method = TypedTraitProperty {
             name: symbol_idx,
@@ -2066,6 +2118,7 @@ mod statements {
                 }],
                 doc_info: method.info.clone(), //todo.
                 origin_span: span,
+                origin_scope_id: None,
             };
             let index = symbol_table.add(symbol);
             binder.known_values.insert(method.name.span, index);
@@ -2110,6 +2163,14 @@ mod statements {
             *generic_params = generic_params_solved;
             *return_type = return_type_solved;
             *params = parameters;
+        }
+        // Add to owner trait's method list.
+        if let Some(SemanticSymbol {
+            kind: SemanticSymbolKind::Trait { methods, .. },
+            ..
+        }) = symbol_table.get_mut(owner)
+        {
+            methods.push(symbol_idx);
         }
         let method = TypedTraitProperty {
             name: symbol_idx,
@@ -2840,6 +2901,7 @@ mod expressions {
             references: vec![],
             doc_info: None,
             origin_span: property_ident.span,
+            origin_scope_id: None,
         };
         property_symbol.add_reference(binder.path, property_ident.span);
         let symbol_idx = symbol_table.add(property_symbol);
@@ -3062,6 +3124,7 @@ mod types {
                     references: vec![],
                     doc_info: None,
                     origin_span: property_type.name.span,
+                    origin_scope_id: None,
                 };
                 property_symbol.add_reference(binder.path, property_type.name.span);
                 let property_symbol_idx = symbol_table.add(property_symbol);
@@ -3227,6 +3290,7 @@ mod types {
             }],
             doc_info: None, // todo. Collect documentation for generic params.
             origin_span: parameter.span,
+            origin_scope_id: None,
         };
         let index = symbol_table.add(symbol);
         binder.add_generic_parameter(&parameter.name.name, index);

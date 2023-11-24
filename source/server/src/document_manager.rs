@@ -1,5 +1,5 @@
 use crate::{
-    completion::{CompletionFinder, DotCompletionType},
+    completion::{sort_completions, CompletionFinder, DotCompletionType, Trigger},
     diagnostic::{error_to_diagnostic, to_range},
     error::DocumentError,
     hover::{HoverFinder, HoverInfo},
@@ -11,6 +11,7 @@ use analyzer::{
     CORE_LIBRARY_PATH,
 };
 use ast::{is_keyword_or_operator, is_valid_identifier, is_valid_identifier_start, Span};
+use printer::SymbolWriter;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -20,11 +21,11 @@ use tower_lsp::{
     jsonrpc::Error,
     lsp_types::{
         request::{GotoDeclarationParams, GotoDeclarationResponse},
-        CompletionParams, CompletionResponse, Diagnostic, DidChangeTextDocumentParams,
-        DidOpenTextDocumentParams, DidSaveTextDocumentParams, DocumentDiagnosticParams,
-        DocumentDiagnosticReport, FullDocumentDiagnosticReport, HoverParams, InlayHint,
-        InlayHintKind, InlayHintLabel, InlayHintParams, Location, Position, ReferenceParams,
-        RelatedFullDocumentDiagnosticReport, RenameParams, TextEdit, Url,
+        CompletionContext, CompletionParams, CompletionResponse, Diagnostic,
+        DidChangeTextDocumentParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams,
+        DocumentDiagnosticParams, DocumentDiagnosticReport, FullDocumentDiagnosticReport,
+        HoverParams, InlayHint, InlayHintKind, InlayHintLabel, InlayHintParams, Location, Position,
+        ReferenceParams, RelatedFullDocumentDiagnosticReport, RenameParams, TextEdit, Url,
         WorkspaceDiagnosticParams, WorkspaceDiagnosticReport, WorkspaceDiagnosticReportResult,
         WorkspaceDocumentDiagnosticReport, WorkspaceEdit, WorkspaceFullDocumentDiagnosticReport,
     },
@@ -311,7 +312,11 @@ impl DocumentManager {
 
                 // todo: this is a hack to overshadow ghost initial errors. fix.
                 msgs.inform("Module added successfully.");
-                standpoint.refresh_module(index_of_current_module, params.text_document.text, true);
+                standpoint.refresh_module(
+                    index_of_current_module,
+                    &params.text_document.text,
+                    true,
+                );
             } else {
                 // Root not found, skip project altogether.
                 log_error!(msgs, "Could not determine main module for project.")
@@ -366,6 +371,7 @@ impl DocumentManager {
     }
 
     /// Gets completion response.
+    /// TODO: This will obviously get sloooooww. Fix.
     pub fn completion(&self, params: CompletionParams) -> WithMessages<Option<CompletionResponse>> {
         let mut msgs = self.open_document(params.text_document_position.text_document.uri);
         let standpoints = self.standpoints.read().unwrap();
@@ -396,26 +402,90 @@ impl DocumentManager {
             .borrow_mut()
             .inform("Could not complete by traversal. Checking all symbols...");
         let symboltable = &standpoint.symbol_table;
-        for (index, symbol) in symboltable.symbols() {
-            for reference in &symbol.references {
-                if reference.module_path == module.path_idx {
-                    for start in &reference.starts {
-                        let span = Span::on_line(*start, symbol.name.len() as u32);
-                        if span.is_before(Span::at(pos)) && span.is_adjacent_to(pos) {
-                            let index = symboltable.forward(index);
-                            let symbol = symboltable.get_forwarded(index).unwrap();
-                            let inferred_type = match symbol_to_type(symbol, index, symboltable) {
-                                Ok(typ) => typ,
-                                Err(_) => return (completion_finder.message_store.take(), None),
-                            };
-                            if completion_finder.trigger_character_is(".") {
-                                let response = completion_finder
-                                    .complete_from_dot(inferred_type, DotCompletionType::Half);
-                                return (completion_finder.message_store.take(), response);
-                            }
+        let trigger = match &completion_finder.context {
+            Some(CompletionContext {
+                trigger_character, ..
+            }) => match trigger_character {
+                Some(trigger) => match trigger.as_str() {
+                    "use " => Trigger::UseImport,
+                    "new " => Trigger::NewInstance,
+                    "implements " => Trigger::Implements,
+                    "." => Trigger::DotAccess,
+                    "&" => Trigger::Ampersand,
+                    " " => Trigger::WhiteSpace,
+                    ": " => Trigger::TypeLabel,
+                    _ => Trigger::None,
+                },
+                None => Trigger::None,
+            },
+            None => Trigger::None,
+        };
+        let trigger_is_dot = matches!(trigger, Trigger::DotAccess);
+        // Found a symbol that is directly before the completion context. Attempt to provide a completion for it.
+        match trigger {
+            Trigger::DotAccess => {
+                let closest = get_closest_symbol(symboltable, module, pos, trigger_is_dot);
+                if closest.is_some() {
+                    let (index, symbol) = closest.unwrap();
+                    let inferred_type = match symbol_to_type(symbol, index, symboltable) {
+                        Ok(typ) => typ,
+                        Err(_) => return (completion_finder.message_store.take(), None),
+                    };
+                    let response =
+                        completion_finder.complete_from_dot(inferred_type, DotCompletionType::Half);
+                    return (completion_finder.message_store.take(), response);
+                }
+            }
+            Trigger::UseImport => {
+                // Client has typed "use " and is expecting a list of modules.
+                // Suggests the list of modules in the current directory, along with the Core library.
+                // NOTE: the "use " trigger is client dependent.
+                let mut completions = vec![];
+                let writer = SymbolWriter::new(standpoint);
+                let current_module_path = &module.path_buf;
+                let response = (|| -> Option<CompletionResponse> {
+                    let parent_directory = get_parent_dir(&current_module_path)?;
+                    let directory_map = standpoint.directories.get(parent_directory)?;
+                    for module_path_index in directory_map
+                        .iter()
+                        .map(|(_, idx)| idx)
+                        .chain(standpoint.corelib_path.iter())
+                    {
+                        if *module_path_index == module.path_idx {
+                            continue;
+                        }
+                        let module = standpoint.module_map.get(*module_path_index)?;
+                        let symbol_idx = module.symbol_idx;
+                        let symbol = standpoint.symbol_table.get(symbol_idx)?;
+                        if let Some(completion) =
+                            completion_finder.create_completion(&writer, symbol, symbol_idx, false)
+                        {
+                            completions.push(completion)
                         }
                     }
+                    sort_completions(&mut completions);
+                    return Some(CompletionResponse::Array(completions));
+                })();
+                return (completion_finder.message_store.take(), response);
+            }
+            trigger => {
+                // Attempt regular autocomplete.
+                // Preventing completion in comments should be handled by the client.
+                let closest = get_closest_symbol(symboltable, module, pos, trigger_is_dot);
+                let mut completions = vec![];
+                let writer = SymbolWriter::new(standpoint);
+                for (index, symbol) in symboltable.symbols().filter(|(_, sym)| {
+                    is_valid_complete_target(sym, module, standpoint, pos, closest, trigger)
+                }) {
+                    if let Some(completion) =
+                        completion_finder.create_completion(&writer, symbol, index, true)
+                    {
+                        completions.push(completion);
+                    }
                 }
+                sort_completions(&mut completions);
+                let response = Some(CompletionResponse::Array(completions));
+                return (completion_finder.message_store.take(), response);
             }
         }
         return (completion_finder.message_store.take(), None);
@@ -424,7 +494,7 @@ impl DocumentManager {
     /// Handles a change in the text of a module.
     pub fn handle_change(&self, mut params: DidChangeTextDocumentParams) -> MessageStore {
         let uri = params.text_document.uri.clone();
-        let mut msgs = self.open_document(uri.clone());
+        let mut msgs = self.open_document(uri);
         msgs.inform("Handling text update...");
         let mut standpoints = self.standpoints.write().unwrap();
         let (standpoint, path_idx) = match self.get_cached_mut(&mut standpoints) {
@@ -436,10 +506,9 @@ impl DocumentManager {
         };
         let last = params.content_changes.len() - 1;
         let most_current = std::mem::take(&mut params.content_changes[last].text);
-        std::mem::drop(params);
         msgs.inform(format!("Refreshing open document..."));
         let time = std::time::Instant::now();
-        match standpoint.refresh_module(path_idx, most_current, false) {
+        match standpoint.refresh_module(path_idx, &most_current, true) {
             Some(StandpointStatus::RefreshSuccessful) => {
                 msgs.inform(format!("Document refreshed in {:?}", time.elapsed()))
             }
@@ -447,8 +516,18 @@ impl DocumentManager {
         };
         *self.was_updated.write().unwrap() = true;
         // idk what to do here.
-        if time.elapsed() > std::time::Duration::from_millis(300) {
+        if time.elapsed() > std::time::Duration::from_millis(250) {
             standpoint.restart();
+            msgs.inform("Threshold crossed. Refreshing standpoint.");
+            let uri = params.text_document.uri;
+            let mut module = Module::from_text(&most_current);
+            let path = uri_to_absolute_path(uri).ok();
+            if path.is_none() {
+                return msgs;
+            }
+            let path = path.unwrap();
+            module.module_path = Some(path);
+            standpoint.add_module(module);
         };
         msgs
     }
@@ -772,6 +851,87 @@ impl DocumentManager {
         }
         diagnostic_report.clone()
     }
+}
+
+fn is_valid_complete_target(
+    sym: &SemanticSymbol,
+    module: &TypedModule,
+    standpoint: &Standpoint,
+    pos: [u32; 2],
+    closest_symbol: Option<(SymbolIndex, &SemanticSymbol)>,
+    trigger: Trigger,
+) -> bool {
+    let is_module_local = sym.was_declared_in(module.path_idx)
+        && !matches!(&sym.kind, SemanticSymbolKind::Module { .. });
+    let is_prelude_symbol = standpoint
+        .prelude_path
+        .is_some_and(|path| sym.was_declared_in(path))
+        && sym.kind.is_public();
+    let valid_location = match &sym.kind {
+        SemanticSymbolKind::Variable { .. } | SemanticSymbolKind::Constant { .. } => {
+            sym.ident_span().is_before(Span::at(pos))
+        }
+        _ => true,
+    };
+    let closest = closest_symbol.is_some() && {
+        let (_, symbol) = closest_symbol.as_ref().unwrap();
+        sym.name.chars().next().unwrap().to_lowercase().eq(symbol
+            .name
+            .chars()
+            .next()
+            .unwrap()
+            .to_lowercase())
+            && sym
+                .name
+                .to_lowercase()
+                .starts_with(&symbol.name.to_lowercase())
+    } || closest_symbol.is_none();
+    let is_valid_symbol = ((is_module_local && valid_location) || is_prelude_symbol) && closest;
+    (match trigger {
+        Trigger::NewInstance => match &sym.kind {
+            SemanticSymbolKind::Model {
+                is_constructable, ..
+            } => *is_constructable,
+            _ => false,
+        },
+        Trigger::Implements => match &sym.kind {
+            SemanticSymbolKind::Trait { .. } => true,
+            _ => false,
+        },
+        Trigger::TypeLabel => matches!(
+            &sym.kind,
+            SemanticSymbolKind::TypeName { .. }
+                | SemanticSymbolKind::Enum { .. }
+                | SemanticSymbolKind::Model { .. }
+        ),
+        _ => true,
+    }) && is_valid_symbol
+}
+
+/// Returns the symbol that is closest to a completion trigger.
+fn get_closest_symbol<'a>(
+    symboltable: &'a analyzer::SymbolTable,
+    module: &'a TypedModule,
+    pos: [u32; 2],
+    trigger_is_dot: bool,
+) -> Option<(SymbolIndex, &'a SemanticSymbol)> {
+    for (index, symbol) in symboltable.symbols() {
+        for reference in &symbol.references {
+            if reference.module_path == module.path_idx {
+                for start in &reference.starts {
+                    let span = Span::on_line(*start, symbol.name.len() as u32);
+                    if span.is_before(Span::at(pos)) && span.is_adjacent_to(pos)
+                        || (!trigger_is_dot && span.contains(pos))
+                    {
+                        let index = symboltable.forward(index);
+                        let symbol = symboltable.get_forwarded(index).unwrap();
+                        return Some((index, symbol));
+                    }
+                }
+            }
+        }
+    }
+    None
 }
 
 /// Convert a uri to an absolute path.

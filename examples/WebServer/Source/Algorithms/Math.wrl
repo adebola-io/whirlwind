@@ -37,7 +37,7 @@ public function Max<T implements Magnitude>(array: Array<T>): Maybe<T> {
 /// ```
 public function Min<T implements Magnitude>(array: Array<T>): Maybe<T> {
     if array.Len() == 0 {
-       return None();
+        return None();
     };
     min := array[0];
     i := 1;

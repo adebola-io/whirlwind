@@ -4,3 +4,7 @@ module Utils;
 public function IsValidUsername(value: &String): Bool {
     value.IsAlphanumeric() && value.Length() > 3 && value.Length() < 30
 }
+
+public function DoStuff() {
+    array := &[];
+}

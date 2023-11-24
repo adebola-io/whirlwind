@@ -1,6 +1,7 @@
 module Io;
 
 use Super.Primitives.String;
+use Super.Prelude.Display;
 
 /// Creates a new format object.
 public function Format(template: String): FormatObject {
@@ -13,6 +14,12 @@ public model FormatObject {
     }
 }
 
-public function Print(message: String) {
-    
+/// Prints a message or an object to the console, terminal or any predefined output interface.
+public function Print<T implements Display>(message: T) {
+    messageAsStr := message;
+    Todo()
+}
+
+public model IoError {
+
 }

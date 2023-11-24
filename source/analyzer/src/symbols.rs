@@ -15,6 +15,10 @@ impl From<usize> for PathIndex {
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct LiteralIndex(pub usize);
 
+/// An id for the scope containing the declaration of a symbol in a module.
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct ScopeId(pub u32);
+
 /// An index into the symbol table.
 #[derive(Debug, PartialEq, Clone, Copy, Eq, Hash)]
 pub struct SymbolIndex(pub usize);
@@ -41,6 +45,7 @@ pub struct SemanticSymbol {
     pub references: Vec<SymbolReferenceList>,
     pub doc_info: Option<Vec<String>>,
     pub origin_span: Span,
+    pub origin_scope_id: Option<ScopeId>,
 }
 
 /// A collection of all instances of a symbol inside a file.
@@ -301,6 +306,7 @@ impl SemanticSymbol {
         variable: &ShorthandVariableSignature,
         path_to_module: PathIndex,
         origin_span: Span,
+        origin_scope_id: Option<ScopeId>,
     ) -> SemanticSymbol {
         Self {
             // taking the name makes it un-lookup-able.
@@ -317,6 +323,7 @@ impl SemanticSymbol {
             }],
             doc_info: variable.info.clone(), // todo.
             origin_span,
+            origin_scope_id,
         }
     }
     /// Create a new symbol from a constant.
@@ -324,6 +331,7 @@ impl SemanticSymbol {
         constant: &ConstantSignature,
         path_to_module: PathIndex,
         origin_span: Span,
+        origin_scope_id: Option<ScopeId>,
     ) -> Self {
         Self {
             // taking the name makes it un-lookup-able.
@@ -339,10 +347,16 @@ impl SemanticSymbol {
             }],
             doc_info: constant.info.clone(), // todo.
             origin_span,
+            origin_scope_id,
         }
     }
     /// Create a new symbol from a type.
-    pub fn from_type(_type: &TypeSignature, path_to_module: PathIndex, origin_span: Span) -> Self {
+    pub fn from_type(
+        _type: &TypeSignature,
+        path_to_module: PathIndex,
+        origin_span: Span,
+        origin_scope_id: Option<ScopeId>,
+    ) -> Self {
         Self {
             name: _type.name.name.to_owned(),
             kind: SemanticSymbolKind::TypeName {
@@ -356,10 +370,16 @@ impl SemanticSymbol {
             }],
             doc_info: _type.info.clone(),
             origin_span,
+            origin_scope_id,
         }
     }
     /// Create a new symbol from an enum signature.
-    pub fn from_enum(_enum: &EnumSignature, path_to_module: PathIndex, origin_span: Span) -> Self {
+    pub fn from_enum(
+        _enum: &EnumSignature,
+        path_to_module: PathIndex,
+        origin_span: Span,
+        origin_scope_id: Option<ScopeId>,
+    ) -> Self {
         Self {
             name: _enum.name.name.to_owned(),
             kind: SemanticSymbolKind::Enum {
@@ -373,6 +393,7 @@ impl SemanticSymbol {
             }],
             doc_info: _enum.info.clone(),
             origin_span,
+            origin_scope_id,
         }
     }
     /// Create a new symbol from a function signature.
@@ -380,6 +401,7 @@ impl SemanticSymbol {
         function: &ast::FunctionSignature,
         path_idx: PathIndex,
         origin_span: Span,
+        origin_scope_id: Option<ScopeId>,
     ) -> SemanticSymbol {
         Self {
             name: function.name.name.to_owned(),
@@ -396,6 +418,7 @@ impl SemanticSymbol {
             }],
             doc_info: function.info.clone(), // todo.
             origin_span,
+            origin_scope_id,
         }
     }
 
@@ -404,6 +427,7 @@ impl SemanticSymbol {
         u: &ast::UseTargetSignature,
         path_idx: PathIndex,
         origin_span: Span,
+        origin_scope_id: Option<ScopeId>,
     ) -> SemanticSymbol {
         Self {
             name: u.name.name.to_owned(),
@@ -417,6 +441,7 @@ impl SemanticSymbol {
             }],
             doc_info: None,
             origin_span,
+            origin_scope_id,
         }
     }
     /// Reconstruct the identifier span for the original declaration.
@@ -427,6 +452,12 @@ impl SemanticSymbol {
             start,
             end: [start[0], (start[1] as usize + self.name.len()) as u32],
         }
+    }
+    /// Checks if the symbol was declared in a module.
+    pub fn was_declared_in(&self, module_path: PathIndex) -> bool {
+        self.references
+            .first()
+            .is_some_and(|reference| reference.module_path == module_path)
     }
 }
 
@@ -702,6 +733,10 @@ impl SymbolTable {
                 string.push_str(&symbol.name);
                 string.push_str("}");
             }
+            EvaluatedType::HardGeneric { base } => {
+                let symbol = self.get(*base).unwrap();
+                string.push_str(&symbol.name);
+            }
             EvaluatedType::Borrowed { base } => {
                 string.push('&');
                 string.push_str(&self.format_evaluated_type(base));
@@ -775,7 +810,7 @@ impl SymbolTable {
             string.push_str(&parameter_symbol.name);
             if let SemanticSymbolKind::Parameter {
                 is_optional,
-                inferred_type,
+                param_type,
                 ..
             } = &parameter_symbol.kind
             {
@@ -783,7 +818,13 @@ impl SymbolTable {
                     string.push('?');
                 }
                 string.push_str(": ");
-                string.push_str(&self.format_evaluated_type(&inferred_type));
+                let eval_type = param_type
+                    .as_ref()
+                    .map(|param_type| {
+                        evaluate(param_type, self, Some(generic_arguments), &mut None)
+                    })
+                    .unwrap_or(EvaluatedType::Unknown);
+                string.push_str(&self.format_evaluated_type(&eval_type));
             }
             if idx != params.len() - 1 {
                 string.push_str(", ");
@@ -811,7 +852,7 @@ fn get_just_types(
 mod tests {
     use ast::Span;
 
-    use crate::{SemanticSymbol, SemanticSymbolKind, SymbolTable};
+    use crate::{ScopeId, SemanticSymbol, SemanticSymbolKind, SymbolTable};
 
     #[test]
     fn test_symbol_adding() {
@@ -826,6 +867,7 @@ mod tests {
             references: vec![],
             doc_info: None,
             origin_span: Span::default(),
+            origin_scope_id: Some(ScopeId(0)),
         });
         assert_eq!(symboltable.get(symbol_index).unwrap().name, "newVariable")
     }
@@ -843,8 +885,8 @@ mod tests {
             references: vec![],
             doc_info: None,
             origin_span: Span::default(),
+            origin_scope_id: Some(ScopeId(0)),
         });
-
         assert_eq!(symboltable.len(), 1);
 
         let removed = symboltable.remove(symbol_index).unwrap();

@@ -37,7 +37,25 @@ public trait Iteratable<I> {
     /// ### Usage
     /// ```
     /// ```
-    public function Filter(predicate: fn(value: &I): Bool): Filter<I> {
+    public function Filter(predicate: fn(value: &I): Bool): Filter<This> {
+        Todo()
+    }
+    public function Map<J>(predicate: fn(value: I): J): Map<This, J> {
+        Todo()
+    }
+    /// Checks if any of the elements produced by the iterator matches a predicate.
+    /// If there are still elements left after the target element is found,
+    /// the iterator can still be used.
+    /// ### Usage
+    /// ```
+    /// iterator := [1, 2, 3, 4, 5].IntoIter();
+    /// 
+    /// AssertThat(iterator.Any(fn(x) x % 2 == 0));
+    /// // Iterator can still be used.
+    /// Assert(iterator.Next()).Equals(Some(3));
+    /// Assert(iterator.Next()).Equals(Some(4));
+    /// ```
+    public function Any<J>(predicate: fn(value: &I): Bool): Bool {
         Todo()
     }
 }
@@ -45,9 +63,13 @@ public trait Iteratable<I> {
 /// This trait specifies that a model can be made into an iterator.
 public trait AsIterator<I, T implements Iteratable<I>> {
     /// Turn a model into an iterator.
-    public function Convert(): T;
+    public function IntoIter(): T;
 }
 
 public model Filter<I> {
+
+}
+
+public model Map<I, J> {
 
 }

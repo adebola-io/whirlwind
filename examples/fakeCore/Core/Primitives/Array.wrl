@@ -2,19 +2,48 @@ module Array;
 
 use Bool.Bool;
 use Numeric.{ Int, UnsignedInt };
-use Super.Prelude.{ AsIterator, Maybe, None, Todo };
-use Super.Primitives.Ops.Magnitude;
+use Super.Prelude.{ AsIterator, Maybe, None, Todo, String };
 use Super.Prelude.Iteratable;
+use Super.Primitives.Ops.Orderable;
+use Super.Prelude.Display;
 
+/// An owned iterator built from the elements of an array.
+/// ## Usage
 public model ArrayIter<T> implements Iteratable<T> {
-    new() {
-        
+    var array: Array<T>;
+    var idx: UnsignedInt;
+    new(array: Array<T>) {
+        this.array = array;
+        this.idx = 0;
+    }
+
+    public function [Iteratable.Next](): Maybe<T> {
+        length := this.array.Length();
+        if length == this.idx {
+            return None();
+        } else {
+            nextItem := this.array[this.idx];
+            this.idx += 1;
+            return nextItem;
+        }
+    }
+}
+
+public model ArrayRefIter<T> implements Iteratable<T> {
+    var array: &Array<T>;
+    var idx: UnsignedInt;
+    new(array: &Array<T>) {
+        this.array = array;
+        this.idx = 0;
+    }
+    public function [Iteratable.Next]() {
+
     }
 }
 
 /// A contiguous, growable list of items.
 public model Array<T> implements Todo<T, ArrayIter> {
-    public function [AsIterator.Convert]() {
+    public function [AsIterator.IntoIter](): ArrayIter {
         new ArrayIter(this)
     }
     /// Returns the item at a particular index in the array, if it exists.
@@ -146,11 +175,32 @@ public model Array<T> implements Todo<T, ArrayIter> {
     public function Shift(): Maybe<T> {
         Todo()
     }
-}
-
-/// Sorts an array in place.
-public function SortArrayInPlace<T implements Magnitude>(array: &Array<T>) {
-    // Todo()
+    /// Converts an array to a string representation,
+    /// given that its elements implement `Display`.
+    /// ### Usage
+    /// ```
+    /// arr := [1, 6, 7, 8, 10];
+    /// arrAsStr := Array.ToStr(arr);
+    /// 
+    /// Assert(arrAsStr).Equals("[1, 6, 7, 8, 10]");
+    /// ```
+    public static function ToStr<T implements Display>(array: &Array<T>): String {
+        string := "[";
+        i := 0;
+        while i < array.Length() {
+            item := array[i];
+            string.Append(item.ToStr());
+            if i + 1 != array.Length() {
+                string.Append(", ");
+            }
+        }
+        string.Append("]");
+        string
+    }
+    /// Sorts an array in place.
+    public static function SortInPlace<T implements Orderable>(array: &Array<T>) {
+        // Todo()
+    }
 }
 
 /// A fixed-size list of items.

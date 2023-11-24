@@ -2,7 +2,7 @@ module Main;
 
 /// A last-in first-out data structure.
 public model Stack<T> {
-    var items: <T>;
+    var items: Array<T>;
     var capacity: Int;
 
     new(capacity?: Int) {
@@ -92,41 +92,4 @@ test "It tests stack pushing and popping" {
     Assert(stack.Size() == 2);
 }
 
-public type UnsignedInt = U8Int | U16Int | U32Int;
-public type Int = UnsignedInt | SignedInt;
-public type Float = Float32 | Float64;
-public type Number = SignedInt | Float | BigInt;
-
-
-public trait PartialEquality {
-    function Equals(other: This): Bool;
-}
-public trait Rangeable {
-    function To(other: This): RangeOver<This>;
-}
-public trait PartialOrdering {
-    function Max(other: This): This; 
-}
-public trait IndexWith<T, U> {
-    function Access(accessor: T): U;
-}
-public trait Addition {
-    function Add(other: This): This;
-}
-public trait Subtraction {
-    function Subtract(other: This): This;
-}
-public trait Multiplication {
-    function Multiply(other: This): This;
-}
-public trait Division {
-    function Divide(other: This): This;
-}
-public trait Display {
-    function ToString(): String;
-}
-/// This allows you to declare variables without initializing them.
-public trait Default {
-    function Default(): This;
-}
 

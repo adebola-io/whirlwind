@@ -1,6 +1,6 @@
 use errors::TypeErrorType;
 
-use crate::{EvaluatedType, ParameterType, SemanticSymbolKind, SymbolIndex, SymbolTable};
+use crate::{evaluate, EvaluatedType, ParameterType, SemanticSymbolKind, SymbolIndex, SymbolTable};
 
 /// Encloses an evaluated type as a prospect.
 /// It does nothing if the intrinsic Prospect type is unreachable.
@@ -60,7 +60,7 @@ pub fn arrify(typ: EvaluatedType, symboltable: &SymbolTable) -> EvaluatedType {
         let maybe_symbol = symboltable.get(model).unwrap();
         let maybe_generic_parameter = match &maybe_symbol.kind {
             SemanticSymbolKind::Model { generic_params, .. } => generic_params[0],
-            _ => unreachable!("{model:?} refers to a {:#?}", maybe_symbol),
+            _ => return EvaluatedType::Unknown,
         };
         return EvaluatedType::ModelInstance {
             model,
@@ -182,12 +182,31 @@ pub fn coerce(typ: EvaluatedType, args: &Vec<(SymbolIndex, EvaluatedType)>) -> E
             }
             EvaluatedType::Generic { base }
         }
+        EvaluatedType::HardGeneric { base } => {
+            for (index, new_type) in args {
+                if base == *index {
+                    return new_type.clone();
+                }
+            }
+            EvaluatedType::HardGeneric { base }
+        }
         EvaluatedType::Borrowed { base } => EvaluatedType::Borrowed {
             base: Box::new(coerce(*base, args)),
         },
         // todo: opaque type coercion.
         _ => typ,
     }
+}
+
+/// Force all free generic arguments to unify to a given type.
+pub fn coerce_all_generics(input: &EvaluatedType, coercion_target: EvaluatedType) -> EvaluatedType {
+    let mut generic_arguments = vec![];
+    input.gather_generics_into(&mut generic_arguments);
+    let map = generic_arguments
+        .into_iter()
+        .map(|generic| (generic, coercion_target.clone()))
+        .collect::<Vec<_>>();
+    coerce(input.clone(), &map)
 }
 
 /// Converts a list of generic parameter indexes to a list of evaluated generic argument types.
@@ -229,13 +248,18 @@ pub fn symbol_to_type(
         SemanticSymbolKind::Constant { inferred_type, .. } => inferred_type.clone(),
         SemanticSymbolKind::Parameter {
             is_optional,
+            param_type,
             inferred_type,
             ..
         } => {
+            let inferred_type = param_type
+                .as_ref()
+                .map(|param_type| evaluate(param_type, symboltable, None, &mut None))
+                .unwrap_or(inferred_type.clone());
             if *is_optional {
-                maybify(inferred_type.clone(), symboltable)
+                maybify(inferred_type, symboltable)
             } else {
-                inferred_type.clone()
+                inferred_type
             }
         }
         SemanticSymbolKind::GenericParameter { .. } | SemanticSymbolKind::TypeName { .. } => {

@@ -24,12 +24,31 @@ use Super.{
 public model Outcome<T, E> implements Guaranteed<T> + Try<T> {
     var inner: OutcomeVal<T, E>;
 
+    /// Implementation of the Guarantee trait.
+    public function [Guaranteed.Guarantee](): T {
+        this.Unwrap()
+    }
+
     /// Implementation of the `Try` trait.
     public function [Try.Try]<U>(): Outcome<Flow<T>, Flow<Outcome<U, E>>> {
         // this.inner => {
         //     .Ok(value) => Ok(Flow.Normal(value)),
         //     .Err(error) => Err(Flow.ReturnWithValue(Err(error)))
         // }
+        Todo()
+    }
+
+    /// Returns the inner value if the operation was a success, or causes a runtime error otherwise.
+    /// ### Usage
+    /// ```
+    /// outcome := Ok(9);
+    /// value := outcome.Unwrap();
+    /// Assert(value).Equals(9);
+    /// 
+    /// outcome := Err("This was an error");
+    /// outcome.Unwrap(); // Will cause a runtime error.
+    /// ```
+    public function Unwrap(): T {
         Todo()
     }
 
@@ -88,7 +107,7 @@ public model Outcome<T, E> implements Guaranteed<T> + Try<T> {
     }
 
     /// Converts an `Outcome<T, E>` to a `Maybe<T>`.
-    public function Ok(): Maybe<T, E> {
+    public function Ok(): Maybe<T> {
         Todo()
     }
 

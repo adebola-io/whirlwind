@@ -1,5 +1,8 @@
 const vscode = require("vscode");
-const { LanguageClient } = require("vscode-languageclient/node");
+const {
+   LanguageClient,
+   CompletionTriggerKind,
+} = require("vscode-languageclient/node");
 
 /** @type {string} */
 let server_path;
@@ -17,8 +20,9 @@ function getStatusBar() {
    return this.statusBar;
 }
 
+var triggerRestart = false;
 function getLanguageClient() {
-   if (this.client == undefined) {
+   if (this.client == undefined || triggerRestart) {
       this.client = new LanguageClient(
          "Whirlwind",
          "Whirlwind Language Server",
@@ -30,6 +34,76 @@ function getLanguageClient() {
          },
          {
             documentSelector: [{ scheme: "file", language: "wrl" }],
+            middleware: {
+               // todo: bounce didchange events in comments and strings.
+               provideCompletionItem(document, position, context, token, next) {
+                  // Ignore comments and strings while providing completions.
+                  let line = document.lineAt(position.line).text;
+                  let beforePosition = line.slice(0, position.character);
+                  let isInComment = beforePosition.includes("//");
+                  // todo: also disable for multiline strings.
+                  let doubleQuoteBefore =
+                     beforePosition.includes('"') &&
+                     beforePosition.indexOf('"') ==
+                        beforePosition.lastIndexOf('"');
+                  let singleQuoteBefore =
+                     beforePosition.includes("'") &&
+                     beforePosition.indexOf("'") ==
+                        beforePosition.lastIndexOf("'");
+                  let isInString = doubleQuoteBefore || singleQuoteBefore;
+                  if (isInComment || isInString) {
+                     return null;
+                  }
+                  let newContext = {
+                     triggerKind: CompletionTriggerKind.TriggerCharacter,
+                     triggerCharacter: context.triggerCharacter,
+                  };
+                  let whitespaceTrigger = context.triggerCharacter == " ";
+                  beforePosition = beforePosition.trimEnd();
+                  if (beforePosition.endsWith(".")) {
+                     newContext = {
+                        ...newContext,
+                        triggerCharacter: ".",
+                     };
+                  }
+                  // Customized completion for use imports.
+                  if (beforePosition.endsWith(" use") && whitespaceTrigger) {
+                     newContext = {
+                        ...newContext,
+                        triggerCharacter: "use ",
+                     };
+                  }
+                  // Customized completion for new model instances.
+                  else if (
+                     beforePosition.endsWith("new") &&
+                     whitespaceTrigger
+                  ) {
+                     newContext = {
+                        ...newContext,
+                        triggerCharacter: "new ",
+                     };
+                     // return null;
+                  }
+                  // Customized completion for type labels.
+                  else if (beforePosition.endsWith(":") && whitespaceTrigger) {
+                     newContext = {
+                        ...newContext,
+                        triggerCharacter: ": ",
+                     };
+                  }
+                  // Customized completion for implementations.
+                  else if (
+                     beforePosition.endsWith("implements") &&
+                     whitespaceTrigger
+                  ) {
+                     newContext = {
+                        ...newContext,
+                        triggerCharacter: "implements ",
+                     };
+                  }
+                  return next(document, position, newContext, token);
+               },
+            },
             synchronize: {
                fileEvents:
                   vscode.workspace.createFileSystemWatcher("**/.clientrc"),
@@ -51,7 +125,9 @@ exports.startLanguageServer = async () => {
 
 exports.restartServer = async () => {
    await exports.stopLanguageServer();
+   triggerRestart = true;
    await exports.startLanguageServer();
+   triggerRestart = false;
 };
 
 exports.stopLanguageServer = async () => {

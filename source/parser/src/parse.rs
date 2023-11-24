@@ -194,6 +194,19 @@ impl<L: Lexer> Parser<L> {
             _ => false,
         }
     }
+
+    /// Create a false, placeholder block if it is missing, so that parsing can continue normally.
+    fn create_fake_block(&self, scopetype: ScopeType, span: Span) -> Block {
+        let ambience = self.module_ambience();
+        ambience.enter(scopetype);
+        let block = Block {
+            scope_id: ambience.current_scope(),
+            statements: vec![],
+            span,
+        };
+        ambience.leave_scope();
+        block
+    }
 }
 
 // Expressions
@@ -373,11 +386,17 @@ impl<L: Lexer> Parser<L> {
             _ => self.expression(),
         }
         .to_tuple();
-
-        if body.is_none() {
-            return Partial::from_errors(errors);
-        }
-        let body = body.unwrap();
+        let body = body.unwrap_or_else(|| {
+            Expression::BlockExpr(
+                self.create_fake_block(
+                    ScopeType::Functional,
+                    errors
+                        .last()
+                        .map(|last| last.span)
+                        .unwrap_or(self.last_token_end()),
+                ),
+            )
+        });
 
         let end = body.span().end;
         let span = Span::from([start, end]);
@@ -416,10 +435,15 @@ impl<L: Lexer> Parser<L> {
         let condition = condition.unwrap();
         errors.append(&mut condition_errors);
         let (consequent, mut consequent_errors) = self.block(ScopeType::Local).to_tuple();
-        if consequent.is_none() {
-            return Partial::from_errors(consequent_errors);
-        }
-        let consequent = consequent.unwrap();
+        let consequent = consequent.unwrap_or_else(|| {
+            self.create_fake_block(
+                ScopeType::Local,
+                errors
+                    .last()
+                    .map(|last| last.span)
+                    .unwrap_or(Span::at(condition.span().end)),
+            )
+        });
         errors.append(&mut consequent_errors);
         let mut end = consequent.span.end;
 
@@ -612,6 +636,7 @@ impl<L: Lexer> Parser<L> {
         let (index, mut index_errors) = self.expression().to_tuple();
         errors.append(&mut index_errors);
         if index.is_none() {
+            self.precedence_stack.borrow_mut().pop();
             return Partial {
                 value: Some(object),
                 errors,
@@ -644,27 +669,17 @@ impl<L: Lexer> Parser<L> {
         let object = obj.unwrap();
         let start = object.span().start;
         self.advance(); // Move past .
-        self.push_precedence(ExpressionPrecedence::Access);
-        let mut property = self.expression();
-        errors.append(&mut property.errors);
-        if property.is_none() {
-            return Partial {
-                value: Some(object),
-                errors,
-            };
-        }
-        let property = property.unwrap();
-        // Only allow identifiers.
-        if let Expression::Identifier(_) = property {
-        } else {
-            errors.push(errors::identifier_expected(property.span()));
-            return Partial {
-                value: Some(object),
-                errors,
-            };
-        }
-
-        self.precedence_stack.borrow_mut().pop();
+        let property = match self.identifier() {
+            Ok(property) => property,
+            Err(error) => {
+                errors.push(error);
+                return Partial {
+                    value: Some(object),
+                    errors,
+                };
+            }
+        };
+        let property = Expression::Identifier(property);
         let end = property.span().end;
         let span = Span::from([start, end]);
         let access_exp = AccessExpr {
@@ -697,6 +712,7 @@ impl<L: Lexer> Parser<L> {
         let mut partial = self.expression();
         errors.append(&mut partial.errors);
         if partial.is_none() {
+            self.precedence_stack.borrow_mut().pop();
             return Partial {
                 value: Some(left),
                 errors,
@@ -737,6 +753,7 @@ impl<L: Lexer> Parser<L> {
         let mut partial = self.expression();
         errors.append(&mut partial.errors);
         if partial.is_none() {
+            self.precedence_stack.borrow_mut().pop();
             return Partial {
                 value: Some(left),
                 errors,
@@ -777,6 +794,7 @@ impl<L: Lexer> Parser<L> {
         let mut partial = self.expression();
         errors.append(&mut partial.errors);
         if partial.is_none() {
+            self.precedence_stack.borrow_mut().pop();
             return Partial {
                 value: Some(left),
                 errors,
@@ -981,7 +999,13 @@ impl<L: Lexer> Parser<L> {
                 None
             }
         };
-        let params = check!(self.parameters());
+        let params = match self.parameters() {
+            Ok(params) => params,
+            Err(error) => {
+                errors.push(error);
+                vec![]
+            }
+        };
         let return_type = match self.maybe_type_label() {
             Ok(rettye) => rettye,
             Err(error) => {
@@ -992,11 +1016,18 @@ impl<L: Lexer> Parser<L> {
         // Errors found in the body of the function.
         let (body, mut body_errors) = self.block(ScopeType::Functional).to_tuple();
         errors.append(&mut body_errors);
-        // Require a function body.
-        if body.is_none() {
-            return Partial::from_errors(errors);
-        }
-        let body = body.unwrap();
+        // Having no function body is not fatal, so autocomplete can work.
+        let body = body.unwrap_or_else(|| {
+            let ambience = self.module_ambience();
+            ambience.enter(ScopeType::Functional);
+            let block = Block {
+                scope_id: ambience.current_scope(),
+                statements: vec![],
+                span: errors.last().map(|last| last.span).unwrap_or(name.span),
+            };
+            ambience.leave_scope();
+            block
+        });
 
         let signature = FunctionSignature {
             name,
@@ -2420,10 +2451,10 @@ impl<L: Lexer> Parser<L> {
         let condition = condition.value.unwrap();
         let mut body = self.block(ScopeType::WhileLoop);
         errors.append(&mut body.errors);
-        if body.is_none() {
-            return Partial::from_errors(errors);
-        }
-        let body = body.value.unwrap();
+
+        let body = body
+            .value
+            .unwrap_or_else(|| self.create_fake_block(ScopeType::WhileLoop, self.last_token_end()));
         let span = Span::from([start, body.span.end]);
         let while_statement = Statement::WhileStatement(WhileStatement {
             condition,
@@ -2550,12 +2581,12 @@ impl<L: Lexer> Parser<L> {
             None
         };
 
-        let (body_opt, mut body_errors) = self.block(ScopeType::Local).to_tuple();
+        let (body_opt, mut body_errors) = self.block(ScopeType::ForLoop).to_tuple();
         errors.append(&mut body_errors);
 
         let body = match body_opt {
             Some(block) => block,
-            None => return Partial::from_errors(errors),
+            None => self.create_fake_block(ScopeType::ForLoop, self.last_token_end()),
         };
 
         let end = body.span.end;
@@ -2697,7 +2728,7 @@ impl<L: Lexer> Parser<L> {
             self.advance();
             Ok(identifier)
         } else {
-            Err(errors::identifier_expected(token.span))
+            Err(errors::identifier_expected(self.last_token_end()))
         }
     }
 

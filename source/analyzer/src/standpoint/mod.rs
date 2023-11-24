@@ -253,7 +253,13 @@ impl Standpoint {
     ) -> Vec<(SymbolIndex, Option<SymbolIndex>)> {
         match &target.path {
             // Importing a module itself.
-            ast::UsePath::Me => vec![(leaves[0], Some(index))],
+            ast::UsePath::Me => vec![(
+                match leaves.get(0) {
+                    Some(value) => *value,
+                    None => return vec![],
+                },
+                Some(index),
+            )],
             // Importing an item of a module.
             ast::UsePath::Item(sub_target) => {
                 let imported_symbol_idx =
@@ -594,7 +600,7 @@ impl Standpoint {
     pub fn refresh_module(
         &mut self,
         path_idx: PathIndex,
-        text: String,
+        text: &String,
         should_recompute_imports: bool,
     ) -> Option<StandpointStatus> {
         let path = self.module_map.get(path_idx)?.path_buf.clone();
@@ -632,7 +638,7 @@ impl Standpoint {
         // }
 
         // Add updated module.
-        let mut update = Module::from_text(text);
+        let mut update = Module::from_text(&text);
         update.module_path = Some(path.clone());
         let new_path_idx = self.add_module(update)?;
         // if it was the Core library that was updated:

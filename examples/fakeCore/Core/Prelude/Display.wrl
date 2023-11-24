@@ -1,0 +1,36 @@
+module Display;
+
+use Super.Primitives.String;
+
+/// The `Display` trait defines a contract for the conversion of models into string representations.
+/// This allows objects of different types to be seamlessly integrated into textual contexts,
+/// particularly for user-facing interfaces.
+/// 
+/// Models that implements Display can be printed using the `Core.Io.Print` method.
+/// ## Usage
+/// ```
+/// // Implementing Display on a model.
+/// model Rectangle implements Display {
+///     var length: UInt32;
+///     var width: UInt32;
+///     
+///     new(length: UInt32, width: UInt32) {
+///         this.length = length;
+///         this.width = width;
+///     }
+/// 
+///     function [Display.ToStr](): String {
+///         string := "Rectangle {" 
+///         + "length: " + length.ToStr() + ", "
+///         + "breadth: " + breadth.ToStr() 
+///         + "}";
+///     }
+/// }
+/// 
+/// Core.Io.Print(new Rectangle(4, 6)) // Will print out "Rectangle {length: 4, breadth: 6}"".
+/// ```
+/// 
+public trait Display {
+    /// Converts the implementing type to a string.
+    public function ToStr(): String;
+}

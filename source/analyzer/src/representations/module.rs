@@ -32,8 +32,8 @@ impl Module {
     }
 
     /// Creates a module from Whirlwind source code text.
-    pub fn from_text(value: String) -> Self {
-        let ast = Ast::from_text(&value);
+    pub fn from_text(value: &str) -> Self {
+        let ast = Ast::from_text(value);
         Module::from_ast(ast, None)
     }
 

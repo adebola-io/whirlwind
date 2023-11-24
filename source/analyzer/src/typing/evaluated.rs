@@ -60,6 +60,10 @@ pub enum EvaluatedType {
     Void,
     Never,
     Unknown,
+    // Generics that cannot be mutated or coerced.
+    HardGeneric {
+        base: SymbolIndex,
+    },
     Generic {
         base: SymbolIndex,
     },
@@ -137,7 +141,7 @@ impl EvaluatedType {
     /// [`Generic`]: EvaluatedType::Generic
     #[must_use]
     pub fn is_generic(&self) -> bool {
-        matches!(self, Self::Generic { .. })
+        matches!(self, Self::Generic { .. } | Self::HardGeneric { .. })
     }
 
     /// Returns `true` if the evaluated type is [`Partial`].
@@ -186,7 +190,51 @@ impl EvaluatedType {
             }
             EvaluatedType::OpaqueTypeInstance { .. } => false,
             EvaluatedType::Borrowed { base } => base.contains_never(),
+            EvaluatedType::Never => true,
             _ => false,
+        }
+    }
+
+    /// Returns `true` if the evaluated type is [`Never`].
+    ///
+    /// [`Never`]: EvaluatedType::Never
+    #[must_use]
+    pub fn is_never(&self) -> bool {
+        matches!(self, Self::Never)
+    }
+
+    /// Gather generics in an evaluated type into a tuple map.
+    pub fn gather_generics_into(&self, generic_map: &mut Vec<SymbolIndex>) {
+        match self {
+            EvaluatedType::Partial { types } => types
+                .iter()
+                .for_each(|typ| typ.gather_generics_into(generic_map)),
+            EvaluatedType::ModelInstance {
+                generic_arguments, ..
+            }
+            | EvaluatedType::TraitInstance {
+                generic_arguments, ..
+            }
+            | EvaluatedType::EnumInstance {
+                generic_arguments, ..
+            }
+            | EvaluatedType::FunctionInstance {
+                generic_arguments, ..
+            }
+            | EvaluatedType::FunctionExpressionInstance {
+                generic_args: generic_arguments,
+                ..
+            }
+            | EvaluatedType::MethodInstance {
+                generic_arguments, ..
+            } => generic_arguments
+                .iter()
+                .for_each(|(_, eval)| eval.gather_generics_into(generic_map)),
+            EvaluatedType::HardGeneric { base } | EvaluatedType::Generic { base } => {
+                generic_map.push(*base)
+            }
+            EvaluatedType::Borrowed { base } => base.gather_generics_into(generic_map),
+            _ => {}
         }
     }
 }
@@ -316,7 +364,7 @@ pub fn evaluate(
                             }
                         }
                     }
-                    EvaluatedType::Generic { base: value }
+                    EvaluatedType::HardGeneric { base: value }
                 }
                 SemanticSymbolKind::UndeclaredValue => EvaluatedType::Unknown,
                 _ => {
@@ -445,7 +493,7 @@ fn generate_generics_from_arguments(
                     &generic_param_evaluated,
                     &argument_evaluated,
                     symboltable,
-                    UnifyOptions::None,
+                    UnifyOptions::HardConform,
                     None,
                 ) {
                     Ok(value) => value,

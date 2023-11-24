@@ -7,6 +7,7 @@ public use Traits.{ Guaranteed, Try };
 public use Outcome.{ Ok, Err, Outcome };
 public use Maybe.{ None, Some, Maybe };
 public use Range.Range;
+public use Display.Display;
 
 public use Super.{
     Async.{ Eventual, Prospect },

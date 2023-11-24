@@ -1,6 +1,7 @@
 module Bool;
+use Super.Prelude.Display;
 
 
-public model Bool {
+public model Bool implements Display {
 
 }

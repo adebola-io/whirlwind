@@ -5,17 +5,20 @@ use Bool.Bool;
 use Super.{ 
     Internals.{ Invoke, Injunction }, 
     Memory.{ CharSpace, Bytes }, 
-    Prelude.{ Maybe, AsIterator, Iteratable, Range },
+    Prelude.{ Maybe, AsIterator, Iteratable, Range, Display },
     Process.Todo,
 };
 use Numeric.{ Int, UnsignedInt };
 use Array.Array;
  
 /// Model for creating, manipulating and formatting text sequences.
-public model String implements Addition + AsIterator<&String, Chars> + Sequenced {
+public model String implements Addition + AsIterator<&String, Chars> + Sequenced + Display {
     /// Returns the next character alphabetically in a sequence.
     public function [Sequenced.NextItem](): Maybe<String> {
         return Invoke(Injunction.NextChar(this));
+    }
+    public function [Display.ToStr](): String {
+        return this;
     }
     /// Adds two strings together.
     /// ## Usage
@@ -35,7 +38,7 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     ///     Print(char);
     /// }
     /// ```
-    public function [AsIterator.Convert](): Chars {
+    public function [AsIterator.IntoIter](): Chars {
         return this.Chars();
     }
     /// Returns a `Maybe` with the character at a zero based index in the string.

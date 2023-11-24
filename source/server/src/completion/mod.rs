@@ -1,14 +1,14 @@
 use crate::message_store::MessageStore;
 use analyzer::{
-    span_of_typed_expression, span_of_typed_statement, EvaluatedType, SemanticSymbolKind,
-    Standpoint, SymbolIndex, TypedExpression, TypedModule, TypedStmnt,
+    evaluate, span_of_typed_expression, span_of_typed_statement, EvaluatedType, SemanticSymbolKind,
+    Standpoint, SymbolIndex, TypedExpression, TypedModelPropertyType, TypedModule, TypedStmnt,
 };
 use ast::Span;
 use printer::SymbolWriter;
 use std::cell::RefCell;
 use tower_lsp::lsp_types::{
-    CompletionContext, CompletionItem, CompletionItemKind, CompletionResponse, Documentation,
-    InsertTextFormat, MarkupContent, MarkupKind,
+    CompletionContext, CompletionItem, CompletionItemKind, CompletionItemLabelDetails,
+    CompletionResponse, Documentation, InsertTextFormat, MarkupContent, MarkupKind,
 };
 
 /// Exits a function and returns an option value if it is Some.
@@ -27,11 +27,24 @@ pub struct CompletionFinder<'a> {
     _module: &'a TypedModule,
     standpoint: &'a Standpoint,
     pos: [u32; 2],
-    completion_context: Option<CompletionContext>,
+    pub context: Option<CompletionContext>,
     pub message_store: RefCell<MessageStore>,
     next_statement_span: RefCell<Option<Span>>,
 }
 
+#[derive(PartialEq, Clone, Copy)]
+pub enum Trigger {
+    NewInstance,
+    UseImport,
+    DotAccess,
+    WhiteSpace,
+    Ampersand,
+    None,
+    TypeLabel,
+    Implements,
+}
+
+#[derive(Clone, Copy)]
 pub enum DotCompletionType {
     /// Provide completions for names, symbols, methods and attributes.
     Full,
@@ -52,7 +65,7 @@ impl<'a> CompletionFinder<'a> {
             _module: module,
             pos,
             message_store: RefCell::new(messages),
-            completion_context,
+            context: completion_context,
             next_statement_span: RefCell::new(None),
         }
     }
@@ -73,157 +86,303 @@ impl<'a> CompletionFinder<'a> {
                 return self.complete_from_dot(types.first()?.clone(), completion_type)
             }
             EvaluatedType::ModelInstance { model, .. } => {
-                if matches!(completion_type, DotCompletionType::Half) {
-                    return None;
-                }
-                let model_symbol = self.standpoint.symbol_table.get(model)?;
-                let (methods, attributes) = match &model_symbol.kind {
-                    SemanticSymbolKind::Model {
-                        methods,
-                        attributes,
-                        ..
-                    } => (methods, attributes),
-                    _ => return None,
-                };
-                for attribute in attributes {
-                    let symbol = self.standpoint.symbol_table.get(*attribute)?;
-                    if !symbol.kind.is_public() {
-                        continue; // todo: allow private completions in appriopriate context.
-                    }
-                    let label = symbol.name.clone();
-                    let documentation = Some(generate_documentation(&writer, attribute, symbol));
-                    completions.push(CompletionItem {
-                        label,
-                        kind: Some(CompletionItemKind::PROPERTY),
-                        documentation,
-                        ..Default::default()
-                    });
-                }
-                for method in methods {
-                    let symbol = self.standpoint.symbol_table.get(*method)?;
-                    if !symbol.kind.is_public() {
-                        continue; // todo: allow private completions in appriopriate context.
-                    }
-                    let params = match &symbol.kind {
-                        SemanticSymbolKind::Method {
-                            is_static, params, ..
-                        } => {
-                            if *is_static {
-                                continue; // skip static methods for instances.
-                            }
-                            params
+                self.complete_instance_access(&completion_type, model, &writer, &mut completions)?;
+            }
+            EvaluatedType::Model(owner) | EvaluatedType::Trait(owner) => {
+                self.complete_model_or_trait_static_access(owner, &writer, &mut completions)?;
+            }
+            EvaluatedType::Enum(enum_) => {
+                let enum_symbol = self.standpoint.symbol_table.get(enum_)?;
+                match &enum_symbol.kind {
+                    SemanticSymbolKind::Enum { variants, .. } => {
+                        for variant in variants {
+                            let symbol = self.standpoint.symbol_table.get(*variant)?;
+                            let documentation =
+                                Some(generate_documentation(&writer, variant, symbol));
+                            let label = symbol.name.clone();
+                            completions.push(CompletionItem {
+                                label,
+                                kind: Some(CompletionItemKind::ENUM_MEMBER),
+                                documentation,
+                                ..Default::default()
+                            })
                         }
-                        _ => continue,
-                    };
-                    let label = symbol.name.clone();
-                    let documentation = Some(generate_documentation(&writer, method, symbol));
-                    completions.push(CompletionItem {
-                        label,
-                        kind: Some(CompletionItemKind::METHOD),
-                        documentation,
-                        insert_text: Some(self.generate_function_completion(&symbol.name, &params)),
-                        insert_text_format: Some(InsertTextFormat::SNIPPET),
-                        ..Default::default()
-                    });
+                    }
+                    _ => return None,
                 }
             }
-            // EvaluatedType::TraitInstance {
-            //     trait_,
-            //     generic_arguments,
-            // } => todo!(),
-            // EvaluatedType::EnumInstance {
-            //     enum_,
-            //     generic_arguments,
-            // } => todo!(),
-            // EvaluatedType::FunctionInstance {
-            //     function,
-            //     generic_arguments,
-            // } => todo!(),
-            // EvaluatedType::FunctionExpressionInstance {
-            //     is_async,
-            //     params,
-            //     return_type,
-            //     generic_args,
-            // } => todo!(),
-            // EvaluatedType::MethodInstance {
-            //     method,
-            //     generic_arguments,
-            // } => todo!(),
-            // EvaluatedType::Model(_) => todo!(),
-            // EvaluatedType::Trait(_) => todo!(),
-            // EvaluatedType::Enum(_) => todo!(),
             // Completion after a module name.
             EvaluatedType::Module(module) => {
-                let module_symbol = self.standpoint.symbol_table.get_forwarded(module)?;
-                if let SemanticSymbolKind::Module {
-                    global_declaration_symbols,
-                    ..
-                } = &module_symbol.kind
-                {
-                    for symbol_index in global_declaration_symbols {
-                        // Not get_forwarded because publicity has to be checked.
-                        let symbol = match symboltable.get(*symbol_index) {
-                            Some(symbol) => symbol,
-                            None => continue,
-                        };
-                        if !symbol.kind.is_public() {
-                            continue;
-                        }
-                        // Specially complete functions.
-                        let symbol = symboltable.get_forwarded(*symbol_index).unwrap();
-                        let symbol_index = symboltable.forward(*symbol_index);
-                        if matches!(completion_type, DotCompletionType::Full) {
-                            if let SemanticSymbolKind::Function { params, .. } = &symbol.kind {
-                                let label = symbol.name.clone();
-                                let insert_text =
-                                    Some(self.generate_function_completion(&symbol.name, params));
-                                let documentation =
-                                    Some(generate_documentation(&writer, &symbol_index, symbol));
-                                completions.push(CompletionItem {
-                                    label,
-                                    kind: Some(CompletionItemKind::FUNCTION),
-                                    documentation,
-                                    insert_text,
-                                    insert_text_format: Some(InsertTextFormat::SNIPPET),
-                                    ..Default::default()
-                                });
-                                continue;
+                self.complete_module_access(module, completion_type, writer, &mut completions)?;
+            }
+            EvaluatedType::TraitInstance { trait_, .. } => {
+                self.complete_instance_access(&completion_type, trait_, &writer, &mut completions)?
+            }
+            EvaluatedType::Generic { base } | EvaluatedType::HardGeneric { base } => {
+                let symbol = self.standpoint.symbol_table.get(base)?;
+                match &symbol.kind {
+                    SemanticSymbolKind::GenericParameter { traits, .. } => {
+                        for _trait in traits {
+                            let evaled = evaluate(_trait, symboltable, None, &mut None);
+                            let response = self.complete_from_dot(evaled, completion_type);
+                            if let Some(response) = response {
+                                match response {
+                                    CompletionResponse::Array(mut subcompletions) => {
+                                        completions.append(&mut subcompletions)
+                                    }
+                                    CompletionResponse::List(mut list) => {
+                                        completions.append(&mut list.items)
+                                    }
+                                }
                             }
                         }
-                        if let Some(completionitem) =
-                            self.create_completion_item(&writer, symbol, symbol_index)
-                        {
-                            completions.push(completionitem);
-                        }
                     }
+                    _ => return None,
                 }
+            }
+            EvaluatedType::Borrowed { base } => {
+                return self.complete_from_dot(*base, completion_type)
             }
             // EvaluatedType::OpaqueTypeInstance {
             //     methods,
             //     properties,
             //     implementations,
             //     collaborators,
-            // } => todo!(),
-            // EvaluatedType::Void => todo!(),
-            // EvaluatedType::Never => todo!(),
-            // EvaluatedType::Unknown => todo!(),
-            // EvaluatedType::Generic { base } => todo!(),
-            // EvaluatedType::Borrowed { base } => todo!(),
-            _ => return None,
+            // } => todo!()
+            _ => {}
         }
-        completions.sort_by(|a, b| {
-            a.label
-                .chars()
-                .next()
-                .map(|ch| ch.cmp(&b.label.chars().next().unwrap_or('z')))
-                .unwrap_or(std::cmp::Ordering::Less)
-        });
+        sort_completions(&mut completions);
         return Some(CompletionResponse::Array(completions));
+    }
+
+    fn complete_model_or_trait_static_access(
+        &self,
+        model: SymbolIndex,
+        writer: &SymbolWriter<'_>,
+        completions: &mut Vec<CompletionItem>,
+    ) -> Option<()> {
+        let symboltable = &self.standpoint.symbol_table;
+        let symbol = self.standpoint.symbol_table.get_forwarded(model)?;
+        let static_methods = match &symbol.kind {
+            SemanticSymbolKind::Model {
+                methods,
+                implementations,
+                ..
+            } => {
+                // Get completions from implementations and methods.
+                // todo: completion from super traits.
+                implementations
+                    .iter()
+                    .filter_map(|typ| {
+                        let eval_typ = evaluate(typ, symboltable, None, &mut None);
+                        match eval_typ {
+                            EvaluatedType::TraitInstance { trait_, .. } => {
+                                let trait_symbol = symboltable.get(trait_)?;
+                                match &trait_symbol.kind {
+                                    SemanticSymbolKind::Trait { methods, .. } => Some(methods),
+                                    _ => return None,
+                                }
+                            }
+                            _ => return None,
+                        }
+                    })
+                    .map(|methods| methods.iter())
+                    .flatten()
+                    .chain(methods.iter()) // normal methods.
+                    .filter_map(|method_idx| {
+                        let method_symbol = self.standpoint.symbol_table.get(*method_idx);
+                        if method_symbol.is_none() {
+                            return None;
+                        }
+                        match &method_symbol.unwrap().kind {
+                            SemanticSymbolKind::Method {
+                                is_static,
+                                is_public,
+                                params,
+                                ..
+                            } => (*is_static && *is_public).then_some(Some((
+                                method_idx,
+                                method_symbol.unwrap(),
+                                params,
+                            ))), // todo: allow private access in appriopriate contexts.
+                            _ => None,
+                        }
+                    })
+                    .map(|tuple| tuple.unwrap())
+            }
+            _ => return None,
+        };
+        Some(for (method_idx, symbol, params) in static_methods {
+            let documentation = Some(generate_documentation(writer, method_idx, symbol));
+            let label = symbol.name.clone();
+            let detail = Some(
+                symboltable.format_evaluated_type(&EvaluatedType::MethodInstance {
+                    method: *method_idx,
+                    generic_arguments: vec![],
+                }),
+            );
+            let insert_text = Some(self.generate_function_completion(&symbol.name, params));
+            completions.push(CompletionItem {
+                label,
+                detail,
+                kind: Some(CompletionItemKind::METHOD),
+                documentation,
+                insert_text,
+                insert_text_format: Some(InsertTextFormat::SNIPPET),
+                ..Default::default()
+            })
+        })
+    }
+
+    /// Complete a module, followed by a dot.
+    fn complete_module_access(
+        &self,
+        module: SymbolIndex,
+        completion_type: DotCompletionType,
+        writer: SymbolWriter<'_>,
+        completions: &mut Vec<CompletionItem>,
+    ) -> Option<()> {
+        let symboltable = &self.standpoint.symbol_table;
+        let module_symbol = symboltable.get_forwarded(module)?;
+        Some(
+            if let SemanticSymbolKind::Module {
+                global_declaration_symbols,
+                ..
+            } = &module_symbol.kind
+            {
+                for symbol_index in global_declaration_symbols {
+                    // Not get_forwarded because publicity has to be checked.
+                    let symbol = match symboltable.get(*symbol_index) {
+                        Some(symbol) => symbol,
+                        None => continue,
+                    };
+                    if !symbol.kind.is_public() {
+                        continue;
+                    }
+                    // Specially complete functions.
+                    let symbol = symboltable.get_forwarded(*symbol_index).unwrap();
+                    let symbol_index = symboltable.forward(*symbol_index);
+                    if let Some(completionitem) = self.create_completion(
+                        &writer,
+                        symbol,
+                        symbol_index,
+                        matches!(completion_type, DotCompletionType::Full),
+                    ) {
+                        completions.push(completionitem);
+                    }
+                }
+            },
+        )
+    }
+
+    /// Complete a model or trait instance, followed by a dot.
+    fn complete_instance_access(
+        &self,
+        completion_type: &DotCompletionType,
+        owner: SymbolIndex,
+        writer: &SymbolWriter<'_>,
+        completions: &mut Vec<CompletionItem>,
+    ) -> Option<()> {
+        let symboltable = &self.standpoint.symbol_table;
+        if matches!(completion_type, DotCompletionType::Half) {
+            return None;
+        }
+        let owner_symbol = symboltable.get(owner)?;
+        let methods = match &owner_symbol.kind {
+            SemanticSymbolKind::Model { methods, .. }
+            | SemanticSymbolKind::Trait { methods, .. } => methods,
+            _ => return None,
+        };
+        for method in methods {
+            let symbol = symboltable.get(*method)?;
+            if !symbol.kind.is_public() {
+                continue; // todo: allow private completions in appriopriate context.
+            }
+            let params = match &symbol.kind {
+                SemanticSymbolKind::Method {
+                    is_static, params, ..
+                } => {
+                    if *is_static {
+                        continue; // skip static methods for instances.
+                    }
+                    params
+                }
+                _ => continue,
+            };
+            let label = symbol.name.clone();
+            let documentation = Some(generate_documentation(writer, method, symbol));
+            let detail = Some(
+                symboltable.format_evaluated_type(&EvaluatedType::MethodInstance {
+                    method: *method,
+                    generic_arguments: vec![],
+                }),
+            );
+            completions.push(CompletionItem {
+                label,
+                detail,
+                kind: Some(CompletionItemKind::METHOD),
+                documentation,
+                insert_text: Some(self.generate_function_completion(&symbol.name, &params)),
+                insert_text_format: Some(InsertTextFormat::SNIPPET),
+                ..Default::default()
+            });
+        }
+        // Implementations from other traits.
+        let implementations = match &owner_symbol.kind {
+            SemanticSymbolKind::Model {
+                implementations, ..
+            }
+            | SemanticSymbolKind::Trait {
+                implementations, ..
+            } => implementations,
+            _ => return Some(()),
+        }
+        .iter()
+        .map(|int_type| evaluate(int_type, symboltable, None, &mut None))
+        .filter(|eval_typ| eval_typ.is_trait_instance());
+        for implementation in implementations {
+            let owner = match implementation {
+                EvaluatedType::TraitInstance { trait_, .. } => trait_,
+                _ => continue,
+            };
+            self.complete_instance_access(completion_type, owner, writer, completions);
+        }
+        let attributes = match &owner_symbol.kind {
+            SemanticSymbolKind::Model { attributes, .. } => attributes,
+            _ => return Some(()),
+        };
+        for attribute in attributes {
+            let symbol = symboltable.get(*attribute)?;
+            if !symbol.kind.is_public() {
+                continue; // todo: allow private completions in appriopriate context.
+            }
+            let label = symbol.name.clone();
+            let detail = match &symbol.kind {
+                SemanticSymbolKind::Attribute { declared_type, .. } => {
+                    Some(symboltable.format_evaluated_type(&evaluate(
+                        declared_type,
+                        symboltable,
+                        None,
+                        &mut None,
+                    )))
+                }
+                _ => None,
+            };
+            let documentation = Some(generate_documentation(writer, attribute, symbol));
+            completions.push(CompletionItem {
+                label,
+                detail,
+                kind: Some(CompletionItemKind::PROPERTY),
+                documentation,
+                ..Default::default()
+            });
+        }
+        Some(())
     }
 
     /// Checks that the trigger character matches a string.
     pub fn trigger_character_is(&self, arg: &str) -> bool {
-        self.completion_context.as_ref().is_some_and(|context| {
+        self.context.as_ref().is_some_and(|context| {
             context
                 .trigger_character
                 .as_ref()
@@ -241,6 +400,11 @@ impl<'a> CompletionFinder<'a> {
                 Some(symbol) => symbol,
                 None => return name.to_string(),
             };
+            if matches!(&param_symbol.kind, SemanticSymbolKind::Parameter { is_optional, .. } if *is_optional)
+            {
+                // Do not print optionals.
+                break;
+            }
             string.push_str("${");
             string.push_str(&(index + 1).to_string());
             string.push_str(":");
@@ -254,33 +418,77 @@ impl<'a> CompletionFinder<'a> {
         return string;
     }
     /// Generates a completion for a symbol.
-    fn create_completion_item(
+    pub fn create_completion(
         &self,
         writer: &SymbolWriter<'_>,
         symbol: &analyzer::SemanticSymbol,
         symbol_idx: SymbolIndex,
+        complete_function_params: bool,
     ) -> Option<CompletionItem> {
         let label = symbol.name.clone();
+        let symbol_table = &self.standpoint.symbol_table;
+        let symbol_idx = symbol_table.forward(symbol_idx);
         let documentation = Some(generate_documentation(&writer, &symbol_idx, symbol));
-        let symbol = self.standpoint.symbol_table.get_forwarded(symbol_idx)?;
-        let kind = Some(match &symbol.kind {
-            SemanticSymbolKind::Module { .. } => CompletionItemKind::MODULE,
-            SemanticSymbolKind::Trait { .. } => CompletionItemKind::INTERFACE,
-            SemanticSymbolKind::Model { .. } => CompletionItemKind::CLASS,
-            SemanticSymbolKind::Enum { .. } => CompletionItemKind::ENUM,
-            SemanticSymbolKind::Variable { .. } => CompletionItemKind::VARIABLE,
-            SemanticSymbolKind::Constant { .. } => CompletionItemKind::CONSTANT,
-            SemanticSymbolKind::Function { .. } => CompletionItemKind::FUNCTION,
-            SemanticSymbolKind::TypeName { .. } => CompletionItemKind::TYPE_PARAMETER,
+        let symbol = symbol_table.get_forwarded(symbol_idx)?;
+        let (kind, detail) = match &symbol.kind {
+            SemanticSymbolKind::Module { .. } => (CompletionItemKind::MODULE, None),
+            SemanticSymbolKind::Trait { .. } => (CompletionItemKind::INTERFACE, None),
+            SemanticSymbolKind::Model { .. } => (CompletionItemKind::CLASS, None),
+            SemanticSymbolKind::Enum { .. } => (CompletionItemKind::ENUM, None),
+            SemanticSymbolKind::Variable { inferred_type, .. } => (
+                CompletionItemKind::VARIABLE,
+                Some(symbol_table.format_evaluated_type(inferred_type)),
+            ),
+            SemanticSymbolKind::Constant { inferred_type, .. } => (
+                CompletionItemKind::CONSTANT,
+                Some(symbol_table.format_evaluated_type(inferred_type)),
+            ),
+            SemanticSymbolKind::Function { .. } => (
+                CompletionItemKind::FUNCTION,
+                Some(
+                    symbol_table.format_evaluated_type(&EvaluatedType::FunctionInstance {
+                        function: symbol_idx,
+                        generic_arguments: vec![],
+                    }),
+                ),
+            ),
+            SemanticSymbolKind::TypeName { .. } => (CompletionItemKind::TYPE_PARAMETER, None),
             _ => return None,
-        });
+        };
         Some(CompletionItem {
             label,
-            kind,
+            kind: Some(kind),
+            detail,
             documentation,
+            insert_text: if complete_function_params {
+                match &symbol.kind {
+                    SemanticSymbolKind::Function { params, .. } => {
+                        Some(self.generate_function_completion(&symbol.name, params))
+                    }
+                    _ => None,
+                }
+            } else {
+                None
+            },
+            insert_text_format: if complete_function_params {
+                Some(InsertTextFormat::SNIPPET)
+            } else {
+                None
+            },
             ..Default::default()
         })
     }
+}
+
+/// Sort an array of completions in alphabetical order.
+pub fn sort_completions(completions: &mut Vec<CompletionItem>) {
+    completions.sort_by(|a, b| {
+        a.label
+            .chars()
+            .next()
+            .map(|ch| ch.cmp(&b.label.chars().next().unwrap_or('z')))
+            .unwrap_or(std::cmp::Ordering::Less)
+    });
 }
 
 fn generate_documentation(
@@ -316,7 +524,6 @@ impl<'a> CompletionFinder<'a> {
             &self.standpoint.literals,
         );
         let next_statement_span = self.next_statement_span.borrow().clone();
-        // None;
         let single_span = Span::at(self.pos);
         if span.contains(self.pos)
             || (span.is_before(single_span)
@@ -326,7 +533,6 @@ impl<'a> CompletionFinder<'a> {
             return match statement {
                 TypedStmnt::FunctionDeclaration(f) => self.function(f),
                 TypedStmnt::TypeDeclaration(t) => self.type_decl(t),
-                TypedStmnt::EnumDeclaration(e) => self.enum_decl(e),
                 TypedStmnt::ModelDeclaration(m) => self.model_decl(m),
                 TypedStmnt::ShorthandVariableDeclaration(v) => self.shorthand_var_decl(v),
                 TypedStmnt::ExpressionStatement(e) => self.expr_statement(e),
@@ -336,10 +542,8 @@ impl<'a> CompletionFinder<'a> {
                 TypedStmnt::ConstantDeclaration(c) => self.constant(c),
                 TypedStmnt::TestDeclaration(t) => self.test_declaration(t),
                 TypedStmnt::ReturnStatement(rettye) => self.return_statement(rettye),
-                TypedStmnt::BreakStatement(brk) => self.break_statement(brk),
                 TypedStmnt::ForStatement(for_stat) => self.for_statement(for_stat),
                 TypedStmnt::WhileStatement(whilestat) => self.while_statement(whilestat),
-                TypedStmnt::ContinueStatement(continue_) => self.continue_statement(continue_),
                 TypedStmnt::VariableDeclaration(variable) => self.var_decl(variable),
                 TypedStmnt::RecordDeclaration => todo!(),
                 _ => return None,
@@ -565,55 +769,66 @@ impl<'a> CompletionFinder<'a> {
         None
     }
 
-    fn break_statement(&self, brk: &analyzer::TypedBreakStatement) -> Option<CompletionResponse> {
-        <Option<CompletionResponse>>::default()
-    }
-
     fn for_statement(&self, forstat: &analyzer::TypedForStatement) -> Option<CompletionResponse> {
-        <Option<CompletionResponse>>::default()
+        maybe!(self.expr(&forstat.iterator));
+        for (index, statement) in forstat.body.statements.iter().enumerate() {
+            self.next_statement_is(index + 1, &forstat.body.statements);
+            maybe!(self.statement(statement));
+        }
+        None
     }
 
     fn while_statement(
         &self,
         _while: &analyzer::TypedWhileStatement,
     ) -> Option<CompletionResponse> {
-        <Option<CompletionResponse>>::default()
-    }
-
-    fn continue_statement(
-        &self,
-        cont: &analyzer::TypedContinueStatement,
-    ) -> Option<CompletionResponse> {
-        <Option<CompletionResponse>>::default()
+        maybe!(self.expr(&_while.condition));
+        let body = &_while.body;
+        for (index, statement) in body.statements.iter().enumerate() {
+            self.next_statement_is(index + 1, &body.statements);
+            maybe!(self.statement(statement));
+        }
+        None
     }
 
     fn return_statement(
         &self,
         rettye: &analyzer::TypedReturnStatement,
     ) -> Option<CompletionResponse> {
-        <Option<CompletionResponse>>::default()
+        rettye.value.as_ref().and_then(|value| self.expr(value))
     }
 
     fn function(
         &self,
         function: &'a analyzer::TypedFunctionDeclaration,
     ) -> Option<CompletionResponse> {
-        self.message_store
-            .borrow_mut()
-            .inform("Searching for completion in function...");
         let body = &function.body;
         for (index, statement) in body.statements.iter().enumerate() {
-            self.next_statement_is(index, &body.statements);
+            self.next_statement_is(index + 1, &body.statements);
             maybe!(self.statement(statement));
         }
         None
     }
 
-    fn enum_decl(&self, enum_decl: &analyzer::TypedEnumDeclaration) -> Option<CompletionResponse> {
-        <Option<CompletionResponse>>::default()
-    }
-
     fn model_decl(&self, model: &analyzer::TypedModelDeclaration) -> Option<CompletionResponse> {
-        <Option<CompletionResponse>>::default()
+        maybe!(model.body.constructor.as_ref().and_then(|constructor| {
+            for (index, statement) in constructor.statements.iter().enumerate() {
+                self.next_statement_is(index + 1, &constructor.statements);
+                maybe!(self.statement(statement));
+            }
+            None
+        }));
+        for property in &model.body.properties {
+            match &property._type {
+                TypedModelPropertyType::TypedMethod { body } => {
+                    for (index, statement) in body.statements.iter().enumerate() {
+                        self.next_statement_is(index + 1, &body.statements);
+                        maybe!(self.statement(statement));
+                    }
+                }
+                _ => continue,
+            }
+        }
+        return None;
     }
 }

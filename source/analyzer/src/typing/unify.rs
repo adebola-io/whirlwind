@@ -10,6 +10,8 @@ pub enum UnifyOptions {
     None,
     AnyNever,
     Conform,
+    HardConform,
+    Return,
 }
 
 /// Take two evaluated types and finds the most suitable type
@@ -37,8 +39,26 @@ pub fn unify_types(
         return Ok(left.clone());
     }
     match (left, right) {
+        // Left type is a hard generic, and hard generic massaging is requested.
+        (HardGeneric { base } | Generic { base }, free_type)
+            if matches!(options, UnifyOptions::HardConform) && !free_type.is_void() =>
+        {
+            solve_generic_type(
+                &mut map,
+                base,
+                free_type,
+                symboltable,
+                default_error,
+                options,
+            )
+        }
+        // // One type is a hard generic, and other type is a soft variant of it.
+        // (
+        //     HardGeneric { base: firstbase } | Generic { base: firstbase },
+        //     HardGeneric { base: secondbase } | Generic { base: secondbase },
+        // ) if firstbase == secondbase => Ok(Generic { base: *firstbase }),
         // Left type is a generic parameter.
-        (Generic { base }, free_type) => solve_generic_type(
+        (Generic { base }, free_type) if !free_type.is_void() => solve_generic_type(
             &mut map,
             base,
             free_type,
@@ -47,7 +67,22 @@ pub fn unify_types(
             options,
         ),
         // Right type is a generic parameter and conformity is requested.
-        (free_type, Generic { base }) if matches!(options, UnifyOptions::Conform) => {
+        (free_type, Generic { base } | HardGeneric { base })
+            if matches!(options, UnifyOptions::HardConform) && !free_type.is_void() =>
+        {
+            solve_generic_type(
+                &mut map,
+                base,
+                free_type,
+                symboltable,
+                default_error,
+                options,
+            )
+        }
+        // Right type is a generic parameter and conformity is requested.
+        (free_type, Generic { base })
+            if matches!(options, UnifyOptions::Conform) && !free_type.is_void() =>
+        {
             solve_generic_type(
                 &mut map,
                 base,
@@ -83,12 +118,12 @@ pub fn unify_types(
                     },
                 ]);
             }
-            let final_generic_arguments = match unify_generic_arguments(
+            let final_generic_args = match unify_generic_arguments(
                 first_gen_args,
                 second_gen_args,
                 symboltable,
                 options,
-                map,
+                map.as_deref_mut(),
             ) {
                 Ok(args) => args,
                 Err(mut errors) => {
@@ -96,10 +131,29 @@ pub fn unify_types(
                     return Err(errors);
                 }
             };
+            // Save solutions in map.
+            if let Some(map) = map.as_deref_mut() {
+                for (base, eval_type) in final_generic_args.iter() {
+                    map.insert(*base, eval_type.clone());
+                }
+            }
+            // Truncate the list of arguments to the appriopriate size.
+            let generic_arg_length = match &first_model_symbol.kind {
+                SemanticSymbolKind::Model { generic_params, .. } => generic_params.len(),
+                _ => return Ok(EvaluatedType::Unknown),
+            };
 
             return Ok(ModelInstance {
                 model: *first,
-                generic_arguments: final_generic_arguments,
+                generic_arguments: final_generic_args
+                    .into_iter()
+                    .filter(|(base, _)| {
+                        first_gen_args
+                            .iter()
+                            .any(|(firstbase, _)| firstbase == base)
+                    })
+                    .take(generic_arg_length)
+                    .collect(),
             });
         }
         // Either type is unknown.
@@ -247,9 +301,16 @@ pub fn unify_types(
             })
         }
         // Left type is never.
-        (Never, right_type) => Ok(right_type.clone()),
+        (Never, right_type)
+            if matches!(
+                options,
+                UnifyOptions::AnyNever | UnifyOptions::Conform | UnifyOptions::HardConform
+            ) =>
+        {
+            Ok(right_type.clone())
+        }
         // Either type is never.
-        (free, Never) if matches!(options, UnifyOptions::AnyNever | UnifyOptions::Conform) => {
+        (free, Never) if matches!(options, UnifyOptions::Return | UnifyOptions::AnyNever) => {
             Ok(free.clone())
         }
         _ => Err(vec![TypeErrorType::MismatchedAssignment {
@@ -274,7 +335,7 @@ fn solve_generic_type(
         if let Some(already_assigned) = map.get(base).cloned() {
             match unify_types(
                 &already_assigned,
-                free_type,
+                &free_type,
                 symboltable,
                 options,
                 Some(map),
@@ -298,8 +359,16 @@ fn solve_generic_type(
         } => {
             // Default generic type if other is unknown.
             if let Some(default) = default_value {
+                let solved_generics = map
+                    .as_ref()
+                    .map(|map| map.iter().map(|(a, b)| (a.clone(), b.clone())).collect());
                 if free_type.is_unknown() {
-                    return Ok(evaluate(default, symboltable, None, &mut None));
+                    return Ok(evaluate(
+                        default,
+                        symboltable,
+                        solved_generics.as_ref(),
+                        &mut None,
+                    ));
                 }
             }
             for _trait in traits {
@@ -312,7 +381,9 @@ fn solve_generic_type(
                 let implementations = match free_type {
                     ModelInstance { model: base, .. }
                     | TraitInstance { trait_: base, .. }
-                    | Generic { base } => match &symboltable.get_forwarded(*base).unwrap().kind {
+                    | Generic { base }
+                    | HardGeneric { base } => match &symboltable.get_forwarded(*base).unwrap().kind
+                    {
                         SemanticSymbolKind::GenericParameter {
                             traits: implementations,
                             ..
@@ -412,7 +483,7 @@ pub fn unify_generic_arguments(
                 right_evaluated_type,
                 symboltable,
                 options,
-                map.as_mut().map(|m| &mut **m),
+                map.as_deref_mut(),
             ) {
                 Ok(arg) => arg,
                 Err(mut suberrors) => {

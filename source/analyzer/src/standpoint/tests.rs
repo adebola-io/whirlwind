@@ -13,7 +13,7 @@ fn bind_variables_and_constants() {
                 const CONSTANT: Number = 9090;
             }
         ";
-    let mut module = Module::from_text(format!("{text}"));
+    let mut module = Module::from_text(text);
     module.module_path = Some(PathBuf::from("testing://Test.wrl"));
     let standpoint = Standpoint::build_from_module(module, false).unwrap();
     assert!(standpoint.errors.len() == 1);
@@ -53,7 +53,7 @@ fn bind_call_expression() {
                 Println(greeting);
             }
         ";
-    let mut module = Module::from_text(format!("{text}"));
+    let mut module = Module::from_text(text);
     module.module_path = Some(PathBuf::from("testing://Test.wrl"));
     let standpoint = Standpoint::build_from_module(module, false).unwrap();
     assert!(standpoint.errors.len() == 1);
@@ -83,7 +83,7 @@ fn bind_models() {
                 }
             }
         ";
-    let mut module = Module::from_text(format!("{text}"));
+    let mut module = Module::from_text(text);
     module.module_path = Some(PathBuf::from("testing://Test.wrl"));
     let standpoint = Standpoint::build_from_module(module, false).unwrap();
     assert!(standpoint
@@ -106,7 +106,7 @@ fn bind_traits() {
                 public function Start(): This;
             }
         ";
-    let mut module = Module::from_text(format!("{text}"));
+    let mut module = Module::from_text(text);
     module.module_path = Some(PathBuf::from("testing://Test.wrl"));
     let standpoint = Standpoint::build_from_module(module, false).unwrap();
     assert!(standpoint
@@ -131,7 +131,7 @@ fn bind_this() {
                 }
             }
         ";
-    let mut module = Module::from_text(format!("{text}"));
+    let mut module = Module::from_text(text);
     module.module_path = Some(PathBuf::from("testing://Test.wrl"));
     let standpoint = Standpoint::build_from_module(module, false).unwrap();
     assert!(standpoint.errors.len() == 0);
@@ -148,7 +148,7 @@ fn test_enum_type() {
                 Green
             }
         ";
-    let mut module = Module::from_text(format!("{text}"));
+    let mut module = Module::from_text(text);
     module.module_path = Some(PathBuf::from("testing://Test.wrl"));
     let standpoint = Standpoint::build_from_module(module, false).unwrap();
     println!(
@@ -179,7 +179,7 @@ fn test_fn_expr() {
                 square := fn(a) a * 2;
             }
         ";
-    let mut module = Module::from_text(format!("{text}"));
+    let mut module = Module::from_text(text);
     module.module_path = Some(PathBuf::from("testing://Test.wrl"));
     let standpoint = Standpoint::build_from_module(module, false).unwrap();
     println!(
@@ -212,7 +212,7 @@ fn test_use_import() {
                 Println(\"Hello, world!\");
             }
         ";
-    let mut module = Module::from_text(format!("{text}"));
+    let mut module = Module::from_text(text);
     module.module_path = Some(PathBuf::from("testing://Test.wrl"));
     let standpoint = Standpoint::build_from_module(module, false).unwrap();
     assert!(standpoint
@@ -249,7 +249,7 @@ function Add(a: Int, b: Int): Int {
 
         ";
 
-    let mut module = Module::from_text(format!("{text}"));
+    let mut module = Module::from_text(text);
     module.module_path = Some(PathBuf::from("testing://Test.wrl"));
     let standpoint = Standpoint::build_from_module(module, true).unwrap();
     println!(
@@ -273,7 +273,7 @@ fn show_imports() {
         }
         ";
 
-    let mut module = Module::from_text(format!("{text}"));
+    let mut module = Module::from_text(text);
     module.module_path = Some(PathBuf::from("testing://Test.wrl"));
     let standpoint = Standpoint::build_from_module(module, true).unwrap();
     println!(
@@ -316,11 +316,11 @@ fn resolve_single_module_imports() {
     }
     ";
 
-    let mut main_module = Module::from_text(format!("{module0_text}"));
+    let mut main_module = Module::from_text(module0_text);
     main_module.module_path = Some(PathBuf::from("testing://Main.wrl"));
-    let mut utils_module = Module::from_text(format!("{module1_text}"));
+    let mut utils_module = Module::from_text(module1_text);
     utils_module.module_path = Some(PathBuf::from("testing://Utils.wrl"));
-    let mut test_module = Module::from_text(format!("{module2_text}"));
+    let mut test_module = Module::from_text(module2_text);
     test_module.module_path = Some(PathBuf::from("testing://Test.wrl"));
 
     let mut standpoint = Standpoint::build_from_module(utils_module, false).unwrap();
@@ -377,13 +377,12 @@ fn resolve_mutliple_module_imports() {
     }
     ";
 
-    let mut main_module = Module::from_text(format!("{module0_text}"));
+    let mut main_module = Module::from_text(module0_text);
     main_module.module_path = Some(PathBuf::from("testing://Main.wrl"));
-    let mut utils_module = Module::from_text(format!("{module1_text}"));
+    let mut utils_module = Module::from_text(module1_text);
     utils_module.module_path = Some(PathBuf::from("testing://Utils.wrl"));
-    let mut test_module = Module::from_text(format!("{module2_text}"));
+    let mut test_module = Module::from_text(module2_text);
     test_module.module_path = Some(PathBuf::from("testing://Test.wrl"));
-
     let mut standpoint = Standpoint::build_from_module(utils_module, false).unwrap();
     standpoint.auto_update = true;
     standpoint.add_module(test_module);
@@ -411,7 +410,7 @@ fn test_duplication() {
             public model Maybe<T> implements Assertable<T> + Try<T> {}
 
         ";
-    let mut module = Module::from_text(format!("{text}"));
+    let mut module = Module::from_text(text);
     module.module_path = Some(PathBuf::from("testing://Test.wrl"));
     let standpoint = Standpoint::build_from_module(module, false).unwrap();
     println!("{:#?}", standpoint);
@@ -430,7 +429,7 @@ fn test_variable_binding() {
                 var [arrayItem1, arrayItem2] = new Array().FillWith(0, 3);
             }
         ";
-    let mut module = Module::from_text(format!("{text}"));
+    let mut module = Module::from_text(text);
     module.module_path = Some(PathBuf::from("testing:://Test.wrl"));
     let standpoint = Standpoint::build_from_module(module, false).unwrap();
     println!("{:#?}", standpoint.symbol_table);

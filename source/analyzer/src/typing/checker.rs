@@ -71,7 +71,10 @@ pub fn typecheck(
 }
 
 mod statements {
-    use crate::{utils::is_boolean, UnifyOptions};
+    use crate::{
+        utils::{coerce_all_generics, is_boolean},
+        UnifyOptions,
+    };
 
     use super::{
         expressions::{typecheck_block, typecheck_expression},
@@ -206,11 +209,17 @@ mod statements {
         checker_ctx: &mut TypecheckerContext,
         symboltable: &mut SymbolTable,
     ) {
-        let maybe_eval_expr = retstat
-            .value
-            .as_mut()
-            .map(|expr| expressions::typecheck_expression(expr, checker_ctx, symboltable));
         let function_context = checker_ctx.current_function_return_type.last().cloned();
+        let maybe_eval_expr = retstat.value.as_mut().map(|expr| {
+            // Coerce unresolved nested generic types to never, since they are no longer resolvable.
+            let mut return_type = expressions::typecheck_expression(expr, checker_ctx, symboltable);
+            if !return_type.is_generic()
+                && function_context.as_ref().is_some_and(|ctx| ctx.is_named)
+            {
+                return_type = coerce_all_generics(&return_type, EvaluatedType::Never)
+            }
+            return_type
+        });
         let function_context = function_context.as_ref();
         if let Some(eval_type) = &maybe_eval_expr {
             if function_context.is_none()
@@ -244,7 +253,7 @@ mod statements {
                 ctx_return_type,
                 eval_type,
                 symboltable,
-                UnifyOptions::Conform,
+                UnifyOptions::Return,
                 None,
             ) {
                 // Unification was successful and return type can be updated.
@@ -290,7 +299,7 @@ mod statements {
             {
                 let generic_arguments = generic_params
                     .iter()
-                    .map(|param| (*param, EvaluatedType::Generic { base: *param }))
+                    .map(|param| (*param, EvaluatedType::HardGeneric { base: *param }))
                     .collect::<Vec<_>>();
                 let mut evaluated_param_types = vec![];
                 for param in params {
@@ -337,8 +346,12 @@ mod statements {
                 is_named: true,
                 return_type: return_type.clone(),
             });
-        let block_return_type =
+        let mut block_return_type =
             expressions::typecheck_block(&mut function.body, true, checker_ctx, symboltable);
+        // Ignore unreachable nested generics.
+        if !block_return_type.is_generic() {
+            block_return_type = coerce_all_generics(&block_return_type, EvaluatedType::Never);
+        }
         checker_ctx.current_function_return_type.pop();
         // if last statement was a return, there is no need to check type again, since it will still show the apprioprate errors.
         if function
@@ -353,7 +366,7 @@ mod statements {
             &return_type,
             &block_return_type,
             &symboltable,
-            UnifyOptions::Conform,
+            UnifyOptions::Return,
             None,
         ) {
             let span = return_type_span
@@ -528,6 +541,8 @@ mod expressions {
                 EvaluatedType::ModelInstance { .. }
                 | EvaluatedType::EnumInstance { .. }
                 | EvaluatedType::Unknown
+                | EvaluatedType::HardGeneric { .. }
+                | EvaluatedType::Generic { .. }
                 | EvaluatedType::OpaqueTypeInstance { .. } => {
                     if matches!(left_type, EvaluatedType::EnumInstance { .. })
                         && !assexp.left.is_identifier()
@@ -539,7 +554,7 @@ mod expressions {
                         &left_type,
                         &right_type,
                         symboltable,
-                        UnifyOptions::None,
+                        UnifyOptions::Conform,
                         Some(&mut generic_hashmap),
                     ) {
                         Ok(result_type) => result_type,
@@ -710,7 +725,7 @@ mod expressions {
                     match evaluated_caller {
                         EvaluatedType::Model(model) => {
                             let model_symbol = symboltable.get_forwarded(model).unwrap();
-                            let (mut generic_arguments, parameter_types) =
+                            let (mut generic_arguments, generic_params, parameter_types) =
                                 if let SemanticSymbolKind::Model {
                                     generic_params,
                                     is_constructable,
@@ -718,9 +733,9 @@ mod expressions {
                                     ..
                                 } = &model_symbol.kind
                                 {
-                                    // if model does not have a new() function.
                                     let name = model_symbol.name.clone();
                                     let span = newexp.span;
+                                    // if model does not have a new() function.
                                     if !*is_constructable {
                                         checker_ctx
                                             .add_error(errors::model_not_constructable(name, span));
@@ -733,7 +748,7 @@ mod expressions {
                                         &generic_arguments,
                                         checker_ctx,
                                     );
-                                    (generic_arguments, parameter_types)
+                                    (generic_arguments, generic_params.clone(), parameter_types)
                                 } else {
                                     unreachable!()
                                 };
@@ -747,7 +762,13 @@ mod expressions {
                             );
                             let result_model_instance = EvaluatedType::ModelInstance {
                                 model,
-                                generic_arguments,
+                                // ignore irrelevant generic transforms.
+                                generic_arguments: generic_arguments
+                                    .into_iter()
+                                    .filter(|argument| {
+                                        generic_params.iter().any(|base| *base == argument.0)
+                                    })
+                                    .collect(),
                             };
                             return result_model_instance;
                         }
@@ -1065,7 +1086,7 @@ mod expressions {
                     &maybify(parameter_type.clone(), symboltable),
                     argument_type,
                     symboltable,
-                    UnifyOptions::None,
+                    UnifyOptions::HardConform,
                     Some(&mut generic_map),
                 )
             } else {
@@ -1073,7 +1094,7 @@ mod expressions {
                     parameter_type,
                     argument_type,
                     symboltable,
-                    UnifyOptions::None,
+                    UnifyOptions::HardConform,
                     Some(&mut generic_map),
                 )
             };
@@ -1165,6 +1186,7 @@ mod expressions {
             | EvaluatedType::Trait(_)
             | EvaluatedType::Enum(_)
             | EvaluatedType::Generic { .. }
+            | EvaluatedType::HardGeneric { .. }
             | EvaluatedType::Void
             | EvaluatedType::Never
             | EvaluatedType::OpaqueTypeInstance { .. } => {

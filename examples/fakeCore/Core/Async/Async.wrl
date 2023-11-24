@@ -18,18 +18,18 @@ use Super.Internals.Injunction;
 /// 
 /// ## Usage
 /// ```
-/// use Core.Io.println;
+/// use Core.Io.Print;
 /// 
-/// async function doStuff(): UnsignedInt {
+/// async function DoStuff(): UnsignedInt {
 ///     Println("Hello from a prospect!");
-///     Core.Time.sleep(5000); // Sleep for 5 seconds.
+///     Core.Time.Sleep(5000); // Sleep for 5 seconds.
 ///     return 0;
 /// }
 /// 
-/// function main() {
-///     prospect := doStuff();
-///     prospect.run();
-///     println("Hello, world!"); // Will print before the prospect.
+/// function Main() {
+///     prospect := DoStuff();
+///     prospect.Run();
+///     Print("Hello, world!"); // Will print before the prospect.
 /// }
 /// ```
 public model Prospect<T> {
@@ -38,6 +38,10 @@ public model Prospect<T> {
     }
     /// Runs the prospect.
     public function Run(): Eventual<T> {
+        Todo()
+    }
+    /// 
+    public function Race(other: Prospect<T>): Prospect<T> {
         Todo()
     }
 }

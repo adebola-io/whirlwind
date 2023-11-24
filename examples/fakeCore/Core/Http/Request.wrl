@@ -1,0 +1,62 @@
+module Request;
+
+use Super.Prelude.{Todo, String, Bool, Maybe, UnsignedInt};
+use Super.Memory.Bytes;
+use Core.Io.IoError;
+
+public enum HttpMethod {
+    Get,
+    Post,
+    Put,
+    Delete
+}
+
+public model HttpRequest {
+    new() {
+        Todo()        
+    }
+    public function PathParams(): RequestParams {
+        Todo()
+    }
+    /// Returns the method of the request,
+    public function Method(): String {
+        Todo()
+    }
+    /// Returns the URL route of the request.
+    public function Url(): String {
+        Todo()
+    }
+    /// Gets the complete body buffer of the string asynchronously.
+    public async function Body(): Bytes {
+        Todo()
+    }
+    /// Returns true if the request was completed successfully.
+    public function IsCompleted(): Bool {
+        Todo()
+    }
+}
+
+public model RequestParams {
+    function Get(name: String): Maybe<String> {
+        Todo()
+    }
+    function Has(name: &String): Bool {
+        Todo()
+    }
+}
+
+
+/// An error that occurs on the HTTP server while it is active.
+/// The error is non-fatal, meaning that it does not lead to the crashing of the server when it happens.
+public model HttpRequestError implements IoError {
+    var message: String;
+    var route: String;
+    var statusCode: UnsignedInt;
+    new(message: String, request: HttpRequest) {
+        this.message = message;
+        this.route = request.Url();
+    }
+    public function [IoError.Print](): &String {
+        return Todo();
+    }
+}

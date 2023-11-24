@@ -1,0 +1,21 @@
+module Response;
+use Request.HttpRequest;
+
+public model HttpResponse {
+    var status: UnsignedInt;
+    /// Build a response object from a request.
+    public static function From(request: HttpRequest): This {
+        return Todo();
+    }
+    /// Sets the status code value of the response.
+    function Status(value: UnsignedInt): &This {
+        this.status = value;
+        return &this;
+    }
+    /// Sets the response type to HTML Text.
+    function Html(string: String): &This {
+        this.headers.Set("Content-Type", "text/html");
+        this.data = string;
+        return &this;
+    }
+}
