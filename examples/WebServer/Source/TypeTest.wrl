@@ -57,7 +57,7 @@ test "Testing types." {
         ball.Bounce();
     
         trait Bounceable {
-            public function Bounce(): String;
+           public function Bounce(): String;
         }
         function Nested<T implements Bounceable>(newBall: T) {
             type InnerBall = T | Ball;

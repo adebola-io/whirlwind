@@ -181,6 +181,10 @@ pub enum TypeErrorType {
     IllegalGuarantee {
         name: String,
     },
+    /// Using the ? operator on a value that does not implement Guaranteed.
+    IllegalTry {
+        name: String,
+    },
     // InfiniteType,
 }
 

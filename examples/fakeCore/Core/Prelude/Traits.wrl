@@ -1,11 +1,13 @@
 module Traits;
 
+use Core.Internals.Flow;
+use Outcome.Outcome;
 
 public trait Guaranteed<T> {
-
+    public function Guarantee(): T;
 }
 
-public trait Try<T> {
-
+public trait Try<T, U> {
+    public function Try(): Outcome<T, U>;
 }
 

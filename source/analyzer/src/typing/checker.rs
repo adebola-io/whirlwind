@@ -17,7 +17,7 @@ use errors::{TypeError, TypeErrorType};
 pub struct TypecheckerContext<'a> {
     path_idx: PathIndex,
     /// The return type of the closest function scope currently being typechecked.
-    current_function_return_type: Vec<CurrentFunctionContext>,
+    current_function_context: Vec<CurrentFunctionContext>,
     /// List of errors from the standpoint.
     errors: &'a mut Vec<ProgramError>,
     /// List of literal types from the standpoint.
@@ -61,7 +61,7 @@ pub fn typecheck(
 ) {
     let mut checker_ctx = TypecheckerContext {
         path_idx: module.path_idx,
-        current_function_return_type: vec![],
+        current_function_context: vec![],
         errors,
         literals,
     };
@@ -210,7 +210,7 @@ mod statements {
         checker_ctx: &mut TypecheckerContext,
         symboltable: &mut SymbolTable,
     ) {
-        let function_context = checker_ctx.current_function_return_type.last().cloned();
+        let function_context = checker_ctx.current_function_context.last().cloned();
         let maybe_eval_expr = retstat.value.as_mut().map(|expr| {
             // Coerce unresolved nested generic types to never, since they are no longer resolvable.
             let mut return_type = expressions::typecheck_expression(expr, checker_ctx, symboltable);
@@ -240,8 +240,7 @@ mod statements {
                 // If the current function context is unknown,
                 // but the result type of this return statement is known,
                 // coerce the function context's return type to whatever type is produced here.
-                let prior_evaluated_type =
-                    checker_ctx.current_function_return_type.last_mut().unwrap();
+                let prior_evaluated_type = checker_ctx.current_function_context.last_mut().unwrap();
                 prior_evaluated_type.return_type = maybe_eval_expr.unwrap();
                 return;
             }
@@ -260,7 +259,7 @@ mod statements {
                 // Unification was successful and return type can be updated.
                 Ok(typ) => {
                     let prior_evaluated_type =
-                        checker_ctx.current_function_return_type.last_mut().unwrap();
+                        checker_ctx.current_function_context.last_mut().unwrap();
                     prior_evaluated_type.return_type = typ;
                 }
                 // Unification failed.
@@ -343,7 +342,7 @@ mod statements {
             }
         }
         checker_ctx
-            .current_function_return_type
+            .current_function_context
             .push(CurrentFunctionContext {
                 is_named: true,
                 return_type: return_type.clone(),
@@ -354,7 +353,7 @@ mod statements {
         if !block_return_type.is_generic() {
             block_return_type = coerce_all_generics(&block_return_type, EvaluatedType::Never);
         }
-        checker_ctx.current_function_return_type.pop();
+        checker_ctx.current_function_context.pop();
         // if last statement was a return, there is no need to check type again, since it will still show the apprioprate errors.
         if function
             .body
@@ -402,8 +401,8 @@ mod expressions {
     use super::*;
     use crate::{
         utils::{
-            arrify, evaluate_generic_params, get_implementation_of, is_array, is_boolean,
-            symbol_to_type,
+            arrify, coerce_all_generics, evaluate_generic_params, get_implementation_of, is_array,
+            is_boolean, symbol_to_type,
         },
         TypedAssignmentExpr, TypedIfExpr, TypedIndexExpr, TypedLogicExpr, TypedNewExpr,
         TypedThisExpr, UnifyOptions,
@@ -456,7 +455,7 @@ mod expressions {
             TypedExpression::IndexExpr(indexexp) => {
                 typecheck_index_expression(indexexp, symboltable, checker_ctx)
             }
-            // TypedExpression::BinaryExpr(_) => todo!(),
+            // TypedExpression::BinaryExpr(binexp) => typecheck_binary_expression(),
             TypedExpression::AssignmentExpr(assexp) => {
                 typecheck_assignment_expression(assexp, checker_ctx, symboltable)
             }
@@ -483,14 +482,19 @@ mod expressions {
             let operand_type =
                 typecheck_expression(&mut updateexp.operand, checker_ctx, symboltable);
             match updateexp.operator {
-                ast::UpdateOperator::Assert => match symboltable.guaranteed_symbol {
-                    Some(guaranteed) => {
+                // the ! operator.
+                // Can only be used by models that implement Guaranteed.
+                // It evaluates to the single generic type of the trait.
+                ast::UpdateOperator::Assert => {
+                    if let Some(guaranteed) = symboltable.guaranteed_symbol {
                         let guaranteed_generic = match &symboltable.get(guaranteed).unwrap().kind {
                             SemanticSymbolKind::Trait { generic_params, .. } => generic_params[0],
                             _ => return EvaluatedType::Unknown,
                         };
-                        match get_implementation_of(guaranteed, &operand_type, &symboltable) {
-                            Some(implementation) => match implementation {
+                        if let Some(implementation) =
+                            get_implementation_of(guaranteed, &operand_type, &symboltable)
+                        {
+                            match implementation {
                                 EvaluatedType::TraitInstance {
                                     generic_arguments, ..
                                 } => {
@@ -505,7 +509,7 @@ mod expressions {
                                         ));
                                         return EvaluatedType::Unknown;
                                     }
-                                    let generic_solution = generic_solution.unwrap().1;
+                                    let evaluated_type = generic_solution.unwrap().1;
                                     let full_generic_list = match operand_type {
                                         EvaluatedType::TraitInstance {
                                             generic_arguments, ..
@@ -515,27 +519,132 @@ mod expressions {
                                         } => generic_arguments,
                                         _ => vec![],
                                     };
-                                    coerce(generic_solution, &full_generic_list)
+                                    coerce(evaluated_type, &full_generic_list)
                                 }
                                 _ => return EvaluatedType::Unknown,
-                            },
-                            None => {
-                                let name = symboltable.format_evaluated_type(&operand_type);
-                                checker_ctx
-                                    .add_error(errors::illegal_guarantee(name, updateexp.span));
-                                EvaluatedType::Unknown
                             }
+                        } else {
+                            let name = symboltable.format_evaluated_type(&operand_type);
+                            checker_ctx.add_error(errors::illegal_guarantee(name, updateexp.span));
+                            EvaluatedType::Unknown
                         }
-                    }
-                    None => {
+                    } else {
                         checker_ctx.add_error(errors::missing_intrinsic(
                             String::from("Guaranteed"),
                             updateexp.span,
                         ));
                         EvaluatedType::Unknown
                     }
-                },
-                ast::UpdateOperator::TryFrom => todo!(),
+                }
+                // the ? operator.
+                // The Try trait has two generics, one for the value to be retreived,
+                // and another for the value to be immediately returned.
+                ast::UpdateOperator::TryFrom => {
+                    if let Some(try_idx) = symboltable.try_symbol {
+                        let (first_generic, second_generic) =
+                            match &symboltable.get(try_idx).unwrap().kind {
+                                SemanticSymbolKind::Trait { generic_params, .. } => {
+                                    (generic_params[0], generic_params[1])
+                                }
+                                _ => return EvaluatedType::Unknown,
+                            };
+                        let implementation =
+                            get_implementation_of(try_idx, &operand_type, &symboltable);
+                        if implementation.is_none() {
+                            let name = symboltable.format_evaluated_type(&operand_type);
+                            checker_ctx.add_error(errors::illegal_guarantee(name, updateexp.span));
+                            return EvaluatedType::Unknown;
+                        }
+                        let implementation = implementation.unwrap();
+                        if let EvaluatedType::TraitInstance {
+                            generic_arguments, ..
+                        } = implementation
+                        {
+                            let first_generic_solution = generic_arguments
+                                .iter()
+                                .find(|generic| generic.0 == first_generic)
+                                .map(|(a, b)| (*a, b.clone()));
+                            let second_generic_solution = generic_arguments
+                                .into_iter()
+                                .find(|generic| generic.0 == second_generic);
+                            if first_generic_solution.is_none() || second_generic_solution.is_none()
+                            {
+                                let name = symboltable.format_evaluated_type(&operand_type);
+                                checker_ctx.add_error(errors::illegal_try(name, updateexp.span));
+                                return EvaluatedType::Unknown;
+                            }
+                            let evaluated_type = first_generic_solution.unwrap().1;
+                            let mut returned_type = second_generic_solution.unwrap().1;
+                            let empty = vec![];
+                            let full_generic_list = match &operand_type {
+                                EvaluatedType::TraitInstance {
+                                    generic_arguments, ..
+                                }
+                                | EvaluatedType::ModelInstance {
+                                    generic_arguments, ..
+                                } => generic_arguments,
+                                _ => &empty,
+                            };
+                            // Confirm that the type slated for return is
+                            // compatible with the already stated return type.
+                            let function_ctx = checker_ctx.current_function_context.last();
+                            if function_ctx.is_none() {
+                                let name = symboltable.format_evaluated_type(&operand_type);
+                                checker_ctx.add_error(errors::illegal_try(name, updateexp.span));
+                                return EvaluatedType::Unknown;
+                            }
+                            let function_ctx = function_ctx.unwrap();
+                            returned_type = coerce(returned_type, &full_generic_list);
+                            if !returned_type.is_generic() && function_ctx.is_named {
+                                returned_type =
+                                    coerce_all_generics(&returned_type, EvaluatedType::Never)
+                            }
+                            match unify_types(
+                                &function_ctx.return_type,
+                                &returned_type,
+                                &symboltable,
+                                UnifyOptions::Return,
+                                None,
+                            ) {
+                                // Unification successful, update function's return type.
+                                Ok(result) => {
+                                    // Cannot assign directly to function_ctx because borrowed as mutable yada yada yada.
+                                    checker_ctx
+                                        .current_function_context
+                                        .last_mut()
+                                        .unwrap()
+                                        .return_type = result;
+                                }
+                                Err(errors) => {
+                                    checker_ctx.add_error(TypeError {
+                                        _type: TypeErrorType::MismatchedReturnType {
+                                            expected: symboltable
+                                                .format_evaluated_type(&function_ctx.return_type),
+                                            found: symboltable
+                                                .format_evaluated_type(&returned_type),
+                                        },
+                                        span: updateexp.span,
+                                    });
+                                    for _type in errors {
+                                        checker_ctx.add_error(TypeError {
+                                            _type,
+                                            span: updateexp.span,
+                                        })
+                                    }
+                                }
+                            }
+                            coerce(evaluated_type, &full_generic_list)
+                        } else {
+                            return EvaluatedType::Unknown;
+                        }
+                    } else {
+                        checker_ctx.add_error(errors::missing_intrinsic(
+                            String::from("Guaranteed"),
+                            updateexp.span,
+                        ));
+                        EvaluatedType::Unknown
+                    }
+                }
             }
         })();
         updateexp.inferred_type.clone()
@@ -1370,7 +1479,7 @@ mod expressions {
                 // Function body is scoped to block.
                 TypedExpression::Block(block) => {
                     checker_ctx
-                        .current_function_return_type
+                        .current_function_context
                         .push(CurrentFunctionContext {
                             is_named: false,
                             return_type: return_type.unwrap_or(EvaluatedType::Unknown),
@@ -1378,13 +1487,13 @@ mod expressions {
                     let blocktype = typecheck_block(block, false, checker_ctx, symboltable);
                     if blocktype.is_void() {
                         checker_ctx
-                            .current_function_return_type
+                            .current_function_context
                             .last_mut()
                             .unwrap()
                             .return_type = blocktype;
                     }
                     checker_ctx
-                        .current_function_return_type
+                        .current_function_context
                         .pop()
                         .unwrap()
                         .return_type

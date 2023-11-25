@@ -2,7 +2,7 @@ module Maybe;
 
 use Super.{
     Primitives.Bool,
-    Internals.Flow,
+    Internals.never,
     Process.{PanicOnCaller, Todo},
 }; 
 use Outcome.{ Ok, Err, Outcome }; 
@@ -25,7 +25,7 @@ public function Some<T>(value: T): Maybe<T> {
 }
 
 /// A value that may or may not exist.
-public model Maybe<T> implements Guaranteed<T> + Try<T> {
+public model Maybe<T> implements Guaranteed<T> + Try<T, Maybe<never>> {
     var inner: MaybeVal<T>;
 
     new(value: MaybeVal<T>) {
@@ -36,7 +36,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T> {
         this.Unwrap()
     }
     /// Implementation of `Try` trait.
-    public function [Try.Try]<U>(): Outcome<Flow<T>, Flow<Maybe<U>>> {
+    public function [Try.Try](): Outcome<T, Maybe<never>> {
         // this.inner => {
         //     .Some(value) => Flow.Normal(value),
         //     .None => Flow.ReturnWithValue(None())

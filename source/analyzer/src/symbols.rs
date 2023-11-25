@@ -285,6 +285,8 @@ pub struct SymbolTable {
     pub guaranteed_symbol: Option<SymbolIndex>,
     pub maybe_symbol: Option<SymbolIndex>,
     pub range_symbol: Option<SymbolIndex>,
+    pub flow_symbol: Option<SymbolIndex>,
+    pub default_symbol: Option<SymbolIndex>,
 }
 
 impl SemanticSymbol {

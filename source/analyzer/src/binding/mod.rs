@@ -551,6 +551,9 @@ mod bind_utils {
             CurrentModuleType::Internal if entry.name() == "never" && entry.is_public() => {
                 &mut symbol_table.never_symbol
             }
+            CurrentModuleType::Internal if entry.name() == "Flow" && entry.is_public() => {
+                &mut symbol_table.flow_symbol
+            }
             // CurrentModuleType::Ops => todo!(),
             CurrentModuleType::Traits if entry.name() == "Try" && entry.is_public() => {
                 &mut symbol_table.try_symbol
@@ -562,7 +565,9 @@ mod bind_utils {
             CurrentModuleType::Range if entry.name() == "Range" && entry.is_public() => {
                 &mut symbol_table.range_symbol
             }
-            // CurrentModuleType::Default => todo!(),
+            CurrentModuleType::Default if entry.name() == "Default" && entry.is_public() => {
+                &mut symbol_table.default_symbol
+            }
             _ => return index,
         }) = Some(index);
         return index;

@@ -60,3 +60,10 @@ async function StaticFileHandler(request: HttpRequest): ServerOutcome {
     response := HttpResponse.From(request);
     return Ok(response);
 }
+
+
+function TestTrying(): Maybe<String> {
+    table := ["Hello Ha!"];
+    symbol := table.At(0)?.Add("");
+    return Some("jsyd");
+}

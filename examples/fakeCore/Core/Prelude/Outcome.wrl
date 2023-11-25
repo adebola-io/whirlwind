@@ -3,7 +3,7 @@ module Outcome;
 use Super.{
     Primitives.Bool,
     Prelude.{ Try, Guaranteed, Maybe, Todo },
-    Internals.{ Flow },
+    Internals.{ Flow, never },
 };
 
 /// An `Outcome` is a generic (enumerated) model 
@@ -21,7 +21,7 @@ use Super.{
 /// - connecting to a server.
 /// 
 /// It presents a way to handle errors predictably.
-public model Outcome<T, E> implements Guaranteed<T> + Try<T> {
+public model Outcome<T, E> implements Guaranteed<T> + Try<T, Outcome<never, E>> {
     var inner: OutcomeVal<T, E>;
 
     /// Implementation of the Guarantee trait.
@@ -30,7 +30,7 @@ public model Outcome<T, E> implements Guaranteed<T> + Try<T> {
     }
 
     /// Implementation of the `Try` trait.
-    public function [Try.Try]<U>(): Outcome<Flow<T>, Flow<Outcome<U, E>>> {
+    public function [Try.Try](): Outcome<T, Outcome<never, E>> {
         // this.inner => {
         //     .Ok(value) => Ok(Flow.Normal(value)),
         //     .Err(error) => Err(Flow.ReturnWithValue(Err(error)))
