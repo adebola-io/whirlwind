@@ -552,11 +552,17 @@ mod bind_utils {
                 &mut symbol_table.never_symbol
             }
             // CurrentModuleType::Ops => todo!(),
-            // CurrentModuleType::Traits => todo!(),
+            CurrentModuleType::Traits if entry.name() == "Try" && entry.is_public() => {
+                &mut symbol_table.try_symbol
+            }
+            CurrentModuleType::Traits if entry.name() == "Guaranteed" && entry.is_public() => {
+                &mut symbol_table.guaranteed_symbol
+            }
             // CurrentModuleType::Iteratable => todo!(),
-            // CurrentModuleType::Range => todo!(),
+            CurrentModuleType::Range if entry.name() == "Range" && entry.is_public() => {
+                &mut symbol_table.range_symbol
+            }
             // CurrentModuleType::Default => todo!(),
-            // CurrentModuleType::Maybe => todo!(),
             _ => return index,
         }) = Some(index);
         return index;

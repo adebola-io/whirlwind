@@ -327,3 +327,42 @@ pub fn get_method_types_from_symbol<'a>(
     }
     return method_types;
 }
+
+/// Get an implementation of a trait from an evaluated type, if it exists.
+pub fn get_implementation_of(
+    target_trait: SymbolIndex,
+    operand_type: &EvaluatedType,
+    symboltable: &SymbolTable,
+) -> Option<EvaluatedType> {
+    match operand_type {
+        EvaluatedType::ModelInstance { model: base, .. }
+        | EvaluatedType::TraitInstance { trait_: base, .. }
+        | EvaluatedType::Generic { base }
+        | EvaluatedType::HardGeneric { base } => {
+            let base_symbol = symboltable.get(*base)?;
+            let implementation_list = match &base_symbol.kind {
+                SemanticSymbolKind::Model {
+                    implementations, ..
+                }
+                | SemanticSymbolKind::Trait {
+                    implementations, ..
+                }
+                | SemanticSymbolKind::GenericParameter {
+                    traits: implementations,
+                    ..
+                } => implementations,
+                _ => return None,
+            };
+            for implementation in implementation_list {
+                let evaluated = evaluate(implementation, symboltable, None, &mut None, 0);
+                if let EvaluatedType::TraitInstance { trait_, .. } = &evaluated {
+                    if *trait_ == target_trait {
+                        return Some(evaluated);
+                    }
+                }
+            }
+            return None;
+        }
+        _ => None,
+    }
+}

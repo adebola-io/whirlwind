@@ -281,7 +281,10 @@ pub struct SymbolTable {
     pub prospect_symbol: Option<SymbolIndex>,
     pub never_symbol: Option<SymbolIndex>,
     pub addition_symbol: Option<SymbolIndex>,
-    pub maybe_symbol: Option<SymbolIndex>, // todo ...
+    pub try_symbol: Option<SymbolIndex>,
+    pub guaranteed_symbol: Option<SymbolIndex>,
+    pub maybe_symbol: Option<SymbolIndex>,
+    pub range_symbol: Option<SymbolIndex>,
 }
 
 impl SemanticSymbol {

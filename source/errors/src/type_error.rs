@@ -177,6 +177,10 @@ pub enum TypeErrorType {
     InvalidDereference {
         name: String,
     },
+    /// Using the ! operator on a value that does not implement Guaranteed.
+    IllegalGuarantee {
+        name: String,
+    },
     // InfiniteType,
 }
 

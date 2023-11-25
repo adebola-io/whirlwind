@@ -38,7 +38,7 @@ pub fn unify_types(
     match (left, right) {
         // Left type is a hard generic, and hard generic massaging is requested.
         (HardGeneric { base } | Generic { base }, free_type)
-            if matches!(options, UnifyOptions::HardConform) && !free_type.is_void() =>
+            if matches!(options, UnifyOptions::HardConform) =>
         {
             solve_generic_type(
                 &mut map,
@@ -335,13 +335,7 @@ pub fn unify_types(
         }
         // Left type is opaque and right type is generic.
         // Unification is possible if left type contains right type as a collaborator.
-        (
-            OpaqueTypeInstance {
-                collaborators,
-                ..
-            },
-            HardGeneric { base } | Generic { base },
-        ) => {
+        (OpaqueTypeInstance { collaborators, .. }, HardGeneric { base } | Generic { base }) => {
             let mut errors = vec![];
             if !collaborators.iter().any(|collab| collab == base) {
                 let error = TypeErrorType::InvalidOpaqueTypeAssignment {

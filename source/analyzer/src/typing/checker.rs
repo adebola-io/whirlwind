@@ -401,7 +401,10 @@ mod statements {
 mod expressions {
     use super::*;
     use crate::{
-        utils::{arrify, evaluate_generic_params, is_array, is_boolean, symbol_to_type},
+        utils::{
+            arrify, evaluate_generic_params, get_implementation_of, is_array, is_boolean,
+            symbol_to_type,
+        },
         TypedAssignmentExpr, TypedIfExpr, TypedIndexExpr, TypedLogicExpr, TypedNewExpr,
         TypedThisExpr, UnifyOptions,
     };
@@ -463,9 +466,79 @@ mod expressions {
             TypedExpression::LogicExpr(logexp) => {
                 typecheck_logic_expression(logexp, checker_ctx, symboltable)
             }
-            // TypedExpression::UpdateExpr(_) => todo!(),
+            TypedExpression::UpdateExpr(updateexp) => {
+                typecheck_update_expression(updateexp, checker_ctx, symboltable)
+            }
             _ => EvaluatedType::Unknown,
         }
+    }
+
+    /// Typechecks an update expression.
+    fn typecheck_update_expression(
+        updateexp: &mut crate::TypedUpdateExpr,
+        checker_ctx: &mut TypecheckerContext<'_>,
+        symboltable: &mut SymbolTable,
+    ) -> EvaluatedType {
+        updateexp.inferred_type = (|| {
+            let operand_type =
+                typecheck_expression(&mut updateexp.operand, checker_ctx, symboltable);
+            match updateexp.operator {
+                ast::UpdateOperator::Assert => match symboltable.guaranteed_symbol {
+                    Some(guaranteed) => {
+                        let guaranteed_generic = match &symboltable.get(guaranteed).unwrap().kind {
+                            SemanticSymbolKind::Trait { generic_params, .. } => generic_params[0],
+                            _ => return EvaluatedType::Unknown,
+                        };
+                        match get_implementation_of(guaranteed, &operand_type, &symboltable) {
+                            Some(implementation) => match implementation {
+                                EvaluatedType::TraitInstance {
+                                    generic_arguments, ..
+                                } => {
+                                    let generic_solution = generic_arguments
+                                        .into_iter()
+                                        .find(|generic| generic.0 == guaranteed_generic);
+                                    if generic_solution.is_none() {
+                                        let name = symboltable.format_evaluated_type(&operand_type);
+                                        checker_ctx.add_error(errors::illegal_guarantee(
+                                            name,
+                                            updateexp.span,
+                                        ));
+                                        return EvaluatedType::Unknown;
+                                    }
+                                    let generic_solution = generic_solution.unwrap().1;
+                                    let full_generic_list = match operand_type {
+                                        EvaluatedType::TraitInstance {
+                                            generic_arguments, ..
+                                        }
+                                        | EvaluatedType::ModelInstance {
+                                            generic_arguments, ..
+                                        } => generic_arguments,
+                                        _ => vec![],
+                                    };
+                                    coerce(generic_solution, &full_generic_list)
+                                }
+                                _ => return EvaluatedType::Unknown,
+                            },
+                            None => {
+                                let name = symboltable.format_evaluated_type(&operand_type);
+                                checker_ctx
+                                    .add_error(errors::illegal_guarantee(name, updateexp.span));
+                                EvaluatedType::Unknown
+                            }
+                        }
+                    }
+                    None => {
+                        checker_ctx.add_error(errors::missing_intrinsic(
+                            String::from("Guaranteed"),
+                            updateexp.span,
+                        ));
+                        EvaluatedType::Unknown
+                    }
+                },
+                ast::UpdateOperator::TryFrom => todo!(),
+            }
+        })();
+        updateexp.inferred_type.clone()
     }
 
     /// Typechecks a unary expression.

@@ -27,9 +27,11 @@ public function Main() {
     app.Get("/static/::filename", StaticFileHandler);
     // Start the server and handle subsequent actions.
     app.Start()
-      .Then(fn() Print(name + " is listening on port " + port.ToStr()))
+      .Then(fn() {Print(name
+    //    + " is listening on port " + port.ToStr()
+       )})
       .Run()
-      .Await()!;
+      .Await();
 }
 
 /// Handler function for the "/hello" endpoint.

@@ -78,8 +78,8 @@ Got: '{right}'.",
         TypeErrorType::NoSuchSymbol { modulename, property } => format!("{modulename} has no public member called '{property}'."),
         TypeErrorType::InvalidOpaqueTypeAssignment { left, right } => format!("Assignment failed because '{right}' is not a possible form for opaque type '{left}'."),
         TypeErrorType::MissingOpaqueComponent { left, right } => format!("Assignment failed because '{left}' and '{right}' have different component types."),
-        TypeErrorType::InvalidDereference { name } => format!("Value of type {name} cannot be dereferenced."),   
-        
+        TypeErrorType::InvalidDereference { name } => format!("Value of type {name} cannot be dereferenced."),
+        TypeErrorType::IllegalGuarantee { name } => format!("! cannot be used because value has type {name}, which does not implement Guaranteed."),  
     }
 }
 

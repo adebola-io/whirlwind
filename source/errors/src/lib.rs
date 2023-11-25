@@ -368,3 +368,10 @@ pub fn mispelled_name(name: String, span: ast::Span) -> TypeError {
         span,
     }
 }
+
+pub fn illegal_guarantee(name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::IllegalGuarantee { name },
+        span,
+    }
+}
