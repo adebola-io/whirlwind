@@ -44,18 +44,19 @@ public trait Iteratable<I> {
         Todo()
     }
     /// Checks if any of the elements produced by the iterator matches a predicate.
-    /// If there are still elements left after the target element is found,
-    /// the iterator can still be used.
+    /// 
+    /// The method is shortcircuiting, therefore if there are elements left 
+    /// after the target element is found, the iterator can still be used.
     /// ### Usage
     /// ```
-    /// iterator := [1, 2, 3, 4, 5].IntoIter();
+    /// iterator := [11, 12, 13, 14, 15].IntoIter();
     /// 
-    /// AssertThat(iterator.Any(fn(x) x % 2 == 0));
+    /// AssertThat(iterator.Any(fn(x) x % 2 == 0)); // Returns true at 12.
     /// // Iterator can still be used.
-    /// Assert(iterator.Next()).Equals(Some(3));
-    /// Assert(iterator.Next()).Equals(Some(4));
+    /// Assert(iterator.Next()).Equals(Some(13));
+    /// Assert(iterator.Next()).Equals(Some(14));
     /// ```
-    public function Any<J>(predicate: fn(value: &I): Bool): Bool {
+    public function Any(predicate: fn(value: &I): Bool): Bool {
         Todo()
     }
 }
@@ -66,10 +67,10 @@ public trait AsIterator<I, T implements Iteratable<I>> {
     public function IntoIter(): T;
 }
 
-public model Filter<I> {
+public model Filter<I> implements Iteratable<I> {
 
 }
 
-public model Map<I, J> {
+public model Map<I, J> implements Iteratable<J> {
 
 }

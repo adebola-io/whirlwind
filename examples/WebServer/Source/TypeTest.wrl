@@ -16,63 +16,20 @@ test "Testing types." {
         tuple.Swap()
     }
 
-    /// A node in a tree.
-    model Node<T> {
-        var parent: Maybe<&Node>;
-        var children: Array<Node>;
-        var data: T;
-        new(data: T, parent?: &Node<T>) {
-            this.parent = parent;
-            this.data = data;
-        }
-        /// Returns a reference to the data in the node.
-        public function GetData(): T {
-            &this.data
-        }
-        /// Changes the data in the node.
-        public function SetData(data: T) {
-            this.data = data;
-        }
-        /// Adds a node to the list of this node's children.
-        public function Append(node: Node<T>) {
-            if node == this {
-                return;
-            }
-            this.children.Push(node);
-        }
-        public function RemoveChild(node: &Node) {
-            Todo()
-        }
-        public function IsChildOf(node: &Node) {
-            return this.parent.IsSomeAnd(fn(parent) parent == node);
-        }
-    }
-    model Tree<T> {
-        new(root: Node<T>) {
-            this.root = root;
-        }
-        /// Returns the root node.
-        public function GetRoot(): &Node<T> {
-            &this.root
-        }
-        /// Returns the depth of the tree.
-        public function Depth(): UnsignedInt {
-            Todo()
-        }
-    }
-
     function Main() {
         // swapping variables.
         tuple := new Tuple(true, "hello");
         newTuple := tuple.Swap();
         Assert(tuple.Swap()).Equals(newTuple);
         Assert(Swap(tuple)).Equals(tuple.Swap());
-        tree: Tree<UInt8> := new Tree(new Node(89));
 
         // Coercion.
         maybe := Err(true);
         maybe = Ok(None());
         maybe = Ok(Some("hello, world"));
+        // maybe should have type Outcome<Maybe<String>, Bool>;
+
+
     }
 
 }

@@ -1,19 +1,19 @@
 /// The `Prelude` module
 module Prelude;
 
-public use Iteratable.{ Iteratable, AsIterator };
+public use Iteratable.{Iteratable, AsIterator};
 public use Default.Default;
-public use Traits.{ Guaranteed, Try };
-public use Outcome.{ Ok, Err, Outcome };
-public use Maybe.{ None, Some, Maybe };
+public use Traits.{Guaranteed, Try};
+public use Outcome.{Ok, Err, Outcome};
+public use Maybe.{None, Some, Maybe};
 public use Range.Range;
 public use Display.Display;
 
 public use Super.{
-    Async.{ Eventual, Prospect },
+    Async.{Eventual, Prospect},
     Primitives.{
-        String, Array, Number,
-        Int, Float, UnsignedInt, Bool,
+        String, Array, Number, Int, Float, UnsignedInt, Bool,
+        UInt8, UInt16, UInt32, UInt64
     },
     Process.Todo,
     Internals.never,

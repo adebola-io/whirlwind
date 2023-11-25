@@ -181,31 +181,31 @@ pub fn unify_types(
                     return Err(errors);
                 }
             };
-            let right_returns_prospect = is_prospective_type(&right_return_type, symboltable);
-            let left_returns_prospect = is_prospective_type(&left_return_type, symboltable);
-            let is_async = match (left_is_async, right_is_async) {
-                (true, true) => true,
-                (false, false) => false,
-                (true, false) if !right_returns_prospect => {
-                    return Err(vec![
-                        default_error(),
-                        TypeErrorType::AsyncMismatch {
-                            async_func: symboltable.format_evaluated_type(left),
-                            non_async_func: symboltable.format_evaluated_type(right),
-                        },
-                    ])
-                }
-                (false, true) if !left_returns_prospect => {
-                    return Err(vec![
-                        default_error(),
-                        TypeErrorType::AsyncMismatch {
-                            async_func: symboltable.format_evaluated_type(left),
-                            non_async_func: symboltable.format_evaluated_type(right),
-                        },
-                    ])
-                }
-                _ => false,
-            };
+            // let right_returns_prospect = is_prospective_type(&right_return_type, symboltable);
+            // let left_returns_prospect = is_prospective_type(&left_return_type, symboltable);
+            // let is_async = match (left_is_async, right_is_async) {
+            //     (true, true) => true,
+            //     (false, false) => false,
+            //     (true, false) if !right_returns_prospect => {
+            //         return Err(vec![
+            //             default_error(),
+            //             TypeErrorType::AsyncMismatch {
+            //                 async_func: symboltable.format_evaluated_type(left),
+            //                 non_async_func: symboltable.format_evaluated_type(right),
+            //             },
+            //         ])
+            //     }
+            //     (false, true) if !left_returns_prospect => {
+            //         return Err(vec![
+            //             default_error(),
+            //             TypeErrorType::AsyncMismatch {
+            //                 async_func: symboltable.format_evaluated_type(left),
+            //                 non_async_func: symboltable.format_evaluated_type(right),
+            //             },
+            //         ])
+            //     }
+            //     _ => false,
+            // };
             // PARAMETERS.
             if left_params.len() < right_params.len() {
                 return Err(vec![
@@ -282,7 +282,7 @@ pub fn unify_types(
                 map,
             )?);
             return Ok(EvaluatedType::FunctionExpressionInstance {
-                is_async,
+                is_async: false,
                 params,
                 return_type,
                 generic_args,
@@ -309,10 +309,8 @@ pub fn unify_types(
         {
             Ok(right_type.clone())
         }
-        // Either type is never.
-        (free, Never) if matches!(options, UnifyOptions::Return | UnifyOptions::AnyNever) => {
-            Ok(free.clone())
-        }
+        // Right type is never.
+        (free, Never) => Ok(free.clone()),
         _ => Err(vec![TypeErrorType::MismatchedAssignment {
             left: symboltable.format_evaluated_type(left),
             right: symboltable.format_evaluated_type(right),

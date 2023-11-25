@@ -1,11 +1,11 @@
 module Traits;
 
 
-public trait Guaranteed {
+public trait Guaranteed<T> {
 
 }
 
-public trait Try {
+public trait Try<T> {
 
 }
 

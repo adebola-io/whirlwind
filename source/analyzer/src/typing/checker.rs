@@ -543,7 +543,8 @@ mod expressions {
                 | EvaluatedType::Unknown
                 | EvaluatedType::HardGeneric { .. }
                 | EvaluatedType::Generic { .. }
-                | EvaluatedType::OpaqueTypeInstance { .. } => {
+                | EvaluatedType::OpaqueTypeInstance { .. }
+                | EvaluatedType::FunctionExpressionInstance { .. } => {
                     if matches!(left_type, EvaluatedType::EnumInstance { .. })
                         && !assexp.left.is_identifier()
                     {
@@ -1249,9 +1250,19 @@ mod expressions {
                             is_named: false,
                             return_type: return_type.unwrap_or(EvaluatedType::Unknown),
                         });
-                    let ev_typ = typecheck_block(block, true, checker_ctx, symboltable);
-                    checker_ctx.current_function_return_type.pop();
-                    ev_typ
+                    let blocktype = typecheck_block(block, false, checker_ctx, symboltable);
+                    if blocktype.is_void() {
+                        checker_ctx
+                            .current_function_return_type
+                            .last_mut()
+                            .unwrap()
+                            .return_type = blocktype;
+                    }
+                    checker_ctx
+                        .current_function_return_type
+                        .pop()
+                        .unwrap()
+                        .return_type
                 }
                 expression => typecheck_expression(expression, checker_ctx, symboltable),
             };
@@ -1302,7 +1313,7 @@ mod expressions {
             EvaluatedType::ModelInstance {
                 model,
                 ref generic_arguments,
-            } => search_model_for_property(
+            } => search_for_property(
                 checker_ctx,
                 symboltable,
                 model,
@@ -1321,7 +1332,7 @@ mod expressions {
                     }
                     _ => vec![],
                 };
-                search_model_for_property(
+                search_for_property(
                     checker_ctx,
                     symboltable,
                     model,
@@ -1387,9 +1398,6 @@ mod expressions {
                 }
             }
             // EvaluatedType::OpaqueType {
-            //     methods,
-            //     properties,
-            //     implementations,
             //     collaborators,
             // } => todo!(),
             EvaluatedType::Borrowed { base } => {
@@ -1399,6 +1407,17 @@ mod expressions {
                     property_symbol_idx,
                     checker_ctx,
                     access,
+                )
+            }
+            EvaluatedType::Generic { base } | EvaluatedType::HardGeneric { base } => {
+                search_for_property(
+                    checker_ctx,
+                    symboltable,
+                    base,
+                    property_symbol_idx,
+                    vec![],
+                    true,
+                    property_span,
                 )
             }
             _ => None,
@@ -1417,27 +1436,82 @@ mod expressions {
         })
     }
 
-    fn search_model_for_property(
+    /// Look through all the possible methods and attributes of a model or generic
+    /// to determine the property being referenced.
+    fn search_for_property(
         checker_ctx: &mut TypecheckerContext,
         symboltable: &mut SymbolTable,
         model: SymbolIndex,
         property_symbol_idx: SymbolIndex,
-        generic_arguments: Vec<(SymbolIndex, EvaluatedType)>,
+        mut generic_arguments: Vec<(SymbolIndex, EvaluatedType)>,
         object_is_instance: bool,
         property_span: Span,
     ) -> Option<EvaluatedType> {
-        let base_model_symbol = symboltable.get_forwarded(model).unwrap();
+        // The base type of the model or generic.
+        let base_symbol = symboltable.get_forwarded(model).unwrap();
         let property_symbol = symboltable.get_forwarded(property_symbol_idx).unwrap();
-        let (methods, attributes) = match &base_model_symbol.kind {
+        let impls = match &base_symbol.kind {
+            SemanticSymbolKind::Model {
+                implementations, ..
+            }
+            | SemanticSymbolKind::GenericParameter {
+                traits: implementations,
+                ..
+            } => implementations,
+            _ => return None,
+        };
+        let model_props = match &base_symbol.kind {
             SemanticSymbolKind::Model {
                 methods,
                 attributes,
                 ..
-            } => (methods, attributes),
-            _ => return Some(EvaluatedType::Unknown),
+            } => Some((methods, attributes)),
+            _ => None,
         };
-        for method in methods {
-            let method = *method;
+        // Gather methods from all the implementations.
+        let implementation_methods = impls
+            .iter()
+            .filter_map(|int_typ| {
+                let implementation =
+                    evaluate(int_typ, symboltable, Some(&generic_arguments), &mut None);
+                match implementation {
+                    EvaluatedType::TraitInstance {
+                        trait_,
+                        generic_arguments: mut trait_generics,
+                    } => {
+                        // Update the solutions of the traits generics.
+                        generic_arguments.append(&mut trait_generics);
+                        // Here a trait is treated as a generic argument and given a solution.
+                        // This allows the `This` marker to refer to the implementing model, rather than the trait.
+                        generic_arguments.push((
+                            trait_,
+                            EvaluatedType::ModelInstance {
+                                model,
+                                generic_arguments: generic_arguments.clone(),
+                            },
+                        ));
+                        let trait_symbol = symboltable.get_forwarded(trait_)?;
+                        match &trait_symbol.kind {
+                            SemanticSymbolKind::Trait { methods, .. } => Some(methods),
+                            _ => return None,
+                        }
+                    }
+                    _ => return None,
+                }
+            })
+            .map(|methods| methods.iter())
+            .flatten();
+        // Collecting into a new vector here because I have not found a feasible way
+        // to use different iterator types in the same context, without duplicating a
+        // lot of code.
+        let complete_method_list: Vec<_> = match &model_props {
+            Some((methods, _)) => methods.iter().chain(implementation_methods).collect(),
+            None => implementation_methods.collect(),
+        };
+        // Is property a method?
+        // Search through the compound list of methods for appriopriate property.
+        for method in complete_method_list.iter() {
+            let method = **method;
             let method_symbol = symboltable.get_forwarded(method).unwrap();
             if method_symbol.name == property_symbol.name {
                 let method_is_static = match &method_symbol.kind {
@@ -1446,13 +1520,13 @@ mod expressions {
                 };
                 if method_is_static && object_is_instance {
                     checker_ctx.add_error(errors::instance_static_method_access(
-                        base_model_symbol.name.clone(),
+                        base_symbol.name.clone(),
                         method_symbol.name.clone(),
                         property_span,
                     ))
                 } else if !method_is_static && !object_is_instance {
                     checker_ctx.add_error(errors::contructor_non_static_method_access(
-                        base_model_symbol.name.clone(),
+                        base_symbol.name.clone(),
                         method_symbol.name.clone(),
                         property_span,
                     ))
@@ -1470,30 +1544,46 @@ mod expressions {
             }
         }
         // Is property an attribute?
-        for attribute in attributes {
-            let attribute = *attribute;
-            let attribute_symbol = symboltable.get_forwarded(attribute).unwrap();
-            if attribute_symbol.name == property_symbol.name {
-                let result_type = match &attribute_symbol.kind {
-                    // todo: Is attribute public?
-                    SemanticSymbolKind::Attribute { declared_type, .. } => evaluate(
-                        &declared_type,
-                        symboltable,
-                        Some(&generic_arguments),
-                        &mut checker_ctx.tracker(),
-                    ),
-                    _ => return Some(EvaluatedType::Unknown),
-                };
-                // get mutably.
-                let property_symbol = symboltable.get_mut(property_symbol_idx).unwrap();
-                if let SemanticSymbolKind::Property { resolved } = &mut property_symbol.kind {
-                    *resolved = Some(attribute)
+        if let Some((_, attributes)) = model_props {
+            for attribute in attributes.iter() {
+                let attribute = *attribute;
+                let attribute_symbol = symboltable.get_forwarded(attribute).unwrap();
+                if attribute_symbol.name == property_symbol.name {
+                    let result_type = match &attribute_symbol.kind {
+                        // todo: Is attribute public?
+                        SemanticSymbolKind::Attribute { declared_type, .. } => evaluate(
+                            &declared_type,
+                            symboltable,
+                            Some(&generic_arguments),
+                            &mut checker_ctx.tracker(),
+                        ),
+                        _ => return Some(EvaluatedType::Unknown),
+                    };
+                    // get mutably.
+                    let property_symbol = symboltable.get_mut(property_symbol_idx).unwrap();
+                    if let SemanticSymbolKind::Property { resolved } = &mut property_symbol.kind {
+                        *resolved = Some(attribute)
+                    }
+                    return Some(result_type);
                 }
-                return Some(result_type);
+            }
+            // Property has ultimately not been found in the model.
+            // Search through the attribute list for possible suggestions.
+            for attributes in attributes.iter() {
+                let attribute = *attributes;
+                let attribute_symbol = symboltable.get_forwarded(attribute).unwrap();
+                if attribute_symbol.name.to_lowercase() == property_symbol.name.to_lowercase() {
+                    checker_ctx.add_error(errors::mispelled_name(
+                        attribute_symbol.name.clone(),
+                        property_span,
+                    ));
+                    return None;
+                }
             }
         }
-
-        for method in methods {
+        // Property has not been found anywhere.
+        // Search through complete method list for suggestions.
+        for method in complete_method_list {
             let method = *method;
             let method_symbol = symboltable.get_forwarded(method).unwrap();
             if method_symbol.name.to_lowercase() == property_symbol.name.to_lowercase() {
@@ -1504,19 +1594,6 @@ mod expressions {
                 return None;
             }
         }
-
-        for attributes in attributes {
-            let attribute = *attributes;
-            let attribute_symbol = symboltable.get_forwarded(attribute).unwrap();
-            if attribute_symbol.name.to_lowercase() == property_symbol.name.to_lowercase() {
-                checker_ctx.add_error(errors::mispelled_name(
-                    attribute_symbol.name.clone(),
-                    property_span,
-                ));
-                return None;
-            }
-        }
-
         None
     }
 

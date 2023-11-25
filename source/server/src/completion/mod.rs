@@ -309,7 +309,12 @@ impl<'a> CompletionFinder<'a> {
                 }
                 _ => continue,
             };
-            let label = symbol.name.clone();
+            let mut label = symbol.name.clone();
+            if params.len() > 0 {
+                label.push_str("(...)")
+            } else {
+                label.push_str("()")
+            }
             let documentation = Some(generate_documentation(writer, method, symbol));
             let detail = Some(
                 symboltable.format_evaluated_type(&EvaluatedType::MethodInstance {
@@ -317,6 +322,10 @@ impl<'a> CompletionFinder<'a> {
                     generic_arguments: vec![],
                 }),
             );
+            // Prevent redundant duplicate completions.
+            if completions.iter().any(|item| item.label == label) {
+                continue;
+            }
             completions.push(CompletionItem {
                 label,
                 detail,

@@ -52,9 +52,6 @@ pub enum EvaluatedType {
     Enum(SymbolIndex),
     Module(SymbolIndex),
     OpaqueTypeInstance {
-        methods: Vec<SymbolIndex>,
-        properties: Vec<SymbolIndex>,
-        implementations: Vec<SymbolIndex>,
         collaborators: Vec<SymbolIndex>,
     },
     Void,
@@ -387,6 +384,14 @@ pub fn evaluate(
             match meaning.clone() {
                 Some(value) => {
                     let symbol = symboltable.get_forwarded(value).unwrap();
+                    // Pertaining to the `This` type, traits can be solved as a unique type of generics.
+                    // In the implementing model, `This` should refer to the model itself, not the trait.
+                    if let Some(prior_generics) = solved_generics.as_ref() {
+                        if let Some(solution) = prior_generics.iter().find(|tuple| tuple.0 == value)
+                        {
+                            return solution.1.clone();
+                        }
+                    }
                     let generic_args = match &symbol.kind {
                         SemanticSymbolKind::Model { generic_params, .. }
                         | SemanticSymbolKind::Trait { generic_params, .. } => generic_params

@@ -37,7 +37,7 @@ public model HttpServer {
     }
 
     /// Registers a route for a request with a `POST` method.
-    public function Post(route: String, handler: fn(request: HttpRequest): Prospect<Outcome<HttpResponse>>) {
+    public function Post(route: String, handler: fn(request: HttpRequest): Prospect<ServerOutcome>) {
         this.endpoints.Register(HttpMethod.Post, route, handler);
     }
 
