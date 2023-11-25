@@ -181,32 +181,7 @@ pub fn unify_types(
                     return Err(errors);
                 }
             };
-            // let right_returns_prospect = is_prospective_type(&right_return_type, symboltable);
-            // let left_returns_prospect = is_prospective_type(&left_return_type, symboltable);
-            // let is_async = match (left_is_async, right_is_async) {
-            //     (true, true) => true,
-            //     (false, false) => false,
-            //     (true, false) if !right_returns_prospect => {
-            //         return Err(vec![
-            //             default_error(),
-            //             TypeErrorType::AsyncMismatch {
-            //                 async_func: symboltable.format_evaluated_type(left),
-            //                 non_async_func: symboltable.format_evaluated_type(right),
-            //             },
-            //         ])
-            //     }
-            //     (false, true) if !left_returns_prospect => {
-            //         return Err(vec![
-            //             default_error(),
-            //             TypeErrorType::AsyncMismatch {
-            //                 async_func: symboltable.format_evaluated_type(left),
-            //                 non_async_func: symboltable.format_evaluated_type(right),
-            //             },
-            //         ])
-            //     }
-            //     _ => false,
-            // };
-            // PARAMETERS.
+             // PARAMETERS.
             if left_params.len() < right_params.len() {
                 return Err(vec![
                     default_error(),

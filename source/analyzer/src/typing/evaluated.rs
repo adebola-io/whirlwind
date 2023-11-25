@@ -333,20 +333,22 @@ pub fn evaluate(
                         }
                         return EvaluatedType::Unknown;
                     }
-                    let mut generic_arguments = vec![];
-                    let empty = vec![];
-                    for generic_param in generic_params {
-                        generic_arguments.push((
-                            *generic_param,
-                            coerce(
-                                EvaluatedType::Generic {
-                                    base: *generic_param,
-                                },
-                                *solved_generics.as_ref().unwrap_or(&&empty),
-                            ),
-                        ));
-                    }
-                    generic_arguments.append(&mut solved_generics.cloned().unwrap_or(empty));
+                    let generic_arguments = get_generics(generic_params);
+                    // let empty = vec![];
+                    // // Find a solution for each generic type.
+                    // for generic_param in generic_params {
+                    //     generic_arguments.push((
+                    //         *generic_param,
+                    //         coerce(
+                    //             EvaluatedType::HardGeneric {
+                    //                 base: *generic_param,
+                    //             },
+                    //             *solved_generics.as_ref().unwrap_or(&&empty),
+                    //         ),
+                    //     ));
+                    // }
+                    // generic_arguments.append(&mut solved_generics.cloned().unwrap_or(empty));
+                    unsafe { RECURSION_DEPTH += 1 };
                     evaluate(value, symboltable, Some(&generic_arguments), error_tracker)
                 }
                 SemanticSymbolKind::GenericParameter { .. } => {
@@ -433,9 +435,6 @@ pub fn evaluate(
                 error_tracker,
             )),
         },
-        IntermediateType::Placeholder => {
-            unreachable!("Cannot evaluate placeholder intermediate type.")
-        }
         _ => EvaluatedType::Unknown,
     };
     unsafe {

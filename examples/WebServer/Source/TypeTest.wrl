@@ -1,4 +1,5 @@
 module TypeTest;
+use Core.Primitives.Ops.Sequenced;
 
 test "Testing types." {
     use Core.Testing.Assert;
@@ -8,7 +9,7 @@ test "Testing types." {
     use Core.Primitives.Ops.Sequenced;
 
     /// Returns the value itself.
-    function Identity<T implements Addition>(value: T): T {
+    function Identity<T>(value: T): T {
         return value;
     }
     /// Swaps the elements of a tuple.
@@ -28,9 +29,7 @@ test "Testing types." {
         maybe = Ok(None());
         maybe = Ok(Some("hello, world"));
         // maybe should have type Outcome<Maybe<String>, Bool>;
-
-
+        stringItself := Identity("String"); // Should have type String.
     }
 
 }
-
