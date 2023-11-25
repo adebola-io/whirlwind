@@ -10,6 +10,7 @@ public use Range.Range;
 public use Display.Display;
 
 public use Super.{
+    Io.Print,
     Async.{Eventual, Prospect},
     Primitives.{
         String, Array, Number, Int, Float, UnsignedInt, Bool,

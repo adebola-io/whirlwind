@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+
 use analyzer::{
     EvaluatedType, IntermediateType, ParameterType, SemanticSymbolKind, Standpoint, SymbolIndex,
     VariablePatternForm,
@@ -5,12 +7,16 @@ use analyzer::{
 
 pub struct SymbolWriter<'a> {
     standpoint: &'a Standpoint,
+    pub is_opaque: RefCell<bool>,
 }
 
 impl<'a> SymbolWriter<'a> {
     /// Creates a new symbol printer.
     pub fn new(standpoint: &'a Standpoint) -> Self {
-        Self { standpoint }
+        Self {
+            standpoint,
+            is_opaque: RefCell::new(false),
+        }
     }
     /// Print a symbol.
     pub fn print_symbol_with_idx(&self, symbol_idx: SymbolIndex) -> String {
@@ -27,6 +33,7 @@ impl<'a> SymbolWriter<'a> {
                     | SemanticSymbolKind::Import { .. }
                     | SemanticSymbolKind::Module { .. }
             ))
+            && !*self.is_opaque.borrow()
         {
             if let Some(reference) = symbol.references.first() {
                 if let Some(module) = self.standpoint.module_map.get(reference.module_path) {
@@ -183,8 +190,10 @@ impl<'a> SymbolWriter<'a> {
                 return_type,
                 ..
             } => {
-                string = self.print_symbol_with_idx(*owner_model_or_trait);
-                string.push('\n');
+                if !*self.is_opaque.borrow() {
+                    string = self.print_symbol_with_idx(*owner_model_or_trait);
+                    string.push('\n');
+                }
                 if *is_public {
                     string.push_str("public ");
                 }
@@ -290,8 +299,12 @@ impl<'a> SymbolWriter<'a> {
                     string.push_str(": {unknown}");
                 }
             },
-            SemanticSymbolKind::Property { resolved } => match resolved {
+            SemanticSymbolKind::Property {
+                resolved,
+                is_opaque,
+            } => match resolved {
                 Some(idx) => {
+                    *self.is_opaque.borrow_mut() = *is_opaque;
                     string = self.print_symbol_with_idx(*idx);
                 }
                 _ => {

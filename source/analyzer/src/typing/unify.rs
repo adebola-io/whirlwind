@@ -1,7 +1,4 @@
-use crate::{
-    utils::is_prospective_type, EvaluatedType::*, SemanticSymbolKind, SymbolIndex, SymbolTable,
-    UNKNOWN, *,
-};
+use crate::{EvaluatedType::*, SemanticSymbolKind, SymbolIndex, SymbolTable, UNKNOWN, *};
 use errors::TypeErrorType;
 use std::collections::HashMap;
 
@@ -181,7 +178,7 @@ pub fn unify_types(
                     return Err(errors);
                 }
             };
-             // PARAMETERS.
+            // PARAMETERS.
             if left_params.len() < right_params.len() {
                 return Err(vec![
                     default_error(),
@@ -256,7 +253,7 @@ pub fn unify_types(
                 options,
                 map,
             )?);
-            return Ok(EvaluatedType::FunctionExpressionInstance {
+            return Ok(FunctionExpressionInstance {
                 is_async: false,
                 params,
                 return_type,
@@ -286,6 +283,124 @@ pub fn unify_types(
         }
         // Right type is never.
         (free, Never) => Ok(free.clone()),
+        // Left type is opaque, and right type is a model or enum variant.
+        // Unification is possible if right type is a component of left.
+        (
+            OpaqueTypeInstance {
+                collaborators,
+                generic_arguments: opaque_generics,
+                aliased_as,
+                available_methods: methods,
+            },
+            ModelInstance {
+                model: child,
+                generic_arguments: subgenerics,
+            }
+            | EnumInstance {
+                enum_: child,
+                generic_arguments: subgenerics,
+            },
+        ) => {
+            let mut errors = vec![];
+            if !collaborators.iter().any(|collab| collab == child) {
+                let error = TypeErrorType::InvalidOpaqueTypeAssignment {
+                    left: symboltable.format_evaluated_type(left),
+                    right: symboltable.format_evaluated_type(right),
+                };
+                errors.push(default_error());
+                errors.push(error);
+                return Err(errors);
+            }
+            // Update generic arguments.
+            let generic_arguments = match unify_generic_arguments(
+                opaque_generics,
+                subgenerics,
+                symboltable,
+                options,
+                map,
+            ) {
+                Ok(generic_list) => generic_list,
+                Err(mut generic_errors) => {
+                    errors.push(default_error());
+                    errors.append(&mut generic_errors);
+                    return Err(errors);
+                }
+            };
+            return Ok(OpaqueTypeInstance {
+                aliased_as: *aliased_as,
+                collaborators: collaborators.clone(),
+                generic_arguments,
+                available_methods: methods.clone(),
+            });
+        }
+        // Left type is opaque and right type is generic.
+        // Unification is possible if left type contains right type as a collaborator.
+        (
+            OpaqueTypeInstance {
+                collaborators,
+                ..
+            },
+            HardGeneric { base } | Generic { base },
+        ) => {
+            let mut errors = vec![];
+            if !collaborators.iter().any(|collab| collab == base) {
+                let error = TypeErrorType::InvalidOpaqueTypeAssignment {
+                    left: symboltable.format_evaluated_type(left),
+                    right: symboltable.format_evaluated_type(right),
+                };
+                errors.push(default_error());
+                errors.push(error);
+                return Err(errors);
+            }
+            return Ok(left.clone());
+        }
+        // Both types are opaque.
+        // Unification is possible if left type is a superset of right type.
+        (
+            OpaqueTypeInstance {
+                collaborators: left_collaborators,
+                generic_arguments: left_generics,
+                available_methods: methods,
+                ..
+            },
+            OpaqueTypeInstance {
+                collaborators: right_collaborators,
+                generic_arguments: right_generics,
+                ..
+            },
+        ) => {
+            let mut errors = vec![];
+            for ri in right_collaborators {
+                if !left_collaborators.iter().any(|c| c == ri) {
+                    errors.push(TypeErrorType::MissingOpaqueComponent {
+                        left: symboltable.format_evaluated_type(left),
+                        right: symboltable.format_evaluated_type(right),
+                    });
+                    return Err(errors);
+                }
+            }
+            // Update generic arguments.
+            let generic_arguments = match unify_generic_arguments(
+                left_generics,
+                right_generics,
+                symboltable,
+                options,
+                map,
+            ) {
+                Ok(generic_list) => generic_list,
+                Err(mut generic_errors) => {
+                    errors.push(default_error());
+                    errors.append(&mut generic_errors);
+                    return Err(errors);
+                }
+            };
+            return Ok(OpaqueTypeInstance {
+                collaborators: left_collaborators.to_vec(),
+                generic_arguments,
+                aliased_as: None,
+                available_methods: methods.clone(),
+            });
+        }
         _ => Err(vec![TypeErrorType::MismatchedAssignment {
             left: symboltable.format_evaluated_type(left),
             right: symboltable.format_evaluated_type(right),
@@ -341,11 +456,12 @@ fn solve_generic_type(
                         symboltable,
                         solved_generics.as_ref(),
                         &mut None,
+                        0,
                     ));
                 }
             }
             for _trait in traits {
-                let trait_evaluated = evaluate(_trait, symboltable, None, &mut None);
+                let trait_evaluated = evaluate(_trait, symboltable, None, &mut None, 0);
                 // The trait guard does not refer to a trait.
                 // Unification cannot continue, but it is not the problem of this process.
                 if !trait_evaluated.is_trait_instance() {
@@ -376,7 +492,7 @@ fn solve_generic_type(
                         .iter()
                         .find(|implementation| {
                             // todo: block infinite types.
-                            evaluate(implementation, symboltable, None, &mut None)
+                            evaluate(implementation, symboltable, None, &mut None, 0)
                                 == trait_evaluated
                         })
                         .is_some()
@@ -539,6 +655,7 @@ fn distill_function_type<'a>(
                                             symboltable,
                                             Some(generic_arguments),
                                             &mut None,
+                                            0,
                                         )
                                     })
                                     .unwrap_or(EvaluatedType::Unknown),
@@ -547,7 +664,9 @@ fn distill_function_type<'a>(
                         .collect::<Vec<_>>();
                     let return_type = return_type
                         .as_ref()
-                        .map(|typ| evaluate(typ, symboltable, Some(&generic_arguments), &mut None))
+                        .map(|typ| {
+                            evaluate(typ, symboltable, Some(&generic_arguments), &mut None, 0)
+                        })
                         .unwrap_or(EvaluatedType::Void);
                     (*is_async, parameter_types, generic_arguments, return_type)
                 }

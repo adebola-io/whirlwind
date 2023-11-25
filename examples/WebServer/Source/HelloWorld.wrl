@@ -1,0 +1,5 @@
+module HelloWorld;
+
+public function Main() {
+    
+}

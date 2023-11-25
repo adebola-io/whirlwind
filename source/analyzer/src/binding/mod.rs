@@ -479,7 +479,7 @@ mod bind_utils {
                                     alias.as_ref().map(|_| {
                                         let mut property_symbol = SemanticSymbol {
                                             name: real_name.name.clone(),
-                                            kind: SemanticSymbolKind::Property { resolved: None },
+                                            kind: SemanticSymbolKind::Property { resolved: None, is_opaque: false },
                                             references: vec![],
                                             doc_info: None,
                                             origin_span: real_name.span,
@@ -1175,7 +1175,10 @@ mod statements {
                     // So, a placeholder is used.
                     let mut property_symbol = SemanticSymbol {
                         name: property_type.name.name.to_owned(),
-                        kind: SemanticSymbolKind::Property { resolved: None },
+                        kind: SemanticSymbolKind::Property {
+                            resolved: None,
+                            is_opaque: false,
+                        },
                         references: vec![],
                         doc_info: None,
                         origin_span: property_type.name.span,
@@ -2897,7 +2900,10 @@ mod expressions {
         };
         let mut property_symbol = SemanticSymbol {
             name: property_ident.name,
-            kind: SemanticSymbolKind::Property { resolved: None },
+            kind: SemanticSymbolKind::Property {
+                resolved: None,
+                is_opaque: false,
+            },
             references: vec![],
             doc_info: None,
             origin_span: property_ident.span,
@@ -3120,7 +3126,10 @@ mod types {
                 };
                 let mut property_symbol = SemanticSymbol {
                     name: property_type.name.name.to_owned(),
-                    kind: SemanticSymbolKind::Property { resolved: None },
+                    kind: SemanticSymbolKind::Property {
+                        resolved: None,
+                        is_opaque: false,
+                    },
                     references: vec![],
                     doc_info: None,
                     origin_span: property_type.name.span,

@@ -27,10 +27,10 @@ impl MessageStore {
             .push((MessageType::ERROR, message.to_string()))
     }
 
-    // pub fn debug<T: Debug>(&mut self, message: T) {
-    //     self.messages
-    //         .push((MessageType::ERROR, format!("{message:?}")))
-    // }
+    pub fn _debug<T: Debug>(&mut self, message: T) {
+        self.messages
+            .push((MessageType::ERROR, format!("{message:?}")))
+    }
 }
 
 impl IntoIterator for MessageStore {

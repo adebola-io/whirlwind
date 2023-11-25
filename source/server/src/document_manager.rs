@@ -985,13 +985,18 @@ pub fn match_pos_to_symbol<'a>(
                             parent.map(|symbol| (*origin, symbol))
                         } else if let SemanticSymbolKind::Property {
                             resolved: Some(source),
+                            is_opaque,
                         } = &symbol.kind
                         {
-                            // Property redirection.
-                            standpoint
-                                .symbol_table
-                                .get(*source)
-                                .map(|symbol| (*source, symbol))
+                            if *is_opaque {
+                                None
+                            } else {
+                                // Property redirection.
+                                standpoint
+                                    .symbol_table
+                                    .get(*source)
+                                    .map(|symbol| (*source, symbol))
+                            }
                         } else {
                             Some((symbol_idx, symbol))
                         };

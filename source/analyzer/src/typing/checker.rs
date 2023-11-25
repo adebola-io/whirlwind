@@ -158,6 +158,7 @@ mod statements {
                     symboltable,
                     None,
                     &mut Some((checker_ctx.errors, checker_ctx.path_idx)),
+                    0,
                 )
             })
         } else {
@@ -312,6 +313,7 @@ mod statements {
                                     symboltable,
                                     Some(&generic_arguments),
                                     &mut Some((checker_ctx.errors, checker_ctx.path_idx)),
+                                    0,
                                 )
                             } else {
                                 EvaluatedType::Unknown
@@ -325,7 +327,7 @@ mod statements {
                 (
                     evaluated_param_types,
                     return_type
-                        .map(|typ| evaluate(typ, &symboltable, None, &mut checker_ctx.tracker()))
+                        .map(|typ| evaluate(typ, &symboltable, None, &mut checker_ctx.tracker(), 0))
                         .unwrap_or_else(|| EvaluatedType::Void),
                     return_type.map(|typ| typ.span()),
                 )
@@ -397,18 +399,15 @@ mod statements {
 }
 
 mod expressions {
-    use std::collections::HashMap;
-
-    use ast::UnaryOperator;
-    use errors::missing_intrinsic;
-
+    use super::*;
     use crate::{
         utils::{arrify, evaluate_generic_params, is_array, is_boolean, symbol_to_type},
         TypedAssignmentExpr, TypedIfExpr, TypedIndexExpr, TypedLogicExpr, TypedNewExpr,
         TypedThisExpr, UnifyOptions,
     };
-
-    use super::*;
+    use ast::UnaryOperator;
+    use errors::missing_intrinsic;
+    use std::collections::HashMap;
 
     /// Typechecks an expression.
     pub fn typecheck_expression(
@@ -1000,7 +999,9 @@ mod expressions {
                         );
                         let return_type = return_type
                             .as_ref()
-                            .map(|typ| evaluate(typ, symboltable, None, &mut checker_ctx.tracker()))
+                            .map(|typ| {
+                                evaluate(typ, symboltable, None, &mut checker_ctx.tracker(), 0)
+                            })
                             .unwrap_or(EvaluatedType::Void);
                         (
                             *is_async,
@@ -1152,6 +1153,7 @@ mod expressions {
                                 symboltable,
                                 Some(solved_generics),
                                 &mut checker_ctx.tracker(),
+                                0,
                             )
                         })
                         .unwrap_or(EvaluatedType::Unknown),
@@ -1233,14 +1235,14 @@ mod expressions {
                     type_label: param_type.clone(),
                     inferred_type: param_type
                         .as_ref()
-                        .map(|typ| evaluate(typ, symboltable, None, &mut checker_ctx.tracker()))
+                        .map(|typ| evaluate(typ, symboltable, None, &mut checker_ctx.tracker(), 0))
                         .unwrap_or(EvaluatedType::Unknown),
                 });
             }
             let return_type = f
                 .return_type
                 .as_ref()
-                .map(|typ| evaluate(typ, &symboltable, None, &mut checker_ctx.tracker()));
+                .map(|typ| evaluate(typ, &symboltable, None, &mut checker_ctx.tracker(), 0));
             let inferred_return_type = match &mut f.body {
                 // Function body is scoped to block.
                 TypedExpression::Block(block) => {
@@ -1376,7 +1378,7 @@ mod expressions {
                                 // get mutably and resolve.
                                 let property_symbol =
                                     symboltable.get_mut(property_symbol_idx).unwrap();
-                                if let SemanticSymbolKind::Property { resolved } =
+                                if let SemanticSymbolKind::Property { resolved, .. } =
                                     &mut property_symbol.kind
                                 {
                                     *resolved = Some(actualidx)
@@ -1397,9 +1399,38 @@ mod expressions {
                     _ => return EvaluatedType::Unknown,
                 }
             }
-            // EvaluatedType::OpaqueType {
-            //     collaborators,
-            // } => todo!(),
+            EvaluatedType::OpaqueTypeInstance {
+                ref available_methods,
+                ref generic_arguments,
+                ..
+            } => {
+                let property_symbol = symboltable.get(property_symbol_idx).unwrap();
+                for method in available_methods {
+                    let method = *method;
+                    let method_symbol = match symboltable.get(method) {
+                        Some(sym) => sym,
+                        None => continue,
+                    };
+                    if method_symbol.name == property_symbol.name {
+                        // get mutably and resolve.
+                        let property_symbol = symboltable.get_mut(property_symbol_idx).unwrap();
+                        if let SemanticSymbolKind::Property {
+                            resolved,
+                            is_opaque,
+                        } = &mut property_symbol.kind
+                        {
+                            *resolved = Some(method);
+                            *is_opaque = true;
+                        }
+                        // todo: Is method public?
+                        return EvaluatedType::MethodInstance {
+                            method,
+                            generic_arguments: generic_arguments.clone(),
+                        };
+                    }
+                }
+                None
+            }
             EvaluatedType::Borrowed { base } => {
                 return extract_property_of(
                     *base,
@@ -1473,7 +1504,7 @@ mod expressions {
             .iter()
             .filter_map(|int_typ| {
                 let implementation =
-                    evaluate(int_typ, symboltable, Some(&generic_arguments), &mut None);
+                    evaluate(int_typ, symboltable, Some(&generic_arguments), &mut None, 0);
                 match implementation {
                     EvaluatedType::TraitInstance {
                         trait_,
@@ -1533,7 +1564,7 @@ mod expressions {
                 }
                 // get mutably and resolve.
                 let property_symbol = symboltable.get_mut(property_symbol_idx).unwrap();
-                if let SemanticSymbolKind::Property { resolved } = &mut property_symbol.kind {
+                if let SemanticSymbolKind::Property { resolved, .. } = &mut property_symbol.kind {
                     *resolved = Some(method)
                 }
                 // todo: Is method public?
@@ -1556,12 +1587,14 @@ mod expressions {
                             symboltable,
                             Some(&generic_arguments),
                             &mut checker_ctx.tracker(),
+                            0,
                         ),
                         _ => return Some(EvaluatedType::Unknown),
                     };
                     // get mutably.
                     let property_symbol = symboltable.get_mut(property_symbol_idx).unwrap();
-                    if let SemanticSymbolKind::Property { resolved } = &mut property_symbol.kind {
+                    if let SemanticSymbolKind::Property { resolved, .. } = &mut property_symbol.kind
+                    {
                         *resolved = Some(attribute)
                     }
                     return Some(result_type);

@@ -254,7 +254,7 @@ pub fn symbol_to_type(
         } => {
             let inferred_type = param_type
                 .as_ref()
-                .map(|param_type| evaluate(param_type, symboltable, None, &mut None))
+                .map(|param_type| evaluate(param_type, symboltable, None, &mut None, 0))
                 .unwrap_or(inferred_type.clone());
             if *is_optional {
                 maybify(inferred_type, symboltable)
@@ -274,4 +274,56 @@ pub fn symbol_to_type(
         _ => EvaluatedType::Unknown,
     };
     Ok(eval_type)
+}
+
+/// Extract the available methods as evaluated types from a model, trait or generic.
+pub fn get_method_types_from_symbol<'a>(
+    symbol_idx: SymbolIndex,
+    symboltable: &'a SymbolTable,
+    generic_arguments: &Vec<(SymbolIndex, EvaluatedType)>,
+) -> Vec<(&'a String, EvaluatedType, bool)> {
+    let mut method_types = vec![];
+    let symbol = symboltable.get(symbol_idx);
+    if symbol.is_none() {
+        return vec![];
+    }
+    let symbol = symbol.unwrap();
+    match &symbol.kind {
+        SemanticSymbolKind::Model { methods, .. } | SemanticSymbolKind::Trait { methods, .. } => {
+            for method in methods {
+                let method = *method;
+                let method_symbol = symboltable.get(method);
+                if method_symbol.is_none() {
+                    continue;
+                }
+                let method_symbol = method_symbol.unwrap();
+                let generic_params = match &method_symbol.kind {
+                    SemanticSymbolKind::Method { generic_params, .. } => generic_params,
+                    _ => continue,
+                };
+                let initial_type = EvaluatedType::MethodInstance {
+                    method,
+                    generic_arguments: evaluate_generic_params(generic_params),
+                };
+                let coerced = coerce(initial_type, generic_arguments);
+                method_types.push((&method_symbol.name, coerced, method_symbol.kind.is_public()));
+            }
+        }
+        SemanticSymbolKind::GenericParameter { traits, .. } => {
+            for int_typ in traits {
+                let evaled = evaluate(int_typ, symboltable, Some(generic_arguments), &mut None, 0);
+                if let EvaluatedType::TraitInstance {
+                    trait_,
+                    generic_arguments,
+                } = evaled
+                {
+                    let mut methods_from_trait =
+                        get_method_types_from_symbol(trait_, symboltable, &generic_arguments);
+                    method_types.append(&mut methods_from_trait);
+                }
+            }
+        }
+        _ => {}
+    }
+    return method_types;
 }

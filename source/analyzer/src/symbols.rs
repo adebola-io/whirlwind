@@ -174,6 +174,8 @@ pub enum SemanticSymbolKind {
     },
     /// An accessed property on another symbol that cannot be resolved yet.
     Property {
+        /// When typechecking, whether or not the property is accessed on an opaque type.
+        is_opaque: bool,
         resolved: Option<SymbolIndex>,
     },
 }
@@ -575,6 +577,7 @@ impl SymbolTable {
         match &base.kind {
             SemanticSymbolKind::Property {
                 resolved: Some(next),
+                ..
             }
             | SemanticSymbolKind::Import {
                 source: Some(next), ..
@@ -588,6 +591,7 @@ impl SymbolTable {
             Some(base) => match &base.kind {
                 SemanticSymbolKind::Property {
                     resolved: Some(next),
+                    ..
                 }
                 | SemanticSymbolKind::Import {
                     source: Some(next), ..
@@ -644,7 +648,6 @@ impl SymbolTable {
             } => {
                 let symbol = self.get(*model).unwrap();
                 string = symbol.name.clone();
-
                 self.format_generics_into(
                     get_just_types(generic_arguments),
                     &mut string,
@@ -741,7 +744,22 @@ impl SymbolTable {
                 string.push('&');
                 string.push_str(&self.format_evaluated_type(base));
             }
-            EvaluatedType::OpaqueTypeInstance { collaborators, .. } => {
+            EvaluatedType::OpaqueTypeInstance {
+                collaborators,
+                aliased_as,
+                generic_arguments,
+                ..
+            } => {
+                if let Some(alias) = aliased_as {
+                    let symbol = self.get(*alias).unwrap();
+                    string.push_str(&symbol.name);
+                    self.format_generics_into(
+                        get_just_types(generic_arguments),
+                        &mut string,
+                        generic_arguments.len(),
+                    );
+                    return string;
+                }
                 for (index, collaborator) in collaborators.iter().enumerate() {
                     let name = &self.get(*collaborator).unwrap().name;
                     string.push_str(name);
@@ -821,7 +839,7 @@ impl SymbolTable {
                 let eval_type = param_type
                     .as_ref()
                     .map(|param_type| {
-                        evaluate(param_type, self, Some(generic_arguments), &mut None)
+                        evaluate(param_type, self, Some(generic_arguments), &mut None, 0)
                     })
                     .unwrap_or(EvaluatedType::Unknown);
                 string.push_str(&self.format_evaluated_type(&eval_type));
@@ -832,7 +850,7 @@ impl SymbolTable {
         }
         string.push(')');
         if let Some(typ) = return_type {
-            let evaluated = evaluate(typ, self, Some(&generic_arguments), &mut None);
+            let evaluated = evaluate(typ, self, Some(&generic_arguments), &mut None, 0);
             if !evaluated.is_void() {
                 string.push_str(": ");
                 string.push_str(&self.format_evaluated_type(&evaluated));

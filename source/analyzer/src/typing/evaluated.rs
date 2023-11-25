@@ -1,6 +1,7 @@
 use crate::{
-    unify_types, utils::coerce, IntermediateType, ParameterType, PathIndex, ProgramError,
-    SemanticSymbolKind, SymbolIndex, SymbolTable, UnifyOptions,
+    unify_generic_arguments, unify_types, utils::get_method_types_from_symbol, IntermediateType,
+    ParameterType, PathIndex, ProgramError, SemanticSymbolKind, SymbolIndex, SymbolTable,
+    UnifyOptions,
 };
 use ast::Span;
 use errors::{
@@ -52,7 +53,10 @@ pub enum EvaluatedType {
     Enum(SymbolIndex),
     Module(SymbolIndex),
     OpaqueTypeInstance {
+        available_methods: Vec<SymbolIndex>,
+        aliased_as: Option<SymbolIndex>,
         collaborators: Vec<SymbolIndex>,
+        generic_arguments: Vec<(SymbolIndex, EvaluatedType)>,
     },
     Void,
     Never,
@@ -236,8 +240,6 @@ impl EvaluatedType {
     }
 }
 
-static mut RECURSION_DEPTH: u64 = 0;
-
 /// Converts an intermediate type into an evaluation.
 pub fn evaluate(
     typ: &IntermediateType,
@@ -246,7 +248,14 @@ pub fn evaluate(
     solved_generics: Option<&Vec<(SymbolIndex, EvaluatedType)>>,
     // Error store from the standpoint, if it exists.
     mut error_tracker: &mut Option<(&mut Vec<ProgramError>, PathIndex)>,
+    // A value that safe guards against infinitely recursive union types, or indirect recursion in type aliases.
+    mut recursion_depth: u64,
 ) -> EvaluatedType {
+    if recursion_depth == 2000 {
+        return EvaluatedType::Never;
+    } else {
+        recursion_depth += 1;
+    }
     let evaltype = match typ {
         IntermediateType::FunctionType {
             params,
@@ -256,7 +265,15 @@ pub fn evaluate(
             let return_type = Box::new(
                 return_type
                     .as_ref()
-                    .map(|typ| evaluate(typ, symboltable, solved_generics, error_tracker))
+                    .map(|typ| {
+                        evaluate(
+                            typ,
+                            symboltable,
+                            solved_generics,
+                            error_tracker,
+                            recursion_depth,
+                        )
+                    })
                     .unwrap_or(EvaluatedType::Void),
             );
             EvaluatedType::FunctionExpressionInstance {
@@ -269,7 +286,13 @@ pub fn evaluate(
                             .type_label
                             .as_ref()
                             .map(|typ| {
-                                evaluate(typ, symboltable, solved_generics, &mut error_tracker)
+                                evaluate(
+                                    typ,
+                                    symboltable,
+                                    solved_generics,
+                                    &mut error_tracker,
+                                    recursion_depth,
+                                )
                             })
                             .unwrap_or(EvaluatedType::Unknown);
                         param
@@ -285,17 +308,8 @@ pub fn evaluate(
             generic_args,
             span,
         } => {
-            if symboltable
-                .never_symbol
-                .is_some_and(|never| never == *value)
-            {
-                unsafe {
-                    RECURSION_DEPTH = 0;
-                }
-                return EvaluatedType::Never;
-            }
-            let value = symboltable.forward(*value);
-            let typ = symboltable.get_forwarded(value).unwrap();
+            let idx = symboltable.forward(*value);
+            let typ = symboltable.get_forwarded(idx).unwrap();
             let mut get_generics = |generic_params| {
                 generate_generics_from_arguments(
                     generic_args,
@@ -308,17 +322,17 @@ pub fn evaluate(
                 )
             };
             match &typ.kind {
-                SemanticSymbolKind::Module { .. } => EvaluatedType::Module(value),
+                SemanticSymbolKind::Module { .. } => EvaluatedType::Module(idx),
                 SemanticSymbolKind::Trait { generic_params, .. } => EvaluatedType::TraitInstance {
-                    trait_: value,
+                    trait_: idx,
                     generic_arguments: get_generics(generic_params),
                 },
                 SemanticSymbolKind::Model { generic_params, .. } => EvaluatedType::ModelInstance {
-                    model: value,
+                    model: idx,
                     generic_arguments: get_generics(generic_params),
                 },
                 SemanticSymbolKind::Enum { generic_params, .. } => EvaluatedType::EnumInstance {
-                    enum_: value,
+                    enum_: idx,
                     generic_arguments: get_generics(generic_params),
                 },
                 SemanticSymbolKind::TypeName {
@@ -326,44 +340,29 @@ pub fn evaluate(
                     value,
                     ..
                 } => {
-                    if unsafe { RECURSION_DEPTH } == 2000 {
-                        add_error_if_possible(error_tracker, errors::infinite_type(*span));
-                        unsafe {
-                            RECURSION_DEPTH = 0;
-                        }
-                        return EvaluatedType::Unknown;
-                    }
                     let generic_arguments = get_generics(generic_params);
-                    // let empty = vec![];
-                    // // Find a solution for each generic type.
-                    // for generic_param in generic_params {
-                    //     generic_arguments.push((
-                    //         *generic_param,
-                    //         coerce(
-                    //             EvaluatedType::HardGeneric {
-                    //                 base: *generic_param,
-                    //             },
-                    //             *solved_generics.as_ref().unwrap_or(&&empty),
-                    //         ),
-                    //     ));
-                    // }
-                    // generic_arguments.append(&mut solved_generics.cloned().unwrap_or(empty));
-                    unsafe { RECURSION_DEPTH += 1 };
-                    evaluate(value, symboltable, Some(&generic_arguments), error_tracker)
+                    let mut value_typ = evaluate(
+                        value,
+                        symboltable,
+                        Some(&generic_arguments),
+                        error_tracker,
+                        recursion_depth,
+                    );
+                    if let EvaluatedType::OpaqueTypeInstance { aliased_as, .. } = &mut value_typ {
+                        *aliased_as = Some(idx);
+                    };
+                    value_typ
                 }
                 SemanticSymbolKind::GenericParameter { .. } => {
                     // check if this type already has a solution.
                     if let Some(solved_generics) = solved_generics {
                         for (generic_parameter, evaluated_type) in solved_generics {
-                            if *generic_parameter == value {
-                                unsafe {
-                                    RECURSION_DEPTH = 0;
-                                }
+                            if *generic_parameter == idx {
                                 return (*evaluated_type).clone();
                             }
                         }
                     }
-                    EvaluatedType::HardGeneric { base: value }
+                    EvaluatedType::HardGeneric { base: idx }
                 }
                 SemanticSymbolKind::UndeclaredValue => EvaluatedType::Unknown,
                 _ => {
@@ -406,9 +405,6 @@ pub fn evaluate(
                             .collect(),
 
                         _ => {
-                            unsafe {
-                                RECURSION_DEPTH = 0;
-                            }
                             return EvaluatedType::Unknown;
                         }
                     };
@@ -422,6 +418,7 @@ pub fn evaluate(
                         symboltable,
                         solved_generics,
                         error_tracker,
+                        recursion_depth,
                     )
                 }
                 None => EvaluatedType::Unknown,
@@ -433,13 +430,104 @@ pub fn evaluate(
                 symboltable,
                 solved_generics,
                 error_tracker,
+                recursion_depth,
             )),
         },
+        IntermediateType::UnionType { types, .. } => {
+            let mut collaborators = vec![];
+            let mut generic_arguments = vec![];
+            let mut available_methods = vec![];
+            for typ in types {
+                let eval_type = evaluate(
+                    typ,
+                    symboltable,
+                    solved_generics,
+                    error_tracker,
+                    recursion_depth,
+                );
+                match eval_type {
+                    EvaluatedType::ModelInstance {
+                        model: collab,
+                        generic_arguments: collab_generics,
+                    }
+                    | EvaluatedType::EnumInstance {
+                        enum_: collab,
+                        generic_arguments: collab_generics,
+                    } => {
+                        let unification = unify_generic_arguments(
+                            &generic_arguments,
+                            &collab_generics,
+                            symboltable,
+                            UnifyOptions::None,
+                            None,
+                        )
+                        .ok();
+                        if let Some(final_args) = unification {
+                            generic_arguments = final_args;
+                            collaborators.push(collab);
+                        }
+                    }
+                    EvaluatedType::OpaqueTypeInstance {
+                        collaborators: mut subcollaborators,
+                        ..
+                    } => {
+                        collaborators.append(&mut subcollaborators);
+                        continue;
+                    }
+                    EvaluatedType::Generic { base } | EvaluatedType::HardGeneric { base } => {
+                        collaborators.push(base)
+                    }
+                    // if any of the united types evaluates to a never,
+                    // then all types are corrupted, and the final result
+                    // is a never type.
+                    EvaluatedType::Never => return EvaluatedType::Never,
+                    EvaluatedType::Borrowed { .. } => continue, // todo. How will this be handled?
+                    _ => continue,
+                };
+            }
+            // Gathers the methods that are general to every collaborator.
+            // It starts by assuming every method in the first collaborator is available
+            // And then uses the rest to filter through..
+            for (index, _collaborator) in collaborators.iter().enumerate() {
+                let methods_for_this_collaborator =
+                    get_method_types_from_symbol(*_collaborator, symboltable, &generic_arguments);
+                if index == 0 {
+                    available_methods = methods_for_this_collaborator;
+                } else {
+                    available_methods.retain(|(method_name, method_symbol, is_public)| {
+                        methods_for_this_collaborator.iter().any(
+                            |(collab_method_name, collab_method_type, collab_method_is_public)| {
+                                collab_method_name == method_name
+                                    && is_public == collab_method_is_public
+                                    && unify_types(
+                                        method_symbol,
+                                        collab_method_type,
+                                        symboltable,
+                                        UnifyOptions::None,
+                                        None,
+                                    )
+                                    .is_ok()
+                            },
+                        )
+                    })
+                }
+            }
+            let available_methods = available_methods
+                .into_iter()
+                .filter_map(|(_, eval_typ, _)| match eval_typ {
+                    EvaluatedType::MethodInstance { method, .. } => Some(method),
+                    _ => None,
+                })
+                .collect::<Vec<_>>();
+            return EvaluatedType::OpaqueTypeInstance {
+                collaborators,
+                generic_arguments,
+                available_methods,
+                aliased_as: None,
+            };
+        }
         _ => EvaluatedType::Unknown,
     };
-    unsafe {
-        RECURSION_DEPTH = 0;
-    }
     evaltype
 }
 
@@ -486,12 +574,14 @@ fn generate_generics_from_arguments(
                     symboltable,
                     solved_generics,
                     &mut error_tracker,
+                    0,
                 );
                 let argument_evaluated = evaluate(
                     &generic_args[i],
                     symboltable,
                     solved_generics,
                     &mut error_tracker,
+                    0,
                 );
                 let result_evaluated_type = match unify_types(
                     &generic_param_evaluated,

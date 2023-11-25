@@ -72,11 +72,12 @@ Got: '{right}'.",
         TypeErrorType::SeparateIfTypes {first, second} => format!("If statement control flow resolves to different types, '{first}' and '{second}'"),
         TypeErrorType::VoidAssignment => format!("Expression evaluates to void type, so it cannot be assigned to a value."),
         TypeErrorType::PartialTypeAssigmentIf => format!("This expression does not fully handle all cases. Consider adding an else clause for exhaustiveness."),
-        TypeErrorType::NeverAsDeclared => format!("The never type is not allowed in variable type labels."),
+        TypeErrorType::NeverAsDeclared => format!("Types that evaluate to never are not allowed in variable type labels."),
         TypeErrorType::MispelledName { name } => format!("Did you mean '{name}'?"),
         TypeErrorType::PrivateSymbolLeak { modulename, property } => format!("'{property}' exists in module '{modulename}', but it is not denoted as public."),
         TypeErrorType::NoSuchSymbol { modulename, property } => format!("{modulename} has no public member called '{property}'."),
-        
+        TypeErrorType::InvalidOpaqueTypeAssignment { left, right } => format!("Assignment failed because '{right}' is not a possible form for opaque type '{left}'."),
+        TypeErrorType::MissingOpaqueComponent { left, right } => format!("Assignment failed because '{left}' and '{right}' have different component types."),   
     }
 }
 

@@ -54,7 +54,7 @@ impl From<(&Standpoint, SymbolIndex)> for HoverInfo {
         let string = writer.print_symbol_with_idx(tuple.1);
 
         // Import and property redirection.
-        let symbol = match &symbol.kind {
+        let (symbol, is_opaque) = match &symbol.kind {
             SemanticSymbolKind::Import {
                 source: Some(source),
                 ..
@@ -73,12 +73,13 @@ impl From<(&Standpoint, SymbolIndex)> for HoverInfo {
                     origin = source;
                     parent = symbol_table.get(*source);
                 }
-                parent.unwrap()
+                (parent.unwrap(), false)
             }
             SemanticSymbolKind::Property {
                 resolved: Some(origin),
-            } => tuple.0.symbol_table.get(*origin).unwrap(),
-            _ => symbol,
+                is_opaque,
+            } => (tuple.0.symbol_table.get(*origin).unwrap(), *is_opaque),
+            _ => (symbol, false),
         };
 
         contents.push(MarkedString::LanguageString(LanguageString {
@@ -87,12 +88,14 @@ impl From<(&Standpoint, SymbolIndex)> for HoverInfo {
         }));
         // Documentation?
         if let Some(ref docs) = symbol.doc_info {
-            let mut documentation = String::new();
-            for line in docs.iter() {
-                documentation.push_str(line);
-                documentation.push('\n')
+            if !is_opaque {
+                let mut documentation = String::new();
+                for line in docs.iter() {
+                    documentation.push_str(line);
+                    documentation.push('\n')
+                }
+                contents.push(MarkedString::String(documentation))
             }
-            contents.push(MarkedString::String(documentation))
         }
         return HoverInfo {
             contents: HoverContents::Array(contents),

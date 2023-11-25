@@ -2,24 +2,57 @@ module Io;
 
 use Super.Primitives.String;
 use Super.Prelude.Display;
+use Super.Internals.Invoke;
+use Super.Internals.Injunction;
 
 /// Creates a new format object.
-public function Format(template: String): FormatObject {
-    new FormatObject(template)
+public function Fmt(template: String): TemplateString {
+    new TemplateString(template)
 }
 
-public model FormatObject {
+model FormatError implements IoError {
+
+}
+
+enum FormatType {
+    String,
+    Integer,
+    Decimal
+}
+
+/// The format object is a 
+public model TemplateString {
+    var positions: Array<FormatType>;
     new(template: String) {
         
+    }
+    /// Add an argument according to the list of predefined arguments in the template
+    /// string.
+    /// ### Usage
+    /// ```
+    /// name := "Sefunmi";
+    /// age := 21;
+    /// 
+    /// template := Core.Io.Fmt("My name is %s and I am %i years old.");
+    /// completed := template.Add(name)!.Add(age)!.Finish();
+    /// 
+    /// Core.Io.Print(completed); // Will print out "My name is Sefunmi and I am 21 years old."
+    /// ```
+    public function Add<T implements Display>(value: T): Outcome<&This, FormatError> {
+        Todo()
+    }
+    /// Builds a string from the template with all the inputted values.
+    public function Finish(): String {
+        Todo()
     }
 }
 
 /// Prints a message or an object to the console, terminal or any predefined output interface.
 public function Print<T implements Display>(message: T) {
     messageAsStr := message;
-    Todo()
+    // Invoke(Injunction.Print(messageAsStr));
 }
 
-public model IoError {
+public trait IoError {
 
 }

@@ -163,6 +163,16 @@ pub enum TypeErrorType {
         modulename: String,
         property: String,
     },
+    /// Right type is not a component of left opaque type.
+    InvalidOpaqueTypeAssignment {
+        left: String,
+        right: String,
+    },
+    /// Left and right types have different components.
+    MissingOpaqueComponent {
+        left: String,
+        right: String,
+    },
     // InfiniteType,
 }
 
