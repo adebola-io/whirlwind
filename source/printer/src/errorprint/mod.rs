@@ -77,7 +77,9 @@ Got: '{right}'.",
         TypeErrorType::PrivateSymbolLeak { modulename, property } => format!("'{property}' exists in module '{modulename}', but it is not denoted as public."),
         TypeErrorType::NoSuchSymbol { modulename, property } => format!("{modulename} has no public member called '{property}'."),
         TypeErrorType::InvalidOpaqueTypeAssignment { left, right } => format!("Assignment failed because '{right}' is not a possible form for opaque type '{left}'."),
-        TypeErrorType::MissingOpaqueComponent { left, right } => format!("Assignment failed because '{left}' and '{right}' have different component types."),   
+        TypeErrorType::MissingOpaqueComponent { left, right } => format!("Assignment failed because '{left}' and '{right}' have different component types."),
+        TypeErrorType::InvalidDereference { name } => format!("Value of type {name} cannot be dereferenced."),   
+        
     }
 }
 

@@ -457,13 +457,63 @@ mod expressions {
             TypedExpression::AssignmentExpr(assexp) => {
                 typecheck_assignment_expression(assexp, checker_ctx, symboltable)
             }
-            // TypedExpression::UnaryExpr(_) => todo!(),
+            TypedExpression::UnaryExpr(unaryexp) => {
+                typecheck_unary_expression(unaryexp, symboltable, checker_ctx)
+            }
             TypedExpression::LogicExpr(logexp) => {
                 typecheck_logic_expression(logexp, checker_ctx, symboltable)
             }
             // TypedExpression::UpdateExpr(_) => todo!(),
             _ => EvaluatedType::Unknown,
         }
+    }
+
+    /// Typechecks a unary expression.
+    fn typecheck_unary_expression(
+        unaryexp: &mut crate::TypedUnaryExpr,
+        symboltable: &mut SymbolTable,
+        checker_ctx: &mut TypecheckerContext<'_>,
+    ) -> EvaluatedType {
+        unaryexp.inferred_type = (|| {
+            let operand_type =
+                typecheck_expression(&mut unaryexp.operand, checker_ctx, symboltable);
+            match unaryexp.operator {
+                UnaryOperator::Negation | UnaryOperator::NegationLiteral => {
+                    if !is_boolean(&operand_type, symboltable) {
+                        let name = symboltable.format_evaluated_type(&operand_type);
+                        checker_ctx.add_error(TypeError {
+                            _type: TypeErrorType::NonBooleanLogic { name },
+                            span: unaryexp.span,
+                        })
+                    }
+                    symboltable
+                        .bool_symbol
+                        .map(|boolean| EvaluatedType::ModelInstance {
+                            model: boolean,
+                            generic_arguments: vec![],
+                        })
+                        .unwrap_or(EvaluatedType::Unknown)
+                }
+                UnaryOperator::Ref => EvaluatedType::Borrowed {
+                    base: Box::new(operand_type),
+                },
+                UnaryOperator::Deref => match operand_type {
+                    EvaluatedType::Borrowed { base } => *base,
+                    _ => {
+                        let name = symboltable.format_evaluated_type(&operand_type);
+                        checker_ctx.add_error(TypeError {
+                            _type: TypeErrorType::InvalidDereference { name },
+                            span: unaryexp.span,
+                        });
+                        EvaluatedType::Unknown
+                    }
+                },
+                // UnaryOperator::Plus => todo!(),
+                // UnaryOperator::Minus => todo!(),
+                _ => EvaluatedType::Unknown,
+            }
+        })();
+        unaryexp.inferred_type.clone()
     }
 
     /// Typechecks if expression.

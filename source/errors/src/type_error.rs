@@ -173,6 +173,10 @@ pub enum TypeErrorType {
         left: String,
         right: String,
     },
+    /// Using the * operator on a value that cannot be dereferenced.
+    InvalidDereference {
+        name: String,
+    },
     // InfiniteType,
 }
 

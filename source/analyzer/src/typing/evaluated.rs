@@ -238,6 +238,14 @@ impl EvaluatedType {
             _ => {}
         }
     }
+
+    /// Returns `true` if the evaluated type is [`Borrowed`].
+    ///
+    /// [`Borrowed`]: EvaluatedType::Borrowed
+    #[must_use]
+    pub fn is_borrowed(&self) -> bool {
+        matches!(self, Self::Borrowed { .. })
+    }
 }
 
 /// Converts an intermediate type into an evaluation.
