@@ -531,45 +531,38 @@ mod bind_utils {
             ScopeEntry::LoopLabel(_) => todo!(),
         };
         // Account for intrinsic types.
-        *(match binder.current_module_type {
-            CurrentModuleType::String if entry.name() == "String" && entry.is_public() => {
-                &mut symbol_table.string_symbol
-            }
-            CurrentModuleType::Array if entry.name() == "Array" && entry.is_public() => {
-                &mut symbol_table.array_symbol
-            }
-            CurrentModuleType::Bool if entry.name() == "Bool" && entry.is_public() => {
-                &mut symbol_table.bool_symbol
-            }
-            CurrentModuleType::Async if entry.name() == "Prospect" && entry.is_public() => {
-                &mut symbol_table.prospect_symbol
-            }
-            CurrentModuleType::Maybe if entry.name() == "Maybe" && entry.is_public() => {
-                &mut symbol_table.maybe_symbol
-            }
-            // CurrentModuleType::Numeric => todo!(),
-            CurrentModuleType::Internal if entry.name() == "never" && entry.is_public() => {
-                &mut symbol_table.never_symbol
-            }
-            CurrentModuleType::Internal if entry.name() == "Flow" && entry.is_public() => {
-                &mut symbol_table.flow_symbol
-            }
-            // CurrentModuleType::Ops => todo!(),
-            CurrentModuleType::Traits if entry.name() == "Try" && entry.is_public() => {
-                &mut symbol_table.try_symbol
-            }
-            CurrentModuleType::Traits if entry.name() == "Guaranteed" && entry.is_public() => {
-                &mut symbol_table.guaranteed_symbol
-            }
-            // CurrentModuleType::Iteratable => todo!(),
-            CurrentModuleType::Range if entry.name() == "Range" && entry.is_public() => {
-                &mut symbol_table.range_symbol
-            }
-            CurrentModuleType::Default if entry.name() == "Default" && entry.is_public() => {
-                &mut symbol_table.default_symbol
-            }
-            _ => return index,
-        }) = Some(index);
+        if entry.is_public() {
+            *(match (&binder.current_module_type, entry.name()) {
+                (CurrentModuleType::String, "String") => &mut symbol_table.string,
+                (CurrentModuleType::Array, "Array") => &mut symbol_table.array,
+                (CurrentModuleType::Bool, "Bool") => &mut symbol_table.bool,
+                (CurrentModuleType::Async, "Prospect") => &mut symbol_table.prospect,
+                (CurrentModuleType::Maybe, "Maybe") => &mut symbol_table.maybe,
+                (CurrentModuleType::Numeric, _) => match entry.name() {
+                    "Int" => &mut symbol_table.int,
+                    "SignedInt" => &mut symbol_table.sint,
+                    "UnsignedInt" => &mut symbol_table.uint,
+                    "Float" => &mut symbol_table.float,
+                    "UInt8" => &mut symbol_table.uint8,
+                    "UInt16" => &mut symbol_table.uint16,
+                    "UInt32" => &mut symbol_table.uint32,
+                    "UInt64" => &mut symbol_table.uint64,
+                    "Float32" => &mut symbol_table.float32,
+                    "Float64" => &mut symbol_table.float64,
+                    _ => return index,
+                },
+                (CurrentModuleType::Internal, "never") => &mut symbol_table.never,
+                (CurrentModuleType::Internal, "Flow") => &mut symbol_table.flow,
+                (CurrentModuleType::Traits, "Try") => &mut symbol_table.try_s,
+                (CurrentModuleType::Traits, "Guaranteed") => &mut symbol_table.guaranteed,
+                (CurrentModuleType::Range, "Range") => &mut symbol_table.range,
+                (CurrentModuleType::Default, "Default") => &mut symbol_table.default,
+                (CurrentModuleType::Ops, "Addition") => &mut symbol_table.addition,
+                // CurrentModuleType::Iteratable => todo!(),
+                _ => return index,
+            }) = Some(index);
+        }
+
         return index;
     }
 

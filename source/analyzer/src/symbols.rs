@@ -1,4 +1,8 @@
-use crate::{evaluate, utils::symbol_to_type, EvaluatedType, PathIndex, TypedExpression};
+use crate::{
+    evaluate,
+    utils::{get_numeric_type, symbol_to_type},
+    EvaluatedType, PathIndex, TypedExpression,
+};
 use ast::{
     ConstantSignature, EnumSignature, ShorthandVariableSignature, Span, TypeSignature, WhirlNumber,
     WhirlString,
@@ -275,18 +279,28 @@ pub enum Literal {
 pub struct SymbolTable {
     holes: Vec<usize>,
     symbols: Vec<SymbolEntry>,
-    pub string_symbol: Option<SymbolIndex>,
-    pub array_symbol: Option<SymbolIndex>,
-    pub bool_symbol: Option<SymbolIndex>,
-    pub prospect_symbol: Option<SymbolIndex>,
-    pub never_symbol: Option<SymbolIndex>,
-    pub addition_symbol: Option<SymbolIndex>,
-    pub try_symbol: Option<SymbolIndex>,
-    pub guaranteed_symbol: Option<SymbolIndex>,
-    pub maybe_symbol: Option<SymbolIndex>,
-    pub range_symbol: Option<SymbolIndex>,
-    pub flow_symbol: Option<SymbolIndex>,
-    pub default_symbol: Option<SymbolIndex>,
+    pub float: Option<SymbolIndex>,
+    pub float32: Option<SymbolIndex>,
+    pub float64: Option<SymbolIndex>,
+    pub int: Option<SymbolIndex>,
+    pub sint: Option<SymbolIndex>,
+    pub uint8: Option<SymbolIndex>,
+    pub uint16: Option<SymbolIndex>,
+    pub uint32: Option<SymbolIndex>,
+    pub uint64: Option<SymbolIndex>,
+    pub uint: Option<SymbolIndex>,
+    pub string: Option<SymbolIndex>,
+    pub array: Option<SymbolIndex>,
+    pub bool: Option<SymbolIndex>,
+    pub prospect: Option<SymbolIndex>,
+    pub never: Option<SymbolIndex>,
+    pub addition: Option<SymbolIndex>,
+    pub try_s: Option<SymbolIndex>,
+    pub guaranteed: Option<SymbolIndex>,
+    pub maybe: Option<SymbolIndex>,
+    pub range: Option<SymbolIndex>,
+    pub flow: Option<SymbolIndex>,
+    pub default: Option<SymbolIndex>,
 }
 
 impl SemanticSymbol {
@@ -547,9 +561,11 @@ impl SymbolTable {
             }
             TypedExpression::Literal(literal) => EvaluatedType::ModelInstance {
                 model: match literals.get(literal.0)? {
-                    Literal::StringLiteral { .. } => self.string_symbol?,
-                    Literal::NumericLiteral { .. } => return Some(EvaluatedType::Unknown), // todo.
-                    Literal::BooleanLiteral { .. } => self.bool_symbol?,
+                    Literal::StringLiteral { .. } => self.string?,
+                    Literal::NumericLiteral { value, .. } => {
+                        return Some(get_numeric_type(self, value, None))
+                    } // todo.
+                    Literal::BooleanLiteral { .. } => self.bool?,
                 },
                 generic_arguments: vec![],
             },
@@ -648,27 +664,26 @@ impl SymbolTable {
         let mut string = String::new();
         match eval_type {
             EvaluatedType::ModelInstance {
-                model,
+                model: base,
                 generic_arguments,
-            } => {
-                let symbol = self.get(*model).unwrap();
-                string = symbol.name.clone();
-                self.format_generics_into(
-                    get_just_types(generic_arguments),
-                    &mut string,
-                    generic_arguments.len(),
-                );
             }
-            EvaluatedType::TraitInstance {
-                trait_,
+            | EvaluatedType::TraitInstance {
+                trait_: base,
                 generic_arguments,
             } => {
-                let symbol = self.get(*trait_).unwrap();
+                let symbol = self.get(*base).unwrap();
                 string = symbol.name.clone();
+                // Only print the arguments that are parameters to this type.
+                let generic_params = match &symbol.kind {
+                    SemanticSymbolKind::Trait { generic_params, .. }
+                    | SemanticSymbolKind::Model { generic_params, .. } => generic_params,
+                    _ => return string,
+                };
+                let truncated_generic_args = truncate_arguments(generic_params, generic_arguments);
                 self.format_generics_into(
-                    get_just_types(generic_arguments),
+                    truncated_generic_args.iter(),
                     &mut string,
-                    generic_arguments.len(),
+                    truncated_generic_args.len(),
                 );
             }
             EvaluatedType::Model(_) => string.push_str("{model}"),
@@ -757,11 +772,18 @@ impl SymbolTable {
             } => {
                 if let Some(alias) = aliased_as {
                     let symbol = self.get(*alias).unwrap();
-                    string.push_str(&symbol.name);
+                    string = symbol.name.clone();
+                    // Only print the arguments that are parameters to this type.
+                    let generic_params = match &symbol.kind {
+                        SemanticSymbolKind::TypeName { generic_params, .. } => generic_params,
+                        _ => return string,
+                    };
+                    let truncated_generic_args =
+                        truncate_arguments(generic_params, generic_arguments);
                     self.format_generics_into(
-                        get_just_types(generic_arguments),
+                        truncated_generic_args.iter(),
                         &mut string,
-                        generic_arguments.len(),
+                        truncated_generic_args.len(),
                     );
                     return string;
                 }
@@ -862,6 +884,22 @@ impl SymbolTable {
             }
         }
     }
+}
+
+fn truncate_arguments(
+    generic_params: &Vec<SymbolIndex>,
+    generic_arguments: &Vec<(SymbolIndex, EvaluatedType)>,
+) -> Vec<EvaluatedType> {
+    generic_params
+        .iter()
+        .map(|param_idx| {
+            if let Some(typ) = generic_arguments.iter().find(|typ| typ.0 == *param_idx) {
+                return typ.1.clone();
+            } else {
+                return EvaluatedType::Generic { base: *param_idx };
+            }
+        })
+        .collect::<Vec<_>>()
 }
 
 fn get_just_types(

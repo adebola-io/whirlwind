@@ -1,4 +1,7 @@
-use crate::{EvaluatedType::*, SemanticSymbolKind, SymbolIndex, SymbolTable, UNKNOWN, *};
+use crate::{
+    utils::is_numeric_type, EvaluatedType::*, SemanticSymbolKind, SymbolIndex, SymbolTable,
+    UNKNOWN, *,
+};
 use errors::TypeErrorType;
 use std::collections::HashMap;
 
@@ -89,7 +92,84 @@ pub fn unify_types(
                 options,
             )
         }
-        // Comparing generic types.
+        // Comparing and casting numeric types.
+        // The casting chain is rtl,
+        // meaning that the right type must be smaller or equal in size
+        // to the left.
+        // Therefore:
+        // UInt8 <: UInt8
+        // UInt16 <: UInt8
+        // UInt32 <: UInt16
+        // UInt64 <: UInt32
+        // Float32 <: Int
+        // Float64 <: Float32
+        (
+            ModelInstance {
+                model: first_model, ..
+            },
+            ModelInstance {
+                model: second_model,
+                ..
+            },
+        ) if is_numeric_type(left, symboltable) && is_numeric_type(right, symboltable) => {
+            let first_model = *first_model;
+            let second_model = *second_model;
+            if first_model == second_model {
+                return Ok(left.clone());
+            }
+            let (first_is_uint8, second_is_unint8) = if let Some(idx) = symboltable.uint8 {
+                (first_model == idx, second_model == idx)
+            } else {
+                (false, false)
+            };
+            let (first_is_uint16, second_is_unint16) = if let Some(idx) = symboltable.uint16 {
+                (first_model == idx, second_model == idx)
+            } else {
+                (false, false)
+            };
+            let (first_is_uint32, second_is_unint32) = if let Some(idx) = symboltable.uint32 {
+                (first_model == idx, second_model == idx)
+            } else {
+                (false, false)
+            };
+            let (_, second_is_unint64) = if let Some(idx) = symboltable.uint64 {
+                (first_model == idx, second_model == idx)
+            } else {
+                (false, false)
+            };
+            let (first_is_float32, second_is_float32) = if let Some(idx) = symboltable.float32 {
+                (first_model == idx, second_model == idx)
+            } else {
+                (false, false)
+            };
+            let (first_is_float64, second_is_float64) = if let Some(idx) = symboltable.float64 {
+                (first_model == idx, second_model == idx)
+            } else {
+                (false, false)
+            };
+            // UInt8 is castable to every other numeric type.
+            if second_is_unint8 || 
+                // UInt16 is castable to every other type that isn't UInt8.
+                (second_is_unint16 && !first_is_uint8) ||
+                // UInt32 is castable to every type that isn't UInt8 or UInt16.
+                (second_is_unint32 && !(first_is_uint16 || first_is_uint8)) ||
+                // UInt64 is castable to every type bigger than UInt32.
+                (second_is_unint64 && !(first_is_uint8 || first_is_uint16 || first_is_uint32)) ||
+                // Float32 is castable only to itself and Float64.
+                (second_is_float32 && (first_is_float32 || first_is_float64)) ||
+                // Float64 is only castable to Float64.
+                (second_is_float64 && first_is_float64)
+            {
+                return Ok(left.clone());
+            }
+            return Err(vec![default_error(), TypeErrorType::NumericCastingError {
+                left: symboltable.format_evaluated_type(left),
+                right: symboltable.format_evaluated_type(right)
+            }])
+        }
+        // Comparing model instances.
+        // Two models instances are unifiable if they refer to the same model,
+        // and their generic list is unifiable.
         (
             ModelInstance {
                 model: first,
@@ -291,6 +371,7 @@ pub fn unify_types(
                 generic_arguments: opaque_generics,
                 aliased_as,
                 available_methods: methods,
+                available_traits: traits
             },
             ModelInstance {
                 model: child,
@@ -331,6 +412,7 @@ pub fn unify_types(
                 collaborators: collaborators.clone(),
                 generic_arguments,
                 available_methods: methods.clone(),
+                available_traits: traits.clone()
             });
         }
         // Left type is opaque and right type is generic.
@@ -355,6 +437,7 @@ pub fn unify_types(
                 collaborators: left_collaborators,
                 generic_arguments: left_generics,
                 available_methods: methods,
+                available_traits: traits,
                 ..
             },
             OpaqueTypeInstance {
@@ -393,6 +476,7 @@ pub fn unify_types(
                 generic_arguments,
                 aliased_as: None,
                 available_methods: methods.clone(),
+                available_traits: traits.clone()
             });
         }
         _ => Err(vec![TypeErrorType::MismatchedAssignment {
@@ -490,7 +574,12 @@ fn solve_generic_type(
                                 == trait_evaluated
                         })
                         .is_some()
-                });
+                }) || match free_type {
+                    OpaqueTypeInstance {available_traits, ..} => {
+                        available_traits.iter().find(|trait_| trait_ == &&trait_evaluated).is_some()
+                    }
+                    _=> false
+                };
                 if !trait_is_implemented {
                     return Err(vec![
                         default_error(),

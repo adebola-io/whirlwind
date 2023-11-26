@@ -1,11 +1,22 @@
-use errors::TypeErrorType;
-
-use crate::{evaluate, EvaluatedType, ParameterType, SemanticSymbolKind, SymbolIndex, SymbolTable};
+use crate::{
+    evaluate, EvaluatedType, ParameterType, SemanticSymbolKind, SymbolIndex, SymbolTable,
+    TypecheckerContext,
+};
+use errors::{TypeError, TypeErrorType};
+/// Returns an intrinsic symbol from the symbol table or returns an unknown type.
+macro_rules! get_intrinsic {
+    ($expr: expr) => {{
+        match $expr {
+            Some(index) => index,
+            None => return EvaluatedType::Unknown,
+        }
+    }};
+}
 
 /// Encloses an evaluated type as a prospect.
 /// It does nothing if the intrinsic Prospect type is unreachable.
 pub fn prospectify(typ: EvaluatedType, symboltable: &SymbolTable) -> EvaluatedType {
-    if let Some(model) = symboltable.prospect_symbol {
+    if let Some(model) = symboltable.prospect {
         let prospect_symbol = symboltable.get(model).unwrap();
         let prospect_generic_parameter = match &prospect_symbol.kind {
             SemanticSymbolKind::Model { generic_params, .. } => generic_params[0],
@@ -23,7 +34,7 @@ pub fn prospectify(typ: EvaluatedType, symboltable: &SymbolTable) -> EvaluatedTy
 pub fn is_boolean(evaluated_type: &EvaluatedType, symboltable: &SymbolTable) -> bool {
     matches!(
         evaluated_type, EvaluatedType::ModelInstance { model, .. }
-        if symboltable.bool_symbol.is_some_and(|prospect| prospect == *model)
+        if symboltable.bool.is_some_and(|prospect| prospect == *model)
     )
 }
 
@@ -31,14 +42,36 @@ pub fn is_boolean(evaluated_type: &EvaluatedType, symboltable: &SymbolTable) -> 
 pub fn is_prospective_type(evaluated_type: &EvaluatedType, symboltable: &SymbolTable) -> bool {
     matches!(
         evaluated_type, EvaluatedType::ModelInstance { model, .. }
-        if symboltable.prospect_symbol.is_some_and(|prospect| prospect == *model)
+        if symboltable.prospect.is_some_and(|prospect| prospect == *model)
+    )
+}
+
+/// Returns true if an evaluated type is a number.
+pub fn is_numeric_type(evaluated_type: &EvaluatedType, symboltable: &SymbolTable) -> bool {
+    matches!(
+        evaluated_type, EvaluatedType::ModelInstance { model, .. }
+        if [
+            symboltable.float32,
+            symboltable.float64,
+            symboltable.uint8,
+            symboltable.uint16,
+            symboltable.uint32,
+            symboltable.uint64,
+        ].iter().filter_map(|sym| *sym).any(|sym| sym == *model)
+    ) || matches!(
+        evaluated_type, EvaluatedType::OpaqueTypeInstance {aliased_as, ..}
+        if [
+            symboltable.float,
+            symboltable.int,
+            symboltable.uint
+        ].iter().any(|sym| sym.as_ref() == aliased_as.as_ref())
     )
 }
 
 /// Encloses an evaluated type as a Maybe.
 /// It does nothing if the intrinsic Maybe type is unreachable.
 pub fn maybify(typ: EvaluatedType, symboltable: &SymbolTable) -> EvaluatedType {
-    if let Some(model) = symboltable.maybe_symbol {
+    if let Some(model) = symboltable.maybe {
         let maybe_symbol = symboltable.get(model).unwrap();
         let maybe_generic_parameter = match &maybe_symbol.kind {
             SemanticSymbolKind::Model { generic_params, .. } => generic_params[0],
@@ -56,7 +89,7 @@ pub fn maybify(typ: EvaluatedType, symboltable: &SymbolTable) -> EvaluatedType {
 /// Encloses an evaluated type in an array.
 /// It does nothing if the intrinsic Array type is unreachable.
 pub fn arrify(typ: EvaluatedType, symboltable: &SymbolTable) -> EvaluatedType {
-    if let Some(model) = symboltable.array_symbol {
+    if let Some(model) = symboltable.array {
         let maybe_symbol = symboltable.get(model).unwrap();
         let maybe_generic_parameter = match &maybe_symbol.kind {
             SemanticSymbolKind::Model { generic_params, .. } => generic_params[0],
@@ -73,7 +106,7 @@ pub fn arrify(typ: EvaluatedType, symboltable: &SymbolTable) -> EvaluatedType {
 
 /// Returns true if a type is evaluated to an array.
 pub fn is_array(typ: &EvaluatedType, symboltable: &SymbolTable) -> bool {
-    match symboltable.array_symbol {
+    match symboltable.array {
         Some(array_symbol) => {
             matches!(typ, EvaluatedType::ModelInstance { model,.. } if *model == array_symbol)
         }
@@ -81,7 +114,7 @@ pub fn is_array(typ: &EvaluatedType, symboltable: &SymbolTable) -> bool {
     }
 }
 
-/// Coerce generics in a type according to a generic list.
+/// Coerce generics (and possibly trait types) in a type according to a generic list.
 pub fn coerce(typ: EvaluatedType, args: &Vec<(SymbolIndex, EvaluatedType)>) -> EvaluatedType {
     match typ {
         EvaluatedType::ModelInstance {
@@ -102,6 +135,10 @@ pub fn coerce(typ: EvaluatedType, args: &Vec<(SymbolIndex, EvaluatedType)>) -> E
             generic_arguments: old_generic_arguments,
         } => {
             let mut generic_arguments = vec![];
+            // Traits are coercible too because of the "This" type.
+            if let Some(newtype) = args.iter().find(|(a, _)| *a == trait_) {
+                return newtype.1.clone();
+            }
             for (argument, old_type) in old_generic_arguments {
                 generic_arguments.push((argument, coerce(old_type, args)));
             }
@@ -328,6 +365,60 @@ pub fn get_method_types_from_symbol<'a>(
     return method_types;
 }
 
+/// Extract all available traits as evaluated types from a model, trait or generic.
+pub fn get_trait_types_from_symbol(
+    symbol_idx: SymbolIndex,
+    symboltable: &SymbolTable,
+    generic_arguments: &Vec<(SymbolIndex, EvaluatedType)>,
+) -> Vec<EvaluatedType> {
+    let mut trait_types = vec![];
+    let symbol = symboltable.get(symbol_idx);
+    if symbol.is_none() {
+        return vec![];
+    }
+    let symbol = symbol.unwrap();
+    match &symbol.kind {
+        SemanticSymbolKind::Model {
+            implementations, ..
+        }
+        | SemanticSymbolKind::Trait {
+            implementations, ..
+        } => {
+            for implementation in implementations {
+                let initial_type = evaluate(
+                    implementation,
+                    symboltable,
+                    Some(generic_arguments),
+                    &mut None,
+                    0,
+                );
+                if !initial_type.is_trait_instance() {
+                    continue;
+                }
+                let coerced = coerce(initial_type, generic_arguments); // todo: is coercion still necessary?
+                trait_types.push(coerced);
+            }
+        }
+        SemanticSymbolKind::GenericParameter { traits, .. } => {
+            for int_typ in traits {
+                let evaled = evaluate(int_typ, symboltable, Some(generic_arguments), &mut None, 0);
+                if let EvaluatedType::TraitInstance {
+                    trait_,
+                    generic_arguments,
+                } = &evaled
+                {
+                    trait_types.push(evaled.clone());
+                    let mut traits_from_trait =
+                        get_trait_types_from_symbol(*trait_, symboltable, &generic_arguments);
+                    trait_types.append(&mut traits_from_trait);
+                }
+            }
+        }
+        _ => {}
+    }
+    return trait_types;
+}
+
 /// Get an implementation of a trait from an evaluated type, if it exists.
 pub fn get_implementation_of(
     target_trait: SymbolIndex,
@@ -364,5 +455,66 @@ pub fn get_implementation_of(
             return None;
         }
         _ => None,
+    }
+}
+
+/// Returns the evaluated type of a WhirlNumber.
+/// It return unknown if intrinsic symbols are absent,
+/// or there is an error in conversion.
+pub fn get_numeric_type(
+    symboltable: &SymbolTable,
+    value: &ast::WhirlNumber,
+    checker_ctx: Option<&mut TypecheckerContext<'_>>,
+) -> EvaluatedType {
+    let evaluate_index = |value| {
+        evaluate(
+            &crate::IntermediateType::SimpleType {
+                value,
+                generic_args: vec![],
+                span: ast::Span::default(),
+            },
+            symboltable,
+            None,
+            &mut None,
+            0,
+        )
+    };
+    match &value.value {
+        ast::Number::Decimal(decimal) => {
+            // TODO: Move this to an earlier place.
+            let number_evaluated = decimal.parse::<f64>();
+            let number = match number_evaluated {
+                Ok(number) => number,
+                Err(error) => {
+                    if let Some(ctx) = checker_ctx {
+                        ctx.add_error(TypeError {
+                            _type: TypeErrorType::NumericConversionError {
+                                error: error.to_string(),
+                            },
+                            span: value.span,
+                        });
+                    }
+                    return EvaluatedType::Unknown;
+                }
+            };
+            if number.fract() == 0_f64 {
+                // Unsigned Integers.
+                if number >= 0_f64 {
+                    if number <= u8::MAX as f64 {
+                        return evaluate_index(get_intrinsic!(symboltable.uint8));
+                    } else if number <= u16::MAX as f64 {
+                        return evaluate_index(get_intrinsic!(symboltable.uint16));
+                    } else if number <= u32::MAX as f64 {
+                        return evaluate_index(get_intrinsic!(symboltable.uint32));
+                    } else if number <= u64::MAX as f64 {
+                        return evaluate_index(get_intrinsic!(symboltable.uint64));
+                    }
+                }
+                return evaluate_index(get_intrinsic!(symboltable.int));
+            } else {
+                return evaluate_index(get_intrinsic!(symboltable.float));
+            }
+        }
+        _ => return evaluate_index(get_intrinsic!(symboltable.int)),
     }
 }

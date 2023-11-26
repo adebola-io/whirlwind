@@ -2,17 +2,20 @@
 module Main;
 
 // Import necessary modules from the Core library.
-use Core.Http.{ 
-   HttpServer, ServerOutcome, HttpResponse, HttpRequest, 
-   Middleware, MiddlewareResponse, HttpRequestError
+use Core.{
+    Http.{ 
+        HttpServer, ServerOutcome, HttpResponse, HttpRequest, 
+        Middleware, MiddlewareResponse, HttpRequestError
+    },
+    Io.{Fmt, Print}
 };
-use Core.Io.Print;
 
 /// Entry point into the program.
 public function Main() {
     // Set up server configurations.
     name := "simple-server";
-    port := 8080;
+    port: UnsignedInt := 8080;
+
     app := new HttpServer(name, port);
     middleware := new Middleware();
 
@@ -27,11 +30,12 @@ public function Main() {
     app.Get("/static/::filename", StaticFileHandler);
     // Start the server and handle subsequent actions.
     app.Start()
-      .Then(fn() {Print(name
-    //    + " is listening on port " + port.ToStr()
-       )})
-      .Run()
-      .Await();
+      .Then(fn() {
+        template := Fmt("% is listening on %.");
+        message := template.Add(name).Add(port).Finish();
+        Print(message);
+      })
+      .Run();
 }
 
 /// Handler function for the "/hello" endpoint.
@@ -42,14 +46,15 @@ async function HelloHandler(request: HttpRequest): ServerOutcome {
 }
 
 function AuthenticationHandler(request: HttpRequest): MiddlewareResponse {
-    return Todo();
+    // auth := request.Headers().GetOrReturn("Auth")?;
+    Todo()
 }
 
 /// Handler function for the "/greet/:name" endpoint.
 async function GreetHandler(request: HttpRequest): ServerOutcome {
-    name := request.PathParams().Get("name"); 
+    name := request.PathParams().GetOrErr("name")?;
     response := HttpResponse.From(request);
-    response.Status(200).Html("<h1>Hello, " + name.Unwrap() + "!</h1>");
+    response.Status(200).Html("<h1>Hello, " + name + "!</h1>");
     return Ok(response);
 }
 
@@ -63,7 +68,7 @@ async function StaticFileHandler(request: HttpRequest): ServerOutcome {
 
 
 function TestTrying(): Maybe<String> {
-    table := ["Hello Ha!"];
-    symbol := table.At(0)?.Add("");
+    table := [1, 2, 3, 4, 255];
+    symbol := table.At(0)?;
     return Some("jsyd");
 }

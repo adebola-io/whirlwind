@@ -1,7 +1,8 @@
 use crate::{
-    unify_generic_arguments, unify_types, utils::get_method_types_from_symbol, IntermediateType,
-    ParameterType, PathIndex, ProgramError, SemanticSymbolKind, SymbolIndex, SymbolTable,
-    UnifyOptions,
+    unify_generic_arguments, unify_types,
+    utils::{get_method_types_from_symbol, get_trait_types_from_symbol},
+    IntermediateType, ParameterType, PathIndex, ProgramError, SemanticSymbolKind, SymbolIndex,
+    SymbolTable, UnifyOptions,
 };
 use ast::Span;
 use errors::{
@@ -54,6 +55,7 @@ pub enum EvaluatedType {
     Module(SymbolIndex),
     OpaqueTypeInstance {
         available_methods: Vec<SymbolIndex>,
+        available_traits: Vec<EvaluatedType>,
         aliased_as: Option<SymbolIndex>,
         collaborators: Vec<SymbolIndex>,
         generic_arguments: Vec<(SymbolIndex, EvaluatedType)>,
@@ -445,6 +447,7 @@ pub fn evaluate(
             let mut collaborators = vec![];
             let mut generic_arguments = vec![];
             let mut available_methods = vec![];
+            let mut available_traits: Vec<EvaluatedType> = vec![];
             for typ in types {
                 let eval_type = evaluate(
                     typ,
@@ -493,22 +496,25 @@ pub fn evaluate(
                     _ => continue,
                 };
             }
-            // Gathers the methods that are general to every collaborator.
-            // It starts by assuming every method in the first collaborator is available
+            // Gathers the methods and traits that are general to every collaborator.
+            // It starts by assuming every method and trait in the first collaborator is available
             // And then uses the rest to filter through..
             for (index, _collaborator) in collaborators.iter().enumerate() {
                 let methods_for_this_collaborator =
                     get_method_types_from_symbol(*_collaborator, symboltable, &generic_arguments);
+                let traits_for_this_collaborator =
+                    get_trait_types_from_symbol(*_collaborator, symboltable, &generic_arguments);
                 if index == 0 {
                     available_methods = methods_for_this_collaborator;
+                    available_traits = traits_for_this_collaborator;
                 } else {
-                    available_methods.retain(|(method_name, method_symbol, is_public)| {
+                    available_methods.retain(|(method_name, method_type, is_public)| {
                         methods_for_this_collaborator.iter().any(
                             |(collab_method_name, collab_method_type, collab_method_is_public)| {
                                 collab_method_name == method_name
                                     && is_public == collab_method_is_public
                                     && unify_types(
-                                        method_symbol,
+                                        method_type,
                                         collab_method_type,
                                         symboltable,
                                         UnifyOptions::None,
@@ -517,7 +523,34 @@ pub fn evaluate(
                                     .is_ok()
                             },
                         )
-                    })
+                    });
+                    available_traits.retain(|trait_type| {
+                        traits_for_this_collaborator
+                            .iter()
+                            .any(|collab_trait_type| match (&collab_trait_type, trait_type) {
+                                (
+                                    EvaluatedType::TraitInstance {
+                                        trait_: first,
+                                        generic_arguments: left_generics,
+                                    },
+                                    EvaluatedType::TraitInstance {
+                                        trait_: second,
+                                        generic_arguments: right_generics,
+                                    },
+                                ) => {
+                                    first == second
+                                        && unify_generic_arguments(
+                                            left_generics,
+                                            right_generics,
+                                            symboltable,
+                                            UnifyOptions::None,
+                                            None,
+                                        )
+                                        .is_ok()
+                                }
+                                _ => false,
+                            })
+                    });
                 }
             }
             let available_methods = available_methods
@@ -531,6 +564,7 @@ pub fn evaluate(
                 collaborators,
                 generic_arguments,
                 available_methods,
+                available_traits,
                 aliased_as: None,
             };
         }

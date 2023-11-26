@@ -33,12 +33,12 @@ public model TemplateString {
     /// name := "Sefunmi";
     /// age := 21;
     /// 
-    /// template := Core.Io.Fmt("My name is %s and I am %i years old.");
-    /// completed := template.Add(name)!.Add(age)!.Finish();
+    /// template := Core.Io.Fmt("My name is % and I am % years old.");
+    /// completed := template.Add(name).Add(age).Finish();
     /// 
     /// Core.Io.Print(completed); // Will print out "My name is Sefunmi and I am 21 years old."
     /// ```
-    public function Add<T implements Display>(value: T): Outcome<&This, FormatError> {
+    public function Add<T implements Display>(value: T): &This {
         Todo()
     }
     /// Builds a string from the template with all the inputted values.

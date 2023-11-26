@@ -67,6 +67,24 @@ test "Testing types." {
             ball.Bounce();
         }
         // Numbers
-        
+
+
+        trait TransformableTo<T> {
+            public function Transform(): T;
+        }
+        model Box<T> implements TransformableTo<T> {
+            new(value: T){}
+            public function [TransformableTo.Transform](): T {
+                Todo()
+            }
+        }
+        model Sphere implements TransformableTo<String> {
+            public function [TransformableTo.Transform](): String {
+                Todo()
+            }
+        }
+        type Transformable = Box<String> | Sphere;
+        entity: Transformable := new Box("hello");
+        value := entity.Transform();
     }
 }

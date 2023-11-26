@@ -401,8 +401,8 @@ mod expressions {
     use super::*;
     use crate::{
         utils::{
-            arrify, coerce_all_generics, evaluate_generic_params, get_implementation_of, is_array,
-            is_boolean, symbol_to_type,
+            arrify, coerce_all_generics, evaluate_generic_params, get_implementation_of,
+            get_numeric_type, is_array, is_boolean, is_numeric_type, symbol_to_type,
         },
         TypedAssignmentExpr, TypedIfExpr, TypedIndexExpr, TypedLogicExpr, TypedNewExpr,
         TypedThisExpr, UnifyOptions,
@@ -486,7 +486,7 @@ mod expressions {
                 // Can only be used by models that implement Guaranteed.
                 // It evaluates to the single generic type of the trait.
                 ast::UpdateOperator::Assert => {
-                    if let Some(guaranteed) = symboltable.guaranteed_symbol {
+                    if let Some(guaranteed) = symboltable.guaranteed {
                         let guaranteed_generic = match &symboltable.get(guaranteed).unwrap().kind {
                             SemanticSymbolKind::Trait { generic_params, .. } => generic_params[0],
                             _ => return EvaluatedType::Unknown,
@@ -540,7 +540,7 @@ mod expressions {
                 // The Try trait has two generics, one for the value to be retreived,
                 // and another for the value to be immediately returned.
                 ast::UpdateOperator::TryFrom => {
-                    if let Some(try_idx) = symboltable.try_symbol {
+                    if let Some(try_idx) = symboltable.try_s {
                         let (first_generic, second_generic) =
                             match &symboltable.get(try_idx).unwrap().kind {
                                 SemanticSymbolKind::Trait { generic_params, .. } => {
@@ -552,7 +552,7 @@ mod expressions {
                             get_implementation_of(try_idx, &operand_type, &symboltable);
                         if implementation.is_none() {
                             let name = symboltable.format_evaluated_type(&operand_type);
-                            checker_ctx.add_error(errors::illegal_guarantee(name, updateexp.span));
+                            checker_ctx.add_error(errors::illegal_try(name, updateexp.span));
                             return EvaluatedType::Unknown;
                         }
                         let implementation = implementation.unwrap();
@@ -669,7 +669,7 @@ mod expressions {
                         })
                     }
                     symboltable
-                        .bool_symbol
+                        .bool
                         .map(|boolean| EvaluatedType::ModelInstance {
                             model: boolean,
                             generic_arguments: vec![],
@@ -889,7 +889,7 @@ mod expressions {
                     checker_ctx.span_of_expr(&logexp.right, symboltable),
                 ));
             }
-            if let Some(boolean_idx) = symboltable.bool_symbol {
+            if let Some(boolean_idx) = symboltable.bool {
                 return EvaluatedType::ModelInstance {
                     model: boolean_idx,
                     generic_arguments: vec![],
@@ -1069,7 +1069,7 @@ mod expressions {
         checker_ctx: &mut TypecheckerContext,
     ) -> EvaluatedType {
         array.inferred_type = (|| {
-            if symboltable.array_symbol.is_none() {
+            if symboltable.array.is_none() {
                 checker_ctx.add_error(missing_intrinsic(format!("Array"), array.span));
             }
             let mut element_types = vec![];
@@ -1081,19 +1081,33 @@ mod expressions {
             }
             // Reduce individual types to determine final array form.
             let mut next_type = element_types.remove(0);
-            let mut i = 1;
+            let mut i = 0;
             let mut errors_gotten = vec![];
             for evaluated_type in element_types {
-                match unify_types(
+                let mut unification = unify_types(
                     &next_type,
                     &evaluated_type,
                     symboltable,
                     UnifyOptions::None,
                     None,
-                ) {
+                );
+                // For numeric types, casting should occur bidirectionally.
+                // So that elements will always scale the array upwards in size.
+                if is_numeric_type(&next_type, symboltable)
+                    && is_numeric_type(&evaluated_type, symboltable)
+                {
+                    unification = unification.or(unify_types(
+                        &evaluated_type,
+                        &next_type,
+                        symboltable,
+                        UnifyOptions::None,
+                        None,
+                    ));
+                }
+                match unification {
                     Ok(new_type) => next_type = new_type,
-                    Err(mut errortypes) => {
-                        errors_gotten.append(&mut errortypes);
+                    Err(errortypes) => {
+                        errors_gotten.push((i, errortypes));
                     }
                 };
                 i += 1;
@@ -1103,11 +1117,17 @@ mod expressions {
                     _type: TypeErrorType::HeterogeneousArray,
                     span: array.span,
                 });
-                for error in errors_gotten {
-                    checker_ctx.add_error(TypeError {
-                        _type: error,
-                        span: checker_ctx.span_of_expr(&array.elements[i], &symboltable),
-                    });
+                for (idx, errortype) in errors_gotten {
+                    for error in errortype {
+                        checker_ctx.add_error(TypeError {
+                            _type: error,
+                            span: array
+                                .elements
+                                .get(idx - 1)
+                                .map(|el| checker_ctx.span_of_expr(el, symboltable))
+                                .unwrap_or(array.span),
+                        });
+                    }
                 }
             }
             arrify(next_type, symboltable)
@@ -1125,7 +1145,9 @@ mod expressions {
             Literal::StringLiteral { value, .. } => {
                 typecheck_string_literal(value, checker_ctx, symboltable)
             }
-            Literal::NumericLiteral { .. } => EvaluatedType::Unknown, // todo.
+            Literal::NumericLiteral { value, .. } => {
+                typecheck_numeric_literal(value, checker_ctx, symboltable)
+            } // todo.
             Literal::BooleanLiteral {
                 value,
                 start_line,
@@ -1141,6 +1163,17 @@ mod expressions {
         }
     }
 
+    /// Typechecks a numeric literal.
+    fn typecheck_numeric_literal(
+        value: &ast::WhirlNumber,
+        checker_ctx: &mut TypecheckerContext<'_>,
+        symboltable: &mut SymbolTable,
+    ) -> EvaluatedType {
+        // todo: errors for missing intrinsics.
+        // TODO. 😑
+        get_numeric_type(symboltable, value, Some(checker_ctx))
+    }
+
     /// Typechecks a bool literal by matching it with the bool intrinsic symbol.
     fn typecheck_boolean_literal(
         symboltable: &mut SymbolTable,
@@ -1149,7 +1182,7 @@ mod expressions {
         start_character: &u32,
         value: &bool,
     ) -> EvaluatedType {
-        if let Some(bool_index) = symboltable.bool_symbol {
+        if let Some(bool_index) = symboltable.bool {
             return EvaluatedType::ModelInstance {
                 model: bool_index,
                 generic_arguments: vec![],
@@ -1169,7 +1202,7 @@ mod expressions {
         checker_ctx: &mut TypecheckerContext,
         symboltable: &mut SymbolTable,
     ) -> EvaluatedType {
-        if let Some(string_index) = symboltable.string_symbol {
+        if let Some(string_index) = symboltable.string {
             return EvaluatedType::ModelInstance {
                 model: string_index,
                 generic_arguments: vec![],
@@ -1634,10 +1667,42 @@ mod expressions {
             EvaluatedType::OpaqueTypeInstance {
                 ref available_methods,
                 ref generic_arguments,
+                ref available_traits,
                 ..
             } => {
+                let mut generic_arguments = generic_arguments.clone();
+                // Gather methods from all the implementations.
+                let implementation_methods = available_traits
+                    .iter()
+                    .filter_map(|implementation| {
+                        match implementation {
+                            EvaluatedType::TraitInstance {
+                                trait_,
+                                generic_arguments: trait_generics,
+                            } => {
+                                let trait_ = *trait_;
+                                // Update the solutions of the traits generics.
+                                generic_arguments.append(&mut (trait_generics.clone()));
+                                // Here a trait is treated as a generic argument and given a solution.
+                                // This allows the `This` marker to refer to the implementing model, rather than the trait.
+                                generic_arguments.push((trait_, object_type.clone()));
+                                let trait_symbol = symboltable.get_forwarded(trait_)?;
+                                match &trait_symbol.kind {
+                                    SemanticSymbolKind::Trait { methods, .. } => Some(methods),
+                                    _ => return None,
+                                }
+                            }
+                            _ => return None,
+                        }
+                    })
+                    .map(|methods| methods.iter())
+                    .flatten();
+                let complete_method_list: Vec<_> = available_methods
+                    .iter()
+                    .chain(implementation_methods)
+                    .collect();
                 let property_symbol = symboltable.get(property_symbol_idx).unwrap();
-                for method in available_methods {
+                for method in complete_method_list {
                     let method = *method;
                     let method_symbol = match symboltable.get(method) {
                         Some(sym) => sym,
@@ -1799,6 +1864,9 @@ mod expressions {
                 if let SemanticSymbolKind::Property { resolved, .. } = &mut property_symbol.kind {
                     *resolved = Some(method)
                 }
+                // Add reference on source.
+                let method_symbol = symboltable.get_mut(method).unwrap();
+                method_symbol.add_reference(checker_ctx.path_idx, property_span);
                 // todo: Is method public?
                 return Some(EvaluatedType::MethodInstance {
                     method,

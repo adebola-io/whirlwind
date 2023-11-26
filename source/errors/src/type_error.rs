@@ -185,7 +185,15 @@ pub enum TypeErrorType {
     IllegalTry {
         name: String,
     },
-    // InfiniteType,
+    /// Errors pertaining to parsing numbers.
+    NumericConversionError {
+        error: String,
+    },
+    /// Errors pertaining to implicit casting.
+    NumericCastingError {
+        left: String,
+        right: String,
+    }, // InfiniteType,
 }
 
 pub fn invalid_binary(left: String, operator: BinOperator, right: String, span: Span) -> TypeError {

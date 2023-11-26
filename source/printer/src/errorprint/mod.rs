@@ -80,8 +80,9 @@ Got: '{right}'.",
         TypeErrorType::MissingOpaqueComponent { left, right } => format!("Assignment failed because '{left}' and '{right}' have different component types."),
         TypeErrorType::InvalidDereference { name } => format!("Value of type {name} cannot be dereferenced."),
         TypeErrorType::IllegalGuarantee { name } => format!("! cannot be used here because type {name} does not implement Guaranteed."),
-        TypeErrorType::IllegalTry { name } => format!("? cannot be used here because type {name} does not implement Try."),  
-        
+        TypeErrorType::IllegalTry { name } => format!("? cannot be used here because type {name} does not implement Try."),
+        TypeErrorType::NumericConversionError { error } => format!("Numeric conversion error: {error}."),
+        TypeErrorType::NumericCastingError { left, right } => format!("Numeric type {left} cannot be assigned a value of type {right}."), 
     }
 }
 

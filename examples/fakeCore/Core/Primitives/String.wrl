@@ -301,6 +301,17 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     public function Split(delim: String): Array<&String> {
         return Invoke(Injunction.StrSplit(this, delim));
     }
+    /// Divides the string into a list of substrings based on a predicate.
+    /// ## Usage
+    /// ```
+    /// str := "Hello world. My name is James.";
+    /// sentences := str.SplitAt(fn(pat) pat == ". ");
+    /// 
+    /// Assert(sentences).Equals([&"Hello world", "My name is James."]);
+    /// ```
+    public function SplitAt(predicate: fn(pattern: &String): Bool): This {
+        return Invoke(Injunction.StrSplitAt(this, predicate));
+    }
     /// Changes only the first character in the string to upper case.
     /// ## Usage
     /// ```

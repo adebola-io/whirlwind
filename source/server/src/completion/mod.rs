@@ -2,8 +2,9 @@
 
 use crate::message_store::MessageStore;
 use analyzer::{
-    evaluate, span_of_typed_expression, span_of_typed_statement, EvaluatedType, SemanticSymbolKind,
-    Standpoint, SymbolIndex, TypedExpression, TypedModelPropertyType, TypedModule, TypedStmnt,
+    evaluate, span_of_typed_expression, span_of_typed_statement, utils::coerce, EvaluatedType,
+    SemanticSymbolKind, Standpoint, SymbolIndex, TypedExpression, TypedModelPropertyType,
+    TypedModule, TypedStmnt,
 };
 use ast::Span;
 use printer::SymbolWriter;
@@ -85,7 +86,7 @@ impl<'a> CompletionFinder<'a> {
                 return self.complete_from_dot(types.first()?.clone(), completion_type)
             }
             EvaluatedType::ModelInstance { model, .. } => {
-                self.complete_instance_access(&completion_type, model, &writer, &mut completions)?;
+                self.complete_instance_access(completion_type, model, &writer, &mut completions)?;
             }
             EvaluatedType::Model(owner) | EvaluatedType::Trait(owner) => {
                 self.complete_model_or_trait_static_access(owner, &writer, &mut completions)?;
@@ -115,7 +116,7 @@ impl<'a> CompletionFinder<'a> {
                 self.complete_module_access(module, completion_type, writer, &mut completions)?;
             }
             EvaluatedType::TraitInstance { trait_, .. } => {
-                self.complete_instance_access(&completion_type, trait_, &writer, &mut completions)?
+                self.complete_instance_access(completion_type, trait_, &writer, &mut completions)?
             }
             EvaluatedType::Generic { base } | EvaluatedType::HardGeneric { base } => {
                 let symbol = self.standpoint.symbol_table.get(base)?;
@@ -143,18 +144,22 @@ impl<'a> CompletionFinder<'a> {
                 return self.complete_from_dot(*base, completion_type)
             }
             EvaluatedType::OpaqueTypeInstance {
-                available_methods, ..
+                available_methods,
+                available_traits,
+                generic_arguments,
+                ..
             } => {
                 *writer.is_opaque.borrow_mut() = true;
+
                 for method in available_methods {
                     let symbol = symboltable.get(method)?;
                     let mut label = symbol.name.clone();
-                    let detail = Some(symboltable.format_evaluated_type(
-                        &EvaluatedType::MethodInstance {
-                            method,
-                            generic_arguments: vec![],
-                        },
-                    ));
+                    let mut final_eval_type = EvaluatedType::MethodInstance {
+                        method,
+                        generic_arguments: vec![],
+                    };
+                    final_eval_type = coerce(final_eval_type, &generic_arguments);
+                    let detail = Some(symboltable.format_evaluated_type(&final_eval_type));
                     let params = match &symbol.kind {
                         SemanticSymbolKind::Method {
                             params, is_public, ..
@@ -180,6 +185,19 @@ impl<'a> CompletionFinder<'a> {
                         insert_text_format: Some(InsertTextFormat::SNIPPET),
                         ..Default::default()
                     })
+                }
+                for implementation in available_traits {
+                    self.message_store.borrow_mut().inform("Writing implsss");
+                    let owner = match implementation {
+                        EvaluatedType::TraitInstance { trait_, .. } => trait_,
+                        _ => continue,
+                    };
+                    self.complete_instance_access(
+                        completion_type,
+                        owner,
+                        &writer,
+                        &mut completions,
+                    );
                 }
             }
             _ => {}
@@ -311,7 +329,7 @@ impl<'a> CompletionFinder<'a> {
     /// Complete a model or trait instance, followed by a dot.
     fn complete_instance_access(
         &self,
-        completion_type: &DotCompletionType,
+        completion_type: DotCompletionType,
         owner: SymbolIndex,
         writer: &SymbolWriter<'_>,
         completions: &mut Vec<CompletionItem>,
