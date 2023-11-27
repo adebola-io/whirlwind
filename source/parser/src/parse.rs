@@ -2065,11 +2065,12 @@ impl<L: Lexer> Parser<L> {
                     }
                 }
             }
-            // values is not assigned.
+            // values are not assigned.
             Some(Token {
                 _type: TokenType::Operator(SemiColon),
                 span,
             }) => {
+                self.advance(); // Move past ;
                 end = span.end;
             }
             // Some other variation.

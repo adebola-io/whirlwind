@@ -91,6 +91,4 @@ test "Testing types." {
     // function type coercion.
     strArray := ["hello", "world"];
     strArrayHasHello := strArray.Iter().Any(fn(element) element == "hello");
-
-    
 }
