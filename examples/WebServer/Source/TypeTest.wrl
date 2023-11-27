@@ -84,11 +84,13 @@ test "Testing types." {
     entity: Transformable<Transformable<String>> := new Box(new Sphere("hello"));
 
     // Numeric types.
-    name: Int := 90;
+    name := 90;
     name = 12;
     array := [1, 2, 3, 4, name];
 
     // function type coercion.
     strArray := ["hello", "world"];
     strArrayHasHello := strArray.Iter().Any(fn(element) element == "hello");
+
+    
 }

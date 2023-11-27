@@ -176,10 +176,21 @@ mod statements {
             checker_ctx,
             symboltable,
         );
+
         // if no declared type, just assign to variable.
         // else attempt unification.
         // If unification fails, then carry on with the declared type value.
         let inference_result = if let Some(declared) = declared_type {
+            if let EvaluatedType::TraitInstance { trait_, .. } = &declared {
+                let symbol = symboltable.get(*trait_);
+                checker_ctx.add_error(errors::trait_as_type(
+                    symbol
+                        .map(|symbol| symbol.name.clone())
+                        .unwrap_or(String::from("{Trait}")),
+                    shorthand_variable.span,
+                ));
+                return;
+            }
             if declared.contains_never() {
                 checker_ctx.add_error(errors::never_as_declared(shorthand_variable.span))
             }
@@ -345,12 +356,41 @@ mod statements {
             } else {
                 (vec![], EvaluatedType::Void, None)
             };
-
+        // Traits cannot be used as return types.
+        if let EvaluatedType::TraitInstance { trait_, .. } = &return_type {
+            let symbol = symboltable.get(*trait_);
+            checker_ctx.add_error(errors::trait_as_type(
+                symbol
+                    .map(|symbol| symbol.name.clone())
+                    .unwrap_or(String::from("{Trait}")),
+                return_type_span.unwrap_or_default(),
+            ));
+        }
         for (param_idx, new_type) in evaluated_param_types {
-            if let SemanticSymbolKind::Parameter { inferred_type, .. } =
-                &mut symboltable.get_mut(param_idx).unwrap().kind
+            let mut trait_in_label = None;
+            if let SemanticSymbolKind::Parameter {
+                inferred_type,
+                param_type,
+                ..
+            } = &mut symboltable.get_mut(param_idx).unwrap().kind
             {
+                // Traits cannot be used as parameter types.
+                if let EvaluatedType::TraitInstance { trait_, .. } = &new_type {
+                    trait_in_label = Some((
+                        *trait_,
+                        param_type.as_ref().map(|p| p.span()).unwrap_or_default(),
+                    ));
+                }
                 *inferred_type = new_type;
+            }
+            if let Some((trait_, span)) = trait_in_label {
+                let symbol = symboltable.get(trait_);
+                checker_ctx.add_error(errors::trait_as_type(
+                    symbol
+                        .map(|symbol| symbol.name.clone())
+                        .unwrap_or(String::from("{Trait}")),
+                    span,
+                ));
             }
         }
         checker_ctx
@@ -1526,20 +1566,41 @@ mod expressions {
                     } => (param_type, *is_optional),
                     _ => unreachable!(),
                 };
+                let inferred_type = param_type
+                    .as_ref()
+                    .map(|typ| evaluate(typ, symboltable, None, &mut checker_ctx.tracker(), 0))
+                    .unwrap_or(EvaluatedType::Unknown);
+                // Traits cannot be used as parameter types.
+                if let EvaluatedType::TraitInstance { trait_, .. } = &inferred_type {
+                    let symbol = symboltable.get(*trait_);
+                    checker_ctx.add_error(errors::trait_as_type(
+                        symbol
+                            .map(|symbol| symbol.name.clone())
+                            .unwrap_or(String::from("{Trait}")),
+                        param_type.as_ref().map(|p| p.span()).unwrap_or_default(),
+                    ));
+                }
                 parameter_types.push(ParameterType {
                     name: parameter_symbol.name.clone(),
                     is_optional,
                     type_label: param_type.clone(),
-                    inferred_type: param_type
-                        .as_ref()
-                        .map(|typ| evaluate(typ, symboltable, None, &mut checker_ctx.tracker(), 0))
-                        .unwrap_or(EvaluatedType::Unknown),
+                    inferred_type,
                 });
             }
             let return_type = f
                 .return_type
                 .as_ref()
                 .map(|typ| evaluate(typ, &symboltable, None, &mut checker_ctx.tracker(), 0));
+            // Traits cannot be used as return types.
+            if let Some(EvaluatedType::TraitInstance { trait_, .. }) = &return_type {
+                let symbol = symboltable.get(*trait_);
+                checker_ctx.add_error(errors::trait_as_type(
+                    symbol
+                        .map(|symbol| symbol.name.clone())
+                        .unwrap_or(String::from("{Trait}")),
+                    f.return_type.as_ref().unwrap().span(),
+                ));
+            }
             let inferred_return_type = match &mut f.body {
                 // Function body is scoped to block.
                 TypedExpression::Block(block) => {
