@@ -6,7 +6,7 @@ use analyzer::{
 };
 
 pub struct SymbolWriter<'a> {
-    standpoint: &'a Standpoint,
+    pub standpoint: &'a Standpoint,
     pub is_opaque: RefCell<bool>,
 }
 

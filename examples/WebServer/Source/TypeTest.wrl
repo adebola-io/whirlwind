@@ -1,5 +1,4 @@
 module TypeTest;
-use Core.Primitives.Ops.Sequenced;
 
 test "Testing types." {
     use Core.Testing.Assert;
@@ -13,78 +12,85 @@ test "Testing types." {
     function Swap<T, U>(tuple: Tuple<T, U>): Tuple<U, T> {
         tuple.Swap()
     }
+    // swapping variables.
+    tuple := new Tuple(true, "hello");
+    swapped := tuple.Swap();
+    Assert(tuple.Swap()).Equals(swapped);
+    Assert(Swap(tuple)).Equals(tuple.Swap());
 
-    function Main() {
-        // swapping variables.
-        tuple := new Tuple(true, "hello");
-        swapped := tuple.Swap();
-        Assert(tuple.Swap()).Equals(swapped);
-        Assert(Swap(tuple)).Equals(tuple.Swap());
+    // Coercion.
+    stringItself := Identity("String"); // Should have type String.
+    maybe := Err(true);
+    maybe = Ok(None());
+    maybe = Ok(Some("hello, world"));
+    // maybe should have type Outcome<Maybe<String>, Bool>;
 
-        // Coercion.
-        stringItself := Identity("String"); // Should have type String.
-        maybe := Err(true);
-        maybe = Ok(None());
-        maybe = Ok(Some("hello, world"));
-        // maybe should have type Outcome<Maybe<String>, Bool>;
-
-        // Opaque types.
-        model Football {
-            new(){}
-            /// Bounce for a football.
-            public function Bounce(): String {
-                return "Football is bouncing...";
-            }
+    // Opaque types.
+    model Football {
+        new(){}
+        /// Bounce for a football.
+        public function Bounce(): String {
+            return "Football is bouncing...";
         }
-        model Tennisball {
-            new(){}
-            /// Bounce for a tennisball.
-            public function Bounce() : String {
-                return "Tennisball is bouncing...";
-            }
-        }
-        model Basketball {
-            new(){}
-            /// Bounce for a basketball.
-            public function Bounce(): String {
-                return "Basketball is bouncing...";
-            }
-        }
-        type Ball = Football | Tennisball | Basketball;
-        ball: Ball := new Football();
-        ball.Bounce();
-        ball = new Basketball();
-        ball.Bounce();
-    
-        trait Bounceable {
-           public function Bounce(): String;
-        }
-        function Nested<T implements Bounceable>(newBall: T) {
-            type InnerBall = T | Ball;
-            ball: InnerBall := new Football();
-            ball.Bounce();
-            ball = newBall;
-            ball.Bounce();
-        }
-        // Numbers
-
-
-        trait TransformableTo<T> {
-            public function Transform(): T;
-        }
-        model Box<T> implements TransformableTo<T> {
-            new(value: T){}
-            public function [TransformableTo.Transform](): T {
-                Todo()
-            }
-        }
-        model Sphere implements TransformableTo<String> {
-            public function [TransformableTo.Transform](): String {
-                Todo()
-            }
-        }
-        type Transformable = Box<String> | Sphere;
-        entity: Transformable := new Box("hello");
-        value := entity.Transform();
     }
+    model Tennisball {
+        new(){}
+        /// Bounce for a tennisball.
+        public function Bounce() : String {
+            return "Tennisball is bouncing...";
+        }
+    }
+    model Basketball {
+        new(){}
+        /// Bounce for a basketball.
+        public function Bounce(): String {
+            return "Basketball is bouncing...";
+        }
+    }
+    type Ball = Football | Tennisball | Basketball;
+    ball: Ball := new Football();
+    ball.Bounce();
+    ball = new Basketball();
+    ball.Bounce();
+
+    trait Bounceable {
+        public function Bounce(): String;
+    }
+    function Nested<T implements Bounceable>(newBall: T) {
+        type InnerBall = T | Ball;
+        ball: InnerBall := new Football();
+        ball.Bounce();
+        ball = newBall;
+        ball.Bounce();
+    }
+
+    // Opaque types with traits.
+    trait TransformableTo<T> {
+        public function Transform(): T;
+    }
+    model Box<T> implements TransformableTo<T> {
+        new(value: T){}
+        public function [TransformableTo.Transform](): T {
+            Todo()
+        }
+    }
+    model Sphere<T> implements TransformableTo<T> {
+        new(value: T){}
+        public function [TransformableTo.Transform](): T {
+            Todo()
+        }
+    }
+    type Transformable<T> = Box<T> | Sphere<T>;
+    entity: Transformable<Transformable<String>> := new Box(new Sphere("hello"));
+
+    // Numeric types.
+    name: Int := 90;
+    name = 12;
+    array := [1, 2, 3, 4, name];
+
+    // function type coercion.
+    strArray := ["hello", "world"];
+    strArrayHasHello := strArray.Iter().Any(fn(element) element == "hello");
+
+    
 }

@@ -15,7 +15,7 @@ use printer::SymbolWriter;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
-    sync::RwLock,
+    sync::{Arc, Mutex},
 };
 use tower_lsp::{
     jsonrpc::Error,
@@ -42,27 +42,27 @@ macro_rules! log_error {
 
 #[derive(Debug)]
 pub struct DocumentManager {
-    pub standpoints: RwLock<Vec<Standpoint>>,
+    pub standpoints: Arc<Mutex<Vec<Standpoint>>>,
     pub corelib_path: Option<PathBuf>,
     /// Boolean stopper to prevent unnecessary workspace diagnostic refreshes.
-    was_updated: RwLock<bool>,
+    was_updated: Arc<Mutex<bool>>,
     /// Cached workspace diagnostic report.
-    diagnostic_report: RwLock<WorkspaceDiagnosticReportResult>,
+    diagnostic_report: Arc<Mutex<WorkspaceDiagnosticReportResult>>,
     /// Last opened standpoint module.
-    last_opened: RwLock<Option<(usize, PathIndex)>>,
+    last_opened: Arc<Mutex<Option<(usize, PathIndex)>>>,
 }
 
 impl DocumentManager {
     /// Creates a new document manager.
     pub fn new() -> Self {
         DocumentManager {
-            standpoints: RwLock::new(vec![]),
+            standpoints: Arc::new(Mutex::new(vec![])),
             corelib_path: Some(PathBuf::from(CORE_LIBRARY_PATH)),
-            was_updated: RwLock::new(true),
-            diagnostic_report: RwLock::new(WorkspaceDiagnosticReportResult::Report(
+            was_updated: Arc::new(Mutex::new(true)),
+            diagnostic_report: Arc::new(Mutex::new(WorkspaceDiagnosticReportResult::Report(
                 Default::default(),
-            )),
-            last_opened: RwLock::new(None),
+            ))),
+            last_opened: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -78,7 +78,7 @@ impl DocumentManager {
                 )
             }
         };
-        let standpoints = self.standpoints.read().unwrap();
+        let standpoints = self.standpoints.lock().unwrap();
         match self.get_cached(&standpoints) {
             Some((_, module)) => {
                 if module.path_buf == path_buf {
@@ -96,7 +96,7 @@ impl DocumentManager {
     pub fn save_file(&self, _params: DidSaveTextDocumentParams) -> MessageStore {
         let mut msgs = MessageStore::new();
         msgs.inform("Saving file...");
-        for standpoint in self.standpoints.write().unwrap().iter_mut() {
+        for standpoint in self.standpoints.lock().unwrap().iter_mut() {
             standpoint.refresh_imports();
             standpoint.check_all_modules();
         }
@@ -130,7 +130,7 @@ impl DocumentManager {
                 return;
             }
         };
-        let mut last_opened = self.last_opened.write().unwrap();
+        let mut last_opened = self.last_opened.lock().unwrap();
         *last_opened = Some((index, module_idx));
     }
 
@@ -139,7 +139,7 @@ impl DocumentManager {
         &self,
         standpoints: &'a Vec<Standpoint>,
     ) -> Option<(&'a Standpoint, &'a TypedModule)> {
-        let last_opened = self.last_opened.read().unwrap();
+        let last_opened = self.last_opened.lock().unwrap();
         let last_opened = last_opened.as_ref()?;
         let last_opened_standpoint = standpoints.get(last_opened.0)?;
         let last_opened_module = last_opened_standpoint.module_map.get(last_opened.1)?;
@@ -151,7 +151,7 @@ impl DocumentManager {
         &self,
         standpoints: &'a mut Vec<Standpoint>,
     ) -> Option<(&'a mut Standpoint, PathIndex)> {
-        let last_opened = self.last_opened.read().unwrap();
+        let last_opened = self.last_opened.lock().unwrap();
         let last_opened = last_opened.as_ref()?;
         let last_opened_standpoint = standpoints.get_mut(last_opened.0)?;
         let last_opened_module = last_opened_standpoint.module_map.get_mut(last_opened.1)?;
@@ -162,7 +162,7 @@ impl DocumentManager {
     /// Add a new document to be tracked.
     pub fn add_document(&self, params: DidOpenTextDocumentParams) -> MessageStore {
         let mut msgs = MessageStore::new();
-        let mut standpoints = self.standpoints.write().unwrap();
+        let mut standpoints = self.standpoints.lock().unwrap();
         let uri = params.text_document.uri;
         let path_buf = match uri_to_absolute_path(uri.clone()) {
             Ok(path_buf) => path_buf,
@@ -333,7 +333,7 @@ impl DocumentManager {
         let mut messages =
             self.open_document(params.text_document_position_params.text_document.uri);
         let time = std::time::Instant::now();
-        let standpoints = self.standpoints.read().unwrap();
+        let standpoints = self.standpoints.lock().unwrap();
         let (main_standpoint, module) = match self.get_cached(&standpoints) {
             Some(t) => t,
             None => {
@@ -357,7 +357,7 @@ impl DocumentManager {
 
     /// Checks if a uri is already being tracked.
     pub fn has(&self, uri: Url) -> bool {
-        let contexts = self.standpoints.read().unwrap();
+        let contexts = self.standpoints.lock().unwrap();
         let path_buf = match uri_to_absolute_path(uri) {
             Ok(path_buf) => path_buf,
             Err(_) => return false,
@@ -374,7 +374,7 @@ impl DocumentManager {
     /// TODO: This will obviously get sloooooww. Fix.
     pub fn completion(&self, params: CompletionParams) -> WithMessages<Option<CompletionResponse>> {
         let mut msgs = self.open_document(params.text_document_position.text_document.uri);
-        let standpoints = self.standpoints.read().unwrap();
+        let standpoints = self.standpoints.lock().unwrap();
         let (standpoint, module) = match self.get_cached(&standpoints) {
             Some(t) => t,
             None => {
@@ -495,8 +495,7 @@ impl DocumentManager {
     pub fn handle_change(&self, mut params: DidChangeTextDocumentParams) -> MessageStore {
         let uri = params.text_document.uri.clone();
         let mut msgs = self.open_document(uri);
-        msgs.inform("Handling text update...");
-        let mut standpoints = self.standpoints.write().unwrap();
+        let mut standpoints = self.standpoints.lock().unwrap();
         let (standpoint, path_idx) = match self.get_cached_mut(&mut standpoints) {
             Some(t) => t,
             None => {
@@ -506,7 +505,6 @@ impl DocumentManager {
         };
         let last = params.content_changes.len() - 1;
         let most_current = std::mem::take(&mut params.content_changes[last].text);
-        msgs.inform(format!("Refreshing open document..."));
         let time = std::time::Instant::now();
         match standpoint.refresh_module(path_idx, &most_current, true) {
             Some(StandpointStatus::RefreshSuccessful) => {
@@ -514,11 +512,40 @@ impl DocumentManager {
             }
             _ => log_error!(msgs, "Something went wrong while refreshing user text."),
         };
-        *self.was_updated.write().unwrap() = true;
+        *self.was_updated.lock().unwrap() = true;
         // idk what to do here.
-        if time.elapsed() > std::time::Duration::from_millis(250) {
-            standpoint.restart();
+        // todo: set threshold according to size of standpoints.
+        // if handling changes becomes too slow, the entire standpoint is refreshed.
+        // All modules are removed and added again, and the current module is updated with the latest text.
+        if time.elapsed() > std::time::Duration::from_millis(get_time_limit(&standpoint.module_map))
+        {
             msgs.inform("Threshold crossed. Refreshing standpoint.");
+            // The current module should not be part of the list of modules to re-add.
+            let modules = standpoint
+                .module_map
+                .paths()
+                .filter(|(idx, _)| *idx != path_idx)
+                .map(|(_, typedmodule)| typedmodule.path_buf.clone())
+                .collect::<Vec<_>>();
+            *standpoint = Standpoint::new(true, self.corelib_path.clone());
+            for module_path in modules {
+                if standpoint
+                    .module_map
+                    .map_path_to_index(&module_path)
+                    .is_none()
+                {
+                    match Module::from_path(module_path) {
+                        Ok(module) => {
+                            standpoint.add_module(module);
+                        }
+                        Err(error) => {
+                            msgs.error(format!("Import Error: {error:?}"));
+                            continue;
+                        }
+                    }
+                }
+            }
+            // Add current module with current text.
             let uri = params.text_document.uri;
             let mut module = Module::from_text(&most_current);
             let path = uri_to_absolute_path(uri).ok();
@@ -538,9 +565,8 @@ impl DocumentManager {
         params: GotoDeclarationParams,
     ) -> WithMessages<Option<GotoDeclarationResponse>> {
         let mut msgs = self.open_document(params.text_document_position_params.text_document.uri);
-        msgs.inform("Retreiving symbol declaration...");
         let position = params.text_document_position_params.position;
-        let standpoints = self.standpoints.read().unwrap();
+        let standpoints = self.standpoints.lock().unwrap();
         let (standpoint, module) = match self.get_cached(&standpoints) {
             Some(t) => t,
             None => {
@@ -592,7 +618,7 @@ impl DocumentManager {
     ) -> Option<DocumentDiagnosticReport> {
         let uri = params.text_document.uri;
         let path_buf = uri_to_absolute_path(uri).ok()?;
-        let contexts = self.standpoints.read().unwrap();
+        let contexts = self.standpoints.lock().unwrap();
         let standpoint = contexts
             .iter()
             .find(|context| context.contains_file(&path_buf))?;
@@ -636,7 +662,7 @@ impl DocumentManager {
     pub fn get_references(&self, params: ReferenceParams) -> WithMessages<Option<Vec<Location>>> {
         let mut msgs = self.open_document(params.text_document_position.text_document.uri);
         let position = params.text_document_position.position;
-        let standpoints = self.standpoints.read().unwrap();
+        let standpoints = self.standpoints.lock().unwrap();
         let (standpoint, module) = match self.get_cached(&standpoints) {
             Some(t) => t,
             None => {
@@ -706,7 +732,7 @@ impl DocumentManager {
                 ))),
             );
         }
-        let mut standpoints = self.standpoints.write().unwrap();
+        let mut standpoints = self.standpoints.lock().unwrap();
         let standpoint = standpoints
             .iter_mut()
             .find(|context| context.contains_file(&pathbuf));
@@ -761,7 +787,7 @@ impl DocumentManager {
     /// Support for inlay hints.
     pub fn get_hints(&self, params: InlayHintParams) -> WithMessages<Option<Vec<InlayHint>>> {
         let mut msgs = self.open_document(params.text_document.uri);
-        let standpoints = self.standpoints.read().unwrap();
+        let standpoints = self.standpoints.lock().unwrap();
         let (standpoint, module) = match self.get_cached(&standpoints) {
             Some(t) => t,
             None => {
@@ -771,37 +797,44 @@ impl DocumentManager {
         };
         let mut hints: Vec<InlayHint> = vec![];
         for symbol in standpoint.symbol_table.in_module(module.path_idx) {
-            if let SemanticSymbolKind::Variable {
-                declared_type,
-                inferred_type,
-                ..
-            } = &symbol.kind
-            {
-                let entry_span = Span::on_line(
-                    symbol.references.first().unwrap().starts[0],
-                    symbol.name.len() as u32,
-                );
-                let position = to_range(entry_span).end;
-                let label_text = format!(
-                    ": {}",
-                    standpoint.symbol_table.format_evaluated_type(inferred_type)
-                );
-                if label_text.len() > 40 {
-                    continue;
+            match &symbol.kind {
+                SemanticSymbolKind::Variable {
+                    declared_type,
+                    inferred_type,
+                    ..
                 }
-                let label = InlayHintLabel::String(label_text);
-                if declared_type.is_none() {
-                    hints.push(InlayHint {
-                        position,
-                        label,
-                        kind: Some(InlayHintKind::TYPE),
-                        text_edits: None,
-                        tooltip: None,
-                        padding_left: None,
-                        padding_right: Some(true),
-                        data: None,
-                    })
+                | SemanticSymbolKind::Parameter {
+                    param_type: declared_type,
+                    inferred_type,
+                    ..
+                } => {
+                    let entry_span = Span::on_line(
+                        symbol.references.first().unwrap().starts[0],
+                        symbol.name.len() as u32,
+                    );
+                    let position = to_range(entry_span).end;
+                    let label_text = format!(
+                        ": {}",
+                        standpoint.symbol_table.format_evaluated_type(inferred_type)
+                    );
+                    if label_text.len() > 40 {
+                        continue;
+                    }
+                    let label = InlayHintLabel::String(label_text);
+                    if declared_type.is_none() {
+                        hints.push(InlayHint {
+                            position,
+                            label,
+                            kind: Some(InlayHintKind::TYPE),
+                            padding_right: Some(true),
+                            text_edits: None,
+                            tooltip: None,
+                            padding_left: None,
+                            data: None,
+                        })
+                    }
                 }
+                _ => (),
             }
         }
         (msgs, Some(hints))
@@ -809,9 +842,9 @@ impl DocumentManager {
 
     /// Returns the last workspace diagnostics report, or computes another one if there was a file change.
     fn get_or_compute_workspace_diagnostics(&self) -> WorkspaceDiagnosticReportResult {
-        let mut standpoints = self.standpoints.write().unwrap();
-        let mut was_updated = self.was_updated.write().unwrap();
-        let mut diagnostic_report = self.diagnostic_report.write().unwrap();
+        let mut standpoints = self.standpoints.lock().unwrap();
+        let mut was_updated = self.was_updated.lock().unwrap();
+        let mut diagnostic_report = self.diagnostic_report.lock().unwrap();
         if *was_updated {
             standpoints.iter_mut().for_each(|standpoint| {
                 standpoint.refresh_imports();
@@ -850,6 +883,31 @@ impl DocumentManager {
             *was_updated = false;
         }
         diagnostic_report.clone()
+    }
+}
+
+/// Hacky hack.
+/// Calculates the maximum number of milliseconds a text change can take
+/// before it is necessary to trigger a full refresh.
+/// The values are chosen arbitrarily.
+/// If a standpoint takes 10 seconds to handle a text change, it will restart.
+fn get_time_limit(module_map: &analyzer::ModuleMap) -> u64 {
+    match module_map.len() {
+        0..=99 => {
+            // If there is a file with at least one thousand lines.
+            if module_map
+                .paths()
+                .any(|(_, idx)| idx.line_lengths.len() > 2000)
+            {
+                1200
+            } else {
+                600
+            }
+        }
+        100..=999 => 2000,
+        1000..=1500 => 4000,
+        1600..=2000 => 8000,
+        _ => 10000,
     }
 }
 

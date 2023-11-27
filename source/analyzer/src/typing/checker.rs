@@ -1,14 +1,20 @@
 use crate::{
     evaluate, span_of_typed_expression, span_of_typed_statement,
     unify::{unify_freely, unify_types},
-    utils::{coerce, maybify, prospectify},
+    utils::{
+        arrify, coerce, coerce_all_generics, evaluate_generic_params, get_implementation_of,
+        get_numeric_type, infer_ahead, is_array, is_boolean, is_numeric_type, maybify, prospectify,
+        symbol_to_type,
+    },
     EvaluatedType, Literal, ParameterType, PathIndex, ProgramError, SemanticSymbolKind,
-    SymbolIndex, SymbolTable, TypedAccessExpr, TypedBlock, TypedCallExpr, TypedExpression,
-    TypedFnExpr, TypedFunctionDeclaration, TypedIdent, TypedModule, TypedReturnStatement,
-    TypedStmnt,
+    SymbolIndex, SymbolTable, TypedAccessExpr, TypedAssignmentExpr, TypedBlock, TypedCallExpr,
+    TypedExpression, TypedFnExpr, TypedFunctionDeclaration, TypedIdent, TypedIfExpr,
+    TypedIndexExpr, TypedLogicExpr, TypedModule, TypedNewExpr, TypedReturnStatement, TypedStmnt,
+    TypedThisExpr, UnifyOptions,
 };
-use ast::Span;
-use errors::{TypeError, TypeErrorType};
+use ast::{Span, UnaryOperator};
+use errors::{missing_intrinsic, TypeError, TypeErrorType};
+use std::collections::HashMap;
 
 /// The typechecker is the second pass of the analyzer,
 /// used for infering and validating the use of data types within a module.
@@ -16,12 +22,15 @@ use errors::{TypeError, TypeErrorType};
 /// solves generics and ensures valid property assignment and use.
 pub struct TypecheckerContext<'a> {
     path_idx: PathIndex,
-    /// The return type of the closest function scope currently being typechecked.
+    /// The context of the closest function scope currently being typechecked.
     current_function_context: Vec<CurrentFunctionContext>,
     /// List of errors from the standpoint.
     errors: &'a mut Vec<ProgramError>,
     /// List of literal types from the standpoint.
     literals: &'a [Literal],
+    // /// Cached values of intermediate types,
+    // /// so they do not have to be evaluated over and over.
+    // intermediate_types: HashMap<IntermediateType, EvaluatedType>,
 }
 
 #[derive(Clone)]
@@ -32,21 +41,22 @@ pub struct CurrentFunctionContext {
 }
 
 impl<'a> TypecheckerContext<'a> {
+    /// Adds a type error to the owner standpoint's list of errors.
     pub fn add_error(&mut self, error: TypeError) {
         self.errors.push(ProgramError {
             offending_file: self.path_idx,
             error_type: crate::ProgramErrorType::Typing(error),
         })
     }
-
+    /// Returns a reference to the error list to be passed around by the evaluator.
     pub fn tracker(&mut self) -> Option<(&mut Vec<ProgramError>, PathIndex)> {
         Some((self.errors, self.path_idx))
     }
-
+    /// Calculates the span of a typed expression using the symboltable and the list of literals.
     fn span_of_expr(&self, expression: &TypedExpression, symboltable: &SymbolTable) -> Span {
         span_of_typed_expression(expression, symboltable, self.literals)
     }
-
+    /// Calculates the span of a statement using the symboltable and the list of literals.
     fn span_of_stmnt(&self, s: &TypedStmnt, symboltable: &mut SymbolTable) -> Span {
         span_of_typed_statement(s, symboltable, self.literals)
     }
@@ -71,16 +81,7 @@ pub fn typecheck(
 }
 
 mod statements {
-    use crate::{
-        utils::{coerce_all_generics, is_boolean},
-        UnifyOptions,
-    };
-
-    use super::{
-        expressions::{typecheck_block, typecheck_expression},
-        *,
-    };
-
+    use super::{expressions::typecheck_block, *};
     pub fn typecheck_statement(
         statement: &mut TypedStmnt,
         checker_ctx: &mut TypecheckerContext,
@@ -131,7 +132,8 @@ mod statements {
         checker_ctx: &mut TypecheckerContext<'_>,
         symboltable: &mut SymbolTable,
     ) {
-        let condition_type = typecheck_expression(&mut whil.condition, checker_ctx, symboltable);
+        let condition_type =
+            expressions::typecheck_expression(&mut whil.condition, checker_ctx, symboltable);
         if !is_boolean(&condition_type, symboltable) {
             checker_ctx.add_error(errors::non_boolean_logic(
                 symboltable.format_evaluated_type(&condition_type),
@@ -164,6 +166,11 @@ mod statements {
         } else {
             None
         };
+        if declared_type.is_some() {
+            // Try to guess the type of the value.
+            let declared_type = declared_type.as_ref().unwrap();
+            infer_ahead(&mut shorthand_variable.value, &declared_type, symboltable);
+        }
         let type_of_value = expressions::typecheck_expression(
             &mut shorthand_variable.value,
             checker_ctx,
@@ -212,6 +219,10 @@ mod statements {
     ) {
         let function_context = checker_ctx.current_function_context.last().cloned();
         let maybe_eval_expr = retstat.value.as_mut().map(|expr| {
+            if let Some(ctx) = &function_context {
+                // try to guess the type for the returned expression.
+                infer_ahead(expr, &ctx.return_type, symboltable);
+            }
             // Coerce unresolved nested generic types to never, since they are no longer resolvable.
             let mut return_type = expressions::typecheck_expression(expr, checker_ctx, symboltable);
             if !return_type.is_generic()
@@ -247,6 +258,7 @@ mod statements {
             let ctx_return_type = function_context
                 .map(|ctx| &ctx.return_type)
                 .unwrap_or_else(|| &EvaluatedType::Void);
+
             // returns with a value, and a type is assigned.
             // coerce both types to match.
             match unify_types(
@@ -399,17 +411,6 @@ mod statements {
 
 mod expressions {
     use super::*;
-    use crate::{
-        utils::{
-            arrify, coerce_all_generics, evaluate_generic_params, get_implementation_of,
-            get_numeric_type, is_array, is_boolean, is_numeric_type, symbol_to_type,
-        },
-        TypedAssignmentExpr, TypedIfExpr, TypedIndexExpr, TypedLogicExpr, TypedNewExpr,
-        TypedThisExpr, UnifyOptions,
-    };
-    use ast::UnaryOperator;
-    use errors::missing_intrinsic;
-    use std::collections::HashMap;
 
     /// Typechecks an expression.
     pub fn typecheck_expression(
@@ -588,17 +589,25 @@ mod expressions {
                             // Confirm that the type slated for return is
                             // compatible with the already stated return type.
                             let function_ctx = checker_ctx.current_function_context.last();
-                            if function_ctx.is_none() {
-                                let name = symboltable.format_evaluated_type(&operand_type);
-                                checker_ctx.add_error(errors::illegal_try(name, updateexp.span));
-                                return EvaluatedType::Unknown;
-                            }
-                            let function_ctx = function_ctx.unwrap();
                             returned_type = coerce(returned_type, &full_generic_list);
-                            if !returned_type.is_generic() && function_ctx.is_named {
+                            if !returned_type.is_generic()
+                                && function_ctx.is_some_and(|ctx| ctx.is_named)
+                            {
                                 returned_type =
                                     coerce_all_generics(&returned_type, EvaluatedType::Never)
                             }
+                            if function_ctx.is_none() {
+                                checker_ctx.add_error(TypeError {
+                                    _type: TypeErrorType::MismatchedReturnType {
+                                        expected: symboltable
+                                            .format_evaluated_type(&EvaluatedType::Void),
+                                        found: symboltable.format_evaluated_type(&returned_type),
+                                    },
+                                    span: updateexp.span,
+                                });
+                                return EvaluatedType::Unknown;
+                            }
+                            let function_ctx = function_ctx.unwrap();
                             match unify_types(
                                 &function_ctx.return_type,
                                 &returned_type,
@@ -639,7 +648,7 @@ mod expressions {
                         }
                     } else {
                         checker_ctx.add_error(errors::missing_intrinsic(
-                            String::from("Guaranteed"),
+                            String::from("Try"),
                             updateexp.span,
                         ));
                         EvaluatedType::Unknown
@@ -761,12 +770,15 @@ mod expressions {
     ) -> EvaluatedType {
         assexp.inferred_type = (|| {
             let left_type = typecheck_expression(&mut assexp.left, checker_ctx, symboltable);
-            let right_type = typecheck_expression(&mut assexp.right, checker_ctx, symboltable);
-
-            if !is_valid_lhs(&assexp.left) {
+            let right_type = if !is_valid_lhs(&assexp.left) {
                 checker_ctx.add_error(errors::invalid_assignment_target(assexp.span));
+                typecheck_expression(&mut assexp.right, checker_ctx, symboltable); // For continuity.
                 return EvaluatedType::Unknown;
-            }
+            } else {
+                // Try to guess the type of the right.
+                infer_ahead(&mut assexp.right, &left_type, symboltable);
+                typecheck_expression(&mut assexp.right, checker_ctx, symboltable)
+            };
             let mut generic_hashmap = HashMap::new();
             let result_type = match &left_type {
                 EvaluatedType::ModelInstance { .. }
@@ -908,6 +920,7 @@ mod expressions {
     ) -> EvaluatedType {
         this.inferred_type = (|| {
             if this.model_or_trait.is_none() {
+                // Error is already handled.
                 return EvaluatedType::Unknown;
             }
             let model_or_trait = this.model_or_trait.unwrap();
@@ -915,11 +928,11 @@ mod expressions {
             match &symbol.kind {
                 SemanticSymbolKind::Model { generic_params, .. } => EvaluatedType::ModelInstance {
                     model: model_or_trait,
-                    generic_arguments: evaluate_generic_params(generic_params),
+                    generic_arguments: evaluate_generic_params(generic_params, false),
                 },
                 SemanticSymbolKind::Trait { generic_params, .. } => EvaluatedType::TraitInstance {
                     trait_: model_or_trait,
-                    generic_arguments: evaluate_generic_params(generic_params),
+                    generic_arguments: evaluate_generic_params(generic_params, false),
                 },
                 _ => unreachable!("{symbol:#?} is not a model or trait."),
             }
@@ -973,7 +986,8 @@ mod expressions {
                                             .add_error(errors::model_not_constructable(name, span));
                                         return EvaluatedType::Unknown;
                                     }
-                                    let generic_arguments = evaluate_generic_params(generic_params);
+                                    let generic_arguments =
+                                        evaluate_generic_params(generic_params, false);
                                     let parameter_types = convert_param_list_to_type(
                                         constructor_parameters.as_ref().unwrap_or(&vec![]),
                                         symboltable,
@@ -1073,14 +1087,22 @@ mod expressions {
                 checker_ctx.add_error(missing_intrinsic(format!("Array"), array.span));
             }
             let mut element_types = vec![];
-            for element in &mut array.elements {
-                element_types.push(typecheck_expression(element, checker_ctx, symboltable));
+            let mut next_type = EvaluatedType::Unknown;
+            // The first type is the base type and is assumed to be the true type for every other type in the array.
+            for (index, element) in &mut array.elements.iter_mut().enumerate() {
+                if index == 0 {
+                    next_type = typecheck_expression(element, checker_ctx, symboltable);
+                } else {
+                    // Try to guess the type of the next element based on the first type.
+                    // todo: should the next type be progressively unified before inferring?
+                    infer_ahead(element, &next_type, symboltable);
+                    element_types.push(typecheck_expression(element, checker_ctx, symboltable));
+                }
             }
             if element_types.len() == 0 {
                 return arrify(EvaluatedType::Unknown, &symboltable);
             }
             // Reduce individual types to determine final array form.
-            let mut next_type = element_types.remove(0);
             let mut i = 0;
             let mut errors_gotten = vec![];
             for evaluated_type in element_types {
@@ -1222,12 +1244,10 @@ mod expressions {
         let caller = typecheck_expression(&mut callexp.caller, checker_ctx, symboltable);
         let caller_span = checker_ctx.span_of_expr(&callexp.caller, &symboltable);
         let caller = extract_call_of(caller, symboltable, checker_ctx, caller_span);
-        let evaluated_args = callexp
-            .arguments
-            .iter_mut()
-            .map(|arg| typecheck_expression(arg, checker_ctx, symboltable))
-            .collect::<Vec<_>>();
         if caller.is_unknown() {
+            callexp.arguments.iter_mut().for_each(|arg| {
+                typecheck_expression(arg, checker_ctx, symboltable);
+            }); // for continuity.
             return caller;
         }
         // Extract parameters, generic arguments and return_type from caller.
@@ -1273,7 +1293,7 @@ mod expressions {
                             parameter_types,
                             {
                                 generic_arguments
-                                    .append(&mut evaluate_generic_params(generic_params));
+                                    .append(&mut evaluate_generic_params(generic_params, false));
                                 generic_arguments
                             },
                             return_type,
@@ -1289,9 +1309,20 @@ mod expressions {
                 generic_args,
             } => (is_async, params, generic_args, *return_type),
             _ => {
-                unreachable!("{caller:?} cannot be distilled, because it is not a functional type.")
+                return EvaluatedType::Unknown;
             }
         };
+        for (index, argument) in callexp.arguments.iter_mut().enumerate() {
+            // Try to preemptively guess the type of each argument.
+            if let Some(parameter_type) = parameter_types.get(index) {
+                infer_ahead(argument, &parameter_type.inferred_type, symboltable);
+            }
+        }
+        let evaluated_args = callexp
+            .arguments
+            .iter_mut()
+            .map(|arg| typecheck_expression(arg, checker_ctx, symboltable))
+            .collect::<Vec<_>>();
         // Account for async functions.
         if is_async {
             return_type = prospectify(return_type, symboltable);
@@ -1484,6 +1515,7 @@ mod expressions {
     ) -> EvaluatedType {
         f.inferred_type = (|| {
             let mut parameter_types = vec![];
+            let generic_args = evaluate_generic_params(&f.generic_params, true);
             for param in &f.params {
                 let parameter_symbol = symboltable.get_forwarded(*param).unwrap();
                 let (param_type, is_optional) = match &parameter_symbol.kind {
@@ -1536,7 +1568,7 @@ mod expressions {
             EvaluatedType::FunctionExpressionInstance {
                 is_async: f.is_async,
                 params: parameter_types,
-                generic_args: vec![], // todo.
+                generic_args,
                 return_type: Box::new(inferred_return_type),
             }
         })();
@@ -1595,7 +1627,7 @@ mod expressions {
                 // The generic arguments is an unknown list from the generic parameters.
                 let generic_arguments = match &symbol.kind {
                     SemanticSymbolKind::Model { generic_params, .. } => {
-                        evaluate_generic_params(generic_params)
+                        evaluate_generic_params(generic_params, false)
                     }
                     _ => vec![],
                 };

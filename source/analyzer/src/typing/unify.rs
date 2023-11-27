@@ -1,6 +1,6 @@
 use crate::{
-    utils::is_numeric_type, EvaluatedType::*, SemanticSymbolKind, SymbolIndex, SymbolTable,
-    UNKNOWN, *,
+    utils::{is_numeric_type, distill_as_function_type, FunctionType}, EvaluatedType::*, 
+    SemanticSymbolKind, SymbolIndex, SymbolTable, UNKNOWN, *,
 };
 use errors::TypeErrorType;
 use std::collections::HashMap;
@@ -234,16 +234,25 @@ pub fn unify_types(
             });
         }
         // Either type is unknown.
+        // The two types are automatically unifiable.
         (Unknown, other) | (other, Unknown) => Ok(other.clone()),
         // Either type is a function.
+        // The two types can be unified if they have unifiable parameters, generic arguments and return types.
+        // Function types that return a Prospect<T> are unifiable with async function types that return T.
         (
             FunctionExpressionInstance { .. } | FunctionInstance { .. } | MethodInstance { .. },
             FunctionExpressionInstance { .. } | FunctionInstance { .. } | MethodInstance { .. },
         ) => {
-            let (left_is_async, left_params, left_generic_arguments, mut left_return_type) =
-                distill_function_type(left, symboltable);
-            let (right_is_async, right_params, right_generic_arguments, mut right_return_type) =
-                distill_function_type(right, symboltable);
+            let FunctionType {is_async: left_is_async, parameter_types: left_params, generic_arguments: left_generic_arguments, return_type: mut left_return_type} =
+                match distill_as_function_type(left, symboltable) {
+                    Some(functiontype) => functiontype,
+                    None => return Ok(EvaluatedType::Unknown)
+                };
+            let FunctionType {is_async: right_is_async, parameter_types: right_params, generic_arguments: right_generic_arguments, return_type: mut right_return_type} =
+                match distill_as_function_type(right, symboltable) {
+                    Some(functiontype) => functiontype,
+                    None => return Ok(EvaluatedType::Unknown)
+                };
             // Confirm that there are no generic mismatches between the two functions.
             let generic_args = match unify_generic_arguments(
                 left_generic_arguments,
@@ -271,39 +280,16 @@ pub fn unify_types(
             }
             let mut params = vec![];
             for (left_param, right_param) in left_params.iter().zip(right_params.iter()) {
-                let left_inferred_type = &left_param.inferred_type;
-                let right_inferred_type = &right_param.inferred_type;
+                let mut left_inferred_type = left_param.inferred_type.clone();
+                let mut right_inferred_type = right_param.inferred_type.clone();
                 let map = map.as_deref_mut();
-                let inferred_type = match (left_param.is_optional, right_param.is_optional) {
-                    (true, true) => unify_types(
-                        &maybify(left_inferred_type.clone()),
-                        &maybify(right_inferred_type.clone()),
-                        symboltable,
-                        options,
-                        map,
-                    ),
-                    (true, false) => unify_types(
-                        &maybify(left_inferred_type.clone()),
-                        right_inferred_type,
-                        symboltable,
-                        options,
-                        map,
-                    ),
-                    (false, true) => unify_types(
-                        left_inferred_type,
-                        &maybify(right_inferred_type.clone()),
-                        symboltable,
-                        options,
-                        map,
-                    ),
-                    (false, false) => unify_types(
-                        left_inferred_type,
-                        right_inferred_type,
-                        symboltable,
-                        options,
-                        map,
-                    ),
-                };
+                if left_param.is_optional {
+                    left_inferred_type = maybify(left_inferred_type);
+                }
+                if right_param.is_optional {
+                    right_inferred_type = maybify(right_inferred_type);
+                }
+                let inferred_type = unify_types(&left_inferred_type, &right_inferred_type, symboltable, options, map);
                 let result = ParameterType {
                     name: left_param.name.clone(),
                     is_optional: false,
@@ -319,20 +305,27 @@ pub fn unify_types(
                 params.push(result);
             }
             // RETURN TYPES.
-            // If one function is async and the other returns a prospect, they are unifiable.
             if left_is_async {
                 left_return_type = utils::prospectify(left_return_type, symboltable);
             }
             if right_is_async {
                 right_return_type = utils::prospectify(right_return_type, symboltable);
             }
-            let return_type = Box::new(unify_types(
+            let return_type_unification = unify_types(
                 &left_return_type,
                 &right_return_type,
                 symboltable,
                 options,
                 map,
-            )?);
+            );
+            let return_type = match return_type_unification {
+                Ok(return_type) => return_type,
+                Err(mut errors) => {
+                    errors.insert(0, default_error());
+                    return Err(errors);
+                }
+            };
+            let return_type = Box::new(return_type);
             return Ok(FunctionExpressionInstance {
                 is_async: false,
                 params,
@@ -352,7 +345,7 @@ pub fn unify_types(
                 )?),
             })
         }
-        // Left type is never.
+        // Left type is never, and the unification mode is special.
         (Never, right_type)
             if matches!(
                 options,
@@ -362,6 +355,7 @@ pub fn unify_types(
             Ok(right_type.clone())
         }
         // Right type is never.
+        // Never types are unifiable with every other type from the right.
         (free, Never) => Ok(free.clone()),
         // Left type is opaque, and right type is a model or enum variant.
         // Unification is possible if right type is a component of left.
@@ -434,6 +428,7 @@ pub fn unify_types(
         // Unification is possible if left type is a superset of right type.
         (
             OpaqueTypeInstance {
+                aliased_as,
                 collaborators: left_collaborators,
                 generic_arguments: left_generics,
                 available_methods: methods,
@@ -474,11 +469,12 @@ pub fn unify_types(
             return Ok(OpaqueTypeInstance {
                 collaborators: left_collaborators.to_vec(),
                 generic_arguments,
-                aliased_as: None,
+                aliased_as: *aliased_as,
                 available_methods: methods.clone(),
                 available_traits: traits.clone()
             });
         }
+        // Otherwise, both types cannot be unified.
         _ => Err(vec![TypeErrorType::MismatchedAssignment {
             left: symboltable.format_evaluated_type(left),
             right: symboltable.format_evaluated_type(right),
@@ -486,6 +482,8 @@ pub fn unify_types(
     }
 }
 
+/// Generates a solution for a generic based on another evaluated type.
+/// It simply checks to see if the other type obeys all the constraints defined on the generic.
 fn solve_generic_type(
     map: &mut Option<&mut HashMap<SymbolIndex, EvaluatedType>>,
     base: &SymbolIndex,
@@ -547,7 +545,7 @@ fn solve_generic_type(
                 }
                 let implementations = match free_type {
                     ModelInstance { model: base, .. }
-                    | TraitInstance { trait_: base, .. }
+                    | TraitInstance { trait_: base,.. }
                     | Generic { base }
                     | HardGeneric { base } => match &symboltable.get_forwarded(*base).unwrap().kind
                     {
@@ -565,12 +563,18 @@ fn solve_generic_type(
                     },
                     _ => None,
                 };
+                let free_type_generics = match free_type {
+                    ModelInstance { generic_arguments,.. }
+                    | TraitInstance { generic_arguments,.. }
+                     => Some(generic_arguments),
+                    _ => None,
+                };
                 let trait_is_implemented = implementations.is_some_and(|implementations| {
                     implementations
                         .iter()
                         .find(|implementation| {
                             // todo: block infinite types.
-                            evaluate(implementation, symboltable, None, &mut None, 0)
+                            evaluate(implementation, symboltable, free_type_generics, &mut None, 0)
                                 == trait_evaluated
                         })
                         .is_some()
@@ -646,8 +650,10 @@ pub fn unify_generic_arguments(
     for (left_arr_index, right_arr_index) in arguments_in_both_lists {
         let (_, left_evaluated_type) = left_generic_arguments.get(left_arr_index).unwrap();
         let (symbol_index, right_evaluated_type) =
-            right_generic_arguments.get(right_arr_index).unwrap();
-
+            match right_generic_arguments.get(right_arr_index) {
+                Some(generic_tuple) => generic_tuple,
+                None => continue,
+            };
         generic_args.push((
             *symbol_index,
             match unify_types(
@@ -677,99 +683,6 @@ pub fn unify_generic_arguments(
     Ok(generic_args)
 }
 
-/// Reduces a functional evaluated type to its components
-/// # Panics
-/// It panics if the evaluated type is not functional.
-fn distill_function_type<'a>(
-    caller: &'a EvaluatedType,
-    symboltable: &SymbolTable,
-) -> (
-    bool,
-    Vec<ParameterType>,
-    &'a Vec<(SymbolIndex, EvaluatedType)>,
-    EvaluatedType,
-) {
-    match caller {
-        EvaluatedType::MethodInstance {
-            method: function,
-            generic_arguments,
-        }
-        | EvaluatedType::FunctionInstance {
-            function,
-            generic_arguments,
-        } => {
-            let function_symbol = symboltable.get(*function).unwrap();
-            match &function_symbol.kind {
-                SemanticSymbolKind::Method {
-                    is_async,
-                    params,
-                    return_type,
-                    ..
-                }
-                | SemanticSymbolKind::Function {
-                    is_async,
-                    params,
-                    return_type,
-                    ..
-                } => {
-                    let parameter_types = params
-                        .iter()
-                        .map(|param| {
-                            let parameter_symbol = symboltable.get(*param).unwrap();
-                            let (is_optional, type_label) = match &parameter_symbol.kind {
-                                SemanticSymbolKind::Parameter {
-                                    is_optional,
-                                    param_type,
-                                    ..
-                                } => (*is_optional, param_type),
-                                _ => {
-                                    unreachable!("Expected parameter but got {parameter_symbol:?}")
-                                }
-                            };
-                            ParameterType {
-                                name: parameter_symbol.name.clone(),
-                                is_optional,
-                                type_label: type_label.clone(),
-                                inferred_type: type_label
-                                    .as_ref()
-                                    .map(|typ| {
-                                        evaluate(
-                                            typ,
-                                            symboltable,
-                                            Some(generic_arguments),
-                                            &mut None,
-                                            0,
-                                        )
-                                    })
-                                    .unwrap_or(EvaluatedType::Unknown),
-                            }
-                        })
-                        .collect::<Vec<_>>();
-                    let return_type = return_type
-                        .as_ref()
-                        .map(|typ| {
-                            evaluate(typ, symboltable, Some(&generic_arguments), &mut None, 0)
-                        })
-                        .unwrap_or(EvaluatedType::Void);
-                    (*is_async, parameter_types, generic_arguments, return_type)
-                }
-                _ => unreachable!("Expected functional symbol but found {:?}", function_symbol),
-            }
-        }
-        EvaluatedType::FunctionExpressionInstance {
-            is_async,
-            params,
-            return_type,
-            generic_args,
-        } => (
-            *is_async,
-            params.clone(),
-            generic_args,
-            *return_type.clone(),
-        ),
-        _ => unreachable!("{caller:?} cannot be distilled, because it is not a functional type."),
-    }
-}
 
 /// Creates a matching between a list of generic parameters and generic arguments.
 pub fn zip<'a>(

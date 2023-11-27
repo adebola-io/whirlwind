@@ -375,6 +375,35 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     public function UpperCase(): String {
         return Invoke(Injunction.StrUppercase(this));
     }
+    /// Returns true if the string starts with a given pattern.
+    /// ### Usage
+    /// ```
+    /// name := "Joshua";
+    /// AssertThat(name.StartsWith("J"));
+    /// AssertThat(name.StartsWith("Jo"));
+    /// ```
+    public function StartsWith(pat: String): Bool {
+        return Invoke(Injunction.StrStartsWith(pat));
+    }
+    /// Returns true if the string ends with a given pattern.
+    /// ### Usage
+    /// ```
+    /// name := "Michael";
+    /// AssertThat(name.EndsWith("l"));
+    /// AssertThat(name.StartsWith("ael"));
+    /// ```
+    public function EndsWith(pat: String): Bool {
+        return Invoke(Injunction.StrEndsWith(pat));
+    }
+    /// Creates a string from a value that implements Display.
+    /// ## Usage
+    /// ```
+    /// value := 1234;
+    /// valueStr := String.From(value);
+    /// ```
+    public static function From<T implements Display>(value: T): This {
+        value.ToStr()
+    }
 }
 
 

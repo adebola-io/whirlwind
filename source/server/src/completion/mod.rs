@@ -559,6 +559,11 @@ fn generate_documentation(
 ) -> Documentation {
     let header = writer.print_symbol_with_idx(*symbol_idx);
     let mut value = format!("```wrl\n{header}\n```");
+    let symbol = writer
+        .standpoint
+        .symbol_table
+        .get_forwarded(*symbol_idx)
+        .unwrap();
     // Documentation?
     if let Some(ref docs) = symbol.doc_info {
         let mut info = String::new();
@@ -769,7 +774,10 @@ impl<'a> CompletionFinder<'a> {
         &self,
         function_expr: &'a analyzer::TypedFnExpr,
     ) -> Option<CompletionResponse> {
-        self.expr(&function_expr.body)
+        match &function_expr.body {
+            TypedExpression::Block(block) => self.block(block),
+            expression => self.expr(&expression),
+        }
     }
 
     fn call_expr(&self, call: &'a analyzer::TypedCallExpr) -> Option<CompletionResponse> {
@@ -777,7 +785,7 @@ impl<'a> CompletionFinder<'a> {
         for arg in &call.arguments {
             maybe!(self.expr(arg));
         }
-        <Option<CompletionResponse>>::default()
+        None
     }
 
     fn type_decl(
@@ -809,7 +817,7 @@ impl<'a> CompletionFinder<'a> {
         &self,
         constant: &analyzer::TypedConstantDeclaration,
     ) -> Option<CompletionResponse> {
-        <Option<CompletionResponse>>::default()
+        self.expr(&constant.value)
     }
 
     fn test_declaration(
@@ -817,20 +825,12 @@ impl<'a> CompletionFinder<'a> {
         test: &'a analyzer::TypedTestDeclaration,
     ) -> Option<CompletionResponse> {
         let body = &test.body;
-        for (index, statement) in body.statements.iter().enumerate() {
-            self.next_statement_is(index + 1, &body.statements);
-            maybe!(self.statement(statement))
-        }
-        None
+        self.block(body)
     }
 
     fn for_statement(&self, forstat: &analyzer::TypedForStatement) -> Option<CompletionResponse> {
         maybe!(self.expr(&forstat.iterator));
-        for (index, statement) in forstat.body.statements.iter().enumerate() {
-            self.next_statement_is(index + 1, &forstat.body.statements);
-            maybe!(self.statement(statement));
-        }
-        None
+        self.block(&forstat.body)
     }
 
     fn while_statement(
@@ -839,11 +839,7 @@ impl<'a> CompletionFinder<'a> {
     ) -> Option<CompletionResponse> {
         maybe!(self.expr(&_while.condition));
         let body = &_while.body;
-        for (index, statement) in body.statements.iter().enumerate() {
-            self.next_statement_is(index + 1, &body.statements);
-            maybe!(self.statement(statement));
-        }
-        None
+        self.block(body)
     }
 
     fn return_statement(
@@ -858,28 +854,19 @@ impl<'a> CompletionFinder<'a> {
         function: &'a analyzer::TypedFunctionDeclaration,
     ) -> Option<CompletionResponse> {
         let body = &function.body;
-        for (index, statement) in body.statements.iter().enumerate() {
-            self.next_statement_is(index + 1, &body.statements);
-            maybe!(self.statement(statement));
-        }
-        None
+        self.block(body)
     }
 
     fn model_decl(&self, model: &analyzer::TypedModelDeclaration) -> Option<CompletionResponse> {
-        maybe!(model.body.constructor.as_ref().and_then(|constructor| {
-            for (index, statement) in constructor.statements.iter().enumerate() {
-                self.next_statement_is(index + 1, &constructor.statements);
-                maybe!(self.statement(statement));
-            }
-            None
-        }));
+        maybe!(model
+            .body
+            .constructor
+            .as_ref()
+            .and_then(|constructor| { self.block(constructor) }));
         for property in &model.body.properties {
             match &property._type {
                 TypedModelPropertyType::TypedMethod { body } => {
-                    for (index, statement) in body.statements.iter().enumerate() {
-                        self.next_statement_is(index + 1, &body.statements);
-                        maybe!(self.statement(statement));
-                    }
+                    maybe!(self.block(body))
                 }
                 _ => continue,
             }

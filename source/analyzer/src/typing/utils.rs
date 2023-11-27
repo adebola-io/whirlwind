@@ -1,6 +1,6 @@
 use crate::{
     evaluate, EvaluatedType, ParameterType, SemanticSymbolKind, SymbolIndex, SymbolTable,
-    TypecheckerContext,
+    TypecheckerContext, TypedExpression,
 };
 use errors::{TypeError, TypeErrorType};
 /// Returns an intrinsic symbol from the symbol table or returns an unknown type.
@@ -43,6 +43,14 @@ pub fn is_prospective_type(evaluated_type: &EvaluatedType, symboltable: &SymbolT
     matches!(
         evaluated_type, EvaluatedType::ModelInstance { model, .. }
         if symboltable.prospect.is_some_and(|prospect| prospect == *model)
+    )
+}
+
+/// Returns true if the evaluated type is a maybe.
+pub fn is_maybe_type(evaluated_type: &EvaluatedType, symboltable: &SymbolTable) -> bool {
+    matches!(
+        evaluated_type, EvaluatedType::ModelInstance { model, .. }
+        if symboltable.maybe.is_some_and(|maybe| maybe == *model)
     )
 }
 
@@ -249,10 +257,20 @@ pub fn coerce_all_generics(input: &EvaluatedType, coercion_target: EvaluatedType
 /// Converts a list of generic parameter indexes to a list of evaluated generic argument types.
 pub fn evaluate_generic_params(
     generic_params: &Vec<SymbolIndex>,
+    harden: bool,
 ) -> Vec<(SymbolIndex, EvaluatedType)> {
     generic_params
         .iter()
-        .map(|idx| (*idx, EvaluatedType::Generic { base: *idx }))
+        .map(|idx| {
+            (
+                *idx,
+                if harden {
+                    EvaluatedType::HardGeneric { base: *idx }
+                } else {
+                    EvaluatedType::Generic { base: *idx }
+                },
+            )
+        })
         .collect()
 }
 
@@ -275,7 +293,7 @@ pub fn symbol_to_type(
                 let enum_symbol = symboltable.get_forwarded(*owner_enum).unwrap();
                 match &enum_symbol.kind {
                     SemanticSymbolKind::Enum { generic_params, .. } => {
-                        evaluate_generic_params(generic_params)
+                        evaluate_generic_params(generic_params, false)
                     }
                     _ => vec![],
                 }
@@ -306,7 +324,7 @@ pub fn symbol_to_type(
         }
         SemanticSymbolKind::Function { generic_params, .. } => EvaluatedType::FunctionInstance {
             function: name,
-            generic_arguments: evaluate_generic_params(generic_params),
+            generic_arguments: evaluate_generic_params(generic_params, false),
         }, //TODO
         _ => EvaluatedType::Unknown,
     };
@@ -340,7 +358,7 @@ pub fn get_method_types_from_symbol<'a>(
                 };
                 let initial_type = EvaluatedType::MethodInstance {
                     method,
-                    generic_arguments: evaluate_generic_params(generic_params),
+                    generic_arguments: evaluate_generic_params(generic_params, false),
                 };
                 let coerced = coerce(initial_type, generic_arguments);
                 method_types.push((&method_symbol.name, coerced, method_symbol.kind.is_public()));
@@ -516,5 +534,174 @@ pub fn get_numeric_type(
             }
         }
         _ => return evaluate_index(get_intrinsic!(symboltable.int)),
+    }
+}
+
+pub struct FunctionType<'a> {
+    pub is_async: bool,
+    pub parameter_types: Vec<ParameterType>,
+    pub generic_arguments: &'a Vec<(SymbolIndex, EvaluatedType)>,
+    pub return_type: EvaluatedType,
+}
+
+/// Reduces a functional evaluated type to its components
+/// It returns None if the type passed in is not functional.
+pub fn distill_as_function_type<'a>(
+    caller: &'a EvaluatedType,
+    symboltable: &SymbolTable,
+) -> Option<FunctionType<'a>> {
+    match caller {
+        EvaluatedType::MethodInstance {
+            method: function,
+            generic_arguments,
+        }
+        | EvaluatedType::FunctionInstance {
+            function,
+            generic_arguments,
+        } => {
+            let function_symbol = symboltable.get(*function).unwrap();
+            match &function_symbol.kind {
+                SemanticSymbolKind::Method {
+                    is_async,
+                    params,
+                    return_type,
+                    ..
+                }
+                | SemanticSymbolKind::Function {
+                    is_async,
+                    params,
+                    return_type,
+                    ..
+                } => {
+                    let is_async = *is_async;
+                    let parameter_types = params
+                        .iter()
+                        .map(|param| {
+                            let parameter_symbol = symboltable.get(*param).unwrap();
+                            let (is_optional, type_label) = match &parameter_symbol.kind {
+                                SemanticSymbolKind::Parameter {
+                                    is_optional,
+                                    param_type,
+                                    ..
+                                } => (*is_optional, param_type),
+                                _ => {
+                                    unreachable!("Expected parameter but got {parameter_symbol:?}")
+                                }
+                            };
+                            ParameterType {
+                                name: parameter_symbol.name.clone(),
+                                is_optional,
+                                type_label: type_label.clone(),
+                                inferred_type: type_label
+                                    .as_ref()
+                                    .map(|typ| {
+                                        evaluate(
+                                            typ,
+                                            symboltable,
+                                            Some(generic_arguments),
+                                            &mut None,
+                                            0,
+                                        )
+                                    })
+                                    .unwrap_or(EvaluatedType::Unknown),
+                            }
+                        })
+                        .collect::<Vec<_>>();
+                    let return_type = return_type
+                        .as_ref()
+                        .map(|typ| {
+                            evaluate(typ, symboltable, Some(&generic_arguments), &mut None, 0)
+                        })
+                        .unwrap_or(EvaluatedType::Void);
+                    Some(FunctionType {
+                        is_async,
+                        parameter_types,
+                        generic_arguments,
+                        return_type,
+                    })
+                }
+                _ => unreachable!("Expected functional symbol but found {:?}", function_symbol),
+            }
+        }
+        EvaluatedType::FunctionExpressionInstance {
+            is_async,
+            params,
+            return_type,
+            generic_args,
+        } => {
+            let is_async = *is_async;
+            let parameter_types = params.clone();
+            let return_type = *return_type.clone();
+            let generic_arguments = generic_args;
+            Some(FunctionType {
+                is_async,
+                parameter_types,
+                generic_arguments,
+                return_type,
+            })
+        }
+        _ => None,
+    }
+}
+
+/// When designing Whirlwind, support for bidirectional type inferencing was added,
+/// which turns out to be more work than previously expected.
+/// Checking types in the other direction requires a whole new visitor, which is
+/// unecessary if the types to infer are minimal.
+///
+/// The purpose of this function is to "suggest" a type for expressions and parameters
+/// that have unknown types, before they are properly typechecked.
+/// It is most useful in anonymous function parameters without type labels, where
+/// there is a left hand side type available, such as in calls, assignments and returns.
+pub fn infer_ahead(
+    expression: &mut TypedExpression,
+    target_type: &EvaluatedType,
+    symboltable: &mut SymbolTable,
+) {
+    match expression {
+        TypedExpression::FnExpr(function_expr) => {
+            if let Some(functiontype) = distill_as_function_type(target_type, symboltable) {
+                // Infer parameters.
+                for (index, param_idx) in function_expr.params.iter().enumerate() {
+                    let shadow_type_is_maybe =
+                        functiontype
+                            .parameter_types
+                            .get(index)
+                            .is_some_and(|shadow_type| {
+                                is_maybe_type(&shadow_type.inferred_type, symboltable)
+                            });
+                    let parameter_symbol = symboltable.get_mut(*param_idx).unwrap();
+                    if let SemanticSymbolKind::Parameter {
+                        param_type,
+                        is_optional,
+                        inferred_type,
+                        ..
+                    } = &mut parameter_symbol.kind
+                    {
+                        let shadow_type = match functiontype.parameter_types.get(index) {
+                            Some(shadow) => shadow,
+                            None => break,
+                        };
+                        let is_optional = *is_optional;
+                        let optionality_is_equal = (shadow_type.is_optional == is_optional)
+                            || (is_optional && shadow_type_is_maybe);
+
+                        if param_type.is_none() && optionality_is_equal {
+                            *inferred_type = match functiontype.parameter_types.get(index) {
+                                Some(param_type) => param_type.inferred_type.clone(),
+                                None => break,
+                            }
+                        }
+                    };
+                }
+                // Infer return type.
+                infer_ahead(
+                    &mut function_expr.body,
+                    &functiontype.return_type,
+                    symboltable,
+                );
+            }
+        }
+        _ => {} // todo: what else needs bidirectional inference?
     }
 }
