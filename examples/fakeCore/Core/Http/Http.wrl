@@ -1,7 +1,7 @@
 module Http;
 use Super.Prelude.{
     Bool, Todo, Outcome, Prospect, String,
-    Maybe, UnsignedInt, Some
+    Maybe, UnsignedInt, Some, Array
 };
 use Super.Primitives.Ops.Addition;
 public use Request.{RequestParams, HttpRequest, HttpMethod, HttpRequestError};
@@ -37,7 +37,10 @@ public model HttpServer {
     }
 
     /// Registers a route for a request with a `POST` method.
-    public function Post(route: String, handler: fn(request: HttpRequest): Prospect<ServerOutcome>) {
+    public function Post(
+        route: String, 
+        handler: fn(request: HttpRequest): Prospect<ServerOutcome>
+    ) {
         this.endpoints.Register(HttpMethod.Post, route, handler);
     }
 
@@ -58,32 +61,29 @@ public model HttpResponse {
         return Todo();
     }
     /// Sets the status code value of the response.
-    function Status(value: UnsignedInt): &This {
+    public function Status(value: UnsignedInt): &This {
         this.status = value;
         return &this;
     }
     /// Sets the response type to HTML Text.
-    function Html(string: String): &This {
+    public function Html(string: String): &This {
         this.headers.Set("Content-Type", "text/html");
         this.data = string;
         return &this;
     }
 }
 
+
+public type MiddlewareResponse = Outcome<HttpRequest, HttpRequestError>;
 public model Middleware {
+    var handlers: Array<fn(): Prospect<MiddlewareResponse>>;
     new() {
-        
+        this.handlers = [];
     }
-
-    /// Adds a validator before the route handler of a route is run.
-    /// The restrictor will not run if the path is not registered by the server.
-    function Restrict(route: String, protector: fn (request: HttpRequest): MiddlewareResponse) {
-
+    /// Registers a middleware handler.
+    public function Use(handler: fn(request: HttpRequest): Prospect<MiddlewareResponse>) {
+        this.handlers.Push(handler);
     }
 }
 
-public enum MiddlewareResponse {
-    Continue,
-    Stop(HttpRequestError)
-}
 

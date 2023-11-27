@@ -1,0 +1,9 @@
+module Crypto;
+
+
+public model JwtEncryptor {
+    /// Verify 
+    public static function Decode(name: String, secret: String): String {
+
+    }
+}

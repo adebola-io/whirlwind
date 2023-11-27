@@ -155,47 +155,48 @@ impl EvaluatedType {
         matches!(self, Self::Partial { .. })
     }
 
-    pub(crate) fn contains_never(&self) -> bool {
-        match self {
-            EvaluatedType::Partial { types } => types.iter().any(|typ| typ.contains_never()),
-            EvaluatedType::ModelInstance {
-                generic_arguments, ..
-            }
-            | EvaluatedType::TraitInstance {
-                generic_arguments, ..
-            }
-            | EvaluatedType::EnumInstance {
-                generic_arguments, ..
-            }
-            | EvaluatedType::FunctionInstance {
-                generic_arguments, ..
-            }
-            | EvaluatedType::MethodInstance {
-                generic_arguments, ..
-            } => generic_arguments
-                .iter()
-                .map(|(_, typ)| typ)
-                .any(|typ| typ.contains_never()),
-            EvaluatedType::FunctionExpressionInstance {
-                params,
-                return_type,
-                generic_args,
-                ..
-            } => {
-                params
+    /// Returns true if a certain type is an inclusive child within this.
+    pub fn contains(&self, child: &EvaluatedType) -> bool {
+        self == child
+            || match self {
+                EvaluatedType::Partial { types } => types.iter().any(|typ| typ.contains(child)),
+                EvaluatedType::ModelInstance {
+                    generic_arguments, ..
+                }
+                | EvaluatedType::TraitInstance {
+                    generic_arguments, ..
+                }
+                | EvaluatedType::EnumInstance {
+                    generic_arguments, ..
+                }
+                | EvaluatedType::FunctionInstance {
+                    generic_arguments, ..
+                }
+                | EvaluatedType::MethodInstance {
+                    generic_arguments, ..
+                } => generic_arguments
                     .iter()
-                    .any(|param| param.inferred_type.contains_never())
-                    || return_type.contains_never()
-                    || generic_args
+                    .map(|(_, typ)| typ)
+                    .any(|typ| typ.contains(child)),
+                EvaluatedType::FunctionExpressionInstance {
+                    params,
+                    return_type,
+                    generic_args,
+                    ..
+                } => {
+                    params
                         .iter()
-                        .map(|(_, typ)| typ)
-                        .any(|typ| typ.contains_never())
+                        .any(|param| param.inferred_type.contains(child))
+                        || return_type.contains(child)
+                        || generic_args
+                            .iter()
+                            .map(|(_, typ)| typ)
+                            .any(|typ| typ.contains(child))
+                }
+                EvaluatedType::OpaqueTypeInstance { .. } => false,
+                EvaluatedType::Borrowed { base } => base.contains(child),
+                _ => false,
             }
-            EvaluatedType::OpaqueTypeInstance { .. } => false,
-            EvaluatedType::Borrowed { base } => base.contains_never(),
-            EvaluatedType::Never => true,
-            _ => false,
-        }
     }
 
     /// Returns `true` if the evaluated type is [`Never`].
@@ -247,6 +248,14 @@ impl EvaluatedType {
     #[must_use]
     pub fn is_borrowed(&self) -> bool {
         matches!(self, Self::Borrowed { .. })
+    }
+
+    /// Returns `true` if the evaluated type is [`MethodInstance`].
+    ///
+    /// [`MethodInstance`]: EvaluatedType::MethodInstance
+    #[must_use]
+    pub fn is_method_instance(&self) -> bool {
+        matches!(self, Self::MethodInstance { .. })
     }
 }
 

@@ -76,11 +76,21 @@ pub struct SemanticSymbolDeclaration<'a> {
     pub module_path: &'a Path,
     pub span: &'a Span,
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum VariablePatternForm {
     Normal,
-    DestructuredFromObject { from_property: Option<SymbolIndex> },
+    DestructuredFromObject { from_property: SymbolIndex },
     DestructuredFromArray,
+}
+
+impl VariablePatternForm {
+    /// Returns `true` if the variable pattern form is [`Normal`].
+    ///
+    /// [`Normal`]: VariablePatternForm::Normal
+    #[must_use]
+    pub fn is_normal(&self) -> bool {
+        matches!(self, Self::Normal)
+    }
 }
 
 #[derive(Debug)]

@@ -1,6 +1,6 @@
 module Math;
 
-use Core.Primitives.Ops.Magnitude;
+use Core.Primitives.Ops.Orderable;
 
 /// Returns the largest value in an array.
 /// It returns an empty value if the array is empty.
@@ -11,13 +11,13 @@ use Core.Primitives.Ops.Magnitude;
 /// 
 /// Assert(largest == Some(7));
 /// ```
-public function Max<T implements Magnitude>(array: Array<T>): Maybe<T> {
-    if array.Len() == 0 {
-       return None();
+public function Max<T implements Orderable>(array: Array<T>): Maybe<T> {
+    if array.Length() == 0 {
+        return None();
     };
     max := array[0];
     i := 1;
-    while i < array.Len() {
+    while i < array.Length() {
         if array[i] > max {
             max = array[i]
         };
@@ -35,7 +35,7 @@ public function Max<T implements Magnitude>(array: Array<T>): Maybe<T> {
 /// 
 /// Assert(smallest == Some(2));
 /// ```
-public function Min<T implements Magnitude>(array: Array<T>): Maybe<T> {
+public function Min<T implements Orderable>(array: Array<T>): Maybe<T> {
     if array.Len() == 0 {
         return None();
     };
@@ -60,7 +60,7 @@ public function Min<T implements Magnitude>(array: Array<T>): Maybe<T> {
 /// ```
 public function Sum(array: Array<Number>): Number {
     i := 1;
-    sum := 0;
+    sum: Number := 0;
     while i < array.Len() {
         sum += array[0]
     }

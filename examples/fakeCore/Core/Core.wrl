@@ -10,3 +10,6 @@ public use Async;
 public use Testing;
 public use Io;
 public use Collections;
+public use Crypto;
+public use Math;
+public use Os;

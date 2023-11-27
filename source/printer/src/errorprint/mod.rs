@@ -82,7 +82,12 @@ Got: '{right}'.",
         TypeErrorType::IllegalGuarantee { name } => format!("! cannot be used here because type {name} does not implement Guaranteed."),
         TypeErrorType::IllegalTry { name } => format!("? cannot be used here because type {name} does not implement Try."),
         TypeErrorType::NumericConversionError { error } => format!("Numeric conversion error: {error}."),
-        TypeErrorType::NumericCastingError { left, right } => format!("Numeric type {left} cannot be assigned a value of type {right}."), 
+        TypeErrorType::NumericCastingError { left, right } => format!("Numeric type {left} cannot be assigned a value of type {right}."),
+        TypeErrorType::MissingAnnotationsOrValue => format!("Cannot infer types without type labels or initial values."),
+        TypeErrorType::NoDefaultImplFor(name) => format!("{name} cannot be declared without a value because it does not implement Default."),
+        TypeErrorType::IllegalArrayDestructure { name } => format!("Cannot destructure array elements from value of type '{name}'."),
+        TypeErrorType::IllegalModelDestructure { name } => format!("Cannot destructure from value of type {name} because it is not a model instance."),
+        TypeErrorType::DestructuringMethod { .. } => format!("Methods cannot be destructured from models."), 
     }
 }
 

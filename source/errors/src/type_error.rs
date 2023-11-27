@@ -193,6 +193,22 @@ pub enum TypeErrorType {
     NumericCastingError {
         left: String,
         right: String,
+    },
+    /// Errors that arise from using variables or parameters without types and values.
+    MissingAnnotationsOrValue,
+    /// Errors that arise from declaring a variable without a value, and with a type that does not implement Default.
+    NoDefaultImplFor(String),
+    // Destructuring an item that is not an array.
+    IllegalArrayDestructure {
+        name: String,
+    },
+    // Destructuring an item that is not a model instance.
+    IllegalModelDestructure {
+        name: String,
+    },
+    DestructuringMethod {
+        base_type: String,
+        method_name: String,
     }, // InfiniteType,
 }
 

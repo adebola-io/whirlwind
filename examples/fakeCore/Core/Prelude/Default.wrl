@@ -5,8 +5,8 @@ module Default;
 /// Suppose there is a `Position` model that, if not set, should start at the origin (0, 0). A non implemented approach would be: 
 /// ```
 /// model Position {
-///    var x: Number;
-///    var y: Number;
+///    public var x: Number;
+///    public var y: Number;
 ///    new(x: Number, y: Number) {
 ///       this.x = x; 
 ///       this.y = y; 
@@ -20,8 +20,8 @@ module Default;
 /// Using the Default trait, it would instead be:
 /// ```
 /// model Position implements Default {
-///    var x: Number:
-///    var y: Number:
+///    public var x: Number;
+///    public var y: Number;
 ///    new(x: Number, y: Number) {
 ///       this.x = x; 
 ///       this.y = y; 

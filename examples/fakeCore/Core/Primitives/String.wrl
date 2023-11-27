@@ -135,6 +135,16 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     public function Contains(substr: &String): Bool {
         return Invoke(Injunction.StrContains(this, substr));
     }
+    /// Returns true if the string ends with a given pattern.
+    /// ### Usage
+    /// ```
+    /// name := "Michael";
+    /// AssertThat(name.EndsWith("l"));
+    /// AssertThat(name.StartsWith("ael"));
+    /// ```
+    public function EndsWith(pat: String): Bool {
+        return Invoke(Injunction.StrEndsWith(pat));
+    }
     /// Returns true if the string is made up entirely of alphabetic and numeric characters.
     /// ## Usage
     /// ```
@@ -287,7 +297,7 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     /// 
     /// Assert(str.Slice(0..5)).Equals(Some(&"Hello")); // index 0 to 4.
     /// ```
-    public function Slice(bounds: Range<Int>): Maybe<&String> {
+    public function Slice(bounds: Range<UnsignedInt>): Maybe<&String> {
         return Invoke(Injunction.StrSlice(this, bounds));
     }
     /// Divides the string into a list of substrings based on a delimeter.
@@ -384,16 +394,6 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     /// ```
     public function StartsWith(pat: String): Bool {
         return Invoke(Injunction.StrStartsWith(pat));
-    }
-    /// Returns true if the string ends with a given pattern.
-    /// ### Usage
-    /// ```
-    /// name := "Michael";
-    /// AssertThat(name.EndsWith("l"));
-    /// AssertThat(name.StartsWith("ael"));
-    /// ```
-    public function EndsWith(pat: String): Bool {
-        return Invoke(Injunction.StrEndsWith(pat));
     }
     /// Creates a string from a value that implements Display.
     /// ## Usage

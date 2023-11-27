@@ -53,13 +53,3 @@ pub fn unknown_value(name: String, span: ast::Span) -> ContextError {
         span,
     }
 }
-
-pub fn unknown_property(model_name: String, property: String, span: Span) -> ContextError {
-    ContextError {
-        _type: ContextErrorType::UnknownProperty {
-            model_name,
-            property,
-        },
-        span,
-    }
-}

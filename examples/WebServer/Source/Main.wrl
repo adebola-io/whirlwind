@@ -7,17 +7,21 @@ use Core.{
         HttpServer, ServerOutcome, HttpResponse, HttpRequest, 
         Middleware, MiddlewareResponse, HttpRequestError
     },
-    Io.{Fmt, Print}
+    Io.{Fmt, Print},
+    Crypto.JwtEncryptor,
+    Process.ReadEnv
 };
 
 /// Entry point into the program.
 public function Main() {
     // Set up server configurations.
     name := "simple-server";
-    port: UnsignedInt := 8080;
+    port := 8080;
 
     app := new HttpServer(name, port);
     middleware := new Middleware();
+    // Register authentication.
+    middleware.Use(AuthenticationHandler);
 
     // Apply middleware to the server.
     app.UseMiddleware(middleware);
@@ -45,9 +49,26 @@ async function HelloHandler(request: HttpRequest): ServerOutcome {
     Ok(response)
 }
 
-function AuthenticationHandler(request: HttpRequest): MiddlewareResponse {
-    // auth := request.Headers().GetOrReturn("Auth")?;
-    Todo()
+/// Handler function for authenticating users.
+async function AuthenticationHandler(request: HttpRequest): MiddlewareResponse {
+    if request.Url().StartsWith("/user/") {
+        auth := request.Headers().GetOrErr("auth")?;
+        token := if !auth.StartsWith("Bearer ") {
+            return Err(new HttpRequestError("Invalid authentication header", request));
+        } else {
+            auth.Slice(7..auth.Length()).Unwrap()
+        };
+        maybeSecret := ReadEnv("JWT_SECRET");
+        if maybeSecret.IsNone() {
+            return Err(new HttpRequestError("Unathorized Request", request));
+        };
+        secret := maybeSecret.Unwrap();
+        decoded := JwtEncryptor.Decode(*token, *secret);
+        request.StoreData("user-id", decoded);
+        return Ok(request);
+    } else {
+        return Ok(request);
+    }
 }
 
 /// Handler function for the "/greet/:name" endpoint.
@@ -64,11 +85,4 @@ async function StaticFileHandler(request: HttpRequest): ServerOutcome {
     // Implement logic to read and serve the specified static file.
     response := HttpResponse.From(request);
     return Ok(response);
-}
-
-
-function TestTrying(): Maybe<String> {
-    table := [1, 2, 3, 4, 255];
-    symbol := table.At(0)?;
-    return Some("jsyd");
 }

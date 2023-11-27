@@ -4,6 +4,7 @@ use Super.{
     Internals.never, 
     Primitives.String
 };
+use Super.Prelude.Maybe;
 
 public model Error {
     new(message?: String) {
@@ -44,4 +45,9 @@ public function Todo(message?: String): never {
 /// ```
 public function Panic(message?: String): never {
     return Halt("Compiler built in.");
+}
+
+/// Returns the value of an environment variable.
+public function ReadEnv(variableName: String): Maybe<&String> {
+    Todo()
 }

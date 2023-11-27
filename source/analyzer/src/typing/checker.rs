@@ -2,9 +2,9 @@ use crate::{
     evaluate, span_of_typed_expression, span_of_typed_statement,
     unify::{unify_freely, unify_types},
     utils::{
-        arrify, coerce, coerce_all_generics, evaluate_generic_params, get_implementation_of,
-        get_numeric_type, infer_ahead, is_array, is_boolean, is_numeric_type, maybify, prospectify,
-        symbol_to_type,
+        arrify, coerce, coerce_all_generics, ensure_assignment_validity, evaluate_generic_params,
+        get_implementation_of, get_numeric_type, infer_ahead, is_array, is_boolean,
+        is_numeric_type, maybify, prospectify, symbol_to_type,
     },
     EvaluatedType, Literal, ParameterType, PathIndex, ProgramError, SemanticSymbolKind,
     SymbolIndex, SymbolTable, TypedAccessExpr, TypedAssignmentExpr, TypedBlock, TypedCallExpr,
@@ -93,7 +93,9 @@ mod statements {
                 typecheck_block(&mut test.body, false, checker_ctx, symboltable);
             }
             // TypedStmnt::EnumDeclaration(_) => todo!(),
-            // TypedStmnt::VariableDeclaration(_) => todo!(),
+            TypedStmnt::VariableDeclaration(variable) => {
+                typecheck_variable_declaration(variable, checker_ctx, symboltable)
+            }
             TypedStmnt::ShorthandVariableDeclaration(shorthand_variable) => {
                 typecheck_shorthand_variable_declaration(
                     shorthand_variable,
@@ -126,6 +128,220 @@ mod statements {
         }
     }
 
+    /// Typechecks a variable declaration.
+    fn typecheck_variable_declaration(
+        variable: &mut crate::TypedVariableDeclaration,
+        checker_ctx: &mut TypecheckerContext<'_>,
+        symboltable: &mut SymbolTable,
+    ) {
+        let names = &variable.names;
+        if variable.names.len() == 0 {
+            if let Some(expr) = variable.value.as_mut() {
+                expressions::typecheck_expression(expr, checker_ctx, symboltable);
+                // for continuity.
+            }
+            return;
+        }
+        // If there is no value assigned, there must be a type label, and the given type must implement Default.
+        // If there is no type assigned, there must be a value assigned.
+        // Bidirectional inferencing is still needed, so the first variable declared is used as a foundation
+        // for checking others.
+        let declared_type = {
+            let symbol = symboltable.get_forwarded(variable.names[0]).unwrap();
+            let declared_type =
+                if let SemanticSymbolKind::Variable { declared_type, .. } = &symbol.kind {
+                    declared_type
+                } else {
+                    if let Some(expr) = variable.value.as_mut() {
+                        expressions::typecheck_expression(expr, checker_ctx, symboltable);
+                        // for continuity.
+                    }
+                    return;
+                };
+            if declared_type.is_some() {
+                // Currently on the first type.
+                let declared_type = declared_type.as_ref().unwrap();
+                Some(evaluate(
+                    declared_type,
+                    symboltable,
+                    None,
+                    &mut checker_ctx.tracker(),
+                    0,
+                ))
+            } else {
+                None
+            }
+        };
+        // If both variable and label are present, bidirectional inferencing is possible.
+        if declared_type.is_some() && variable.value.is_some() {
+            infer_ahead(
+                &mut variable.value.as_mut().unwrap(),
+                &declared_type.as_ref().unwrap(),
+                symboltable,
+            );
+        }
+        let mut inferred_result = variable
+            .value
+            .as_mut()
+            .map(|expr| expressions::typecheck_expression(expr, checker_ctx, symboltable));
+        // if value and label are available, unification can be done early.
+        // so that the focus later will be the extraction of array and model types.
+        if declared_type.is_some() && inferred_result.is_some() {
+            let declared = declared_type.as_ref().unwrap();
+            // Traits are not allowed in type contexts.
+            if let EvaluatedType::TraitInstance { trait_, .. } = &declared {
+                let symbol = symboltable.get(*trait_);
+                checker_ctx.add_error(errors::trait_as_type(
+                    symbol
+                        .map(|symbol| symbol.name.clone())
+                        .unwrap_or(String::from("{Trait}")),
+                    variable.span,
+                ));
+                return;
+            }
+            // Never types are not allowed in type contexts.
+            if declared.contains(&EvaluatedType::Never) {
+                checker_ctx.add_error(errors::never_as_declared(variable.span));
+            }
+            let type_of_value = inferred_result.as_ref().unwrap();
+            match unify_freely(declared, &type_of_value, symboltable, None) {
+                Ok(unified_type) => inferred_result = Some(unified_type),
+                Err(errortypes) => {
+                    for error in errortypes {
+                        checker_ctx.add_error(TypeError {
+                            _type: error,
+                            span: variable.span,
+                        });
+                    }
+                }
+            };
+        }
+        // if label is present but no value:
+        if declared_type.is_some() && variable.value.is_none() {
+            let declared = declared_type.as_ref().unwrap();
+            if let Some(default) = symboltable.default {
+                let default_is_implemented =
+                    get_implementation_of(default, declared, symboltable).is_some();
+                if !default_is_implemented {
+                    checker_ctx.add_error(errors::no_default(
+                        symboltable.format_evaluated_type(declared),
+                        variable.span,
+                    ));
+                }
+            }
+        }
+        // if neither is available, nothing can be done.
+        if declared_type.is_none() && variable.value.is_none() {
+            checker_ctx.add_error(errors::missing_annotations(variable.span));
+            return;
+        }
+        let final_type = inferred_result.unwrap_or_else(|| declared_type.unwrap());
+        let span = variable.span;
+        ensure_assignment_validity(&final_type, checker_ctx, span);
+        // Pattern resolutions.
+        for name in names {
+            let symbol = symboltable.get_mut(*name).unwrap();
+            // Only pure, immutable and literal types should be allowed in global variables.
+            // if variable.value.is_some() && symbol.kind.is_public() {
+
+            // }
+            let pattern_type = if let SemanticSymbolKind::Variable {
+                pattern_type,
+                inferred_type,
+                ..
+            } = &mut symbol.kind
+            {
+                if pattern_type.is_normal() {
+                    // There is only one name to infer.
+                    *inferred_type = final_type;
+                    return;
+                }
+                pattern_type.clone()
+            } else {
+                continue;
+            };
+            let mut pattern_result = EvaluatedType::Unknown;
+            match pattern_type {
+                crate::VariablePatternForm::DestructuredFromObject {
+                    from_property: property_symbol_idx,
+                } => {
+                    match &final_type {
+                        EvaluatedType::ModelInstance {
+                            model,
+                            generic_arguments,
+                        } => {
+                            let property_span = symboltable
+                                .get(property_symbol_idx)
+                                .map(|sym| sym.ident_span())
+                                .unwrap_or_default();
+                            let property_type = expressions::search_for_property(
+                                checker_ctx,
+                                symboltable,
+                                *model,
+                                property_symbol_idx,
+                                generic_arguments.clone(),
+                                true,
+                                property_span,
+                            );
+                            let get_model_name = || symboltable.get(*model).unwrap().name.clone();
+                            let get_property_name =
+                                || symboltable.get(property_symbol_idx).unwrap().name.clone();
+                            if property_type.is_none() {
+                                let property_name = get_property_name();
+                                let model_name = get_model_name();
+                                checker_ctx.add_error(errors::unknown_property(
+                                    model_name,
+                                    property_name,
+                                    span,
+                                ));
+                            } else {
+                                pattern_result = property_type.unwrap();
+                                if pattern_result.is_method_instance() {
+                                    let property_name = get_property_name();
+                                    let model_name = get_model_name();
+                                    checker_ctx.add_error(errors::destructuring_method(
+                                        model_name,
+                                        property_name,
+                                        span,
+                                    ))
+                                }
+                            }
+                        }
+                        _ => {
+                            checker_ctx.add_error(errors::illegal_model_destructure(
+                                symboltable.format_evaluated_type(&final_type),
+                                variable.span,
+                            ));
+                            // No point in checking other patterns.
+                            return;
+                        }
+                    }
+                }
+                crate::VariablePatternForm::DestructuredFromArray => match &final_type {
+                    EvaluatedType::ModelInstance {
+                        generic_arguments, ..
+                    } if is_array(&final_type, symboltable) => {
+                        pattern_result = generic_arguments.first().unwrap().1.clone()
+                    }
+                    _ => {
+                        checker_ctx.add_error(errors::illegal_array_destructure(
+                            symboltable.format_evaluated_type(&final_type),
+                            variable.span,
+                        ));
+                        // No point in checking other patterns.
+                        return;
+                    }
+                },
+                _ => {}
+            }
+            if let SemanticSymbolKind::Variable { inferred_type, .. } =
+                &mut symboltable.get_mut(*name).unwrap().kind
+            {
+                *inferred_type = pattern_result;
+            }
+        }
+    }
+
     /// Typechecks a while statement.
     fn typecheck_while_statement(
         whil: &mut crate::TypedWhileStatement,
@@ -134,7 +350,7 @@ mod statements {
     ) {
         let condition_type =
             expressions::typecheck_expression(&mut whil.condition, checker_ctx, symboltable);
-        if !is_boolean(&condition_type, symboltable) {
+        if !is_boolean(&condition_type, symboltable) && !condition_type.is_unknown() {
             checker_ctx.add_error(errors::non_boolean_logic(
                 symboltable.format_evaluated_type(&condition_type),
                 checker_ctx.span_of_expr(&whil.condition, symboltable),
@@ -191,7 +407,7 @@ mod statements {
                 ));
                 return;
             }
-            if declared.contains_never() {
+            if declared.contains(&EvaluatedType::Never) {
                 checker_ctx.add_error(errors::never_as_declared(shorthand_variable.span))
             }
             match unify_freely(&declared, &type_of_value, symboltable, None) {
@@ -209,12 +425,8 @@ mod statements {
         } else {
             type_of_value
         };
-        // todo: block partially evaluated types, such as those produced by conditional expressions.
-        if inference_result.is_void() {
-            checker_ctx.add_error(errors::void_assignment(shorthand_variable.span));
-        } else if inference_result.is_partial() {
-            checker_ctx.add_error(errors::partial_type_assignment(shorthand_variable.span));
-        }
+        let span = shorthand_variable.span;
+        ensure_assignment_validity(&inference_result, checker_ctx, span);
         if let SemanticSymbolKind::Variable { inferred_type, .. } =
             &mut symboltable.get_mut(name).unwrap().kind
         {
@@ -422,16 +634,13 @@ mod statements {
             UnifyOptions::Return,
             None,
         ) {
-            let span = return_type_span
-                .or_else(|| {
-                    function
-                        .body
-                        .statements
-                        .last()
-                        .map(|s| checker_ctx.span_of_stmnt(s, symboltable))
-                })
+            let span = function
+                .body
+                .statements
+                .last()
+                .map(|s| checker_ctx.span_of_stmnt(s, symboltable))
+                .or(return_type_span)
                 .unwrap_or_else(|| function.body.span);
-
             for errortype in typeerrortype {
                 checker_ctx.add_error(TypeError {
                     _type: errortype,
@@ -756,7 +965,7 @@ mod expressions {
         ifexp.inferred_type = {
             let condition_type =
                 typecheck_expression(&mut ifexp.condition, checker_ctx, symboltable);
-            if !is_boolean(&condition_type, symboltable) {
+            if !is_boolean(&condition_type, symboltable) && !condition_type.is_unknown() {
                 checker_ctx.add_error(errors::non_boolean_logic(
                     symboltable.format_evaluated_type(&condition_type),
                     checker_ctx.span_of_expr(&ifexp.condition, symboltable),
@@ -889,11 +1098,8 @@ mod expressions {
                 return EvaluatedType::Unknown;
             }
 
-            if right_type.is_void() {
-                checker_ctx.add_error(errors::void_assignment(assexp.span));
-            } else if right_type.is_partial() {
-                checker_ctx.add_error(errors::partial_type_assignment(assexp.span));
-            }
+            let span = assexp.span;
+            ensure_assignment_validity(&right_type, checker_ctx, span);
 
             // Handling transforming the left hand side to the resulting type.
             if let TypedExpression::Identifier(ident) = &assexp.left {
@@ -929,13 +1135,13 @@ mod expressions {
             let left = typecheck_expression(&mut logexp.left, checker_ctx, symboltable);
             let right = typecheck_expression(&mut logexp.right, checker_ctx, symboltable);
 
-            if !is_boolean(&left, symboltable) {
+            if !is_boolean(&left, symboltable) && !left.is_unknown() {
                 checker_ctx.add_error(errors::non_boolean_logic(
                     symboltable.format_evaluated_type(&left),
                     checker_ctx.span_of_expr(&logexp.right, symboltable),
                 ));
             }
-            if !is_boolean(&right, symboltable) {
+            if !is_boolean(&right, symboltable) && !right.is_unknown() {
                 checker_ctx.add_error(errors::non_boolean_logic(
                     symboltable.format_evaluated_type(&right),
                     checker_ctx.span_of_expr(&logexp.right, symboltable),
@@ -1126,24 +1332,24 @@ mod expressions {
             if symboltable.array.is_none() {
                 checker_ctx.add_error(missing_intrinsic(format!("Array"), array.span));
             }
-            let mut element_types = vec![];
-            let mut next_type = EvaluatedType::Unknown;
-            // The first type is the base type and is assumed to be the true type for every other type in the array.
-            for (index, element) in &mut array.elements.iter_mut().enumerate() {
-                if index == 0 {
-                    next_type = typecheck_expression(element, checker_ctx, symboltable);
-                } else {
-                    // Try to guess the type of the next element based on the first type.
-                    // todo: should the next type be progressively unified before inferring?
-                    infer_ahead(element, &next_type, symboltable);
-                    element_types.push(typecheck_expression(element, checker_ctx, symboltable));
-                }
-            }
-            if element_types.len() == 0 {
+            if array.elements.len() == 0 {
                 return arrify(EvaluatedType::Unknown, &symboltable);
             }
+            let mut element_types = vec![];
+            let mut next_type = array
+                .elements
+                .first_mut()
+                .map(|expression| typecheck_expression(expression, checker_ctx, symboltable))
+                .unwrap_or(EvaluatedType::Unknown);
+            // The first type is the base type and is assumed to be the true type for every other type in the array.
+            for element in &mut array.elements.iter_mut().skip(1) {
+                // Try to guess the type of the next element based on the first type.
+                // todo: should the next type be progressively unified before inferring?
+                infer_ahead(element, &next_type, symboltable);
+                element_types.push(typecheck_expression(element, checker_ctx, symboltable));
+            }
             // Reduce individual types to determine final array form.
-            let mut i = 0;
+            let mut i = 1;
             let mut errors_gotten = vec![];
             for evaluated_type in element_types {
                 let mut unification = unify_types(
@@ -1185,7 +1391,7 @@ mod expressions {
                             _type: error,
                             span: array
                                 .elements
-                                .get(idx - 1)
+                                .get(idx)
                                 .map(|el| checker_ctx.span_of_expr(el, symboltable))
                                 .unwrap_or(array.span),
                         });
@@ -1587,12 +1793,20 @@ mod expressions {
                     inferred_type,
                 });
             }
-            let return_type = f
-                .return_type
-                .as_ref()
-                .map(|typ| evaluate(typ, &symboltable, None, &mut checker_ctx.tracker(), 0));
+            let return_type = f.return_type.as_ref().map(|typ| {
+                (
+                    evaluate(
+                        typ,
+                        &symboltable,
+                        Some(&generic_args),
+                        &mut checker_ctx.tracker(),
+                        0,
+                    ),
+                    typ.span(),
+                )
+            });
             // Traits cannot be used as return types.
-            if let Some(EvaluatedType::TraitInstance { trait_, .. }) = &return_type {
+            if let Some((EvaluatedType::TraitInstance { trait_, .. }, _)) = &return_type {
                 let symbol = symboltable.get(*trait_);
                 checker_ctx.add_error(errors::trait_as_type(
                     symbol
@@ -1601,14 +1815,17 @@ mod expressions {
                     f.return_type.as_ref().unwrap().span(),
                 ));
             }
-            let inferred_return_type = match &mut f.body {
+            let mut inferred_return_type = match &mut f.body {
                 // Function body is scoped to block.
                 TypedExpression::Block(block) => {
                     checker_ctx
                         .current_function_context
                         .push(CurrentFunctionContext {
                             is_named: false,
-                            return_type: return_type.unwrap_or(EvaluatedType::Unknown),
+                            return_type: return_type
+                                .as_ref()
+                                .map(|(a, _)| a.clone())
+                                .unwrap_or(EvaluatedType::Unknown),
                         });
                     let blocktype = typecheck_block(block, false, checker_ctx, symboltable);
                     if blocktype.is_void() {
@@ -1626,6 +1843,32 @@ mod expressions {
                 }
                 expression => typecheck_expression(expression, checker_ctx, symboltable),
             };
+            if return_type.is_some() {
+                let (return_type, span) = return_type.unwrap();
+                match unify_types(
+                    &return_type,
+                    &inferred_return_type,
+                    symboltable,
+                    UnifyOptions::Return,
+                    None,
+                ) {
+                    Ok(final_return_type) => {
+                        inferred_return_type = final_return_type;
+                    }
+                    Err(errors) => {
+                        for _type in errors {
+                            checker_ctx.add_error(TypeError { _type, span })
+                        }
+                        checker_ctx.add_error(TypeError {
+                            _type: TypeErrorType::MismatchedReturnType {
+                                expected: symboltable.format_evaluated_type(&return_type),
+                                found: symboltable.format_evaluated_type(&inferred_return_type),
+                            },
+                            span,
+                        })
+                    }
+                }
+            }
             EvaluatedType::FunctionExpressionInstance {
                 is_async: f.is_async,
                 params: parameter_types,
@@ -1859,7 +2102,7 @@ mod expressions {
 
     /// Look through all the possible methods and attributes of a model or generic
     /// to determine the property being referenced.
-    fn search_for_property(
+    pub fn search_for_property(
         checker_ctx: &mut TypecheckerContext,
         symboltable: &mut SymbolTable,
         model: SymbolIndex,

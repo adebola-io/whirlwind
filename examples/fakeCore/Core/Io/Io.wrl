@@ -14,17 +14,12 @@ model FormatError implements IoError {
 
 }
 
-enum FormatType {
-    String,
-    Integer,
-    Decimal
-}
-
 /// The format object is a 
 public model TemplateString {
-    var positions: Array<FormatType>;
+    var template: String;
+    var positions: Array<String>;
     new(template: String) {
-        
+        this.template = template;
     }
     /// Add an argument according to the list of predefined arguments in the template
     /// string.
@@ -39,7 +34,7 @@ public model TemplateString {
     /// Core.Io.Print(completed); // Will print out "My name is Sefunmi and I am 21 years old."
     /// ```
     public function Add<T implements Display>(value: T): &This {
-        Todo()
+        this.positions.Push(value.ToStr())
     }
     /// Builds a string from the template with all the inputted values.
     public function Finish(): String {
@@ -49,10 +44,8 @@ public model TemplateString {
 
 /// Prints a message or an object to the console, terminal or any predefined output interface.
 public function Print<T implements Display>(message: T) {
-    messageAsStr := message;
+    messageAsStr := message.ToStr();
     // Invoke(Injunction.Print(messageAsStr));
 }
 
-public trait IoError {
-
-}
+public trait IoError {}

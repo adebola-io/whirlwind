@@ -38,6 +38,10 @@ public model HttpRequest {
     public function Headers(): RequestHeaders {
         Todo()
     }
+    /// Stores data on the request object.
+    public function StoreData(key: String, value: String) {
+        Todo()
+    }
 }
 
 public model RequestHeaders {
@@ -45,6 +49,10 @@ public model RequestHeaders {
         Todo()
     }
     function Has(name: &String): Bool {
+        Todo()
+    }
+    /// Returns the
+    function GetOrErr(name: String): Outcome<&String, HttpRequestError> {
         Todo()
     }
 }

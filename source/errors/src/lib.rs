@@ -382,3 +382,51 @@ pub fn illegal_try(name: String, span: ast::Span) -> TypeError {
         span,
     }
 }
+
+pub fn missing_annotations(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::MissingAnnotationsOrValue,
+        span,
+    }
+}
+
+pub fn no_default(declared: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::NoDefaultImplFor(declared),
+        span,
+    }
+}
+
+pub fn illegal_array_destructure(name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::IllegalArrayDestructure { name },
+        span,
+    }
+}
+
+pub fn illegal_model_destructure(name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::IllegalModelDestructure { name },
+        span,
+    }
+}
+
+pub fn unknown_property(base_type: String, property: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::NoSuchProperty {
+            base_type,
+            property,
+        },
+        span,
+    }
+}
+
+pub fn destructuring_method(base_type: String, method_name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::DestructuringMethod {
+            base_type,
+            method_name,
+        },
+        span,
+    }
+}

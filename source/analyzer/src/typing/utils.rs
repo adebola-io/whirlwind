@@ -705,3 +705,15 @@ pub fn infer_ahead(
         _ => {} // todo: what else needs bidirectional inference?
     }
 }
+
+pub fn ensure_assignment_validity(
+    inference_result: &EvaluatedType,
+    checker_ctx: &mut TypecheckerContext<'_>,
+    span: ast::Span,
+) {
+    if inference_result.is_void() {
+        checker_ctx.add_error(errors::void_assignment(span));
+    } else if inference_result.is_partial() {
+        checker_ctx.add_error(errors::partial_type_assignment(span));
+    }
+}

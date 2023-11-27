@@ -506,7 +506,7 @@ impl DocumentManager {
         let last = params.content_changes.len() - 1;
         let most_current = std::mem::take(&mut params.content_changes[last].text);
         let time = std::time::Instant::now();
-        match standpoint.refresh_module(path_idx, &most_current, true) {
+        match standpoint.refresh_module(path_idx, &most_current, false) {
             Some(StandpointStatus::RefreshSuccessful) => {
                 msgs.inform(format!("Document refreshed in {:?}", time.elapsed()))
             }

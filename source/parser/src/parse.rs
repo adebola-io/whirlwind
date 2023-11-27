@@ -2070,8 +2070,8 @@ impl<L: Lexer> Parser<L> {
                 _type: TokenType::Operator(SemiColon),
                 span,
             }) => {
-                self.advance(); // Move past ;
                 end = span.end;
+                self.advance(); // Move past ;
             }
             // Some other variation.
             _ => {

@@ -466,6 +466,19 @@ mod bind_utils {
                     VariablePattern::ObjectPattern {
                         real_name, alias, ..
                     } => {
+                        let mut property_symbol = SemanticSymbol {
+                            name: real_name.name.clone(),
+                            kind: SemanticSymbolKind::Property {
+                                resolved: None,
+                                is_opaque: false,
+                            },
+                            references: vec![],
+                            doc_info: None,
+                            origin_span: real_name.span,
+                            origin_scope_id,
+                        };
+                        property_symbol.add_reference(binder.path, real_name.span);
+                        let from_property = symbol_table.add(property_symbol);
                         let name = alias.as_ref().unwrap_or(real_name);
                         (
                             SemanticSymbol {
@@ -475,21 +488,8 @@ mod bind_utils {
                                     declared_type: None,
                                     inferred_type: EvaluatedType::Unknown,
                                     pattern_type: VariablePatternForm::DestructuredFromObject {
-                                    from_property: // bind property symbol if it exists.
-                                    alias.as_ref().map(|_| {
-                                        let mut property_symbol = SemanticSymbol {
-                                            name: real_name.name.clone(),
-                                            kind: SemanticSymbolKind::Property { resolved: None, is_opaque: false },
-                                            references: vec![],
-                                            doc_info: None,
-                                            origin_span: real_name.span,
-                                            origin_scope_id
-                                        };
-                                        property_symbol.add_reference(binder.path, real_name.span);
-                                        let symbol_idx = symbol_table.add(property_symbol);
-                                        symbol_idx
-                                    }),
-                                },
+                                        from_property,
+                                    },
                                 },
                                 references: vec![SymbolReferenceList {
                                     module_path: binder.path,
