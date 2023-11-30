@@ -33,6 +33,7 @@ function getLanguageClient() {
             },
          },
          {
+            outputChannelName: "Whirlwind LS",
             documentSelector: [{ scheme: "file", language: "wrl" }],
             middleware: {
                // todo: bounce didchange events in comments and strings.

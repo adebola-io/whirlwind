@@ -8,7 +8,6 @@ use crate::{
 use analyzer::{
     utils::symbol_to_type, Module, PathIndex, SemanticSymbol, SemanticSymbolDeclaration,
     SemanticSymbolKind, Standpoint, StandpointStatus, SymbolIndex, TypedModule, TypedVisitorNoArgs,
-    CORE_LIBRARY_PATH,
 };
 use ast::{is_keyword_or_operator, is_valid_identifier, is_valid_identifier_start, Span};
 use printer::SymbolWriter;
@@ -54,10 +53,10 @@ pub struct DocumentManager {
 
 impl DocumentManager {
     /// Creates a new document manager.
-    pub fn new() -> Self {
+    pub fn new(corelib_path: Option<PathBuf>) -> Self {
         DocumentManager {
             standpoints: Arc::new(Mutex::new(vec![])),
-            corelib_path: Some(PathBuf::from(CORE_LIBRARY_PATH)),
+            corelib_path,
             was_updated: Arc::new(Mutex::new(true)),
             diagnostic_report: Arc::new(Mutex::new(WorkspaceDiagnosticReportResult::Report(
                 Default::default(),
@@ -421,6 +420,7 @@ impl DocumentManager {
             None => Trigger::None,
         };
         let trigger_is_dot = matches!(trigger, Trigger::DotAccess);
+        let mut response = None;
         // Found a symbol that is directly before the completion context. Attempt to provide a completion for it.
         match trigger {
             Trigger::DotAccess => {
@@ -431,9 +431,8 @@ impl DocumentManager {
                         Ok(typ) => typ,
                         Err(_) => return (completion_finder.message_store.take(), None),
                     };
-                    let response =
+                    response =
                         completion_finder.complete_from_dot(inferred_type, DotCompletionType::Half);
-                    return (completion_finder.message_store.take(), response);
                 }
             }
             Trigger::UseImport => {
@@ -443,7 +442,7 @@ impl DocumentManager {
                 let mut completions = vec![];
                 let writer = SymbolWriter::new(standpoint);
                 let current_module_path = &module.path_buf;
-                let response = (|| -> Option<CompletionResponse> {
+                response = (|| -> Option<CompletionResponse> {
                     let parent_directory = get_parent_dir(&current_module_path)?;
                     let directory_map = standpoint.directories.get(parent_directory)?;
                     for module_path_index in directory_map
@@ -466,7 +465,6 @@ impl DocumentManager {
                     sort_completions(&mut completions);
                     return Some(CompletionResponse::Array(completions));
                 })();
-                return (completion_finder.message_store.take(), response);
             }
             trigger => {
                 // Attempt regular autocomplete.
@@ -484,11 +482,12 @@ impl DocumentManager {
                     }
                 }
                 sort_completions(&mut completions);
-                let response = Some(CompletionResponse::Array(completions));
-                return (completion_finder.message_store.take(), response);
+                response = Some(CompletionResponse::Array(completions));
             }
         }
-        return (completion_finder.message_store.take(), None);
+        let mut messages = completion_finder.message_store.take();
+        messages.inform(format!("Retreived completions in {:?}", time.elapsed()));
+        return (messages, response);
     }
 
     /// Handles a change in the text of a module.
@@ -508,7 +507,8 @@ impl DocumentManager {
         let time = std::time::Instant::now();
         match standpoint.refresh_module(path_idx, &most_current, false) {
             Some(StandpointStatus::RefreshSuccessful) => {
-                msgs.inform(format!("Document refreshed in {:?}", time.elapsed()))
+                msgs.inform(format!("Document refreshed in {:?}", time.elapsed()));
+                msgs.inform(format!("Symbols: {:?}", standpoint.symbol_table.len()));
             }
             _ => log_error!(msgs, "Something went wrong while refreshing user text."),
         };
@@ -982,7 +982,7 @@ fn get_closest_symbol<'a>(
                         || (!trigger_is_dot && span.contains(pos))
                     {
                         let index = symboltable.forward(index);
-                        let symbol = symboltable.get_forwarded(index).unwrap();
+                        let symbol = symboltable.get_forwarded(index)?;
                         return Some((index, symbol));
                     }
                 }

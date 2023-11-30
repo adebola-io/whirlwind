@@ -1,15 +1,13 @@
-mod diagnostic;
-mod error;
-
 mod completion;
+mod diagnostic;
 mod document_manager;
+mod error;
 mod hover;
 mod message_store;
 
-use std::sync::Mutex;
-
 use document_manager::DocumentManager;
 use message_store::MessageStore;
+use std::path::PathBuf;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::request::{GotoDeclarationParams, GotoDeclarationResponse};
 use tower_lsp::lsp_types::*;
@@ -19,7 +17,6 @@ use tower_lsp::{Client, LanguageServer, LspService, Server};
 struct Backend {
     client: Client,
     docs: DocumentManager,
-    is_writing: Mutex<bool>,
 }
 
 #[tower_lsp::async_trait]
@@ -87,13 +84,8 @@ impl LanguageServer for Backend {
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        self.log_message("changing...").await;
-        if self.wait().await {
-            return;
-        }
         let messages = self.docs.handle_change(params);
         self.log_all(messages).await;
-        self.release().await;
     }
 
     async fn goto_declaration(
@@ -186,31 +178,20 @@ impl Backend {
             self.client.log_message(message.0, message.1).await
         }
     }
-    async fn wait(&self) -> bool {
-        let mut is_writing = self.is_writing.lock().unwrap();
-        if *is_writing {
-            return true;
-        }
-        *is_writing = true;
-        return false;
-    }
-
-    async fn release(&self) {
-        let mut is_writing = self.is_writing.lock().unwrap();
-        *is_writing = false;
-    }
 }
 
 #[tokio::main]
 async fn main() {
     std::env::set_var("RUST_BACKTRACE", "1");
+    let core_path = Some(PathBuf::from(
+        "/home/adebola/projects/whirlwind/examples/fakeCore/Core/Core.wrl",
+    ));
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
 
     let (service, socket) = LspService::new(|client| Backend {
         client,
-        docs: DocumentManager::new(),
-        is_writing: Mutex::new(false),
+        docs: DocumentManager::new(core_path),
     });
     Server::new(stdin, stdout, socket).serve(service).await;
 }

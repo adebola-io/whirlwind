@@ -3,9 +3,9 @@ mod tests;
 
 use super::{symbols::*, ProgramError};
 use crate::{
-    bind, typecheck, CurrentModuleType, IntrinsicPaths, Module, ModuleMap, PathIndex,
+    bind, typecheck, CurrentModuleType, IntrinsicPaths, LiteralMap, Module, ModuleMap, PathIndex,
     ProgramErrorType::{self, Importing},
-    TypedModule, BASE_CORE_PATH, PRELUDE_PATH,
+    SymbolTable, TypedModule, BASE_CORE_PATH, PRELUDE_PATH,
 };
 use ast::UseTarget;
 use std::{
@@ -22,7 +22,7 @@ pub struct Standpoint {
     pub entry_module: PathIndex,
     pub directories: HashMap<PathBuf, HashMap<String, PathIndex>>,
     pub symbol_table: SymbolTable,
-    pub literals: Vec<Literal>,
+    pub literals: LiteralMap,
     pub errors: Vec<ProgramError>,
     /// This flag permits the standpoint to update itself automatically
     /// when operations like adding, removing and refreshing modules
@@ -50,7 +50,7 @@ impl Standpoint {
             entry_module: PathIndex(0),
             directories: HashMap::new(),
             symbol_table: SymbolTable::new(),
-            literals: vec![],
+            literals: LiteralMap::new(),
             errors: vec![],
             root_folder: None,
             auto_update: should_resolve_imports,
@@ -517,11 +517,25 @@ impl Standpoint {
         Some(path_idx)
     }
 
-    /// Removes the module with a particlar index.
+    /// Removes the module with a particlar index and all its related characteristics.
     pub fn remove_module(&mut self, path_idx: PathIndex) -> Option<TypedModule> {
         let module_symbol_idx = self.module_map.get(path_idx)?.symbol_idx;
         let module_symbol = self.symbol_table.remove(module_symbol_idx)?;
         let module_name = module_symbol.name;
+        let literals_to_remove = self
+            .literals
+            .literals()
+            .filter_map(|(idx, literal)| {
+                if match literal {
+                    Literal::StringLiteral { module, .. }
+                    | Literal::NumericLiteral { module, .. }
+                    | Literal::BooleanLiteral { module, .. } => *module == path_idx,
+                } {
+                    return Some(idx);
+                }
+                return None;
+            })
+            .collect::<Vec<_>>();
         let mut symbols_to_prune = vec![];
         let symbols_to_remove = self
             .symbol_table
@@ -550,7 +564,10 @@ impl Standpoint {
             })
             .collect::<Vec<_>>();
         for symbol_idx in symbols_to_remove {
-            self.symbol_table.remove(symbol_idx).unwrap();
+            self.symbol_table.remove(symbol_idx);
+        }
+        for literal_idx in literals_to_remove {
+            self.literals.remove(literal_idx);
         }
         for symbol_idx in symbols_to_prune {
             if let Some(symbol) = self.symbol_table.get_mut(symbol_idx) {

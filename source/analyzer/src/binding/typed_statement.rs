@@ -1,8 +1,8 @@
 use ast::Span;
 
 use crate::{
-    span_of_typed_expression, EvaluatedType, IntermediateType, Literal, LiteralIndex, SymbolIndex,
-    SymbolTable, TypedExpression, TypedIdent,
+    span_of_typed_expression, EvaluatedType, IntermediateType, LiteralIndex, LiteralMap,
+    SymbolIndex, SymbolTable, TypedExpression, TypedIdent,
 };
 
 #[derive(Debug, PartialEq)]
@@ -219,7 +219,7 @@ pub struct TypedContinueStatement {
 pub fn span_of_typed_statement(
     s: &TypedStmnt,
     symboltable: &SymbolTable,
-    literals: &[Literal],
+    literals: &LiteralMap,
 ) -> Span {
     match s {
         TypedStmnt::TestDeclaration(t) => t.span,

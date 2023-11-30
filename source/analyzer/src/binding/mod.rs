@@ -3,9 +3,9 @@ mod typed_module;
 mod typed_statement;
 
 use crate::{
-    CurrentModuleType, IntermediateType, Literal, LiteralIndex, Module, PathIndex, ProgramError,
-    ProgramErrorType, SemanticSymbol, SemanticSymbolKind, SymbolIndex, SymbolReferenceList,
-    SymbolTable,
+    CurrentModuleType, IntermediateType, Literal, LiteralIndex, LiteralMap, Module, PathIndex,
+    ProgramError, ProgramErrorType, SemanticSymbol, SemanticSymbolKind, SymbolIndex,
+    SymbolReferenceList, SymbolTable,
 };
 use ast::{
     Block, ConstantDeclaration, EnumDeclaration, EnumVariant, Expression, FunctionExpr,
@@ -75,7 +75,7 @@ pub fn bind(
     // The context errors.
     errors: &mut Vec<ProgramError>,
     // Literal values.
-    literals: &mut Vec<Literal>,
+    literals: &mut LiteralMap,
     // The symbol index of the core library.
     corelib_symbol_idx: Option<SymbolIndex>,
     // The symbol index of the prelude module in the core library.
@@ -739,7 +739,7 @@ mod statements {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedStmnt {
         match statement {
@@ -870,7 +870,7 @@ mod statements {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedTestDeclaration {
         TypedTestDeclaration {
@@ -925,7 +925,7 @@ mod statements {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedShorthandVariableDeclaration {
         let symbol_idx = match handle_scope_entry(
@@ -959,7 +959,7 @@ mod statements {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedConstantDeclaration {
         let symbol_idx = match handle_scope_entry(
@@ -993,7 +993,7 @@ mod statements {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedModelDeclaration {
         let binding_result = handle_scope_entry(
@@ -1086,7 +1086,7 @@ mod statements {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> (TypedModelBody, Option<ConstructorParameterList>) {
         let (constructor, params) = if let Some(constructor_block) = body.constructor {
@@ -1134,7 +1134,7 @@ mod statements {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedModelProperty {
         match property._type {
@@ -1361,7 +1361,7 @@ mod statements {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedModelProperty {
         // find first instance of an attribute name that matches this one.
@@ -1499,7 +1499,7 @@ mod statements {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedFunctionDeclaration {
         let binding_result = handle_scope_entry(
@@ -1578,7 +1578,7 @@ mod statements {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> (TypedBlock, Vec<SymbolIndex>) {
         ambience.jump_to_scope(block.scope_id);
@@ -1796,7 +1796,7 @@ mod statements {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedTraitDeclaration {
         let binding_result = handle_scope_entry(
@@ -1871,7 +1871,7 @@ mod statements {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedTraitBody {
         TypedTraitBody {
@@ -1900,7 +1900,7 @@ mod statements {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedTraitProperty {
         match property._type {
@@ -1936,7 +1936,7 @@ mod statements {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedTraitProperty {
         // find first instance of an attribute name that matches this one.
@@ -2071,7 +2071,7 @@ mod statements {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedTraitProperty {
         // find first instance of an attribute name that matches this one.
@@ -2247,7 +2247,7 @@ mod statements {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedWhileStatement {
         TypedWhileStatement {
@@ -2277,7 +2277,7 @@ mod statements {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedReturnStatement {
         TypedReturnStatement {
@@ -2325,7 +2325,7 @@ mod statements {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedVariableDeclaration {
         let mut names = vec![];
@@ -2387,7 +2387,7 @@ mod expressions {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedExpression {
         match expression {
@@ -2531,7 +2531,7 @@ mod expressions {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedNewExpr {
         TypedNewExpr {
@@ -2587,7 +2587,7 @@ mod expressions {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedCallExpr {
         let mut bind_expression = |expression| {
@@ -2610,7 +2610,7 @@ mod expressions {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedFnExpr {
         // bind generic parameters.
@@ -2693,7 +2693,7 @@ mod expressions {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedBlock {
         let prior_scope = binder.current_scope;
@@ -2726,7 +2726,7 @@ mod expressions {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> Box<TypedBinExpr> {
         Box::new(TypedBinExpr {
@@ -2757,7 +2757,7 @@ mod expressions {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> Box<TypedIfExpr> {
         Box::new(TypedIfExpr {
@@ -2799,7 +2799,7 @@ mod expressions {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedArrayExpr {
         TypedArrayExpr {
@@ -2820,7 +2820,7 @@ mod expressions {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> Box<TypedIndexExpr> {
         Box::new(TypedIndexExpr {
@@ -2850,7 +2850,7 @@ mod expressions {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> Box<TypedAssignmentExpr> {
         Box::new(TypedAssignmentExpr {
@@ -2882,7 +2882,7 @@ mod expressions {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> Box<TypedAccessExpr> {
         let object = bind_expression(
@@ -2934,7 +2934,7 @@ mod expressions {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> Box<TypedUnaryExpr> {
         Box::new(TypedUnaryExpr {
@@ -2957,7 +2957,7 @@ mod expressions {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> Box<TypedLogicExpr> {
         Box::new(TypedLogicExpr {
@@ -2988,7 +2988,7 @@ mod expressions {
         binder: &mut Binder,
         symbol_table: &mut SymbolTable,
         errors: &mut Vec<ProgramError>,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> Box<TypedUpdateExpr> {
         Box::new(TypedUpdateExpr {
@@ -3014,39 +3014,35 @@ mod literals {
     pub fn bind_string(
         value: ast::WhirlString,
         path: PathIndex,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
     ) -> LiteralIndex {
         // todo: can literals be deduplicated?
         let literal = Literal::StringLiteral {
             module: path,
             value,
         };
-        let index = LiteralIndex(literals.len());
-        literals.push(literal);
-        index
+        literals.add(literal)
     }
 
     /// Bind a number.
     pub fn bind_number(
         value: ast::WhirlNumber,
         path: PathIndex,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
     ) -> LiteralIndex {
         // todo: can literals be deduplicated?
         let literal = Literal::NumericLiteral {
             module: path,
             value,
         };
-        let index = LiteralIndex(literals.len());
-        literals.push(literal);
-        index
+        literals.add(literal)
     }
 
     // Bind a boolean.
     pub fn bind_boolean(
         value: ast::WhirlBoolean,
         path: PathIndex,
-        literals: &mut Vec<Literal>,
+        literals: &mut LiteralMap,
     ) -> LiteralIndex {
         // todo: can literals be deduplicated?
         let literal = Literal::BooleanLiteral {
@@ -3055,9 +3051,7 @@ mod literals {
             start_character: value.span.start[1],
             value: value.value,
         };
-        let index = LiteralIndex(literals.len());
-        literals.push(literal);
-        index
+        literals.add(literal)
     }
 }
 

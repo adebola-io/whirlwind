@@ -1,5 +1,7 @@
 use super::LiteralIndex;
-use crate::{EvaluatedType, IntermediateType, Literal, SymbolIndex, SymbolTable, TypedBlock};
+use crate::{
+    EvaluatedType, IntermediateType, Literal, LiteralMap, SymbolIndex, SymbolTable, TypedBlock,
+};
 use ast::{AssignOperator, BinOperator, LogicOperator, Span, UnaryOperator, UpdateOperator};
 
 #[derive(Debug, PartialEq)]
@@ -152,14 +154,14 @@ pub struct TypedAssignmentExpr {
 pub fn span_of_typed_expression(
     expression: &TypedExpression,
     symboltable: &SymbolTable,
-    literals: &[Literal],
+    literals: &LiteralMap,
 ) -> Span {
     match expression {
         TypedExpression::Identifier(i) => {
             let symbol = symboltable.get(i.value).unwrap();
             Span::on_line(i.start, symbol.name.len() as u32)
         }
-        TypedExpression::Literal(l) => match &literals[l.0] {
+        TypedExpression::Literal(l) => match literals.get(*l).unwrap() {
             Literal::StringLiteral { value, .. } => value.span,
             Literal::NumericLiteral { value, .. } => value.span,
             Literal::BooleanLiteral {

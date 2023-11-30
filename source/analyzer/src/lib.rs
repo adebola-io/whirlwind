@@ -1,5 +1,6 @@
 mod binding;
 mod globals;
+mod literalmap;
 mod modulemap;
 mod programerror;
 mod representations;
@@ -7,11 +8,13 @@ mod resolver;
 mod standpoint;
 mod surfacearea;
 mod symbols;
+mod symboltable;
 mod typing;
 mod visitor;
 
 pub use binding::*;
 pub use globals::*;
+pub use literalmap::*;
 pub use modulemap::*;
 pub use programerror::*;
 pub use representations::*;
@@ -19,5 +22,6 @@ pub use resolver::*;
 pub use standpoint::*;
 pub use surfacearea::*;
 pub use symbols::*;
+pub use symboltable::*;
 pub use typing::*;
 pub use visitor::*;

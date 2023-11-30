@@ -6,7 +6,7 @@ use crate::{
         get_implementation_of, get_numeric_type, infer_ahead, is_array, is_boolean,
         is_numeric_type, maybify, prospectify, symbol_to_type,
     },
-    EvaluatedType, Literal, ParameterType, PathIndex, ProgramError, SemanticSymbolKind,
+    EvaluatedType, Literal, LiteralMap, ParameterType, PathIndex, ProgramError, SemanticSymbolKind,
     SymbolIndex, SymbolTable, TypedAccessExpr, TypedAssignmentExpr, TypedBlock, TypedCallExpr,
     TypedExpression, TypedFnExpr, TypedFunctionDeclaration, TypedIdent, TypedIfExpr,
     TypedIndexExpr, TypedLogicExpr, TypedModule, TypedNewExpr, TypedReturnStatement, TypedStmnt,
@@ -27,7 +27,7 @@ pub struct TypecheckerContext<'a> {
     /// List of errors from the standpoint.
     errors: &'a mut Vec<ProgramError>,
     /// List of literal types from the standpoint.
-    literals: &'a [Literal],
+    literals: &'a LiteralMap,
     // /// Cached values of intermediate types,
     // /// so they do not have to be evaluated over and over.
     // intermediate_types: HashMap<IntermediateType, EvaluatedType>,
@@ -67,7 +67,7 @@ pub fn typecheck(
     module: &mut TypedModule,
     symboltable: &mut SymbolTable,
     errors: &mut Vec<ProgramError>,
-    literals: &[Literal],
+    literals: &LiteralMap,
 ) {
     let mut checker_ctx = TypecheckerContext {
         path_idx: module.path_idx,
@@ -1409,7 +1409,7 @@ mod expressions {
         checker_ctx: &mut TypecheckerContext,
         symboltable: &mut SymbolTable,
     ) -> EvaluatedType {
-        match &checker_ctx.literals[l.0] {
+        match &checker_ctx.literals.get(*l).unwrap() {
             Literal::StringLiteral { value, .. } => {
                 typecheck_string_literal(value, checker_ctx, symboltable)
             }
