@@ -20,6 +20,7 @@ public model TemplateString {
     var positions: Array<String>;
     new(template: String) {
         this.template = template;
+        this.positions = [];
     }
     /// Add an argument according to the list of predefined arguments in the template
     /// string.

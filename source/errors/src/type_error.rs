@@ -63,7 +63,6 @@ pub enum TypeErrorType {
         method_name: String,
     },
     PrivatePropertyLeak {
-        model_name: String,
         property_name: String,
     },
     AccessingOnTrait {
@@ -210,7 +209,10 @@ pub enum TypeErrorType {
         base_type: String,
         method_name: String,
     },
-    NonPureGlobal, // InfiniteType,
+    NonPureGlobal,
+    ReturnFromConstructor,
+    UsingAttributeBeforeAssign,
+    UnassignedAttribute, // InfiniteType,
 }
 
 pub fn invalid_binary(left: String, operator: BinOperator, right: String, span: Span) -> TypeError {
@@ -361,12 +363,9 @@ pub fn contructor_non_static_method_access(
     }
 }
 
-pub fn private_property_leak(model_name: String, property_name: String, span: Span) -> TypeError {
+pub fn private_property_leak(property_name: String, span: Span) -> TypeError {
     TypeError {
-        _type: TypeErrorType::PrivatePropertyLeak {
-            model_name,
-            property_name,
-        },
+        _type: TypeErrorType::PrivatePropertyLeak { property_name },
         span,
     }
 }

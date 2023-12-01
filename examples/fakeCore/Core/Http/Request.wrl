@@ -52,11 +52,10 @@ public model RequestHeaders {
         Todo()
     }
     /// Returns the
-    function GetOrErr(name: String): Outcome<&String, HttpRequestError> {
+    public function GetOrErr(name: String): Outcome<&String, HttpRequestError> {
         Todo()
     }
 }
-
 public model RequestParams {
     function Get(name: String): Maybe<&String> {
         Todo()
@@ -76,9 +75,10 @@ public model HttpRequestError implements IoError + Display {
     var message: String;
     var route: String;
     var statusCode: UnsignedInt;
-    new(message: String, request: HttpRequest) {
+    new(message: String, request: HttpRequest, statusCode?: UnsignedInt) {
         this.message = message;
         this.route = request.Url();
+        this.statusCode = statusCode.UnwrapOr(400);
     }
     public function [Display.ToStr](): &String {
         return Todo();

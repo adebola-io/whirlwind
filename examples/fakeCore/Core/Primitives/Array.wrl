@@ -2,7 +2,7 @@ module Array;
 
 use Bool.Bool;
 use Numeric.{ Int, UnsignedInt };
-use Super.Prelude.{ AsIterator, Maybe, None, Todo, String };
+use Super.Prelude.{ AsIterator, Maybe, None, Todo, String, Default };
 use Super.Prelude.Iteratable;
 use Super.Primitives.Ops.Orderable;
 use Super.Prelude.Display;
@@ -102,8 +102,8 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// Assert(array.Length()).Equals(4);
     /// 
     /// array.Push(10);
+    /// Assert(array).Equals([2, 4, 5, 8, 10]);
     /// Assert(array.Length()).Equals(5);
-    /// Assert(array.At(4)).Equals(Some(10)); // 10 is at index 4.
     /// ```
     public function Push(value: T) {
         Todo()
@@ -170,8 +170,14 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
         string.Append("]");
         string
     }
-    /// Sorts an array in place.
-    public static function SortInPlace<T implements Orderable>(array: &Array<T>) {
+    /// Sorts an array in place, given that its elements are orderable.
+    /// ### Usage
+    /// ```
+    /// arr := [34, 21, 89, 11, 20, 46];
+    /// Array.Sort(&arr)
+    /// Assert(arr).Equals([11, 20, 21, 34, 46, 89]);
+    /// ```
+    public static function Sort<T implements Orderable>(array: &Array<T>) {
         Todo()
     }
     /// Returns a Sorted version of an array
@@ -182,11 +188,21 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// ### Usage
     /// ```
     /// arr := [26, 10, 35, 16, 87, 1, 12];
-    /// arrSorted := Array.Sort(&arr);
+    /// arrSorted := Array.Sorted(&arr);
     /// 
     /// Assert(arrSorted).Equals([1, 10, 12, 16, 26, 35, 87]);
     /// ```
-    public static function Sort<T implements Orderable>(array: &Array<T>): Array<T> {
+    public static function Sorted<T implements Orderable>(array: &Array<T>): Array<T> {
+        Todo()
+    }
+    /// Fills an array with default values, given that the element type can be defaulted.
+    /// ### Usage
+    /// ```
+    /// arr := [1, 2, 3];
+    /// Array.Reset(&arr);
+    /// Assert(arr).Equals([0, 0, 0])
+    /// ```
+    public static function Reset<T implements Default>(array: &Array<T>) {
         Todo()
     }
 }

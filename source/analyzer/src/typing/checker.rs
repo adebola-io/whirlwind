@@ -6,9 +6,9 @@ use crate::{
         get_implementation_of, get_numeric_type, infer_ahead, is_array, is_boolean,
         is_numeric_type, maybify, prospectify, symbol_to_type,
     },
-    EvaluatedType, Literal, LiteralMap, ParameterType, PathIndex, ProgramError, SemanticSymbolKind,
-    SymbolIndex, SymbolTable, TypedAccessExpr, TypedAssignmentExpr, TypedBlock, TypedCallExpr,
-    TypedExpression, TypedFnExpr, TypedFunctionDeclaration, TypedIdent, TypedIfExpr,
+    EvaluatedType, Literal, LiteralMap, ParameterType, PathIndex, ProgramError, ScopeId,
+    SemanticSymbolKind, SymbolIndex, SymbolTable, TypedAccessExpr, TypedAssignmentExpr, TypedBlock,
+    TypedCallExpr, TypedExpression, TypedFnExpr, TypedFunctionDeclaration, TypedIdent, TypedIfExpr,
     TypedIndexExpr, TypedLogicExpr, TypedModule, TypedNewExpr, TypedReturnStatement, TypedStmnt,
     TypedThisExpr, UnifyOptions,
 };
@@ -24,6 +24,10 @@ pub struct TypecheckerContext<'a> {
     path_idx: PathIndex,
     /// The context of the closest function scope currently being typechecked.
     current_function_context: Vec<CurrentFunctionContext>,
+    /// The context of the closest constructor currently being typechecked.
+    current_constructor_context: Vec<CurrentConstructorContext>,
+    /// The model or trait that encloses the current statement.
+    enclosing_model_or_trait: Option<SymbolIndex>,
     /// List of errors from the standpoint.
     errors: &'a mut Vec<ProgramError>,
     /// List of literal types from the standpoint.
@@ -38,6 +42,34 @@ pub struct CurrentFunctionContext {
     /// Whether it is a named function or a function expression.
     is_named: bool,
     return_type: EvaluatedType,
+}
+
+pub struct CurrentConstructorContext {
+    scopes: Vec<ScopeType>,
+    attributes: HashMap<SymbolIndex, Vec<AttributeAssignment>>,
+}
+
+pub enum ScopeType {
+    IfBlock { id: ScopeId },
+    ElseBlock { id_of_parent_if: ScopeId },
+    Other,
+}
+
+pub enum AttributeAssignment {
+    /// The attribute is propertly assigned in the constructor scope.
+    Definite {
+        span: Span,
+    },
+    /// The attribute is assigned somewhere in an if block.
+    InIfBlock {
+        id: ScopeId,
+    },
+    SomewhereElse,
+}
+impl AttributeAssignment {
+    fn is_definite(&self) -> bool {
+        matches!(self, AttributeAssignment::Definite { .. })
+    }
 }
 
 impl<'a> TypecheckerContext<'a> {
@@ -71,7 +103,9 @@ pub fn typecheck(
 ) {
     let mut checker_ctx = TypecheckerContext {
         path_idx: module.path_idx,
-        current_function_context: vec![],
+        current_function_context: Vec::new(),
+        current_constructor_context: Vec::new(),
+        enclosing_model_or_trait: None,
         errors,
         literals,
     };
@@ -80,7 +114,21 @@ pub fn typecheck(
     }
 }
 
+pub fn pop_scopetype(checker_ctx: &mut TypecheckerContext<'_>) {
+    let mut constructor_context = checker_ctx.current_constructor_context.last_mut();
+    constructor_context.as_mut().map(|ctx| ctx.scopes.pop());
+}
+
+pub fn push_scopetype(checker_ctx: &mut TypecheckerContext<'_>, scope: ScopeType) {
+    let mut constructor_context = checker_ctx.current_constructor_context.last_mut();
+    constructor_context
+        .as_mut()
+        .map(|ctx| ctx.scopes.push(scope));
+}
+
 mod statements {
+    use crate::TypedModelDeclaration;
+
     use super::{expressions::typecheck_block, *};
     pub fn typecheck_statement(
         statement: &mut TypedStmnt,
@@ -90,7 +138,9 @@ mod statements {
         match statement {
             // TypedStmnt::RecordDeclaration => todo!(),
             TypedStmnt::TestDeclaration(test) => {
+                push_scopetype(checker_ctx, ScopeType::Other);
                 typecheck_block(&mut test.body, false, checker_ctx, symboltable);
+                pop_scopetype(checker_ctx);
             }
             // TypedStmnt::EnumDeclaration(_) => todo!(),
             TypedStmnt::VariableDeclaration(variable) => {
@@ -123,9 +173,145 @@ mod statements {
             TypedStmnt::WhileStatement(whil) => {
                 typecheck_while_statement(whil, checker_ctx, symboltable)
             }
-            // TypedStmnt::ContinueStatement(_) => todo!(),
+            TypedStmnt::ModelDeclaration(model) => {
+                typecheck_model_declaration(model, checker_ctx, symboltable)
+            }
             _ => {}
         }
+    }
+
+    /// Typechecks a model declaration.
+    fn typecheck_model_declaration(
+        model: &mut TypedModelDeclaration,
+        checker_ctx: &mut TypecheckerContext,
+        symboltable: &mut SymbolTable,
+    ) {
+        let model_symbol = symboltable.get(model.name);
+        if model_symbol.is_none() {
+            return;
+        }
+        let mut model_symbol = model_symbol.unwrap();
+        // Signifies to the checker context that we are now in model X, so private properties can be used.
+        let former_enclosing_model_trait = checker_ctx.enclosing_model_or_trait.take();
+        checker_ctx.enclosing_model_or_trait = Some(model.name);
+        // If the model has a constructor:
+        if let Some(constructor) = &mut model.body.constructor {
+            // For a model to be validly constructed, all its attributes have been definitively assigned in its constructor.
+            // i.e. for every attribute, there must be an assignment expression (with =) where the attribute is the lhs.
+            // question: What about in cases where the attribute is used before it is assigned? e.g.:
+            // this.a = this.b;
+            // this.b = someValue;
+            // answer: All instances of the attribute are recorded and tracked. If the first instance is not an assignment, error.
+            // NOTE: if the type of the attribute implements Default, then this check is not needed.
+            model_symbol = symboltable.get(model.name).unwrap();
+            let attribute_idxs =
+                if let SemanticSymbolKind::Model { attributes, .. } = &model_symbol.kind {
+                    attributes
+                } else {
+                    return;
+                };
+            let mut attributes = HashMap::new();
+            for idx in attribute_idxs {
+                let idx = *idx;
+                attributes.insert(idx, Vec::new());
+            }
+            checker_ctx
+                .current_constructor_context
+                .push(CurrentConstructorContext {
+                    scopes: Vec::new(),
+                    attributes,
+                });
+            // Constructors should always return void.
+            checker_ctx
+                .current_function_context
+                .push(CurrentFunctionContext {
+                    is_named: true,
+                    return_type: EvaluatedType::Void,
+                });
+            let block_type = typecheck_block(constructor, true, checker_ctx, symboltable);
+            if !block_type.is_void() && !block_type.is_never() {
+                let span = constructor
+                    .statements
+                    .last()
+                    .map(|statement| checker_ctx.span_of_stmnt(statement, symboltable))
+                    .unwrap_or_else(|| constructor.span);
+                checker_ctx.add_error(errors::return_from_constructor(span));
+            }
+            checker_ctx.current_function_context.pop();
+            let constructor_context = checker_ctx.current_constructor_context.pop().unwrap();
+            for (attribute_idx, assignments) in constructor_context.attributes {
+                let attribute_symbol = symboltable.get(attribute_idx);
+                if attribute_symbol.is_none() {
+                    continue;
+                }
+
+                let attribute_symbol = attribute_symbol.unwrap();
+                if let Some(AttributeAssignment::Definite { span }) = assignments
+                    .iter()
+                    .find(|assignment| matches!(assignment, AttributeAssignment::Definite { .. }))
+                {
+                    let assignment_span = *span;
+                    // Checks for prior usage before assignment with the spans.
+                    // todo: something about using spans is icky.
+                    let symbol_reference_list = attribute_symbol.references.first().unwrap(); // References in this module.
+                    let reference_starts_in_constructor_block =
+                        symbol_reference_list.starts.iter().filter_map(|start| {
+                            let start = *start;
+                            constructor.span.contains(start).then(|| start)
+                        });
+                    for start in reference_starts_in_constructor_block {
+                        let reference_span =
+                            Span::on_line(start, attribute_symbol.name.len() as u32);
+                        if reference_span.is_before(assignment_span) {
+                            checker_ctx
+                                .add_error(errors::using_attribute_before_assign(reference_span));
+                            break;
+                        }
+                    }
+                } else {
+                    let mut should_error = true;
+                    let inferred_type = match &attribute_symbol.kind {
+                        SemanticSymbolKind::Attribute { declared_type, .. } => evaluate(
+                            declared_type,
+                            symboltable,
+                            None,
+                            &mut checker_ctx.tracker(),
+                            0,
+                        ),
+                        _ => EvaluatedType::Unknown,
+                    };
+                    let default_symbol = symboltable.default;
+                    // Type implements Default, so carry on.
+                    if default_symbol.is_some() {
+                        if get_implementation_of(
+                            default_symbol.unwrap(),
+                            &inferred_type,
+                            symboltable,
+                        )
+                        .is_some()
+                        {
+                            should_error = false;
+                        }
+                    }
+                    if should_error {
+                        checker_ctx
+                            .add_error(errors::unassigned_attribute(attribute_symbol.origin_span));
+                    }
+                }
+            }
+        }
+        // Check that the method names inherited from traits do not clash with other.
+        // if let SemanticSymbolKind::Model {
+        //     is_constructable,
+        //     generic_params,
+        //     constructor_parameters,
+        //     implementations,
+        //     methods,
+        //     attributes,
+        //     ..
+        // } = &model_symbol.kind
+        // {}
+        checker_ctx.enclosing_model_or_trait = former_enclosing_model_trait;
     }
 
     /// Typechecks a variable declaration.
@@ -375,7 +561,9 @@ mod statements {
                 checker_ctx.span_of_expr(&whil.condition, symboltable),
             ))
         }
+        push_scopetype(checker_ctx, ScopeType::Other);
         typecheck_block(&mut whil.body, false, checker_ctx, symboltable);
+        pop_scopetype(checker_ctx);
     }
 
     /// Typechecks a shorthand variable declaration.
@@ -630,8 +818,10 @@ mod statements {
                 is_named: true,
                 return_type: return_type.clone(),
             });
+        push_scopetype(checker_ctx, ScopeType::Other);
         let mut block_return_type =
             expressions::typecheck_block(&mut function.body, true, checker_ctx, symboltable);
+        pop_scopetype(checker_ctx);
         // Ignore unreachable nested generics.
         if !block_return_type.is_generic() {
             block_return_type = coerce_all_generics(&block_return_type, EvaluatedType::Never);
@@ -990,11 +1180,26 @@ mod expressions {
                     checker_ctx.span_of_expr(&ifexp.condition, symboltable),
                 ));
             }
+            // If in a model's constructor, update the scope entered.
+            push_scopetype(
+                checker_ctx,
+                ScopeType::IfBlock {
+                    id: ifexp.consequent.scopeid,
+                },
+            );
             let block_type =
                 typecheck_block(&mut ifexp.consequent, false, checker_ctx, symboltable);
+            pop_scopetype(checker_ctx);
             if let Some(else_) = &mut ifexp.alternate {
+                push_scopetype(
+                    checker_ctx,
+                    ScopeType::ElseBlock {
+                        id_of_parent_if: ifexp.consequent.scopeid,
+                    },
+                );
                 let else_type =
                     typecheck_expression(&mut else_.expression, checker_ctx, symboltable);
+                pop_scopetype(checker_ctx);
                 match unify_types(
                     &block_type,
                     &else_type,
@@ -1047,6 +1252,11 @@ mod expressions {
                 infer_ahead(&mut assexp.right, &left_type, symboltable);
                 typecheck_expression(&mut assexp.right, checker_ctx, symboltable)
             };
+            if matches!(&assexp.left, TypedExpression::UnaryExpr(unexp) if matches!(unexp.operator, UnaryOperator::Ref))
+            {
+                checker_ctx.add_error(errors::assigning_to_reference(assexp.span));
+                return EvaluatedType::Unknown;
+            }
             let mut generic_hashmap = HashMap::new();
             let result_type = match &left_type {
                 EvaluatedType::ModelInstance { .. }
@@ -1055,7 +1265,8 @@ mod expressions {
                 | EvaluatedType::HardGeneric { .. }
                 | EvaluatedType::Generic { .. }
                 | EvaluatedType::OpaqueTypeInstance { .. }
-                | EvaluatedType::FunctionExpressionInstance { .. } => {
+                | EvaluatedType::FunctionExpressionInstance { .. }
+                | EvaluatedType::Borrowed { .. } => {
                     if matches!(left_type, EvaluatedType::EnumInstance { .. })
                         && !assexp.left.is_identifier()
                     {
@@ -1094,10 +1305,6 @@ mod expressions {
                     checker_ctx.add_error(errors::mutating_method(owner, name, assexp.span));
                     return EvaluatedType::Unknown;
                 }
-                EvaluatedType::Borrowed { .. } => {
-                    checker_ctx.add_error(errors::assigning_to_reference(assexp.span));
-                    return EvaluatedType::Unknown;
-                }
                 _ => {
                     checker_ctx.add_error(errors::invalid_assignment_target(assexp.span));
                     return EvaluatedType::Unknown;
@@ -1117,10 +1324,95 @@ mod expressions {
                 return EvaluatedType::Unknown;
             }
 
+            // If lhs is an attribute and we are in a constructor, rigourously check for attribute assignment..
+            'check_for_attribute_assignment: {
+                let expression_as_attrib = expression_is_attribute(&assexp.left, symboltable);
+                if !matches!(assexp.operator, ast::AssignOperator::Assign) {
+                    break 'check_for_attribute_assignment;
+                }
+                if expression_as_attrib.is_none() {
+                    break 'check_for_attribute_assignment;
+                }
+                let attribute_idx = expression_as_attrib.unwrap();
+                let contructor_ctx_opt = checker_ctx.current_constructor_context.last_mut();
+                if contructor_ctx_opt.is_none() {
+                    break 'check_for_attribute_assignment;
+                }
+                let constructor_ctx = contructor_ctx_opt.unwrap();
+                let scopes = &constructor_ctx.scopes;
+                let current_scope_type = scopes.last().clone();
+                let targeted_attribute = constructor_ctx
+                    .attributes
+                    .iter_mut()
+                    .find(|(idx, _)| **idx == attribute_idx);
+                if targeted_attribute.is_none() {
+                    break 'check_for_attribute_assignment;
+                }
+                let (_, prior_assignments) = targeted_attribute.unwrap();
+                // If assignment has already been settled.
+                if prior_assignments
+                    .iter()
+                    .any(|assignment| assignment.is_definite())
+                {
+                    break 'check_for_attribute_assignment;
+                }
+                // First check that the attribute does not reference itself in its initialization.
+                let span_of_rhs =
+                    span_of_typed_expression(&assexp.right, symboltable, checker_ctx.literals);
+                let attribute_symbol = symboltable.get(attribute_idx).unwrap();
+                if attribute_symbol
+                    .references
+                    .first()
+                    .unwrap()
+                    .starts
+                    .iter()
+                    .any(|start| span_of_rhs.contains(*start))
+                {
+                    checker_ctx.add_error(errors::using_attribute_before_assign(span_of_rhs));
+                    break 'check_for_attribute_assignment;
+                }
+                let assignment_type = match current_scope_type {
+                    // If we are in an if block.
+                    // For the assignment to be definite, there should also be an assignment in the else block.
+                    Some(ScopeType::IfBlock { id }) => AttributeAssignment::InIfBlock { id: *id },
+                    // If we are in an else block.
+                    // If assignment is definitive in the if block, and there is also an assignment here,
+                    // then we can resolve both to produce a single assignment.
+                    // But the assignment is not definitive overall, unless the branching expression is within the constructor.
+                    Some(ScopeType::ElseBlock { id_of_parent_if }) => {
+                        if prior_assignments.iter().any(|assignment| matches!(assignment, AttributeAssignment::InIfBlock { id } if id == id_of_parent_if)) {
+                            // Branching assignment, but in the constructor scope.
+                            if constructor_ctx.scopes.len() == 1 {
+                                AttributeAssignment::Definite { span: span_of_typed_expression(&assexp.left, symboltable, checker_ctx.literals) }
+                            } else {
+                                // Branching assignment, but in another scope.
+                                let previous_scope =scopes.get(scopes.len() -2 ).unwrap();
+                                if let ScopeType::IfBlock { id } = previous_scope {
+                                    AttributeAssignment::InIfBlock { id: *id }
+                                } else {
+                                    AttributeAssignment::SomewhereElse
+                                }
+                            }
+                        } else {
+                            AttributeAssignment::SomewhereElse
+                        }
+                    }
+                    Some(_) => AttributeAssignment::SomewhereElse,
+                    // Still within the constructor scope.
+                    None => AttributeAssignment::Definite {
+                        span: span_of_typed_expression(
+                            &assexp.left,
+                            symboltable,
+                            checker_ctx.literals,
+                        ),
+                    },
+                };
+                prior_assignments.push(assignment_type);
+            }
             let span = assexp.span;
             ensure_assignment_validity(&right_type, checker_ctx, span);
 
-            // Handling transforming the left hand side to the resulting type.
+            // Update value of left hand side based on the inferred type.
             if let TypedExpression::Identifier(ident) = &assexp.left {
                 let identifier_symbol = symboltable.get_mut(ident.value).unwrap();
                 if let SemanticSymbolKind::Variable { inferred_type, .. } =
@@ -1134,11 +1426,49 @@ mod expressions {
         assexp.inferred_type.clone()
     }
 
+    /// If the expression passed in refers to an attribute, it returns the symbol index of the attribute.
+    /// Otherwise it returns none.
+    fn expression_is_attribute(
+        expr: &TypedExpression,
+        symboltable: &mut SymbolTable,
+    ) -> Option<SymbolIndex> {
+        match expr {
+            TypedExpression::AccessExpr(accessexp) => match &accessexp.object {
+                TypedExpression::ThisExpr(this) => {
+                    let property_name = match &accessexp.property {
+                        TypedExpression::Identifier(ident) => {
+                            symboltable.get(ident.value)?.name.as_str()
+                        }
+                        _ => return None,
+                    };
+                    let model_or_trait = symboltable.get(this.model_or_trait?)?;
+                    let attributes = match &model_or_trait.kind {
+                        SemanticSymbolKind::Model { attributes, .. } => attributes,
+                        _ => return None,
+                    };
+                    for attribute_idx in attributes {
+                        let attribute_idx = *attribute_idx;
+                        let attribute = symboltable.get(attribute_idx)?;
+                        if attribute.name == property_name {
+                            return Some(attribute_idx);
+                        }
+                    }
+                    return None;
+                }
+                _ => return None,
+            },
+            _ => return None,
+        }
+    }
+
     /// Returns true if the left hand side is a valid assignment target, syntactically.
     fn is_valid_lhs(expression: &TypedExpression) -> bool {
         match expression {
             TypedExpression::Identifier(_) => true,
-            TypedExpression::AccessExpr(accessexp) => is_valid_lhs(&accessexp.object),
+            TypedExpression::AccessExpr(accessexp) => {
+                is_valid_lhs(&accessexp.object)
+                    || matches!(accessexp.object, TypedExpression::ThisExpr(_))
+            }
             TypedExpression::IndexExpr(indexp) => is_valid_lhs(&indexp.object),
             TypedExpression::UnaryExpr(expr) => matches!(&expr.operator, UnaryOperator::Deref),
             _ => false,
@@ -1846,7 +2176,9 @@ mod expressions {
                                 .map(|(a, _)| a.clone())
                                 .unwrap_or(EvaluatedType::Unknown),
                         });
+                    push_scopetype(checker_ctx, ScopeType::Other);
                     let blocktype = typecheck_block(block, false, checker_ctx, symboltable);
+                    pop_scopetype(checker_ctx);
                     if blocktype.is_void() {
                         checker_ctx
                             .current_function_context
@@ -2063,7 +2395,8 @@ mod expressions {
                         Some(sym) => sym,
                         None => continue,
                     };
-                    if method_symbol.name == property_symbol.name {
+                    if method_symbol.name == property_symbol.name && method_symbol.kind.is_public()
+                    {
                         // get mutably and resolve.
                         let property_symbol = symboltable.get_mut(property_symbol_idx).unwrap();
                         if let SemanticSymbolKind::Property {
@@ -2222,7 +2555,15 @@ mod expressions {
                 // Add reference on source.
                 let method_symbol = symboltable.get_mut(method).unwrap();
                 method_symbol.add_reference(checker_ctx.path_idx, property_span);
-                // todo: Is method public?
+                // Block non-public access.
+                if !method_symbol.kind.is_public()
+                    && checker_ctx.enclosing_model_or_trait != Some(model)
+                {
+                    checker_ctx.add_error(errors::private_property_leak(
+                        method_symbol.name.clone(),
+                        property_span,
+                    ));
+                }
                 return Some(EvaluatedType::MethodInstance {
                     method,
                     generic_arguments,
@@ -2251,6 +2592,17 @@ mod expressions {
                     if let SemanticSymbolKind::Property { resolved, .. } = &mut property_symbol.kind
                     {
                         *resolved = Some(attribute)
+                    }
+                    // Add reference on source.
+                    let attribute_symbol = symboltable.get_mut(attribute).unwrap();
+                    attribute_symbol.add_reference(checker_ctx.path_idx, property_span);
+                    if !attribute_symbol.kind.is_public()
+                        && checker_ctx.enclosing_model_or_trait != Some(model)
+                    {
+                        checker_ctx.add_error(errors::private_property_leak(
+                            attribute_symbol.name.clone(),
+                            property_span,
+                        ));
                     }
                     return Some(result_type);
                 }

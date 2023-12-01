@@ -2715,6 +2715,7 @@ mod expressions {
                 .collect(),
             inferred_type: EvaluatedType::Unknown,
             span: block.span,
+            scopeid: crate::ScopeId(block.scope_id as u32),
         };
         binder.current_scope = prior_scope;
         return block;

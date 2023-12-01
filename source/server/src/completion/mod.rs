@@ -33,6 +33,7 @@ pub struct CompletionFinder<'a> {
     pub context: Option<CompletionContext>,
     pub message_store: RefCell<MessageStore>,
     next_statement_span: RefCell<Option<Span>>,
+    enclosing_model_or_trait: RefCell<Option<SymbolIndex>>,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -70,6 +71,7 @@ impl<'a> CompletionFinder<'a> {
             message_store: RefCell::new(messages),
             context: completion_context,
             next_statement_span: RefCell::new(None),
+            enclosing_model_or_trait: RefCell::new(None),
         }
     }
     /// Main complete function for dot access.
@@ -251,11 +253,13 @@ impl<'a> CompletionFinder<'a> {
                                 is_public,
                                 params,
                                 ..
-                            } => (*is_static && *is_public).then_some(Some((
-                                method_idx,
-                                method_symbol.unwrap(),
-                                params,
-                            ))), // todo: allow private access in appriopriate contexts.
+                            } => (*is_static
+                                && (*is_public
+                                    || self
+                                        .enclosing_model_or_trait
+                                        .borrow()
+                                        .is_some_and(|enclosing| enclosing == model)))
+                            .then_some(Some((method_idx, method_symbol.unwrap(), params))), // todo: allow private access in appriopriate contexts.
                             _ => None,
                         }
                     })
@@ -346,8 +350,14 @@ impl<'a> CompletionFinder<'a> {
         };
         for method in methods {
             let symbol = symboltable.get(*method)?;
-            if !symbol.kind.is_public() {
-                continue; // todo: allow private completions in appriopriate context.
+            // Private completions are allowed if within model itself.
+            if !symbol.kind.is_public()
+                && self
+                    .enclosing_model_or_trait
+                    .borrow()
+                    .is_some_and(|enclosing| enclosing != owner)
+            {
+                continue;
             }
             let params = match &symbol.kind {
                 SemanticSymbolKind::Method {
@@ -411,9 +421,10 @@ impl<'a> CompletionFinder<'a> {
             SemanticSymbolKind::Model { attributes, .. } => attributes,
             _ => return Some(()),
         };
+        let encloser = self.enclosing_model_or_trait.borrow().clone();
         for attribute in attributes {
             let symbol = symboltable.get(*attribute)?;
-            if !symbol.kind.is_public() {
+            if !symbol.kind.is_public() && encloser.is_some_and(|enclosing| enclosing != owner) {
                 continue; // todo: allow private completions in appriopriate context.
             }
             let label = symbol.name.clone();
@@ -858,6 +869,10 @@ impl<'a> CompletionFinder<'a> {
     }
 
     fn model_decl(&self, model: &analyzer::TypedModelDeclaration) -> Option<CompletionResponse> {
+        let mut enclosing = self.enclosing_model_or_trait.borrow_mut();
+        let former = enclosing.take();
+        *enclosing = Some(model.name);
+        std::mem::drop(enclosing);
         maybe!(model
             .body
             .constructor
@@ -871,6 +886,7 @@ impl<'a> CompletionFinder<'a> {
                 _ => continue,
             }
         }
+        *self.enclosing_model_or_trait.borrow_mut() = former;
         return None;
     }
 }

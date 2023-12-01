@@ -6,6 +6,10 @@ use crate::{
     VariablePattern, VariableSignature,
 };
 
+/// An id for the scope containing the declaration of a symbol in a module.
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct ScopeId(pub u32);
+
 /// An entry to a local scope.
 #[derive(Debug, Hash)]
 pub enum ScopeEntry {
@@ -25,9 +29,11 @@ pub enum ScopeEntry {
     ReservedSpace,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub enum ScopeType {
     Local,
+    IfConsequent,
+    IfAlternate,
     Test,
     Functional,
     WhileLoop,

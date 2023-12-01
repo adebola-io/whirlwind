@@ -1,13 +1,16 @@
 module Http;
 use Super.Prelude.{
     Bool, Todo, Outcome, Prospect, String,
-    Maybe, UnsignedInt, Some, Array
+    Maybe, UnsignedInt, Some, Array, None
 };
 use Super.Primitives.Ops.Addition;
 public use Request.{RequestParams, HttpRequest, HttpMethod, HttpRequestError};
 
 
 model Endpoints {
+    new() {
+
+    }
     /// Registers a GET route.
     public function Register(
         method: HttpMethod, 
@@ -22,10 +25,11 @@ public type ServerOutcome = Outcome<HttpResponse, HttpRequestError>;
 
 public model HttpServer {
     public var endpoints: Endpoints;
-    var middleware: Middleware;
+    var middleware: Maybe<Middleware>;
 
     new(name: String, port: UnsignedInt) {
- 
+        this.endpoints = new Endpoints();
+        this.middleware = None();
     }
 
     /// Registers a route for a request with a `GET` method. 

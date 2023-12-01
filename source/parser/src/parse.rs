@@ -434,7 +434,7 @@ impl<L: Lexer> Parser<L> {
         }
         let condition = condition.unwrap();
         errors.append(&mut condition_errors);
-        let (consequent, mut consequent_errors) = self.block(ScopeType::Local).to_tuple();
+        let (consequent, mut consequent_errors) = self.block(ScopeType::IfConsequent).to_tuple();
         let consequent = consequent.unwrap_or_else(|| {
             self.create_fake_block(
                 ScopeType::Local,
@@ -454,8 +454,16 @@ impl<L: Lexer> Parser<L> {
                     TokenType::Keyword(Else) => {
                         let start = self.token().unwrap().span.start;
                         self.advance(); // Move past else.
-
-                        let (expression, mut exp_errors) = self.expression().to_tuple();
+                        let (expression, mut exp_errors) = if self
+                            .token()
+                            .is_some_and(|token| token._type == TokenType::Bracket(LCurly))
+                        {
+                            self.block(ScopeType::IfAlternate)
+                                .map(|block| Expression::BlockExpr(block))
+                        } else {
+                            self.expression()
+                        }
+                        .to_tuple();
                         errors.append(&mut exp_errors);
                         let expression = expression?;
                         let else_end = expression.span().end;

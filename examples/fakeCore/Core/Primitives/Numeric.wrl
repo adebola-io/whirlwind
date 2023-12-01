@@ -1,58 +1,33 @@
 module Numeric;
 
-use Super.Prelude.Display;
+use Super.Prelude.{Display, Default};
 use Super.Internals.{Invoke, Injunction};
 use String.String;
 use Ops.{Addition, Sequenced};
 
 /// An unsigned 8-bit Int.
-public model UInt8 implements Display + Addition + Sequenced {
-    public function [Display.ToStr](): String {
-        return Invoke(Injunction.NumToStr(this));
-    }
-    public function [Addition.Add](other: This): This {
-        return Invoke(Injunction.NumToStr(this));
-    }
+public model UInt8 implements Display + Addition + Sequenced + Default {
+    // Compiler built in.
 }
 
 /// An unsigned 16-bit integer.
-public model UInt16 implements Display + Addition + Sequenced {
-    public function [Display.ToStr](): String {
-        return Invoke(Injunction.NumToStr(this));
-    }
-    public function [Addition.Add](other: This): This {
-        return Invoke(Injunction.NumToStr(this));
-    }
+public model UInt16 implements Display + Addition + Sequenced + Default {
+    // Compiler built in.
 }
 
 /// An unsigned 32-bit integer.
-public model UInt32 implements Display + Addition + Sequenced {
-    public function [Display.ToStr](): String {
-        return Invoke(Injunction.NumToStr(this));
-    }
-    public function [Addition.Add](other: This): This {
-        return Invoke(Injunction.NumToStr(this));
-    }
+public model UInt32 implements Display + Addition + Sequenced + Default {
+    // Compiler built in.
 }
 
 /// An unsigned 64-bit integer.
-public model UInt64 implements Display + Addition + Sequenced {
-    public function [Display.ToStr](): String {
-        return Invoke(Injunction.NumToStr(this));
-    }
-    public function [Addition.Add](other: This): This {
-        return Invoke(Injunction.NumToStr(this));
-    }
+public model UInt64 implements Display + Addition + Sequenced + Default {
+    // Compiler built in.
 }
 
 /// An integer value with a direction sign.
-public model SignedInt implements Display + Addition {
-    public function [Display.ToStr](): String {
-        return Invoke(Injunction.NumToStr(this));
-    }
-    public function [Addition.Add](other: This): This {
-        return Invoke(Injunction.NumToStr(this));
-    }
+public model SignedInt implements Display + Addition + Sequenced + Default {
+    // Compiler built in.
 }
 
 /// A union data type to represent different unsigned integer values.
@@ -62,36 +37,21 @@ public type UnsignedInt = UInt8 | UInt16 | UInt32 | UInt64;
 public type Int = UnsignedInt | SignedInt;
 
 /// An 32-bit floating number.
-public model Float32 implements Display + Addition {
-    public function [Display.ToStr](): String {
-        return Invoke(Injunction.NumToStr(this));
-    }
-    public function [Addition.Add](other: This): This {
-        return Invoke(Injunction.NumToStr(this));
-    }
+public model Float32 implements Display + Addition + Default {
+    // Compiler built in.
 }
 
 /// A 64-bit floating number.
-public model Float64 implements Display + Addition {
-    public function [Display.ToStr](): String {
-        return Invoke(Injunction.NumToStr(this));
-    }
-    public function [Addition.Add](other: This): This {
-        return Invoke(Injunction.NumToStr(this));
-    }
+public model Float64 implements Display + Addition + Default {
+    // Compiler built in.
 }
 
 /// A union data type to represent floating-point numbers.
 public type Float = Float32 | Float64 | Int;
 
 /// An arbitrarily large integer value.
-public model BigInt implements Display + Addition {
-    public function [Display.ToStr](): String {
-        return Invoke(Injunction.NumToStr(this));
-    }
-    public function [Addition.Add](other: This): This {
-        return Invoke(Injunction.NumToStr(this));
-    }
+public model BigInt implements Display + Addition + Default {
+    // Compiler built in.
 }
 
 /// A union data type to represent a number.

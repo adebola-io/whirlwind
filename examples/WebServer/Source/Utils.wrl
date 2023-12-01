@@ -9,8 +9,3 @@ public function IsValidUsername(value: &String): Bool {
     //  && value.Length() > 3 && value.Length() < 30
 }
 
-public function Wai() {
-    Core.Process.WaitThen(fn () {
-        
-    }, 3000);
-}

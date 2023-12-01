@@ -609,10 +609,7 @@ impl Standpoint {
             // Remove all stale errors.
             self.errors.retain(|error| {
                 !(error.offending_file == idx
-                    && (matches!(
-                        error.error_type,
-                        ProgramErrorType::Importing(_) | ProgramErrorType::Typing(_)
-                    )))
+                    && (matches!(error.error_type, ProgramErrorType::Importing(_))))
             });
             self.resolve_imports_of(idx).unwrap();
         }
@@ -725,11 +722,6 @@ impl Standpoint {
     /// Runs the typechecker on a module.
     pub fn check_module(&mut self, module_path_idx: PathIndex) -> Option<()> {
         let module = self.module_map.get_mut(module_path_idx)?;
-        // Remove all stale errors.
-        self.errors.retain(|error| {
-            !(error.offending_file == module_path_idx
-                && (matches!(error.error_type, ProgramErrorType::Typing(_))))
-        });
         typecheck(
             module,
             &mut self.symbol_table,

@@ -437,3 +437,24 @@ pub fn non_pure_global(span: ast::Span) -> TypeError {
         span,
     }
 }
+
+pub fn return_from_constructor(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::ReturnFromConstructor,
+        span,
+    }
+}
+
+pub fn using_attribute_before_assign(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::UsingAttributeBeforeAssign,
+        span,
+    }
+}
+
+pub fn unassigned_attribute(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::UnassignedAttribute,
+        span,
+    }
+}

@@ -2,7 +2,7 @@ module Maybe;
 
 use Super.{
     Primitives.Bool,
-    Internals.never,
+    Internals.{never, Injunction},
     Process.{PanicOnCaller, Todo},
 }; 
 use Outcome.{ Ok, Err, Outcome }; 
@@ -28,9 +28,6 @@ public function Some<T>(value: T): Maybe<T> {
 public model Maybe<T> implements Guaranteed<T> + Try<T, Maybe<never>> {
     var inner: MaybeVal<T>;
 
-    new(value: MaybeVal<T>) {
-        this.inner = value;
-    }
     /// Implementation of `Guarantee` trait.
     public function [Guaranteed.Guarantee](): T {
         this.Unwrap()

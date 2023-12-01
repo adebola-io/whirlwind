@@ -1,7 +1,7 @@
 use ast::Span;
 
 use crate::{
-    span_of_typed_expression, EvaluatedType, IntermediateType, LiteralIndex, LiteralMap,
+    span_of_typed_expression, EvaluatedType, IntermediateType, LiteralIndex, LiteralMap, ScopeId,
     SymbolIndex, SymbolTable, TypedExpression, TypedIdent,
 };
 
@@ -91,6 +91,7 @@ pub struct TypedTypeDeclaration {
 pub struct TypedBlock {
     pub statements: Vec<TypedStmnt>,
     pub span: Span,
+    pub scopeid: ScopeId,
     pub inferred_type: EvaluatedType,
 }
 

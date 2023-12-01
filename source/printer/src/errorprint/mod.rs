@@ -39,7 +39,7 @@ Got: '{right}'.",
         TypeErrorType::ConstructorAssigntoInstance(name) => format!("A constructor cannot be assigned as an instance. Do you mean `new {name}...`?"),
         TypeErrorType::AttributeAccessOnConstructor { model, attribute_name } => format!("Cannot access an attribute on a model blueprint. Did you mean (new {model}(...)).{attribute_name}?"),
         TypeErrorType::ConstructorNonStaticMethodAccess { model_name, method_name } => format!("{method_name} is not a static method on {model_name}, but it is being used in a static context."),
-        TypeErrorType::PrivatePropertyLeak { model_name, property_name } => format!("{property_name} exists on {model_name}, but it cannot be accessed publicly."),
+        TypeErrorType::PrivatePropertyLeak {  property_name } => format!("The '{property_name}' property cannot be accessed publicly."),
         TypeErrorType::AccessingOnTrait { trait_ } => format!("{trait_} refers to a trait, thus its methods cannot be directly accessed. Consider implementing them on models instead."),
         TypeErrorType::TypeAsValue { type_ } => format!("{type_} refers to an abstract type, generic parameter or a type alias, but it is being used as a value here."),
         TypeErrorType::InstanceStaticMethodAccess { model_name, method_name } => format!("{method_name} refers a static function, so it cannot be called by instances of {model_name}."),
@@ -89,6 +89,10 @@ Got: '{right}'.",
         TypeErrorType::IllegalModelDestructure { name } => format!("Cannot destructure from value of type {name} because it is not a model instance."),
         TypeErrorType::DestructuringMethod { .. } => format!("Methods cannot be destructured from models."),
         TypeErrorType::NonPureGlobal => format!("Expression with possible side effects are not allowed in global scope."),
+        TypeErrorType::ReturnFromConstructor => format!("Model constructors do not expect a return value."),
+        TypeErrorType::UsingAttributeBeforeAssign => format!("Attribute is being used before it is assigned."),
+        TypeErrorType::UnassignedAttribute => format!("Attribute is not assigned a definitive initial value in the constructor."),
+        
     }
 }
 
