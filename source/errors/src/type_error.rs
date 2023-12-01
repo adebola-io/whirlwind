@@ -209,7 +209,8 @@ pub enum TypeErrorType {
     DestructuringMethod {
         base_type: String,
         method_name: String,
-    }, // InfiniteType,
+    },
+    NonPureGlobal, // InfiniteType,
 }
 
 pub fn invalid_binary(left: String, operator: BinOperator, right: String, span: Span) -> TypeError {

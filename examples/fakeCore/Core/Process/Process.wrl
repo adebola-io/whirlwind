@@ -2,7 +2,9 @@ module Process;
 
 use Super.{
     Internals.never, 
-    Primitives.String
+    Primitives.String,
+    Primitives.UnsignedInt,
+    Async.CurrentSequence
 };
 use Super.Prelude.Maybe;
 
@@ -15,12 +17,12 @@ public model Error {
 /// Mock function for panicking.
 public function PanicOnCaller(message: String): never  {
     // Compiler built-in.
-    return PanicOnCaller(message);
+    Todo()
 }
 
 /// Mock function for compile-time stuff.
 public function Halt(message: String): never {
-    return Halt(message);
+    Todo()
 }
 
 /// Indicates that the current piece of code is unfinished.
@@ -50,4 +52,10 @@ public function Panic(message?: String): never {
 /// Returns the value of an environment variable.
 public function ReadEnv(variableName: String): Maybe<&String> {
     Todo()
+}
+
+/// Schedules a function to run after a duration elapses.
+public function WaitThen(callback: fn(), timeout: UnsignedInt) {
+    CurrentSequence.Sleep(timeout);
+    callback();
 }

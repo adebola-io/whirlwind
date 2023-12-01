@@ -31,5 +31,7 @@ public enum Flow<T> {
     Normal(T)
 }
 
+/// A currently running set of instructions.
+public model Sequence {
 
-
+}

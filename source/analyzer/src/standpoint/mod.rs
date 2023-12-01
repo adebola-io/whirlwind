@@ -578,8 +578,10 @@ impl Standpoint {
         }
         // delete stale errors.
         self.errors.retain(|error| {
-            !(matches!(error.error_type, ProgramErrorType::Importing(_))
-                || error.offending_file == path_idx)
+            !(matches!(
+                error.error_type,
+                ProgramErrorType::Importing(_) | ProgramErrorType::Typing(_)
+            ) || error.offending_file == path_idx)
         });
         let stale_module = self.module_map.remove(path_idx)?;
         let parent_directory = get_parent_dir(&stale_module.path_buf)?;
@@ -607,7 +609,10 @@ impl Standpoint {
             // Remove all stale errors.
             self.errors.retain(|error| {
                 !(error.offending_file == idx
-                    && (matches!(error.error_type, ProgramErrorType::Importing(_))))
+                    && (matches!(
+                        error.error_type,
+                        ProgramErrorType::Importing(_) | ProgramErrorType::Typing(_)
+                    )))
             });
             self.resolve_imports_of(idx).unwrap();
         }
@@ -623,36 +628,8 @@ impl Standpoint {
         let path = self.module_map.get(path_idx)?.path_buf.clone();
         // // Disabling auto update prevents unecessary import solving.
         self.auto_update = false;
-        self.remove_module(path_idx)?;
+        std::mem::drop(self.remove_module(path_idx)?);
         self.auto_update = true;
-
-        // // Reset intrinsics if necessary.
-        // if let Ok(path) = path.strip_prefix(BASE_CORE_PATH) {
-        //     let is_intrinsic = if let Some(path_str) = path.to_str() {
-        //         match path_str {
-        //             Self::ARRAY
-        //             | Self::ASYNC
-        //             | Self::BOOL
-        //             | Self::NUMERIC
-        //             | Self::INTERNAL
-        //             | Self::ITERATABLE
-        //             | Self::OPS
-        //             | Self::TRAITS
-        //             | Self::RANGE
-        //             | Self::STRING
-        //             | Self::DEFAULT
-        //             | Self::MAYBE => true,
-        //             _ => false,
-        //         }
-        //     } else {
-        //         false
-        //     };
-        //     if is_intrinsic {
-        //         self.restart();
-
-        //         return Some(StandpointStatus::Restarted);
-        //     }
-        // }
 
         // Add updated module.
         let mut update = Module::from_text(&text);

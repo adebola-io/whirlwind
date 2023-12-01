@@ -241,10 +241,15 @@ mod statements {
         // Pattern resolutions.
         for name in names {
             let symbol = symboltable.get_mut(*name).unwrap();
-            // Only pure, immutable and literal types should be allowed in global variables.
-            // if variable.value.is_some() && symbol.kind.is_public() {
-
-            // }
+            // Only pure, immutable and literal types should be allowed as global variables.
+            if variable.value.is_some() && symbol.origin_scope_id.is_some_and(|id| id.0 == 0) {
+                let expression = variable.value.as_ref().unwrap();
+                if !is_pure(expression) {
+                    let span = checker_ctx.span_of_expr(expression, symboltable);
+                    checker_ctx.add_error(errors::non_pure_global(span));
+                    return;
+                }
+            }
             let pattern_type = if let SemanticSymbolKind::Variable {
                 pattern_type,
                 inferred_type,
@@ -339,6 +344,20 @@ mod statements {
             {
                 *inferred_type = pattern_result;
             }
+        }
+    }
+
+    fn is_pure(expression: &TypedExpression) -> bool {
+        match expression {
+            TypedExpression::Literal(_) | TypedExpression::FnExpr(_) => true,
+            TypedExpression::ArrayExpr(array) => {
+                array.elements.iter().all(|element| is_pure(element))
+            }
+            TypedExpression::UnaryExpr(unary) => is_pure(&unary.operand),
+            TypedExpression::LogicExpr(logic) => is_pure(&logic.left) && is_pure(&logic.right),
+            TypedExpression::BinaryExpr(binexp) => is_pure(&binexp.left) && is_pure(&binexp.right),
+            TypedExpression::UpdateExpr(update) => is_pure(&update.operand),
+            _ => false,
         }
     }
 

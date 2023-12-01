@@ -6,7 +6,8 @@ use Super.Prelude.Bool;
 use Super.Prelude.Todo;
 use Super.Prelude.Guaranteed;
 use Super.Process.Panic;
-use Super.Internals.Injunction;
+use Super.Internals.{Injunction, Invoke, Sequence};
+use Super.Primitives.UnsignedInt;
 
 /// Asynchronous functions do not run automatically in Whirlwind. Instead, calling an
 /// async function produces a `Prospect`, which is essentially a lazy execution 
@@ -54,6 +55,10 @@ public model Eventual<T> implements Guaranteed<T> {
     public var resolved: Bool;
     /// Whether or not the eventual has been aborted.
     public var aborted: Bool;
+    /// The sequence running this eventual.
+    var sequence: &Sequence;
+    /// The final value. Until the eventual is resolved, the value remains empty.
+    var value: T;
     public function [Guaranteed.guarantee](): T {
         this.Unwrap()
     }
@@ -73,14 +78,21 @@ public model Eventual<T> implements Guaranteed<T> {
         if this.aborted {
             Panic("Called Unwrap() on an aborted eventual.");
         };
-        if not this.resolved {
+        if not this.resolved or this.value is Core.Internals.Nullptr {
             Panic("Called Unwrap() on an unresolved eventual.");
         };
-        Todo()
+        return this.value;
     }
 }
 
 /// Runs a prospect immediately, blocking the current execution context until it is finished.
 public function ToSync<T>(prospect: Prospect<T>): T {
     prospect.Run().Await()
+}
+
+public model CurrentSequence {
+    /// Forces the current running sequence to halt for a duration.
+    public static function Sleep(timeout: UnsignedInt) {
+        Todo()
+    }
 }

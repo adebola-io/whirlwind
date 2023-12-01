@@ -430,3 +430,10 @@ pub fn destructuring_method(base_type: String, method_name: String, span: ast::S
         span,
     }
 }
+
+pub fn non_pure_global(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::NonPureGlobal,
+        span,
+    }
+}
