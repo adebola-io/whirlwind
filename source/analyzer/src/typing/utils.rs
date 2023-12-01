@@ -1,6 +1,6 @@
 use crate::{
-    evaluate, EvaluatedType, ParameterType, SemanticSymbolKind, SymbolIndex, SymbolTable,
-    TypecheckerContext, TypedExpression,
+    evaluate, unify_generic_arguments, EvaluatedType, LiteralMap, ParameterType,
+    SemanticSymbolKind, SymbolIndex, SymbolTable, TypecheckerContext, TypedExpression,
 };
 use errors::{TypeError, TypeErrorType};
 /// Returns an intrinsic symbol from the symbol table or returns an unknown type.
@@ -715,5 +715,137 @@ pub fn ensure_assignment_validity(
         checker_ctx.add_error(errors::void_assignment(span));
     } else if inference_result.is_partial() {
         checker_ctx.add_error(errors::partial_type_assignment(span));
+    }
+}
+
+/// Mutates the type of an expression based on the solved generics.
+pub fn update_expression_type(
+    caller: &mut TypedExpression,
+    symboltable: &mut SymbolTable,
+    generic_arguments: &Vec<(SymbolIndex, EvaluatedType)>,
+) {
+    match caller {
+        TypedExpression::Identifier(ident) => {
+            let ident_symbol = symboltable.get_mut(ident.value).unwrap();
+            if let SemanticSymbolKind::Variable { inferred_type, .. }
+            | SemanticSymbolKind::Constant { inferred_type, .. } = &mut ident_symbol.kind
+            {
+                let mut empty = vec![];
+                let inferred_type_generics = get_type_generics_mut(inferred_type, &mut empty);
+                for (generic_idx, generic_solution) in inferred_type_generics {
+                    if let Some((_, newsolution)) =
+                        generic_arguments.iter().find(|(a, _)| a == generic_idx)
+                    {
+                        if !newsolution.is_unknown() {
+                            *generic_solution = newsolution.clone();
+                        }
+                    }
+                }
+            }
+        }
+        TypedExpression::CallExpr(call) => {
+            update_expression_type(&mut call.caller, symboltable, generic_arguments);
+            call.arguments
+                .iter_mut()
+                .for_each(|arg| update_expression_type(arg, symboltable, generic_arguments));
+        }
+        TypedExpression::AccessExpr(access) => {
+            let empty = LiteralMap::new();
+            let inferred_type = symboltable
+                .get_expression_type(&access.property, &empty)
+                .unwrap();
+            let empty = vec![];
+            let prior_generics = get_type_generics(&inferred_type, &empty);
+            let generic_args = match unify_generic_arguments(
+                prior_generics,
+                generic_arguments,
+                symboltable,
+                crate::UnifyOptions::None,
+                None,
+            ) {
+                Ok(generics) => generics,
+                _ => return,
+            };
+            update_expression_type(&mut access.object, symboltable, &generic_args);
+        }
+        TypedExpression::ArrayExpr(array) => array
+            .elements
+            .iter_mut()
+            .for_each(|exp| update_expression_type(exp, symboltable, generic_arguments)),
+        TypedExpression::IndexExpr(index) => {
+            update_expression_type(&mut index.object, symboltable, generic_arguments);
+            // todo: allow index overloading?
+        }
+        TypedExpression::UnaryExpr(unary) => {
+            update_expression_type(&mut unary.operand, symboltable, generic_arguments)
+        }
+        TypedExpression::UpdateExpr(exp) => {
+            update_expression_type(&mut exp.operand, symboltable, generic_arguments)
+        }
+        _ => {}
+    }
+}
+
+/// Extracts the generic arguments passed to an evaluated type.
+pub fn get_type_generics<'a>(
+    result_type: &'a EvaluatedType,
+    empty: &'a Vec<(SymbolIndex, EvaluatedType)>,
+) -> &'a Vec<(SymbolIndex, EvaluatedType)> {
+    match result_type {
+        EvaluatedType::ModelInstance {
+            generic_arguments, ..
+        }
+        | EvaluatedType::TraitInstance {
+            generic_arguments, ..
+        }
+        | EvaluatedType::EnumInstance {
+            generic_arguments, ..
+        }
+        | EvaluatedType::FunctionInstance {
+            generic_arguments, ..
+        }
+        | EvaluatedType::FunctionExpressionInstance {
+            generic_args: generic_arguments,
+            ..
+        }
+        | EvaluatedType::OpaqueTypeInstance {
+            generic_arguments, ..
+        }
+        | EvaluatedType::MethodInstance {
+            generic_arguments, ..
+        } => generic_arguments,
+        _ => empty,
+    }
+}
+
+/// Extracts the generic arguments passed to an evaluated type, mutably.
+pub fn get_type_generics_mut<'a>(
+    result_type: &'a mut EvaluatedType,
+    empty: &'a mut Vec<(SymbolIndex, EvaluatedType)>,
+) -> &'a mut Vec<(SymbolIndex, EvaluatedType)> {
+    match result_type {
+        EvaluatedType::ModelInstance {
+            generic_arguments, ..
+        }
+        | EvaluatedType::TraitInstance {
+            generic_arguments, ..
+        }
+        | EvaluatedType::EnumInstance {
+            generic_arguments, ..
+        }
+        | EvaluatedType::FunctionInstance {
+            generic_arguments, ..
+        }
+        | EvaluatedType::FunctionExpressionInstance {
+            generic_args: generic_arguments,
+            ..
+        }
+        | EvaluatedType::OpaqueTypeInstance {
+            generic_arguments, ..
+        }
+        | EvaluatedType::MethodInstance {
+            generic_arguments, ..
+        } => generic_arguments,
+        _ => empty,
     }
 }

@@ -92,4 +92,17 @@ test "Testing types." {
     strArray := ["hello", "world"];
     strArrayHasHello := strArray.Iter().Any(fn(element) element == "hello");
     functor: fn(): fn(value: String): String := fn() fn(value) value.ToStr();
+
+    // Full birectionality.
+    model Pop<T> implements Default {
+        public var array: Array<T>;
+        new(value?: T) {
+            this.array = []
+        }
+        public function Ident(value: T) {
+            Todo()
+        }
+    }
+    pop := new Pop();
+    pop.array = [""];
 }

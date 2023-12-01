@@ -57,10 +57,10 @@ public model RequestHeaders {
     }
 }
 public model RequestParams {
-    function Get(name: String): Maybe<&String> {
+    public function Get(name: String): Maybe<&String> {
         Todo()
     }
-    function GetOrErr(name: String): Outcome<&String, HttpRequestError> {
+    public function GetOrErr(name: String): Outcome<&String, HttpRequestError> {
         Todo()
     }
     function Has(name: &String): Bool {

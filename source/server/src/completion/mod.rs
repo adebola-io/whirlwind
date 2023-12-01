@@ -351,12 +351,7 @@ impl<'a> CompletionFinder<'a> {
         for method in methods {
             let symbol = symboltable.get(*method)?;
             // Private completions are allowed if within model itself.
-            if !symbol.kind.is_public()
-                && self
-                    .enclosing_model_or_trait
-                    .borrow()
-                    .is_some_and(|enclosing| enclosing != owner)
-            {
+            if !symbol.kind.is_public() && *self.enclosing_model_or_trait.borrow() != Some(owner) {
                 continue;
             }
             let params = match &symbol.kind {
@@ -424,7 +419,7 @@ impl<'a> CompletionFinder<'a> {
         let encloser = self.enclosing_model_or_trait.borrow().clone();
         for attribute in attributes {
             let symbol = symboltable.get(*attribute)?;
-            if !symbol.kind.is_public() && encloser.is_some_and(|enclosing| enclosing != owner) {
+            if !symbol.kind.is_public() && encloser != Some(owner) {
                 continue; // todo: allow private completions in appriopriate context.
             }
             let label = symbol.name.clone();

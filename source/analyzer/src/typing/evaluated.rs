@@ -12,7 +12,7 @@ use errors::{
 };
 
 /// A type expression, as is.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Default)]
 pub enum EvaluatedType {
     /// A type that evolves to different values, based on control flow.
     Partial {
@@ -62,6 +62,7 @@ pub enum EvaluatedType {
     },
     Void,
     Never,
+    #[default]
     Unknown,
     // Generics that cannot be mutated or coerced.
     HardGeneric {

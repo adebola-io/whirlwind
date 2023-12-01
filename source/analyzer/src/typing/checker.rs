@@ -3,8 +3,8 @@ use crate::{
     unify::{unify_freely, unify_types},
     utils::{
         arrify, coerce, coerce_all_generics, ensure_assignment_validity, evaluate_generic_params,
-        get_implementation_of, get_numeric_type, infer_ahead, is_array, is_boolean,
-        is_numeric_type, maybify, prospectify, symbol_to_type,
+        get_implementation_of, get_numeric_type, get_type_generics, infer_ahead, is_array,
+        is_boolean, is_numeric_type, maybify, prospectify, symbol_to_type, update_expression_type,
     },
     EvaluatedType, Literal, LiteralMap, ParameterType, PathIndex, ProgramError, ScopeId,
     SemanticSymbolKind, SymbolIndex, SymbolTable, TypedAccessExpr, TypedAssignmentExpr, TypedBlock,
@@ -1324,7 +1324,7 @@ mod expressions {
                 return EvaluatedType::Unknown;
             }
 
-            // If lhs is an attribute and we are in a constructor, rigourously check for attribute assignment..
+            // If lhs is an attribute and we are in a constructor, rigorously check for attribute assignment..
             'check_for_attribute_assignment: {
                 let expression_as_attrib = expression_is_attribute(&assexp.left, symboltable);
                 if !matches!(assexp.operator, ast::AssignOperator::Assign) {
@@ -1413,14 +1413,8 @@ mod expressions {
             ensure_assignment_validity(&right_type, checker_ctx, span);
 
             // Update value of left hand side based on the inferred type.
-            if let TypedExpression::Identifier(ident) = &assexp.left {
-                let identifier_symbol = symboltable.get_mut(ident.value).unwrap();
-                if let SemanticSymbolKind::Variable { inferred_type, .. } =
-                    &mut identifier_symbol.kind
-                {
-                    *inferred_type = result_type
-                }
-            }
+            let generics = generic_hashmap.into_iter().collect::<Vec<_>>();
+            update_expression_type(&mut assexp.left, symboltable, &generics);
             return EvaluatedType::Void;
         })();
         assexp.inferred_type.clone()
@@ -1682,9 +1676,25 @@ mod expressions {
                 checker_ctx.add_error(missing_intrinsic(format!("Array"), array.span));
             }
             if array.elements.len() == 0 {
+                if symboltable.array.is_some() {
+                    let empty = vec![];
+                    let placeholder = arrify(EvaluatedType::Unknown, symboltable);
+                    let generic = get_type_generics(&placeholder, &empty)
+                        .first()
+                        .map(|(idx, _)| idx);
+                    if generic.is_some() {
+                        return arrify(
+                            EvaluatedType::Generic {
+                                base: *generic.unwrap(),
+                            },
+                            symboltable,
+                        );
+                    }
+                }
                 return arrify(EvaluatedType::Unknown, &symboltable);
             }
             let mut element_types = vec![];
+
             let mut next_type = array
                 .elements
                 .first_mut()
@@ -1931,6 +1941,7 @@ mod expressions {
             &mut generic_arguments,
         );
         callexp.inferred_type = coerce(return_type, &generic_arguments);
+        update_expression_type(&mut callexp.caller, symboltable, &generic_arguments);
         callexp.inferred_type.clone()
     }
 
