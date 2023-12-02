@@ -358,7 +358,7 @@ mod statements {
                 None
             }
         };
-        // If both variable and label are present, bidirectional inferencing is possible.
+        // If both variable and label are present, inferencing is possible.
         if declared_type.is_some() && variable.value.is_some() {
             infer_ahead(
                 &mut variable.value.as_mut().unwrap(),

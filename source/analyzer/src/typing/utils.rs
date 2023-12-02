@@ -644,7 +644,7 @@ pub fn distill_as_function_type<'a>(
     }
 }
 
-/// When designing Whirlwind, support for bidirectional type inferencing was added,
+/// When designing Whirlwind, support for type inferencing was added,
 /// which turns out to be more work than previously expected.
 /// Checking types in the other direction requires a whole new visitor, which is
 /// unecessary if the types to infer are minimal.
@@ -702,7 +702,7 @@ pub fn infer_ahead(
                 );
             }
         }
-        _ => {} // todo: what else needs bidirectional inference?
+        _ => {} // todo: what else needs inference?
     }
 }
 

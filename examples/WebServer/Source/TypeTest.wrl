@@ -84,25 +84,39 @@ test "Testing types." {
     entity: Transformable<Transformable<String>> := new Box(new Sphere("hello"));
 
     // Numeric types.
-    name := 90;
-    name = 12;
-    array := [1, 2, 3, 4, name];
+    number := 90;
+    number = 12;
+    array := [1, 2, 3, 4, number];
 
     // function type coercion.
     strArray := ["hello", "world"];
     strArrayHasHello := strArray.Iter().Any(fn(element) element == "hello");
     functor: fn(): fn(value: String): String := fn() fn(value) value.ToStr();
 
-    // Full birectionality.
-    model Pop<T> implements Default {
-        public var array: Array<T>;
-        new(value?: T) {
-            this.array = []
+    // Auto inferred generics.
+    arr := [];
+    arr = ["Hello", "world"]; // arr should infer type Array<String>
+    firstItem := arr[0]; // Should infer type string.
+    arr2 := [];
+    arr2.Push(Some(true)); // arr2 should infer type Array<Maybe<Bool>>.
+    arr3 := [];
+    num: Number := 99;
+    arr3[0] = num; // arr3 should infer type Array<Number>
+
+    // Destructuring.
+    model Person implements Default {
+        public var name: String;
+        public var age: UInt8; // Set automatically.
+        new(name: String) {
+            this.name = name;
         }
-        public function Ident(value: T) {
-            Todo()
+        public static function [Default.Init](): This {
+            return new Person("{unknown}");
         }
     }
-    pop := new Pop();
-    pop.array = [""];
+
+    // Destructuring.
+    var person: Person; // possible because Person implements Default.
+    var { name, age }: Person;
+    var { name as johnsName} = new Person("John Doe");
 }

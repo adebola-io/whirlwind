@@ -499,7 +499,7 @@ mod bind_utils {
                                 origin_span,
                                 origin_scope_id,
                             },
-                            real_name.span,
+                            name.span,
                         )
                     }
                     VariablePattern::ArrayPattern(i) => (
