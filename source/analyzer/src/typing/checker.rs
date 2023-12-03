@@ -2620,6 +2620,7 @@ mod expressions {
                     property_span,
                 )
             }
+            EvaluatedType::Unknown => return EvaluatedType::Unknown,
             _ => None,
         }
         .unwrap_or_else(|| {
