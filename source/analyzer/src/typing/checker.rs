@@ -116,12 +116,15 @@ pub fn typecheck(
     for statement in &mut module.statements {
         statements::typecheck_statement(statement, &mut checker_ctx, symboltable);
     }
-    // Block uninferrable generics at the end.
+    // Block uninferrable generics and unknowns at the end.
     for symbol in symboltable.in_module(module.path_idx) {
         if let SemanticSymbolKind::Variable { inferred_type, .. } = &symbol.kind {
-            if inferred_type
-                .contains_child_for_which(&|child| matches!(child, EvaluatedType::Generic { .. }))
-            {
+            if inferred_type.contains_child_for_which(&|child| {
+                matches!(
+                    child,
+                    EvaluatedType::Generic { .. } | EvaluatedType::Unknown
+                )
+            }) {
                 checker_ctx.add_error(errors::uninferrable_variable(symbol.ident_span()));
             }
         }
@@ -1416,7 +1419,7 @@ mod expressions {
                 return EvaluatedType::Unknown;
             }
             let mut generic_hashmap = HashMap::new();
-            let result_type = match &left_type {
+            match &left_type {
                 EvaluatedType::ModelInstance { .. }
                 | EvaluatedType::EnumInstance { .. }
                 | EvaluatedType::Unknown
@@ -2360,18 +2363,8 @@ mod expressions {
                     push_scopetype(checker_ctx, ScopeType::Other);
                     let blocktype = typecheck_block(block, false, checker_ctx, symboltable);
                     pop_scopetype(checker_ctx);
-                    if blocktype.is_void() {
-                        checker_ctx
-                            .current_function_context
-                            .last_mut()
-                            .unwrap()
-                            .return_type = blocktype;
-                    }
-                    checker_ctx
-                        .current_function_context
-                        .pop()
-                        .unwrap()
-                        .return_type
+                    checker_ctx.current_function_context.pop();
+                    blocktype
                 }
                 expression => typecheck_expression(expression, checker_ctx, symboltable),
             };
@@ -2870,8 +2863,20 @@ mod expressions {
                     // Returns the type of the last expression in the block.
                     // todo: also check for expression statements for diagnostics.
                     if let TypedStmnt::FreeExpression(expression) = statement {
+                        if is_function_block {
+                            if let Some(return_type) = checker_ctx
+                                .current_function_context
+                                .last()
+                                .map(|ctx| &ctx.return_type)
+                            {
+                                infer_ahead(expression, return_type, symboltable);
+                            }
+                        }
                         let expression_type =
                             typecheck_expression(expression, checker_ctx, symboltable);
+                        let empty = vec![];
+                        let generics = get_type_generics(&expression_type, &empty);
+                        update_expression_type(expression, symboltable, generics);
                         return expression_type;
                     } else if let TypedStmnt::ReturnStatement(retstat) = statement {
                         statements::typecheck_return_statement(retstat, checker_ctx, symboltable);

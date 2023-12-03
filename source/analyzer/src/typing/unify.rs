@@ -278,6 +278,17 @@ pub fn unify_types(
                     },
                 ]);
             } 
+            for (i, param) in left_params.iter().enumerate() {
+                if param.is_optional {
+                    break;
+                }
+                if right_params.get(i).is_none() {
+                    return Err(vec![
+                        default_error(),
+                        TypeErrorType::MismatchedFunctionParams { expected: left_params.len(), found: i, least_required: Some(i + 1) }
+                    ])
+                }
+            }
             let mut params = vec![];
             for (left_param, right_param) in left_params.iter().zip(right_params.iter()) {
                 let mut left_inferred_type = left_param.inferred_type.clone();

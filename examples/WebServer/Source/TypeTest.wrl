@@ -119,9 +119,5 @@ test "Testing types." {
     var { name, age }: Person;
     var { name as johnsName} = new Person("John Doe");
 
-    function Mentor(): fn(a: String): String {
-        return fn() {
-            return "";
-        };   
-    }
+    function AnyType<T>(value: T) {}
 }

@@ -27,7 +27,6 @@ public function Main() {
     };
     // Register authentication.
     middleware.Use(AuthenticationHandler);
-
     // Apply middleware to the server.
     app.UseMiddleware(middleware);
     // Define routes.
