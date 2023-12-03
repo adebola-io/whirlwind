@@ -1684,7 +1684,7 @@ mod expressions {
                 return EvaluatedType::Unknown;
             }
             let symbol = symboltable.get_forwarded(model_or_trait).unwrap();
-            match &symbol.kind {
+            let base = match &symbol.kind {
                 SemanticSymbolKind::Model { generic_params, .. } => EvaluatedType::ModelInstance {
                     model: model_or_trait,
                     generic_arguments: evaluate_generic_params(generic_params, false),
@@ -1694,7 +1694,9 @@ mod expressions {
                     generic_arguments: evaluate_generic_params(generic_params, false),
                 },
                 _ => unreachable!("{symbol:#?} is not a model or trait."),
-            }
+            };
+            let base = Box::new(base);
+            EvaluatedType::Borrowed { base }
         })();
         this.inferred_type.clone()
     }
@@ -2364,7 +2366,24 @@ mod expressions {
                     let blocktype = typecheck_block(block, false, checker_ctx, symboltable);
                     pop_scopetype(checker_ctx);
                     checker_ctx.current_function_context.pop();
-                    blocktype
+                    // Derive return type from last return.
+                    if let Some(statement) = block.statements.last() {
+                        if let TypedStmnt::ReturnStatement(retstat) = statement {
+                            retstat
+                                .value
+                                .as_ref()
+                                .map(|expr| {
+                                    symboltable
+                                        .get_expression_type(expr, checker_ctx.literals)
+                                        .unwrap_or(EvaluatedType::Unknown)
+                                })
+                                .unwrap_or(EvaluatedType::Void)
+                        } else {
+                            blocktype
+                        }
+                    } else {
+                        blocktype
+                    }
                 }
                 expression => typecheck_expression(expression, checker_ctx, symboltable),
             };

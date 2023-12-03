@@ -36,7 +36,7 @@ public model TemplateString {
     /// ```
     public function Add<T implements Display>(value: T): &This {
         this.positions.Push(value.ToStr());
-        return &this;
+        return this;
     }
     /// Builds a string from the template with all the inputted values.
     public function Finish(): String {
