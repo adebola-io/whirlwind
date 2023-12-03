@@ -1,0 +1,13 @@
+module HashMap;
+
+use Super.Prelude.Todo;
+
+public model HashMap<K, V> {
+    new(){}
+    /// Inserts a key-value pair into the hashmap.
+    /// 
+    /// If the key is already present in the map, then it will be replaced.
+    public function Set(key: K, value: V): &V {
+        Todo()
+    }
+}

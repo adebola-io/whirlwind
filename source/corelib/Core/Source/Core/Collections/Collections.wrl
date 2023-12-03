@@ -1,3 +1,0 @@
-module Collections;
-
-public use ArrayStack.ArrayStack;

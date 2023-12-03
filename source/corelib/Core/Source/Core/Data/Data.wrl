@@ -1,9 +1,0 @@
-module Data;
-
-public use Json;
-
-public trait Serializable {
-    public function Serialize(): String {
-
-    }
-}

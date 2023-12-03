@@ -8,6 +8,7 @@ mod message_store;
 use document_manager::DocumentManager;
 use message_store::MessageStore;
 use std::path::PathBuf;
+use analyzer::CORE_LIBRARY_PATH;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::request::{GotoDeclarationParams, GotoDeclarationResponse};
 use tower_lsp::lsp_types::*;
@@ -185,9 +186,7 @@ impl Backend {
 #[tokio::main]
 async fn main() {
     std::env::set_var("RUST_BACKTRACE", "1");
-    let core_path = Some(PathBuf::from(
-        "/home/adebola/projects/whirlwind/examples/fakeCore/Core/Core.wrl",
-    ));
+    let core_path = Some(PathBuf::from(CORE_LIBRARY_PATH));
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
 

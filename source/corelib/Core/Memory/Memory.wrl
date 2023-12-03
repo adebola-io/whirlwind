@@ -11,6 +11,6 @@ public model CharSpace {
 
 }
 
-public model Bytes implements Iteratable<UInt8> {
+public model Buffer implements Iteratable<UInt8> {
 
 }

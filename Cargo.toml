@@ -2,7 +2,6 @@
 resolver = "2"
 members = [
     "source/ast", 
-    "source/corelib", 
     "source/errors", 
     "source/lexer", 
     "source/parser",

@@ -1,4 +1,3 @@
-
 /// ## The Whirlwind Core Library
 /// The core library is the cornerstone of all development in Whirlwind.
 /// It provides a foundational framework that underpins countless aspects of the language's functionality.
@@ -7,19 +6,16 @@
 /// ranging from string manipulation and arrays to networking and file system handling.
 module Core;
 
-
-public use Primitives;
-public use Fs;
-public use Internals;
-public use Memory;
-public use Ops;
-public use Collections;
 public use Prelude;
-public use Process;
-public use Data;
-public use Math;
 public use Async;
 public use Io;
-public use Time;
-public use Regex;
-public use Media;
+public use Http;
+public use Process;
+public use Internals;
+public use Primitives;
+public use Memory;
+public use Testing;
+public use Collections;
+public use Crypto;
+public use Math;
+public use Os;

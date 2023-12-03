@@ -1,6 +1,0 @@
-module Outcome;
-
-
-public model Outcome<T, E> {
-
-}

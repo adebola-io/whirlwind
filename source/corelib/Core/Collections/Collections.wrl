@@ -3,4 +3,5 @@ module Collections;
 
 public use OrderedSet.Tuple;
 public use OrderedSet.Quadruple;
-
+public use ArrayStack.ArrayStack;
+public use HashMap.HashMap;

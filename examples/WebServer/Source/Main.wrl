@@ -17,7 +17,6 @@ public function Main() {
     // Set up server configurations.
     name := "simple-server";
     port := 8080;
-
     app := new HttpServer(name, port);
     middleware := new Middleware();
     printMessage := fn() {

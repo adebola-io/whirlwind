@@ -2,9 +2,9 @@ use crate::EvaluatedType;
 
 /// Builtin and global symbols.
 pub const CORE_LIBRARY_PATH: &'static str =
-    "/home/adebola/projects/whirlwind/examples/fakeCore/Core/Core.wrl";
+    "/home/adebola/projects/whirlwind/source/corelib/Core/Core.wrl";
 pub const PRELUDE_PATH: &'static str =
-    "/home/adebola/projects/whirlwind/examples/fakeCore/Core/Prelude/Prelude.wrl";
+    "/home/adebola/projects/whirlwind/source/corelib/Core/Prelude/Prelude.wrl";
 
 /// Signifies the file being parsed.
 /// Useful to pinpoint primitive types without too much build-in into
@@ -25,7 +25,7 @@ pub enum CurrentModuleType {
     Maybe,
 }
 
-pub const BASE_CORE_PATH: &'static str = "/home/adebola/projects/whirlwind/examples/fakeCore/Core/";
+pub const BASE_CORE_PATH: &'static str = "/home/adebola/projects/whirlwind/source/corelib/Core/";
 pub trait IntrinsicPaths {
     const STRING: &'static str = "Primitives/String.wrl";
     const ARRAY: &'static str = "Primitives/Array.wrl";

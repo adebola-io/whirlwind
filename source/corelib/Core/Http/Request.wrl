@@ -1,7 +1,8 @@
 module Request;
 
 use Super.Prelude.{Todo, String, Bool, Maybe, UnsignedInt, Outcome, Display};
-use Super.Memory.Bytes;
+use Super.Memory.Buffer;
+use Super.Collections.HashMap;
 use Super.Io.IoError;
 
 public enum HttpMethod {
@@ -12,8 +13,11 @@ public enum HttpMethod {
 }
   
 public model HttpRequest {
-    new() {
-        Todo()        
+    var url: String;
+    var data: HashMap<String, String>;
+    new(url: String) {
+        this.url = url;
+        this.data = new HashMap();
     }
     public function PathParams(): RequestParams {
         Todo()
@@ -23,11 +27,11 @@ public model HttpRequest {
         Todo()
     }
     /// Returns the URL route of the request.
-    public function Url(): String {
-        Todo()
+    public function Url(): &String {
+        return &this.url;
     }
     /// Gets the complete body buffer of the string asynchronously.
-    public async function Body(): Bytes {
+    public async function Body(): Buffer {
         Todo()
     }
     /// Returns true if the request was completed successfully.
@@ -40,7 +44,7 @@ public model HttpRequest {
     }
     /// Stores data on the request object.
     public function StoreData(key: String, value: String) {
-        Todo()
+        this.data.Set(key, value);
     }
 }
 
@@ -77,7 +81,7 @@ public model HttpRequestError implements IoError + Display {
     var statusCode: UnsignedInt;
     new(message: String, request: HttpRequest, statusCode?: UnsignedInt) {
         this.message = message;
-        this.route = request.Url();
+        this.route = *request.Url();
         this.statusCode = statusCode.UnwrapOr(400);
     }
     public function [Display.ToStr](): String {

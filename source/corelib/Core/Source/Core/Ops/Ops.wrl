@@ -1,6 +1,0 @@
-module Ops;
-
-
-public trait Addition {
-
-}

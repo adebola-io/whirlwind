@@ -1,5 +1,0 @@
-name: "Core"
-version: 0.0.0
-info: "The Whirlwind Core Library."
-no-core: true
-dependencies: []

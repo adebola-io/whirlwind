@@ -1,18 +1,25 @@
 module String;
 
+use Ops.{ Addition, Sequenced };
 use Bool.Bool;
-use Package.Core.{ 
-    Internals.{ Invoke, Invocation }, 
-    Memory.{ CharSpace, Bytes }, 
-    Ops.Addition, 
-    Prelude.{ Maybe, AsIterator, Iteratable, Range },
+use Super.{ 
+    Internals.{ Invoke, Injunction }, 
+    Memory.{ CharSpace, Buffer }, 
+    Prelude.{ Maybe, AsIterator, Iteratable, Range, Display },
     Process.Todo,
 };
 use Numeric.{ Int, UnsignedInt };
 use Array.Array;
-
+ 
 /// Model for creating, manipulating and formatting text sequences.
-public model String implements Addition, AsIterator<Chars, &String> {
+public model String implements Addition + AsIterator<&String, Chars> + Sequenced + Display {
+    /// Returns the next character alphabetically in a sequence.
+    public function [Sequenced.NextItem](): Maybe<String> {
+        return Invoke(Injunction.NextChar(this));
+    }
+    public function [Display.ToStr](): String {
+        return this;
+    }
     /// Adds two strings together.
     /// ## Usage
     /// ```
@@ -20,7 +27,7 @@ public model String implements Addition, AsIterator<Chars, &String> {
     /// Assert(str).Equals("Hello, world!");
     /// ```
     public function [Addition.Add](other: This): This {
-        return Invoke(Invocation.StrAdd(this, other));
+        return Invoke(Injunction.StrAdd(this, other));
     }
     /// Creates an iterator from the contents of a string.
     /// ## Usage
@@ -28,10 +35,10 @@ public model String implements Addition, AsIterator<Chars, &String> {
     /// str := "This is a string";
     /// 
     /// for char in str {
-    ///     Core.Io.Println(char);
+    ///     Print(char);
     /// }
     /// ```
-    public function [AsIterator.Convert](): Chars {
+    public function [AsIterator.IntoIter](): Chars {
         return this.Chars();
     }
     /// Returns a `Maybe` with the character at a zero based index in the string.
@@ -53,7 +60,7 @@ public model String implements Addition, AsIterator<Chars, &String> {
     /// ```
     /// It will return no value if the length of the string is exceeded.
     public function At(position: Int): Maybe<&String> {
-        return Invoke(Invocation.StrAt(this, position));
+        return Invoke(Injunction.StrAt(this, position));
     }
     /// Adds text to the end of the string.
     /// ## Usage
@@ -66,7 +73,7 @@ public model String implements Addition, AsIterator<Chars, &String> {
     /// ```
     // !::mutable::!
     public function Append(suffix: String) {
-        return Invoke(Invocation.StrAppend(this, suffix));
+        Invoke(Injunction.StrAppend(this, suffix));
     }
     /// Returns an iterator over the bytes in the string.
     /// ## Usage
@@ -74,11 +81,22 @@ public model String implements Addition, AsIterator<Chars, &String> {
     /// str := "adebola.xyz";
     /// 
     /// for byte in str.Bytes() {
-    ///     Core.Io.Println(byte)
+    ///     Print(byte)
     /// }
     /// ```
-    public function Bytes(): Bytes {
-        return Invoke(Invocation.StrBytes(this));
+    public function Bytes(): Buffer {
+        return Invoke(Injunction.StrBytes(this));
+    }
+    /// Changes the first character of every word in the string to upper case.
+    /// ## Usage
+    /// ```
+    /// str := "jonathan is a boy";
+    /// str2 := str.CapitalCase();
+    /// 
+    /// Assert(str2).Equals("Jonathan Is A Boy");
+    /// ```
+    public function CapitalCase(): String {
+        return Invoke(Injunction.StrCapitalCase(this));
     }
     /// Returns an iterator over the valid characters in the string.
     /// ## Usage
@@ -86,11 +104,11 @@ public model String implements Addition, AsIterator<Chars, &String> {
     /// str := "adebola.io"
     /// 
     /// for char in str.Chars() {
-    ///     Core.Io.Println(char);
+    ///     Print(char);
     /// }
     /// ```
     public function Chars(): Chars {
-        return new Chars(this);
+        return new Chars(&this);
     }
     /// Empties the string of its characters.
     /// ## Usage
@@ -104,18 +122,40 @@ public model String implements Addition, AsIterator<Chars, &String> {
     /// ```
     // !::mutable::!
     public function Clear() {
-        return Invoke(Invocation.StrClear(this));
+        Invoke(Injunction.StrClear(this));
     }
     /// Returns true if a substring is contained within the string.
     /// ## Usage
     /// ```
     /// str := "This is a world premiere.";
     /// 
-    /// AssertThat(str.Contains("world"));
-    /// AssertThat(str.Contains("premiere"));
+    /// AssertThat(str.Contains(&"world"));
+    /// AssertThat(str.Contains(&"premiere"));
     /// ```
     public function Contains(substr: &String): Bool {
-        return Invoke(Invocation.StrContains(this, substr));
+        return Invoke(Injunction.StrContains(this, substr));
+    }
+    /// Returns true if the string ends with a given pattern.
+    /// ### Usage
+    /// ```
+    /// name := "Michael";
+    /// AssertThat(name.EndsWith("l"));
+    /// AssertThat(name.StartsWith("ael"));
+    /// ```
+    public function EndsWith(pat: String): Bool {
+        return Invoke(Injunction.StrEndsWith(pat));
+    }
+    /// Returns true if the string is made up entirely of alphabetic and numeric characters.
+    /// ## Usage
+    /// ```
+    /// str := "helloworld1234";
+    /// AssertThat(str.IsAlphanumeric());
+    /// 
+    /// str2 := "%hello_world$";
+    /// AssertThat(!str2.IsAlphanumeric());
+    /// ```
+    public function IsAlphanumeric(): Bool {
+        return Invoke(Injunction.StrIsAlphanum(this));
     }
     /// Returns true if the string has no characters.
     /// ## Usage
@@ -137,9 +177,20 @@ public model String implements Addition, AsIterator<Chars, &String> {
     /// Assert(str.Length()).Equals(5);
     /// ```
     public function Length(): UnsignedInt {
-        return Invoke(Invocation.StrLength(this));
+        return Invoke(Injunction.StrLength(this));
     }
-     /// Returns a version of the string with padding on both sides.
+    /// Changes the case of all letters in the string to lower case.
+    /// ## Usage
+    /// ```
+    /// str := "HELLO, WORLD!";
+    /// str2 := str.LowerCase();
+    /// 
+    /// Assert(str2).Equals("hello, world!");
+    /// ```
+    public function LowerCase(): String {
+        return Invoke(Injunction.StrLowercase(this));
+    }
+    /// Returns a version of the string with padding on both sides.
     /// ## Usage
     /// ```
     /// str := "Alright";
@@ -148,7 +199,7 @@ public model String implements Addition, AsIterator<Chars, &String> {
     /// Assert(str2).Equals("   Alright   "); // 3 spaces before and after.
     /// ```
     public function Pad(count: UnsignedInt): String {
-        return Invoke(Invocation.StrPad(this, count));
+        return Invoke(Injunction.StrPad(this, count));
     }
     /// Returns a version of the string with left padding.
     /// ## Usage
@@ -159,18 +210,18 @@ public model String implements Addition, AsIterator<Chars, &String> {
     /// Assert(str2).Equals("   Alright"); // 3 spaces before.
     /// ```
     public function PadLeft(count: UnsignedInt): String {
-        return Invoke(Invocation.StrPadLeft(this, count));
+        return Invoke(Injunction.StrPadLeft(this, count));
     }
     /// Returns a version of the string with left padding.
     /// ## Usage
     /// ```
     /// str := "Alright";
-    /// str2 := str.PadLeft(3);
+    /// str2 := str.PadRight(3);
     /// 
-    /// Assert(str2).Equals("   Alright"); // 3 spaces before.
+    /// Assert(str2).Equals("Alright   "); // 3 spaces before.
     /// ```
     public function PadRight(count: UnsignedInt): String {
-        return Invoke(Invocation.StrPadRight(this, count));
+        return Invoke(Injunction.StrPadRight(this, count));
     }
     /// Pads the string in place with whitespace on the left and right sides.
     /// ## Usage
@@ -182,7 +233,7 @@ public model String implements Addition, AsIterator<Chars, &String> {
     /// ```
     // !::mutable::!
     public function PadInPlace(count: UnsignedInt): String {
-        return Invoke(Invocation.StrPadInPlace(this, count));
+        return Invoke(Injunction.StrPadInPlace(this, count));
     }
     /// Adds text to the start of the string.
     /// ## Usage
@@ -194,7 +245,7 @@ public model String implements Addition, AsIterator<Chars, &String> {
     /// ```
     // !::mutable::!
     public function Prepend(prefix: String) {
-        return Invoke(Invocation.StrPrepend(this, prefix));
+        Invoke(Injunction.StrPrepend(this, prefix));
     }
     /// Returns a String value that is made from a number of copies of the original string.
     /// If count is 0, the empty string is returned.
@@ -203,7 +254,7 @@ public model String implements Addition, AsIterator<Chars, &String> {
     /// str := "Whirlwind";
     /// 
     /// str2 := str.Repeat(3);
-    /// Assert(str2).Equals("WhirlWhirlWhirl"); // 3 copies.
+    /// Assert(str2).Equals("WhirlwindWhirlwindWhirlwind"); // 3 copies.
     /// 
     /// str3 := str.Repeat(1);
     /// Assert(str3).Equals("Whirlwind"); // One copy.
@@ -212,7 +263,7 @@ public model String implements Addition, AsIterator<Chars, &String> {
     /// AssertThat(str2.IsEmpty()); // No copies.
     /// ```
     public function Repeat(count: UnsignedInt): String {
-        return Invoke(Invocation.StrRepeat(this, count));
+        return Invoke(Injunction.StrRepeat(this, count));
     }
     /// Replaces all instances of a substring and returns the new string.
     /// ## Usage
@@ -224,7 +275,7 @@ public model String implements Addition, AsIterator<Chars, &String> {
     /// Assert(str2).Equals("Mike goes to school. Mike buys a book.")
     /// ```
     public function Replace(substr: String, newstr: String): String {
-        return Invoke(Invocation.StrReplace(this, substr, newstr));
+        return Invoke(Injunction.StrReplace(this, substr, newstr));
     }
     /// Returns a reversed version of the string.
     /// ## Usage
@@ -236,7 +287,7 @@ public model String implements Addition, AsIterator<Chars, &String> {
     /// Assert(str2).Equals("muinomednap");
     /// ```
     public function Reverse(): String {
-        return Invoke(Invocation.StrReverse(this));
+        return Invoke(Injunction.StrReverse(this));
     }
     /// Returns a section of the string.
     /// The range argument is exclusive, meaning it goes from the left index all the way to one before the right.
@@ -244,10 +295,10 @@ public model String implements Addition, AsIterator<Chars, &String> {
     /// ```
     /// str := "Hello, world!";
     /// 
-    /// Assert(str.Slice(0..5)).Equals("Hello"); // index 0 to 4.
+    /// Assert(str.Slice(0..5)).Equals(Some(&"Hello")); // index 0 to 4.
     /// ```
-    public function Slice(bounds: Range<Int>): Maybe<&String> {
-        return Invoke(Invocation.StrSlice(this, bounds));
+    public function Slice(bounds: Range<UnsignedInt>): Maybe<&String> {
+        return Invoke(Injunction.StrSlice(this, bounds));
     }
     /// Divides the string into a list of substrings based on a delimeter.
     /// ## Usage
@@ -255,54 +306,32 @@ public model String implements Addition, AsIterator<Chars, &String> {
     /// str := "Ring around the rosy";
     /// words := str.Split(" ");
     /// 
-    /// Assert(words).Equals(["Ring", "Around", "The", "Rosy"]);
+    /// Assert(words).Equals([&"Ring", &"Around", &"The", &"Rosy"]);
     /// ```
-    public function Split(delim: String): Array<String> {
-        return Invoke(Invocation.StrSplit(this, delim));
+    public function Split(delim: String): Array<&String> {
+        return Invoke(Injunction.StrSplit(this, delim));
     }
-    /// Changes the first character of every word in the string to upper case.
+    /// Divides the string into a list of substrings based on a predicate.
     /// ## Usage
     /// ```
-    /// str := "jonathan is a boy";
-    /// str2 := str.ToCapitalCase();
+    /// str := "Hello world. My name is James.";
+    /// sentences := str.SplitAt(fn(pat) pat == ". ");
     /// 
-    /// Assert(str2).Equals("Jonathan Is A Boy");
+    /// Assert(sentences).Equals([&"Hello world", "My name is James."]);
     /// ```
-    public function ToCapitalCase(): String {
-        return Invoke(Invocation.StrCapitalCase(this));
-    }
-    /// Changes the case of all letters in the string to lower case.
-    /// ## Usage
-    /// ```
-    /// str := "HELLO, WORLD!";
-    /// str2 := str.ToLowerCase();
-    /// 
-    /// Assert(str2).Equals("hello, world!");
-    /// ```
-    public function ToLowerCase(): String {
-        return Invoke(Invocation.StrLowercase(this));
+    public function SplitAt(predicate: fn(pattern: &String): Bool): This {
+        return Invoke(Injunction.StrSplitAt(this, predicate));
     }
     /// Changes only the first character in the string to upper case.
     /// ## Usage
     /// ```
     /// str := "nice to meet you, where you been?";
-    /// str2 := str.ToSentenceCase();
+    /// str2 := str.SentenceCase();
     /// 
     /// Assert(str2).Equals("Nice to meet you, where you been?");
     /// ```
-    public function ToSentenceCase(): String {
-        return Invoke(Invocation.StrSentenceCase(this));
-    }
-    /// Changes the case of all letters in the string to upper case.
-    /// ## Usage
-    /// ```
-    /// str := "hello, world!";
-    /// str2 := str.ToUpperCase();
-    /// 
-    /// Assert(str2).Equals("HELLO, WORLD!");
-    /// ```
-    public function ToUpperCase(): String {
-        return Invoke(Invocation.StrUppercase(this));
+    public function SentenceCase(): String {
+        return Invoke(Injunction.StrSentenceCase(this));
     }
     /// Returns a version of the string without left or right whitespace padding.
     /// ## Usage
@@ -312,7 +341,7 @@ public model String implements Addition, AsIterator<Chars, &String> {
     /// Assert(str.Trim()).Equals("What then shall we say?");
     /// ```
     public function Trim(): String {
-        return Invoke(Invocation.StrTrim(this));
+        return Invoke(Injunction.StrTrim(this));
     }  
     /// Mutates the string in place and removes left or right whitespace padding.
     /// ## Usage
@@ -325,7 +354,7 @@ public model String implements Addition, AsIterator<Chars, &String> {
     /// ```
     // !::mutable::!
     public function TrimInPlace(): String {
-        return Invoke(Invocation.StrTrimInPlace(this));
+        return Invoke(Injunction.StrTrimInPlace(this));
     }   
     /// Returns a version of the string without left whitespace padding.
     /// ## Usage
@@ -335,7 +364,7 @@ public model String implements Addition, AsIterator<Chars, &String> {
     /// Assert(str.TrimStart()).Equals("What then shall we say?\n");
     /// ```
     public function TrimStart(): String {
-        return Invoke(Invocation.StrTrimStart(this));
+        return Invoke(Injunction.StrTrimStart(this));
     } 
     /// Returns a version of the string without right whitespace padding.
     /// ## Usage
@@ -345,21 +374,51 @@ public model String implements Addition, AsIterator<Chars, &String> {
     /// Assert(str.TrimEnd()).Equals("\nWhat then shall we say?");
     /// ```
     public function TrimEnd(): String {
-        return Invoke(Invocation.TrimEnd(this));
+        return Invoke(Injunction.TrimEnd(this));
+    }
+    /// Changes the case of all letters in the string to upper case.
+    /// ## Usage
+    /// ```
+    /// str := "hello, world!";
+    /// Assert(str.UpperCase()).Equals("HELLO, WORLD!");
+    /// ```
+    public function UpperCase(): String {
+        return Invoke(Injunction.StrUppercase(this));
+    }
+    /// Returns true if the string starts with a given pattern.
+    /// ### Usage
+    /// ```
+    /// name := "Joshua";
+    /// AssertThat(name.StartsWith("J"));
+    /// AssertThat(name.StartsWith("Jo"));
+    /// ```
+    public function StartsWith(pat: String): Bool {
+        return Invoke(Injunction.StrStartsWith(pat));
+    }
+    /// Creates a string from a value that implements Display.
+    /// ## Usage
+    /// ```
+    /// value := 1234;
+    /// valueStr := String.From(value);
+    /// ```
+    public static function From<T implements Display>(value: T): This {
+        value.ToStr()
     }
 }
 
+
+/// A simple iterator over the characters in a string.
 public model Chars implements Iteratable<&String> {
     var idx: UnsignedInt;
-    var string: String;
-    new(string: String) {
+    var string: &String;
+    new(string: &String) {
         this.idx = 0;
         this.string = string;
     }
     /// Returns the next character.
     public function [Iteratable.Next](): Maybe<&String> {
-        nextChar := this.string.At(idx);
-        idx += 1;
+        nextChar := this.string.At(this.idx);
+        this.idx += 1;
         return nextChar;
     }
 }
