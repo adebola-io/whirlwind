@@ -16,6 +16,6 @@ public use Super.{
         String, Array, Number, Int, Float, UnsignedInt, Bool,
         UInt8, UInt16, UInt32, UInt64
     },
-    Process.Todo,
+    Process.{Todo, Error},
     Internals.never,
 };

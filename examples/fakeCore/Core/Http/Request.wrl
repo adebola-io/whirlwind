@@ -2,7 +2,7 @@ module Request;
 
 use Super.Prelude.{Todo, String, Bool, Maybe, UnsignedInt, Outcome, Display};
 use Super.Memory.Bytes;
-use Core.Io.IoError;
+use Super.Io.IoError;
 
 public enum HttpMethod {
     Get,
@@ -10,7 +10,7 @@ public enum HttpMethod {
     Put,
     Delete
 }
-
+  
 public model HttpRequest {
     new() {
         Todo()        
@@ -51,7 +51,7 @@ public model RequestHeaders {
     function Has(name: &String): Bool {
         Todo()
     }
-    /// Returns the
+    /// Returns the 
     public function GetOrErr(name: String): Outcome<&String, HttpRequestError> {
         Todo()
     }
@@ -80,7 +80,7 @@ public model HttpRequestError implements IoError + Display {
         this.route = request.Url();
         this.statusCode = statusCode.UnwrapOr(400);
     }
-    public function [Display.ToStr](): &String {
-        return Todo();
+    public function [Display.ToStr](): String {
+        return "Error: " + this.message;
     }
 }

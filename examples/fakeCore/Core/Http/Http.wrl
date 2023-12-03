@@ -1,10 +1,15 @@
 module Http;
 use Super.Prelude.{
-    Bool, Todo, Outcome, Prospect, String,
-    Maybe, UnsignedInt, Some, Array, None
+    Core, Bool, Todo, Outcome, Prospect, String,
+    Maybe, UnsignedInt, Some, Array, None, Error
 };
 use Super.Primitives.Ops.Addition;
-public use Request.{RequestParams, HttpRequest, HttpMethod, HttpRequestError};
+public use Request.{
+    RequestParams, 
+    HttpRequest, 
+    HttpMethod, 
+    HttpRequestError,
+};
 
 
 model Endpoints {
@@ -23,43 +28,62 @@ model Endpoints {
 
 public type ServerOutcome = Outcome<HttpResponse, HttpRequestError>;
 
+/// A simple model for an HTTP server.
 public model HttpServer {
     public var endpoints: Endpoints;
-    var middleware: Maybe<Middleware>;
-
+    var middleware: Array<Middleware>;
+    var isRunning: Bool;
     new(name: String, port: UnsignedInt) {
         this.endpoints = new Endpoints();
-        this.middleware = None();
+        this.middleware = [];
+        this.isRunning = false;
     }
-
     /// Registers a route for a request with a `GET` method. 
     public function Get(
         route: String, 
         handler: fn(request: HttpRequest): Prospect<ServerOutcome>
     ) {
+        this.AssertState();
         this.endpoints.Register(HttpMethod.Get, route, handler);
     }
-
     /// Registers a route for a request with a `POST` method.
     public function Post(
         route: String, 
         handler: fn(request: HttpRequest): Prospect<ServerOutcome>
     ) {
+        this.AssertState();
         this.endpoints.Register(HttpMethod.Post, route, handler);
     }
-
+    /// Asserts that the server is not yet running.
+    function AssertState() {
+        if this.isRunning {
+            Core.Process.Panic(Some("Cannot register a route while the server is running."));
+        }
+    }
     /// Starts the server by listening at the specified port for changes.
     public async function Start() {
+        this.isRunning = true;
         Todo()
     }
-
+    /// Registers a middleware for use in the server.
+    /// Middlewares are executed in the order in which they are registered.
     public function UseMiddleware(middleware: Middleware) {
-        this.middleware = Some(middleware);
+        this.middleware.Push(middleware)
     }
 }
 
+/// The headers on a 
+public model ResponseHeaders {
+    public function Set(key: String, value: String) {
+
+    }
+}
+
+
 public model HttpResponse {
     var status: UnsignedInt;
+    var headers: ResponseHeaders;
+    var data: Maybe<String>;  
     /// Build a response object from a request.
     public static function From(request: HttpRequest): This {
         return Todo();
@@ -72,7 +96,7 @@ public model HttpResponse {
     /// Sets the response type to HTML Text.
     public function Html(string: String): &This {
         this.headers.Set("Content-Type", "text/html");
-        this.data = string;
+        this.data = Some(string);
         return &this;
     }
 }
@@ -80,7 +104,7 @@ public model HttpResponse {
 
 public type MiddlewareResponse = Outcome<HttpRequest, HttpRequestError>;
 public model Middleware {
-    var handlers: Array<fn(): Prospect<MiddlewareResponse>>;
+    var handlers: Array<fn(request: HttpRequest): Prospect<MiddlewareResponse>>;
     new() {
         this.handlers = [];
     }

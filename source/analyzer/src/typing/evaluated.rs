@@ -2,7 +2,7 @@ use crate::{
     unify_generic_arguments, unify_types,
     utils::{get_method_types_from_symbol, get_trait_types_from_symbol},
     IntermediateType, ParameterType, PathIndex, ProgramError, SemanticSymbolKind, SymbolIndex,
-    SymbolTable, UnifyOptions,
+    SymbolTable, TypecheckerContext, UnifyOptions,
 };
 use ast::Span;
 use errors::{
@@ -258,6 +258,53 @@ impl EvaluatedType {
     pub fn is_method_instance(&self) -> bool {
         matches!(self, Self::MethodInstance { .. })
     }
+
+    /// Returns true if, contained within this type is another type that matches a given predicate.
+    /// The check is inclusive, meaning it will return true if this type matches the predicate.
+    pub fn contains_child_for_which(&self, predicate: &impl Fn(&EvaluatedType) -> bool) -> bool {
+        predicate(self)
+            || match self {
+                EvaluatedType::Partial { types } => types
+                    .iter()
+                    .any(|typ| typ.contains_child_for_which(predicate)),
+                EvaluatedType::ModelInstance {
+                    generic_arguments, ..
+                }
+                | EvaluatedType::TraitInstance {
+                    generic_arguments, ..
+                }
+                | EvaluatedType::EnumInstance {
+                    generic_arguments, ..
+                }
+                | EvaluatedType::FunctionInstance {
+                    generic_arguments, ..
+                }
+                | EvaluatedType::MethodInstance {
+                    generic_arguments, ..
+                } => generic_arguments
+                    .iter()
+                    .map(|(_, typ)| typ)
+                    .any(|typ| typ.contains_child_for_which(predicate)),
+                EvaluatedType::FunctionExpressionInstance {
+                    params,
+                    return_type,
+                    generic_args,
+                    ..
+                } => {
+                    params
+                        .iter()
+                        .any(|param| param.inferred_type.contains_child_for_which(predicate))
+                        || return_type.contains_child_for_which(predicate)
+                        || generic_args
+                            .iter()
+                            .map(|(_, typ)| typ)
+                            .any(|typ| typ.contains_child_for_which(predicate))
+                }
+                EvaluatedType::OpaqueTypeInstance { .. } => false,
+                EvaluatedType::Borrowed { base } => base.contains_child_for_which(predicate),
+                _ => false,
+            }
+    }
 }
 
 /// Converts an intermediate type into an evaluation.
@@ -329,7 +376,10 @@ pub fn evaluate(
             span,
         } => {
             let idx = symboltable.forward(*value);
-            let typ = symboltable.get_forwarded(idx).unwrap();
+            let typ = match symboltable.get_forwarded(idx) {
+                Some(value) => value,
+                None => return EvaluatedType::Unknown,
+            };
             let mut get_generics = |generic_params| {
                 generate_generics_from_arguments(
                     generic_args,
@@ -677,4 +727,35 @@ fn add_error_if_possible(
             errors.push(error);
         }
     }
+}
+
+/// Converts a set of parameter indexes into their correct inferred type.
+pub fn evaluate_parameter_idxs(
+    params: &Vec<SymbolIndex>,
+    symboltable: &SymbolTable,
+    generic_arguments: Vec<(SymbolIndex, EvaluatedType)>,
+    checker_ctx: &mut TypecheckerContext<'_>,
+) -> Vec<(SymbolIndex, EvaluatedType)> {
+    let mut evaluated_param_types = vec![];
+    for param in params {
+        let parameter_symbol = symboltable.get(*param).unwrap();
+        let inferred_type = match &parameter_symbol.kind {
+            SemanticSymbolKind::Parameter { param_type, .. } => {
+                if let Some(declared_type) = param_type {
+                    evaluate(
+                        declared_type,
+                        symboltable,
+                        Some(&generic_arguments),
+                        &mut checker_ctx.tracker(),
+                        0,
+                    )
+                } else {
+                    EvaluatedType::Unknown
+                }
+            }
+            _ => EvaluatedType::Unknown,
+        };
+        evaluated_param_types.push((*param, inferred_type));
+    }
+    evaluated_param_types
 }

@@ -213,7 +213,11 @@ mod bind_utils {
 
     /// Pushes an error to the list of context errors.
     pub fn add_ctx_error(binder: &Binder, errors: &mut Vec<ProgramError>, error: ContextError) {
-        errors.push(ProgramError::contextual(binder.path, error))
+        let error = ProgramError::contextual(binder.path, error);
+        if errors.iter().any(|prior_error| *prior_error == error) {
+            return;
+        }
+        errors.push(error);
     }
 
     /// Add an error for a duplicate declaration, and return the symbol index of the first declaration symbol.
@@ -695,26 +699,35 @@ mod bind_utils {
         // Collect lexical errors.
         let l_errors = take(&mut module.lexical_errors);
         l_errors.into_iter().for_each(|lex_error| {
-            errors.push(ProgramError {
+            let lex_error = ProgramError {
                 offending_file: path,
                 error_type: ProgramErrorType::Lexical(lex_error),
-            })
+            };
+            if !errors.iter().any(|error| *error == lex_error) {
+                errors.push(lex_error)
+            }
         });
         // Collect syntax errors.
         let p_errors = take(&mut module.syntax_errors);
         p_errors.into_iter().for_each(|parse_error| {
-            errors.push(ProgramError {
+            let parse_error = ProgramError {
                 offending_file: path,
                 error_type: ProgramErrorType::Syntax(parse_error),
-            })
+            };
+            if !errors.iter().any(|error| *error == parse_error) {
+                errors.push(parse_error)
+            }
         });
         // Collect import errors.
         let i_errors = take(&mut module.import_errors);
         i_errors.into_iter().for_each(|import_error| {
-            errors.push(ProgramError {
+            let import_error = ProgramError {
                 offending_file: path,
                 error_type: ProgramErrorType::Importing(import_error),
-            })
+            };
+            if !errors.iter().any(|error| *error == import_error) {
+                errors.push(import_error)
+            }
         });
     }
 }

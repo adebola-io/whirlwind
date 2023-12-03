@@ -92,7 +92,9 @@ Got: '{right}'.",
         TypeErrorType::ReturnFromConstructor => format!("Model constructors do not expect a return value."),
         TypeErrorType::UsingAttributeBeforeAssign => format!("Attribute is being used before it is assigned."),
         TypeErrorType::UnassignedAttribute => format!("Attribute is not assigned a definitive initial value in the constructor."),
-        
+        TypeErrorType::UninferrableVariable => format!("Variable contains uninferrable generics. Consider adding type annotations."),
+        TypeErrorType::InvalidSize { error } => error.clone(),
+        TypeErrorType::ThisInStaticMethod => format!("The 'this' identifier cannot be used in a static method."),
     }
 }
 

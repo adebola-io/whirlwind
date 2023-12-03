@@ -73,7 +73,7 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     /// ```
     // !::mutable::!
     public function Append(suffix: String) {
-        return Invoke(Injunction.StrAppend(this, suffix));
+        Invoke(Injunction.StrAppend(this, suffix));
     }
     /// Returns an iterator over the bytes in the string.
     /// ## Usage
@@ -108,7 +108,7 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     /// }
     /// ```
     public function Chars(): Chars {
-        return new Chars(this);
+        return new Chars(&this);
     }
     /// Empties the string of its characters.
     /// ## Usage
@@ -122,7 +122,7 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     /// ```
     // !::mutable::!
     public function Clear() {
-        return Invoke(Injunction.StrClear(this));
+        Invoke(Injunction.StrClear(this));
     }
     /// Returns true if a substring is contained within the string.
     /// ## Usage
@@ -245,7 +245,7 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     /// ```
     // !::mutable::!
     public function Prepend(prefix: String) {
-        return Invoke(Injunction.StrPrepend(this, prefix));
+        Invoke(Injunction.StrPrepend(this, prefix));
     }
     /// Returns a String value that is made from a number of copies of the original string.
     /// If count is 0, the empty string is returned.

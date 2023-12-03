@@ -7,6 +7,7 @@ use Super.{
 }; 
 use Outcome.{ Ok, Err, Outcome }; 
 use Traits.{ Guaranteed, Try };
+use Default.Default;
 
 /// Creates a `Maybe` with no value.
 public function None<T>(): Maybe<T> {
@@ -30,7 +31,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, Maybe<never>> {
 
     /// Implementation of `Guarantee` trait.
     public function [Guaranteed.Guarantee](): T {
-        this.Unwrap()
+        return this.Unwrap();
     }
     /// Implementation of `Try` trait.
     public function [Try.Try](): Outcome<T, Maybe<never>> {
@@ -92,6 +93,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, Maybe<never>> {
         //     .Some(value) => predicate(&value),
         //     .None => false
         // }
+        Todo()
     }
     /// Ignores the maybe and returns the internal value. 
     /// It will throw an error if no value is present.
@@ -110,6 +112,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, Maybe<never>> {
         //     .None => PanicOnCaller("Called Unwrap on a None Value"),
         //     .Some(value) => value,
         // }
+        Todo()
     }
     /// Returns the internal value, or another given value.
     public function UnwrapOr(value: T): T {
@@ -117,6 +120,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, Maybe<never>> {
         //     .Some(innerValue) => innerValue,
         //     .None => value
         // }
+        Todo()
     }
     /// Returns the internal value, or computes another given value.
     public function UnwrapOrElse(fallback: fn(): T): T {
@@ -124,11 +128,15 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, Maybe<never>> {
         //     .Some(value) => value,
         //     .None => fallback()
         // }
+        Todo()
     }
     /// Converts a `Maybe<T>` to a `Maybe<E>` by applying a function.
     public function Map<U>(func: fn(former: T): U): Maybe<U> {
         Some(func(this?))
     }   
+    public static function UnwrapOrDefault<T implements Default>(value: Maybe<T>): T {
+        Todo()
+    }
 }
 
 

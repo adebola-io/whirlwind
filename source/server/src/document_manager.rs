@@ -6,8 +6,9 @@ use crate::{
     message_store::{MessageStore, WithMessages},
 };
 use analyzer::{
-    utils::symbol_to_type, Module, PathIndex, SemanticSymbol, SemanticSymbolDeclaration,
-    SemanticSymbolKind, Standpoint, StandpointStatus, SymbolIndex, TypedModule, TypedVisitorNoArgs,
+    utils::symbol_to_type, Module, PathIndex, ProgramErrorType, SemanticSymbol,
+    SemanticSymbolDeclaration, SemanticSymbolKind, Standpoint, StandpointStatus, SymbolIndex,
+    TypedModule, TypedVisitorNoArgs,
 };
 use ast::{is_keyword_or_operator, is_valid_identifier, is_valid_identifier_start, Span};
 use printer::SymbolWriter;
@@ -65,8 +66,22 @@ impl DocumentManager {
         }
     }
 
+    /// Handle the opening of a document/module.
+    pub fn open_document(&self, params: DidOpenTextDocumentParams) {
+        let mut standpoints = self.standpoints.lock().unwrap();
+        let path_buf = match uri_to_absolute_path(params.text_document.uri.clone()) {
+            Ok(path_buf) => path_buf,
+            Err(_) => return,
+        };
+        for standpoint in standpoints.iter_mut() {
+            if let Some(module) = standpoint.module_map.map_path_to_index(&path_buf) {
+                standpoint.refresh_module(module, &params.text_document.text);
+            }
+        }
+    }
+
     /// Sets the open module.
-    pub fn open_document(&self, uri: Url) -> MessageStore {
+    pub fn remember(&self, uri: Url) -> MessageStore {
         let mut msgs = MessageStore::new();
         let path_buf = match uri_to_absolute_path(uri) {
             Ok(path_buf) => path_buf,
@@ -95,10 +110,6 @@ impl DocumentManager {
     pub fn save_file(&self, _params: DidSaveTextDocumentParams) -> MessageStore {
         let mut msgs = MessageStore::new();
         msgs.inform("Saving file...");
-        for standpoint in self.standpoints.lock().unwrap().iter_mut() {
-            standpoint.refresh_imports();
-            standpoint.check_all_modules();
-        }
         msgs
     }
 
@@ -288,38 +299,29 @@ impl DocumentManager {
             // Start at main module.
             if let Some(_) = standpoint.add_module(main_module) {
                 // now add the current module. (if it was not already automatically added.)
-                let index_of_current_module = if !standpoint.contains_file(&path_buf) {
+                if !standpoint.contains_file(&path_buf) {
                     match Module::from_path(path_buf) {
-                        Ok(current_module) => match standpoint.add_module(current_module) {
-                            Some(index) => index,
-                            None => {
+                        Ok(current_module) => {
+                            if let None = standpoint.add_module(current_module) {
                                 log_error!(
-                                msgs,
-                                "Could not add this module to fresh standpoint. Skipping altogether.."
-                            )
+                            msgs,
+                            "Could not add this module to fresh standpoint. Skipping altogether.."
+                        )
                             }
-                        },
+                        }
                         Err(error) => {
                             msgs.inform(format!("Error creating current module: {error:?}"));
                             standpoints.push(standpoint);
                             return msgs;
                         }
                     }
-                } else {
-                    standpoint.module_map.map_path_to_index(&path_buf).unwrap()
                 };
-
-                // todo: this is a hack to overshadow ghost initial errors. fix.
                 msgs.inform("Module added successfully.");
-                standpoint.refresh_module(
-                    index_of_current_module,
-                    &params.text_document.text,
-                    true,
-                );
             } else {
                 // Root not found, skip project altogether.
                 log_error!(msgs, "Could not determine main module for project.")
             }
+            standpoint.refresh_imports();
             standpoints.push(standpoint);
             // Todo: read whirlwind.yaml to find source module instead.
             break;
@@ -329,8 +331,7 @@ impl DocumentManager {
 
     /// Hover over support.
     pub fn get_hover_info(&self, params: HoverParams) -> WithMessages<Option<HoverInfo>> {
-        let mut messages =
-            self.open_document(params.text_document_position_params.text_document.uri);
+        let mut messages = self.remember(params.text_document_position_params.text_document.uri);
         let time = std::time::Instant::now();
         let standpoints = self.standpoints.lock().unwrap();
         let (main_standpoint, module) = match self.get_cached(&standpoints) {
@@ -372,7 +373,7 @@ impl DocumentManager {
     /// Gets completion response.
     /// TODO: This will obviously get sloooooww. Fix.
     pub fn completion(&self, params: CompletionParams) -> WithMessages<Option<CompletionResponse>> {
-        let mut msgs = self.open_document(params.text_document_position.text_document.uri);
+        let mut msgs = self.remember(params.text_document_position.text_document.uri);
         let standpoints = self.standpoints.lock().unwrap();
         let (standpoint, module) = match self.get_cached(&standpoints) {
             Some(t) => t,
@@ -493,7 +494,7 @@ impl DocumentManager {
     /// Handles a change in the text of a module.
     pub fn handle_change(&self, mut params: DidChangeTextDocumentParams) -> MessageStore {
         let uri = params.text_document.uri.clone();
-        let mut msgs = self.open_document(uri);
+        let mut msgs = self.remember(uri);
         let mut standpoints = self.standpoints.lock().unwrap();
         let (standpoint, path_idx) = match self.get_cached_mut(&mut standpoints) {
             Some(t) => t,
@@ -505,7 +506,7 @@ impl DocumentManager {
         let last = params.content_changes.len() - 1;
         let most_current = std::mem::take(&mut params.content_changes[last].text);
         let time = std::time::Instant::now();
-        match standpoint.refresh_module(path_idx, &most_current, false) {
+        match standpoint.refresh_module(path_idx, &most_current) {
             Some(StandpointStatus::RefreshSuccessful) => {
                 msgs.inform(format!("Document refreshed in {:?}", time.elapsed()));
                 msgs.inform(format!("Symbols: {:?}", standpoint.symbol_table.len()));
@@ -564,7 +565,7 @@ impl DocumentManager {
         &self,
         params: GotoDeclarationParams,
     ) -> WithMessages<Option<GotoDeclarationResponse>> {
-        let mut msgs = self.open_document(params.text_document_position_params.text_document.uri);
+        let mut msgs = self.remember(params.text_document_position_params.text_document.uri);
         let position = params.text_document_position_params.position;
         let standpoints = self.standpoints.lock().unwrap();
         let (standpoint, module) = match self.get_cached(&standpoints) {
@@ -660,7 +661,7 @@ impl DocumentManager {
 
     /// Gets the references for a symbol.
     pub fn get_references(&self, params: ReferenceParams) -> WithMessages<Option<Vec<Location>>> {
-        let mut msgs = self.open_document(params.text_document_position.text_document.uri);
+        let mut msgs = self.remember(params.text_document_position.text_document.uri);
         let position = params.text_document_position.position;
         let standpoints = self.standpoints.lock().unwrap();
         let (standpoint, module) = match self.get_cached(&standpoints) {
@@ -786,7 +787,7 @@ impl DocumentManager {
 
     /// Support for inlay hints.
     pub fn get_hints(&self, params: InlayHintParams) -> WithMessages<Option<Vec<InlayHint>>> {
-        let mut msgs = self.open_document(params.text_document.uri);
+        let mut msgs = self.remember(params.text_document.uri);
         let standpoints = self.standpoints.lock().unwrap();
         let (standpoint, module) = match self.get_cached(&standpoints) {
             Some(t) => t,
@@ -817,7 +818,7 @@ impl DocumentManager {
                         ": {}",
                         standpoint.symbol_table.format_evaluated_type(inferred_type)
                     );
-                    if label_text.len() > 40 {
+                    if label_text.len() > 48 {
                         continue;
                     }
                     let label = InlayHintLabel::String(label_text);

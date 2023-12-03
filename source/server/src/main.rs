@@ -70,10 +70,12 @@ impl LanguageServer for Backend {
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        if !self.docs.has(params.text_document.uri.clone()) {
+        let uri = params.text_document.uri.clone();
+        if !self.docs.has(uri) {
             let messages = self.docs.add_document(params);
             self.log_all(messages).await;
         } else {
+            self.docs.open_document(params);
             self.log_message("Opened analyzed file.").await;
         }
     }

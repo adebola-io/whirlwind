@@ -19,7 +19,8 @@ public model Assertion<T> {
     public function Equals(other: T) {
         if other != this.value {
             Todo()
-        }
+        };
+        Todo()
     }
 }
 

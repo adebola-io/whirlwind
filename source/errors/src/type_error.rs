@@ -213,6 +213,11 @@ pub enum TypeErrorType {
     ReturnFromConstructor,
     UsingAttributeBeforeAssign,
     UnassignedAttribute, // InfiniteType,
+    UninferrableVariable,
+    InvalidSize {
+        error: String,
+    },
+    ThisInStaticMethod,
 }
 
 pub fn invalid_binary(left: String, operator: BinOperator, right: String, span: Span) -> TypeError {

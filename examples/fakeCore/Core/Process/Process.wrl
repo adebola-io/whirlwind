@@ -1,7 +1,6 @@
 module Process;
 
 use Super.{
-    Internals.never, 
     Primitives.String,
     Primitives.UnsignedInt,
     Async.CurrentSequence

@@ -64,6 +64,7 @@ impl Standpoint {
                 Err(error) => standpoint.add_import_error(error),
             }
         }
+
         standpoint
     }
     /// Builds a program standpoint from the entry module.
@@ -100,7 +101,12 @@ impl Standpoint {
     }
     /// Get the module in a directory using its module name.
     /// The module is freshly analyzed if it exists but it has not been added to the standpoint yet.
-    pub fn get_or_create_module_in_dir(&mut self, dir: &Path, name: &str) -> Option<PathIndex> {
+    pub fn get_or_create_module_in_dir(
+        &mut self,
+        dir: &Path,
+        name: &str,
+        phase: ResolutionPhase,
+    ) -> Option<PathIndex> {
         let (name, dir_map) = if name == "Package" {
             return Some(self.entry_module);
         } else if name == "Super" {
@@ -120,7 +126,7 @@ impl Standpoint {
                 // Path either doesn't exist, or has not been added to the standpoint
                 // or might be nested in a named directory.
                 // Traverse through the entire folder to determine the path.
-                return self.create_module_or_retrieve_nested(dir, name);
+                return self.create_module_or_retrieve_nested(dir, name, phase);
             }
         }
     }
@@ -154,10 +160,27 @@ impl Standpoint {
     }
 }
 
+#[derive(Clone, Copy)]
+pub enum ResolutionPhase {
+    Discovery,
+    Assessment,
+}
+
+impl ResolutionPhase {
+    /// Returns `true` if the resolution phase is [`Assessment`].
+    pub fn is_assessment(&self) -> bool {
+        matches!(self, Self::Assessment)
+    }
+}
+
 // IMPORT OPERATIONS
 impl Standpoint {
     // Resolve the imports of a module given its path index.
-    fn resolve_imports_of(&mut self, root_path_idx: PathIndex) -> Result<(), String> {
+    pub fn resolve_imports_of(
+        &self,
+        root_path_idx: PathIndex,
+        phase: ResolutionPhase,
+    ) -> Result<(), String> {
         // The module requesting imports.
         let base_module = match self.module_map.get(root_path_idx) {
             Some(module) => module,
@@ -168,15 +191,18 @@ impl Standpoint {
             None => return Err("Could not get parent directory".to_owned()),
         }
         .to_path_buf();
-
+        // Please ignore the next two lines...
+        #[allow(mutable_transmutes)]
+        let this = unsafe { std::mem::transmute::<&Standpoint, &mut Standpoint>(self) };
         // Find the modules to import.
         // todo: solve import graphs in parallel.
         // todo: reduce cloning.
-        for (target, leaves) in base_module.imports.clone() {
-            self.resolve_import_target(&parent_dir, &target, root_path_idx, &leaves)?;
+        for (target, leaves) in &base_module.imports {
+            this.resolve_import_target(&parent_dir, target, root_path_idx, leaves, phase)?;
         }
         Ok(())
     }
+
     /// Resolve an import target.
     fn resolve_import_target(
         &mut self,
@@ -184,27 +210,33 @@ impl Standpoint {
         target: &UseTarget,
         root: PathIndex,
         leaves: &[SymbolIndex],
+        phase: ResolutionPhase,
     ) -> Result<(), String> {
-        let path_index = match self.get_or_create_module_in_dir(parent_dir, &target.name.name) {
-            Some(path_index) => path_index,
-            None => {
-                // Unable to resolve the module to a specific path. All is lost.
-                self.add_error(ProgramError {
-                    offending_file: root,
-                    error_type: Importing(errors::cannot_find_module(
-                        target.name.name.clone(),
-                        target.name.span,
-                    )),
-                });
-                return Ok(()); // todo: fuzzy search suggestions.
-            }
-        };
+        let path_index =
+            match self.get_or_create_module_in_dir(parent_dir, &target.name.name, phase) {
+                Some(path_index) => path_index,
+                None => {
+                    if phase.is_assessment() {
+                        // Unable to resolve the module to a specific path. All is lost.
+                        self.add_error(ProgramError {
+                            offending_file: root,
+                            error_type: Importing(errors::cannot_find_module(
+                                target.name.name.clone(),
+                                target.name.span,
+                            )),
+                        });
+                    }
+                    return Ok(()); // todo: fuzzy search suggestions.
+                }
+            };
         // Block self referential imports.
         if path_index == root {
-            self.add_error(ProgramError {
-                offending_file: root,
-                error_type: Importing(errors::self_import(target)),
-            });
+            if phase.is_assessment() {
+                self.add_error(ProgramError {
+                    offending_file: root,
+                    error_type: Importing(errors::self_import(target)),
+                });
+            }
             return Ok(());
         }
         let imported_module = match self.module_map.get(path_index) {
@@ -212,7 +244,7 @@ impl Standpoint {
             None => return Err("Could not get imported module.".to_owned()),
         };
         let index = imported_module.symbol_idx;
-        let solved_import_sources = self.solve_import_symbols(&target, leaves, index, root);
+        let solved_import_sources = self.solve_import_symbols(&target, leaves, index, root, phase);
         for (initial, solved) in solved_import_sources {
             let import_symbol = match self.symbol_table.get_mut(initial) {
                 Some(symbol) => symbol,
@@ -243,6 +275,7 @@ impl Standpoint {
         }
         return Ok(());
     }
+
     /// Solve import symbols recursively.
     fn solve_import_symbols(
         &mut self,
@@ -250,6 +283,7 @@ impl Standpoint {
         leaves: &[SymbolIndex],
         index: SymbolIndex,
         root: PathIndex,
+        phase: ResolutionPhase,
     ) -> Vec<(SymbolIndex, Option<SymbolIndex>)> {
         match &target.path {
             // Importing a module itself.
@@ -263,20 +297,24 @@ impl Standpoint {
             // Importing an item of a module.
             ast::UsePath::Item(sub_target) => {
                 let imported_symbol_idx =
-                    self.look_for_symbol_in_module(index, root, &target, &sub_target);
+                    self.look_for_symbol_in_module(index, root, &target, &sub_target, phase);
                 if let Some(symbol_idx) = imported_symbol_idx {
                     // Block private imports.
                     let symbol = self.symbol_table.get(symbol_idx).unwrap();
-                    if !symbol.kind.is_public() {
-                        self.add_error(ProgramError {
-                            offending_file: root,
-                            error_type: ProgramErrorType::Importing(errors::private_symbol_leak(
-                                target.name.name.clone(),
-                                sub_target.name.to_owned(),
-                            )),
-                        });
+                    if phase.is_assessment() {
+                        if !symbol.kind.is_public() {
+                            self.add_error(ProgramError {
+                                offending_file: root,
+                                error_type: ProgramErrorType::Importing(
+                                    errors::private_symbol_leak(
+                                        target.name.name.clone(),
+                                        sub_target.name.to_owned(),
+                                    ),
+                                ),
+                            });
+                        }
                     }
-                    self.solve_import_symbols(&sub_target, leaves, symbol_idx, root)
+                    self.solve_import_symbols(&sub_target, leaves, symbol_idx, root, phase)
                 } else {
                     vec![]
                 }
@@ -295,12 +333,14 @@ impl Standpoint {
                         }],
                         index,
                         root,
+                        phase,
                     ))
                 }
                 solutions
             }
         }
     }
+
     /// Handle searching an external module for a symbol.
     fn look_for_symbol_in_module(
         &mut self,
@@ -308,6 +348,7 @@ impl Standpoint {
         root: PathIndex,
         target: &UseTarget,
         sub_target: &UseTarget,
+        phase: ResolutionPhase,
     ) -> Option<SymbolIndex> {
         let imported_module_symbol = self.symbol_table.get_mut(imported_idx)?;
         imported_module_symbol.add_reference(root, target.name.span);
@@ -341,25 +382,32 @@ impl Standpoint {
                         root,
                         target,
                         sub_target,
+                        phase,
                     );
                 } else {
-                    // Errors have to be checked to ensure they are not duplicated.
-                    // Duplicated can happen when list targets are scattered, and each distinct target encounters the same
-                    // error.
+                    if phase.is_assessment() {
+                        // Errors have to be checked to ensure they are not duplicated.
+                        // Duplicated can happen when list targets are scattered, and each distinct target encounters the same
+                        // error.
+                        let error = ProgramError {
+                            offending_file: root,
+                            error_type: Importing(errors::symbol_not_a_module(
+                                target.name.to_owned(),
+                            )),
+                        };
+                        self.add_error(error);
+                    }
+                    return None;
+                }
+            }
+            _ => {
+                if phase.is_assessment() {
                     let error = ProgramError {
                         offending_file: root,
                         error_type: Importing(errors::symbol_not_a_module(target.name.to_owned())),
                     };
                     self.add_error(error);
-                    return None;
                 }
-            }
-            _ => {
-                let error = ProgramError {
-                    offending_file: root,
-                    error_type: Importing(errors::symbol_not_a_module(target.name.to_owned())),
-                };
-                self.add_error(error);
                 return None;
             }
         }?;
@@ -369,7 +417,7 @@ impl Standpoint {
                 .is_some_and(|symbol| symbol.name == sub_target.name.name)
         });
         let symbol_to_retrieve = symbol_to_retrieve.copied();
-        if symbol_to_retrieve.is_none() {
+        if symbol_to_retrieve.is_none() && phase.is_assessment() {
             self.add_import_error_in_file(
                 root,
                 errors::no_such_symbol_in_module(
@@ -380,6 +428,7 @@ impl Standpoint {
         };
         symbol_to_retrieve
     }
+
     /// Add an import error to the list of errors.
     pub fn add_import_error(&mut self, error: errors::ImportError) {
         self.add_error(ProgramError {
@@ -387,6 +436,7 @@ impl Standpoint {
             error_type: Importing(error),
         })
     }
+
     /// Add an import error to the list of errors.
     pub fn add_import_error_in_file(
         &mut self,
@@ -436,11 +486,13 @@ impl Standpoint {
             }
         };
         if implicitly_named {
-            // todo: find out why using self.add_error here is illegal.
-            self.errors.push(ProgramError {
+            let error = ProgramError {
                 offending_file: path_idx,
                 error_type: Importing(errors::nameless_module()),
-            })
+            };
+            if !self.errors.iter().any(|prior| *prior == error) {
+                self.errors.push(error)
+            }
         }
 
         let corelib_symbol_idx = self
@@ -504,14 +556,17 @@ impl Standpoint {
         dir_map.insert(module_name, path_idx);
         self.module_map.add(typed_module);
 
-        // Get just added module and resolve imports.
-        if self.auto_update {
-            self.resolve_imports_of(path_idx).unwrap();
-        }
-
         // Mark the prelude module.
         if module_path.as_os_str().to_str()? == PRELUDE_PATH {
             self.prelude_path = Some(path_idx);
+        }
+
+        // Get just added module and resolve imports.
+        if self.auto_update {
+            self.resolve_imports_of(path_idx, ResolutionPhase::Discovery)
+                .unwrap();
+            self.resolve_imports_of(path_idx, ResolutionPhase::Assessment)
+                .unwrap();
         }
 
         Some(path_idx)
@@ -519,7 +574,8 @@ impl Standpoint {
 
     /// Removes the module with a particlar index and all its related characteristics.
     pub fn remove_module(&mut self, path_idx: PathIndex) -> Option<TypedModule> {
-        let module_symbol_idx = self.module_map.get(path_idx)?.symbol_idx;
+        let stale_module = self.module_map.remove(path_idx)?;
+        let module_symbol_idx = stale_module.symbol_idx;
         let module_symbol = self.symbol_table.remove(module_symbol_idx)?;
         let module_name = module_symbol.name;
         let literals_to_remove = self
@@ -537,16 +593,16 @@ impl Standpoint {
             })
             .collect::<Vec<_>>();
         let mut symbols_to_prune = vec![];
+        let mut other_affected_modules = vec![];
         let symbols_to_remove = self
             .symbol_table
             .symbols()
             .filter_map(|(idx, symbol)| {
                 // Symbol is declared in this module.
-                if symbol
-                    .references
-                    .first()
-                    .is_some_and(|first| first.module_path == path_idx)
-                {
+                if symbol.was_declared_in(path_idx) {
+                    symbol.references.iter().skip(1).for_each(|referencelist| {
+                        other_affected_modules.push(referencelist.module_path);
+                    });
                     return Some(idx);
                 }
                 // Symbol is referenced in the symbol.
@@ -577,23 +633,25 @@ impl Standpoint {
             }
         }
         // delete stale errors.
-        self.errors.retain(|error| {
-            !(matches!(
-                error.error_type,
-                ProgramErrorType::Importing(_) | ProgramErrorType::Typing(_)
-            ) || error.offending_file == path_idx)
-        });
-        let stale_module = self.module_map.remove(path_idx)?;
+        let mut i = 0;
+        while i < self.errors.len() {
+            let error = &self.errors[i];
+            let should_remove = error.offending_file == path_idx;
+            if should_remove {
+                self.errors.swap_remove(i);
+            }
+            i += 1;
+        }
+        // recheck dependent modules.
+        for module_idx in other_affected_modules {
+            self.resolve_imports_of(module_idx, ResolutionPhase::Assessment)
+                .ok();
+        }
         let parent_directory = get_parent_dir(&stale_module.path_buf)?;
         let dir_map = self.directories.get_mut(parent_directory)?;
         dir_map.remove(&module_name);
         if dir_map.is_empty() {
             self.directories.remove(parent_directory);
-        }
-        // Update all modules.
-        // todo: there should be a better way to do this.
-        if self.auto_update {
-            self.refresh_imports();
         }
         Some(stale_module)
     }
@@ -607,11 +665,17 @@ impl Standpoint {
             .collect::<Vec<_>>();
         for idx in all_paths {
             // Remove all stale errors.
-            self.errors.retain(|error| {
-                !(error.offending_file == idx
-                    && (matches!(error.error_type, ProgramErrorType::Importing(_))))
-            });
-            self.resolve_imports_of(idx).unwrap();
+            let mut i = 0;
+            while i < self.errors.len() {
+                let error = &self.errors[i];
+                let should_remove = error.offending_file == idx;
+                if should_remove {
+                    self.errors.swap_remove(i);
+                }
+                i += 1;
+            }
+            self.resolve_imports_of(idx, ResolutionPhase::Assessment)
+                .unwrap();
         }
     }
 
@@ -620,13 +684,9 @@ impl Standpoint {
         &mut self,
         path_idx: PathIndex,
         text: &String,
-        should_recompute_imports: bool,
     ) -> Option<StandpointStatus> {
         let path = self.module_map.get(path_idx)?.path_buf.clone();
-        // // Disabling auto update prevents unecessary import solving.
-        self.auto_update = false;
-        std::mem::drop(self.remove_module(path_idx)?);
-        self.auto_update = true;
+        self.remove_module(path_idx);
 
         // Add updated module.
         let mut update = Module::from_text(&text);
@@ -642,12 +702,7 @@ impl Standpoint {
 
         // // todo: find more performant ways to implement this.
         // Update all modules.
-        if should_recompute_imports && self.auto_update {
-            self.refresh_imports();
-            self.check_all_modules();
-        } else {
-            self.check_module(path_idx);
-        }
+        self.check_module(path_idx);
         Some(StandpointStatus::RefreshSuccessful)
     }
 
@@ -656,6 +711,7 @@ impl Standpoint {
         &mut self,
         dir: &Path,
         module_name: &str,
+        phase: ResolutionPhase,
     ) -> Option<PathIndex> {
         for entry_result in dir.read_dir().ok()? {
             let entry = match entry_result {
@@ -671,7 +727,9 @@ impl Standpoint {
                 match Module::from_path(entry_path) {
                     Ok(module) => return self.add_module(module),
                     Err(error) => {
-                        self.add_import_error(error);
+                        if phase.is_assessment() {
+                            self.add_import_error(error);
+                        }
                         continue;
                     }
                 }
@@ -685,7 +743,7 @@ impl Standpoint {
                         return Some(*index);
                     }
                 }
-                return self.create_module_or_retrieve_nested(&entry_path, module_name);
+                return self.create_module_or_retrieve_nested(&entry_path, module_name, phase);
             }
         }
         // No possible path to this module was resolved,
@@ -722,6 +780,16 @@ impl Standpoint {
     /// Runs the typechecker on a module.
     pub fn check_module(&mut self, module_path_idx: PathIndex) -> Option<()> {
         let module = self.module_map.get_mut(module_path_idx)?;
+        let mut i = 0;
+        while i < self.errors.len() {
+            let error = &self.errors[i];
+            let should_remove = error.offending_file == module_path_idx
+                && matches!(error.error_type, ProgramErrorType::Typing(_));
+            if should_remove {
+                self.errors.swap_remove(i);
+            }
+            i += 1;
+        }
         typecheck(
             module,
             &mut self.symbol_table,
@@ -729,17 +797,5 @@ impl Standpoint {
             &self.literals,
         );
         Some(())
-    }
-
-    /// Typecheck all modules in the standpoint.
-    pub fn check_all_modules(&mut self) {
-        let all_paths = self
-            .module_map
-            .paths()
-            .map(|(idx, _)| idx)
-            .collect::<Vec<_>>();
-        for idx in all_paths {
-            self.check_module(idx).unwrap();
-        }
     }
 }

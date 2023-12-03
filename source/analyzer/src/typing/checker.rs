@@ -1,10 +1,11 @@
 use crate::{
-    evaluate, span_of_typed_expression, span_of_typed_statement,
+    evaluate, evaluate_parameter_idxs, span_of_typed_expression, span_of_typed_statement,
     unify::{unify_freely, unify_types},
     utils::{
         arrify, coerce, coerce_all_generics, ensure_assignment_validity, evaluate_generic_params,
-        get_implementation_of, get_numeric_type, get_type_generics, infer_ahead, is_array,
-        is_boolean, is_numeric_type, maybify, prospectify, symbol_to_type, update_expression_type,
+        get_implementation_of, get_numeric_type, get_size_of_type, get_type_generics, infer_ahead,
+        is_array, is_boolean, is_numeric_type, maybify, prospectify, symbol_to_type,
+        update_expression_type,
     },
     EvaluatedType, Literal, LiteralMap, ParameterType, PathIndex, ProgramError, ScopeId,
     SemanticSymbolKind, SymbolIndex, SymbolTable, TypedAccessExpr, TypedAssignmentExpr, TypedBlock,
@@ -28,6 +29,8 @@ pub struct TypecheckerContext<'a> {
     current_constructor_context: Vec<CurrentConstructorContext>,
     /// The model or trait that encloses the current statement.
     enclosing_model_or_trait: Option<SymbolIndex>,
+    /// A marker for static model methods, to block the use of 'this'.
+    current_function_is_static: Option<bool>,
     /// List of errors from the standpoint.
     errors: &'a mut Vec<ProgramError>,
     /// List of literal types from the standpoint.
@@ -106,11 +109,22 @@ pub fn typecheck(
         current_function_context: Vec::new(),
         current_constructor_context: Vec::new(),
         enclosing_model_or_trait: None,
+        current_function_is_static: None,
         errors,
         literals,
     };
     for statement in &mut module.statements {
         statements::typecheck_statement(statement, &mut checker_ctx, symboltable);
+    }
+    // Block uninferrable generics at the end.
+    for symbol in symboltable.in_module(module.path_idx) {
+        if let SemanticSymbolKind::Variable { inferred_type, .. } = &symbol.kind {
+            if inferred_type
+                .contains_child_for_which(&|child| matches!(child, EvaluatedType::Generic { .. }))
+            {
+                checker_ctx.add_error(errors::uninferrable_variable(symbol.ident_span()));
+            }
+        }
     }
 }
 
@@ -127,9 +141,8 @@ pub fn push_scopetype(checker_ctx: &mut TypecheckerContext<'_>, scope: ScopeType
 }
 
 mod statements {
-    use crate::TypedModelDeclaration;
-
     use super::{expressions::typecheck_block, *};
+    use crate::TypedModelDeclaration;
     pub fn typecheck_statement(
         statement: &mut TypedStmnt,
         checker_ctx: &mut TypecheckerContext,
@@ -190,7 +203,6 @@ mod statements {
         if model_symbol.is_none() {
             return;
         }
-        let mut model_symbol = model_symbol.unwrap();
         // Signifies to the checker context that we are now in model X, so private properties can be used.
         let former_enclosing_model_trait = checker_ctx.enclosing_model_or_trait.take();
         checker_ctx.enclosing_model_or_trait = Some(model.name);
@@ -203,7 +215,7 @@ mod statements {
             // this.b = someValue;
             // answer: All instances of the attribute are recorded and tracked. If the first instance is not an assignment, error.
             // NOTE: if the type of the attribute implements Default, then this check is not needed.
-            model_symbol = symboltable.get(model.name).unwrap();
+            let model_symbol = symboltable.get(model.name).unwrap();
             let attribute_idxs =
                 if let SemanticSymbolKind::Model { attributes, .. } = &model_symbol.kind {
                     attributes
@@ -311,7 +323,172 @@ mod statements {
         //     ..
         // } = &model_symbol.kind
         // {}
+        let mut _model_size = 0;
+        for property in &mut model.body.properties {
+            match &mut property._type {
+                crate::TypedModelPropertyType::TypedAttribute => {
+                    // Only thing to do is check that the type is valid,
+                    // and calculate the size.
+                    let attribute_symbol = symboltable.get(property.name);
+                    if attribute_symbol.is_none() {
+                        continue;
+                    }
+                    let attribute_symbol = attribute_symbol.unwrap();
+                    let declared_type = match &attribute_symbol.kind {
+                        SemanticSymbolKind::Attribute { declared_type, .. } => declared_type,
+                        _ => continue,
+                    };
+                    let inferred_type = evaluate(declared_type, symboltable, None, &mut None, 0);
+                    let size_of_attribute = get_size_of_type(inferred_type, model.name);
+                    _model_size += match size_of_attribute {
+                        Ok(size) => size,
+                        Err(error) => {
+                            checker_ctx.add_error(errors::invalid_size(
+                                error,
+                                attribute_symbol.origin_span,
+                            ));
+                            0
+                        }
+                    };
+                }
+                // todo: compare with trait definition.
+                crate::TypedModelPropertyType::TypedMethod { body }
+                | crate::TypedModelPropertyType::TraitImpl { body, .. } => {
+                    let symbol = match symboltable.get_forwarded(property.name) {
+                        Some(symbol) => symbol,
+                        None => continue,
+                    };
+                    let former_is_static = checker_ctx.current_function_is_static.take();
+                    let (evaluated_param_types, return_type, return_type_span) =
+                        if let SemanticSymbolKind::Method {
+                            params,
+                            generic_params,
+                            return_type,
+                            is_static,
+                            ..
+                        } = &symbol.kind
+                        {
+                            checker_ctx.current_function_is_static = Some(*is_static);
+                            let generic_arguments = evaluate_generic_params(generic_params, true);
+                            let evaluated_param_types = evaluate_parameter_idxs(
+                                params,
+                                symboltable,
+                                generic_arguments,
+                                checker_ctx,
+                            );
+                            let return_type = return_type.as_ref();
+                            (
+                                evaluated_param_types,
+                                return_type
+                                    .map(|typ| {
+                                        evaluate(
+                                            typ,
+                                            &symboltable,
+                                            None,
+                                            &mut checker_ctx.tracker(),
+                                            0,
+                                        )
+                                    })
+                                    .unwrap_or_else(|| EvaluatedType::Void),
+                                return_type.map(|typ| typ.span()),
+                            )
+                        } else {
+                            (vec![], EvaluatedType::Void, None)
+                        };
+                    validate_return_type_and_params(
+                        &return_type,
+                        symboltable,
+                        checker_ctx,
+                        return_type_span,
+                        evaluated_param_types,
+                    );
+                    typecheck_function_body(
+                        checker_ctx,
+                        return_type,
+                        body,
+                        symboltable,
+                        return_type_span,
+                    );
+                    checker_ctx.current_function_is_static = former_is_static;
+                }
+            }
+        }
         checker_ctx.enclosing_model_or_trait = former_enclosing_model_trait;
+    }
+
+    /// Typechecks a function body.
+    fn typecheck_function_body(
+        checker_ctx: &mut TypecheckerContext<'_>,
+        return_type: EvaluatedType,
+        body: &mut TypedBlock,
+        symboltable: &mut SymbolTable,
+        return_type_span: Option<Span>,
+    ) -> () {
+        checker_ctx
+            .current_function_context
+            .push(CurrentFunctionContext {
+                is_named: true,
+                return_type: return_type.clone(),
+            });
+        push_scopetype(checker_ctx, ScopeType::Other);
+        let mut block_return_type =
+            expressions::typecheck_block(body, true, checker_ctx, symboltable);
+        pop_scopetype(checker_ctx);
+        if !block_return_type.is_generic() {
+            block_return_type = coerce_all_generics(&block_return_type, EvaluatedType::Never);
+        }
+        checker_ctx.current_function_context.pop();
+        if body
+            .statements
+            .last()
+            .is_some_and(|statement| matches!(statement, TypedStmnt::ReturnStatement(_)))
+        {
+            return;
+        }
+        // Ignore unreachable nested generics.
+        // if last statement was a return, there is no need to check type again, since it will still show the apprioprate errors.
+        if let Err(typeerrortype) = unify_types(
+            &return_type,
+            &block_return_type,
+            &symboltable,
+            UnifyOptions::Return,
+            None,
+        ) {
+            let span = body
+                .statements
+                .last()
+                .map(|s| checker_ctx.span_of_stmnt(s, symboltable))
+                .or(return_type_span)
+                .unwrap_or_else(|| body.span);
+            for errortype in typeerrortype {
+                checker_ctx.add_error(TypeError {
+                    _type: errortype,
+                    span,
+                });
+            }
+            checker_ctx.add_error(TypeError {
+                _type: TypeErrorType::MismatchedReturnType {
+                    found: symboltable.format_evaluated_type(&block_return_type),
+                    expected: symboltable.format_evaluated_type(&return_type),
+                },
+                span,
+            });
+        }
+    }
+
+    fn show_trait_as_type_error(
+        symboltable: &SymbolTable,
+        trait_: SymbolIndex,
+        checker_ctx: &mut TypecheckerContext<'_>,
+        span: Span,
+    ) {
+        let symbol = symboltable.get(trait_);
+        checker_ctx.add_error(errors::trait_as_type(
+            symbol
+                .map(|symbol| symbol.name.clone())
+                .unwrap_or(String::from("{Trait}")),
+            span,
+        ));
     }
 
     /// Typechecks a variable declaration.
@@ -702,6 +879,11 @@ mod statements {
                 Ok(typ) => {
                     let prior_evaluated_type =
                         checker_ctx.current_function_context.last_mut().unwrap();
+                    if let Some(expr) = retstat.value.as_mut() {
+                        let empty = vec![];
+                        let generic_arguments = get_type_generics(&typ, &empty);
+                        update_expression_type(expr, symboltable, generic_arguments);
+                    }
                     prior_evaluated_type.return_type = typ;
                 }
                 // Unification failed.
@@ -716,6 +898,19 @@ mod statements {
                         _type: TypeErrorType::MismatchedReturnType {
                             expected: symboltable.format_evaluated_type(&ctx_return_type),
                             found: symboltable.format_evaluated_type(eval_type),
+                        },
+                        span: retstat.span,
+                    })
+                }
+            }
+        } else {
+            // does not return a value, but a type is specified by the function.
+            if let Some(return_type) = function_context.map(|ctx| &ctx.return_type) {
+                if !return_type.is_void() {
+                    checker_ctx.add_error(TypeError {
+                        _type: TypeErrorType::MismatchedReturnType {
+                            expected: symboltable.format_evaluated_type(return_type),
+                            found: symboltable.format_evaluated_type(&EvaluatedType::Void),
                         },
                         span: retstat.span,
                     })
@@ -739,10 +934,7 @@ mod statements {
                 ..
             } = &symbol.kind
             {
-                let generic_arguments = generic_params
-                    .iter()
-                    .map(|param| (*param, EvaluatedType::HardGeneric { base: *param }))
-                    .collect::<Vec<_>>();
+                let generic_arguments = evaluate_generic_params(generic_params, true);
                 let mut evaluated_param_types = vec![];
                 for param in params {
                     let parameter_symbol = symboltable.get(*param).unwrap();
@@ -775,15 +967,37 @@ mod statements {
             } else {
                 (vec![], EvaluatedType::Void, None)
             };
+        validate_return_type_and_params(
+            &return_type,
+            symboltable,
+            checker_ctx,
+            return_type_span,
+            evaluated_param_types,
+        );
+        typecheck_function_body(
+            checker_ctx,
+            return_type,
+            &mut function.body,
+            symboltable,
+            return_type_span,
+        );
+    }
+
+    fn validate_return_type_and_params(
+        return_type: &EvaluatedType,
+        symboltable: &mut SymbolTable,
+        checker_ctx: &mut TypecheckerContext<'_>,
+        return_type_span: Option<Span>,
+        evaluated_param_types: Vec<(SymbolIndex, EvaluatedType)>,
+    ) {
         // Traits cannot be used as return types.
-        if let EvaluatedType::TraitInstance { trait_, .. } = &return_type {
-            let symbol = symboltable.get(*trait_);
-            checker_ctx.add_error(errors::trait_as_type(
-                symbol
-                    .map(|symbol| symbol.name.clone())
-                    .unwrap_or(String::from("{Trait}")),
+        if let EvaluatedType::TraitInstance { trait_, .. } = return_type {
+            show_trait_as_type_error(
+                symboltable,
+                *trait_,
+                checker_ctx,
                 return_type_span.unwrap_or_default(),
-            ));
+            )
         }
         for (param_idx, new_type) in evaluated_param_types {
             let mut trait_in_label = None;
@@ -803,66 +1017,8 @@ mod statements {
                 *inferred_type = new_type;
             }
             if let Some((trait_, span)) = trait_in_label {
-                let symbol = symboltable.get(trait_);
-                checker_ctx.add_error(errors::trait_as_type(
-                    symbol
-                        .map(|symbol| symbol.name.clone())
-                        .unwrap_or(String::from("{Trait}")),
-                    span,
-                ));
+                show_trait_as_type_error(symboltable, trait_, checker_ctx, span)
             }
-        }
-        checker_ctx
-            .current_function_context
-            .push(CurrentFunctionContext {
-                is_named: true,
-                return_type: return_type.clone(),
-            });
-        push_scopetype(checker_ctx, ScopeType::Other);
-        let mut block_return_type =
-            expressions::typecheck_block(&mut function.body, true, checker_ctx, symboltable);
-        pop_scopetype(checker_ctx);
-        // Ignore unreachable nested generics.
-        if !block_return_type.is_generic() {
-            block_return_type = coerce_all_generics(&block_return_type, EvaluatedType::Never);
-        }
-        checker_ctx.current_function_context.pop();
-        // if last statement was a return, there is no need to check type again, since it will still show the apprioprate errors.
-        if function
-            .body
-            .statements
-            .last()
-            .is_some_and(|statement| matches!(statement, TypedStmnt::ReturnStatement(_)))
-        {
-            return;
-        }
-        if let Err(typeerrortype) = unify_types(
-            &return_type,
-            &block_return_type,
-            &symboltable,
-            UnifyOptions::Return,
-            None,
-        ) {
-            let span = function
-                .body
-                .statements
-                .last()
-                .map(|s| checker_ctx.span_of_stmnt(s, symboltable))
-                .or(return_type_span)
-                .unwrap_or_else(|| function.body.span);
-            for errortype in typeerrortype {
-                checker_ctx.add_error(TypeError {
-                    _type: errortype,
-                    span,
-                });
-            }
-            checker_ctx.add_error(TypeError {
-                _type: TypeErrorType::MismatchedReturnType {
-                    found: symboltable.format_evaluated_type(&block_return_type),
-                    expected: symboltable.format_evaluated_type(&return_type),
-                },
-                span,
-            });
         }
     }
 }
@@ -894,7 +1050,9 @@ mod expressions {
             TypedExpression::NewExpr(newexp) => {
                 typecheck_new_expression(&mut *newexp, symboltable, checker_ctx)
             }
-            TypedExpression::ThisExpr(this) => typecheck_this_expression(this, symboltable),
+            TypedExpression::ThisExpr(this) => {
+                typecheck_this_expression(this, symboltable, checker_ctx)
+            }
             TypedExpression::CallExpr(c) => {
                 typecheck_call_expression(&mut *c, symboltable, checker_ctx)
             }
@@ -1506,6 +1664,7 @@ mod expressions {
     fn typecheck_this_expression(
         this: &mut TypedThisExpr,
         symboltable: &mut SymbolTable,
+        checker_ctx: &mut TypecheckerContext,
     ) -> EvaluatedType {
         this.inferred_type = (|| {
             if this.model_or_trait.is_none() {
@@ -1513,6 +1672,14 @@ mod expressions {
                 return EvaluatedType::Unknown;
             }
             let model_or_trait = this.model_or_trait.unwrap();
+            if checker_ctx
+                .current_function_is_static
+                .is_some_and(|is_static| is_static)
+            {
+                let start = [this.start_line, this.start_character];
+                checker_ctx.add_error(errors::this_in_static_method(Span::on_line(start, 4)));
+                return EvaluatedType::Unknown;
+            }
             let symbol = symboltable.get_forwarded(model_or_trait).unwrap();
             match &symbol.kind {
                 SemanticSymbolKind::Model { generic_params, .. } => EvaluatedType::ModelInstance {
@@ -1539,7 +1706,10 @@ mod expressions {
             match &mut newexp.value {
                 // Helper to fix code if new X is called without parenthesis.
                 TypedExpression::Identifier(ident) => {
-                    let symbol = symboltable.get_forwarded(ident.value).unwrap();
+                    let symbol = match symboltable.get_forwarded(ident.value) {
+                        Some(symbol) => symbol,
+                        None => return EvaluatedType::Unknown,
+                    };
                     if matches!(symbol.kind, SemanticSymbolKind::Model { .. }) {
                         checker_ctx.add_error(errors::calling_new_on_identifier(
                             symbol.name.clone(),
@@ -2283,7 +2453,16 @@ mod expressions {
                 symboltable,
                 model,
                 property_symbol_idx,
-                generic_arguments.clone(),
+                {
+                    if matches!(access.object, TypedExpression::ThisExpr(_)) {
+                        generic_arguments
+                            .iter()
+                            .map(|(a, b)| (*a, harden_generics(b)))
+                            .collect::<Vec<_>>()
+                    } else {
+                        generic_arguments.clone()
+                    }
+                },
                 true,
                 property_span,
             ),
@@ -2436,6 +2615,7 @@ mod expressions {
                     access,
                 )
             }
+            EvaluatedType::Enum(_) => Some(EvaluatedType::Unknown),
             EvaluatedType::Generic { base } | EvaluatedType::HardGeneric { base } => {
                 search_for_property(
                     checker_ctx,
@@ -2461,6 +2641,14 @@ mod expressions {
             });
             EvaluatedType::Unknown
         })
+    }
+
+    fn harden_generics(b: &EvaluatedType) -> EvaluatedType {
+        let evaluated_type = match b {
+            EvaluatedType::Generic { base } => EvaluatedType::HardGeneric { base: *base },
+            _ => b.clone(),
+        };
+        evaluated_type
     }
 
     /// Look through all the possible methods and attributes of a model or generic
@@ -2654,7 +2842,10 @@ mod expressions {
         symboltable: &mut SymbolTable,
     ) -> Result<EvaluatedType, TypeErrorType> {
         let name = symboltable.forward(i.value);
-        let symbol = symboltable.get_forwarded(name).unwrap();
+        let symbol = match symboltable.get_forwarded(name) {
+            Some(symbol) => symbol,
+            None => return Ok(EvaluatedType::Unknown),
+        };
         let eval_type = match symbol_to_type(symbol, name, symboltable) {
             Ok(value) => value,
             Err(value) => return value,

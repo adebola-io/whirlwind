@@ -8,6 +8,7 @@ use analyzer::{
 };
 use ast::Span;
 use printer::SymbolWriter;
+use serde_json::Value;
 use std::cell::RefCell;
 use tower_lsp::lsp_types::{
     CompletionContext, CompletionItem, CompletionItemKind, CompletionItemLabelDetails,
@@ -27,7 +28,7 @@ macro_rules! maybe {
 /// A visitor that traverses a typed module to determine the most suitable
 /// completion response for a completion prompt.
 pub struct CompletionFinder<'a> {
-    _module: &'a TypedModule,
+    module: &'a TypedModule,
     standpoint: &'a Standpoint,
     pos: [u32; 2],
     pub context: Option<CompletionContext>,
@@ -66,7 +67,7 @@ impl<'a> CompletionFinder<'a> {
     ) -> Self {
         Self {
             standpoint,
-            _module: module,
+            module,
             pos,
             message_store: RefCell::new(messages),
             context: completion_context,
@@ -522,6 +523,16 @@ impl<'a> CompletionFinder<'a> {
             SemanticSymbolKind::TypeName { .. } => (CompletionItemKind::INTERFACE, None),
             _ => return None,
         };
+        let mut data = None;
+        // Auto importing, if the completion symbol was declared somewhere else.
+        if !(symbol.was_declared_in(self.module.path_idx)
+            || self
+                .standpoint
+                .prelude_path
+                .is_some_and(|prelude| symbol.was_declared_in(prelude)))
+        {
+            data = Some(Value::String(String::from("use Core.Io.Stuff;")));
+        }
         Some(CompletionItem {
             label,
             kind: Some(kind),
@@ -542,6 +553,7 @@ impl<'a> CompletionFinder<'a> {
             } else {
                 None
             },
+            data,
             ..Default::default()
         })
     }

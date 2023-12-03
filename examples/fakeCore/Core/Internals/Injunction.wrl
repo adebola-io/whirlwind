@@ -1,16 +1,16 @@
 module Injunction;
 
 use Super.{
-    Internals.never,
     Prelude.Range,
-    Process.Halt,
     Async.Eventual,
+    Process.Halt,
     Primitives.{
         String,
         Int,
         UnsignedInt,
     }
 };
+use Internals.never;
  
 /// List of variants that can be called with `Invoke()`.
 public enum Injunction {

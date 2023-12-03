@@ -277,7 +277,7 @@ pub fn unify_types(
                         least_required: None,
                     },
                 ]);
-            }
+            } 
             let mut params = vec![];
             for (left_param, right_param) in left_params.iter().zip(right_params.iter()) {
                 let mut left_inferred_type = left_param.inferred_type.clone();

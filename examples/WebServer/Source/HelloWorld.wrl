@@ -1,5 +1,5 @@
 module HelloWorld;
 
 public function Main() {
-    
+    Core.Io.Print("Hello, world!");
 }

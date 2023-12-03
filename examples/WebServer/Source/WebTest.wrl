@@ -1,0 +1,5 @@
+module WebTest;
+
+function Main() {
+    Print("Hello, world.")
+}

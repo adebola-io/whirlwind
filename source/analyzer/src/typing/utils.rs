@@ -849,3 +849,8 @@ pub fn get_type_generics_mut<'a>(
         _ => empty,
     }
 }
+
+// Calculates the size of an inferred type.
+pub fn get_size_of_type(inferred_type: EvaluatedType, name: SymbolIndex) -> Result<i32, String> {
+    Ok(0)
+}

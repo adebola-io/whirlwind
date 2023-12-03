@@ -23,7 +23,7 @@ public model Triple<T, U, V> {
     public var second: U;
     public var third: V;
 
-    new(first: T, second: U, third: U) {
+    new(first: T, second: U, third: V) {
         this.first = first;
         this.second = second;
         this.third = third;

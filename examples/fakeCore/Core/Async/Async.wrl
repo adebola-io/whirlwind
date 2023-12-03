@@ -69,17 +69,17 @@ public model Eventual<T> implements Guaranteed<T> {
     /// Blocks the current execution thread until the eventual is resolved.
     public function Await(): T {
         if this.aborted {
-            Panic("Called Await on an aborted Eventual.");
+            Panic(Some("Called Await on an aborted Eventual."));
         };
         Todo()
     }
     /// Forces the eventual to be resolved, and panics if it isn't.
     public function Unwrap(): T {
         if this.aborted {
-            Panic("Called Unwrap() on an aborted eventual.");
+            Panic(Some("Called Unwrap() on an aborted eventual."));
         };
         if not this.resolved or this.value is Core.Internals.Nullptr {
-            Panic("Called Unwrap() on an unresolved eventual.");
+            Panic(Some("Called Unwrap() on an unresolved eventual."));
         };
         return this.value;
     }

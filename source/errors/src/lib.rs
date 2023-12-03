@@ -458,3 +458,24 @@ pub fn unassigned_attribute(span: ast::Span) -> TypeError {
         span,
     }
 }
+
+pub fn uninferrable_variable(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::UninferrableVariable,
+        span,
+    }
+}
+
+pub fn invalid_size(error: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::InvalidSize { error },
+        span,
+    }
+}
+
+pub fn this_in_static_method(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::ThisInStaticMethod,
+        span,
+    }
+}

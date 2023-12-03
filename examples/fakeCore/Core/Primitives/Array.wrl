@@ -2,9 +2,9 @@ module Array;
 
 use Bool.Bool;
 use Numeric.{ Int, UnsignedInt };
-use Super.Prelude.{ AsIterator, Maybe, None, Todo, String, Default };
+use Ops.Orderable;
+use Super.Prelude.{ AsIterator, Maybe, None, Some, Todo, String, Default };
 use Super.Prelude.Iteratable;
-use Super.Primitives.Ops.Orderable;
 use Super.Prelude.Display;
 
 /// A contiguous, growable list of items.
@@ -17,7 +17,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// ```
     /// ```
     public function Iter(): ArrayRefIter<T> {
-        new ArrayRefIter(this)
+        new ArrayRefIter(&this)
     }
     /// Returns the item at a particular index in the array, if it exists.
     /// Indexes are zero-based, meaning that the first item is at index 0.
@@ -161,7 +161,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
         string := "[";
         i := 0;
         while i < array.Length() {
-            item := array[i];
+            item := (*array)[i];
             string.Append(item.ToStr());
             if i + 1 != array.Length() {
                 string.Append(", ");
@@ -223,9 +223,9 @@ public model ArrayIter<T> implements Iteratable<T> {
         if length == this.idx {
             return None();
         } else {
-            nextItem := this.array[this.idx];
+            nextItem: T := this.array[this.idx];
             this.idx += 1;
-            return nextItem;
+            return Some(nextItem);
         }
     }
 }

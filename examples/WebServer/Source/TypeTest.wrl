@@ -107,16 +107,21 @@ test "Testing types." {
     model Person implements Default {
         public var name: String;
         public var age: UInt8; // Set automatically.
-        new(name: String) {
+        new(name: String, age?: UInt8) {
             this.name = name;
+            this.age = Maybe.UnwrapOrDefault(age);
         }
         public static function [Default.Init](): This {
             return new Person("{unknown}");
         }
     }
-
-    // Destructuring.
     var person: Person; // possible because Person implements Default.
     var { name, age }: Person;
     var { name as johnsName} = new Person("John Doe");
+
+    function Mentor(): fn(a: String): String {
+        return fn() {
+            return "";
+        };   
+    }
 }

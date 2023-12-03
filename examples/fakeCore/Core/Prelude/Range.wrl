@@ -9,7 +9,7 @@ public model Range<T implements Sequenced> implements Iteratable<T> {
     public var end: T;
 
     public function [Iteratable.Next](): Maybe<T> {
-        this.start = this.start.NextItem();
+        // this.start = this.start.NextItem().Unwrap();
         if this.start == this.end {
             None()
         } else {

@@ -1,9 +1,10 @@
 module Crypto;
 
+use Super.Prelude.Todo;
 
 public model JwtEncryptor {
     /// Verify 
     public static function Decode(name: String, secret: String): String {
-
+        Todo()
     }
 }

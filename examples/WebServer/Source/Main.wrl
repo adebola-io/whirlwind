@@ -13,13 +13,18 @@ use Core.{
 };
 
 /// Entry point into the program.
-public function Main() {
+public function Main() { 
     // Set up server configurations.
     name := "simple-server";
     port := 8080;
 
     app := new HttpServer(name, port);
     middleware := new Middleware();
+    printMessage := fn() {
+        template := Fmt("% is listening on %.");
+        message := template.Add(name).Add(port).Finish();
+        Print(message);
+    };
     // Register authentication.
     middleware.Use(AuthenticationHandler);
 
@@ -33,13 +38,7 @@ public function Main() {
     // Route 3: Static file serving.
     app.Get("/static/::filename", StaticFileHandler);
     // Start the server and handle subsequent actions.
-    app.Start()
-      .Then(fn() {
-        template := Fmt("% is listening on %.");
-        message := template.Add(name).Add(port).Finish();
-        Print(message);
-      })
-      .Run();
+    app.Start().Then(printMessage).Run();
 }
 
 /// Handler function for the "/hello" endpoint.
@@ -66,9 +65,8 @@ async function AuthenticationHandler(request: HttpRequest): MiddlewareResponse {
         decoded := JwtEncryptor.Decode(*token, *secret);
         request.StoreData("user-id", decoded);
         return Ok(request);
-    } else {
-        return Ok(request);
     }
+    return Ok(request);
 }
 
 /// Handler function for the "/greet/:name" endpoint.
