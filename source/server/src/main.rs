@@ -5,10 +5,10 @@ mod error;
 mod hover;
 mod message_store;
 
-use document_manager::DocumentManager;
+use analyzer::{typecheck, Module, Standpoint, CORE_LIBRARY_PATH};
+use document_manager::{uri_to_absolute_path, DocumentManager};
 use message_store::MessageStore;
 use std::path::PathBuf;
-use analyzer::CORE_LIBRARY_PATH;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::request::{GotoDeclarationParams, GotoDeclarationResponse};
 use tower_lsp::lsp_types::*;
@@ -20,11 +20,60 @@ struct Backend {
     docs: DocumentManager,
 }
 
+macro_rules! unwrap_or_continue {
+    ($expr: expr) => {{
+        match $expr {
+            Some(value) => value,
+            None => continue,
+        }
+    }};
+}
+
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
-    async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
+    /// Initializes the server by setting by analyzing the workspace folders.
+    async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
+        let workspace_folders = params.workspace_folders;
+        if let Some(folders) = workspace_folders {
+            let mut standpoints = self.docs.standpoints.lock().unwrap();
+            let mut standpoint = Standpoint::new(true, Some(PathBuf::from(CORE_LIBRARY_PATH)));
+            for folder in folders {
+                let root_folder_path = unwrap_or_continue!(uri_to_absolute_path(folder.uri).ok());
+                let children = unwrap_or_continue!(root_folder_path.read_dir().ok())
+                    .filter_map(|entry| entry.ok());
+                for entry in children {
+                    let file_path = entry.path();
+                    if file_path.is_file()
+                        && file_path
+                            .extension()
+                            .and_then(|ext| ext.to_str())
+                            .map(|ext| ext == "wrl")
+                            .is_some_and(|is_wrl_file| is_wrl_file)
+                    {
+                        if !standpoint.contains_file(&file_path) {
+                            let module = unwrap_or_continue!(Module::from_path(file_path).ok());
+                            standpoint.add_module(module);
+                        }
+                    }
+                }
+                // Typecheck every module in the program.
+                let module_map = &mut standpoint.module_map;
+                for (_, mut module) in module_map.paths_mut() {
+                    typecheck(
+                        &mut module,
+                        &mut standpoint.symbol_table,
+                        &mut standpoint.errors,
+                        &standpoint.literals,
+                    );
+                }
+            }
+            standpoints.push(standpoint);
+        }
         Ok(InitializeResult {
-            server_info: None,
+            server_info: Some(ServerInfo {
+                name: String::from("Whirlwind Language Server"),
+                version: Some(String::from("0.0.0")),
+            }),
             capabilities: ServerCapabilities {
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(

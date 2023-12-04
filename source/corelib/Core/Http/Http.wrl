@@ -44,17 +44,19 @@ public model HttpServer {
     public function Get(
         route: String, 
         handler: fn(request: HttpRequest): Prospect<ServerOutcome>
-    ) {
+    ): &This {
         this.AssertInert();
         this.endpoints.Register(HttpMethod.Get, route, handler);
+        return this;
     }
     /// Registers a route for a request with a `POST` method.
     public function Post(
         route: String, 
         handler: fn(request: HttpRequest): Prospect<ServerOutcome>
-    ) {
+    ): &This {
         this.AssertInert();
         this.endpoints.Register(HttpMethod.Post, route, handler);
+        return this;
     }
     /// Asserts that the server is not yet running.
     function AssertInert() {

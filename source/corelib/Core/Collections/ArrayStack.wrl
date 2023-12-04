@@ -8,9 +8,9 @@ public model ArrayStack<T> {
     var items: Array<T>;
     var capacity: UnsignedInt;
    
-    new(capacity?: Int) {
+    new(capacity?: UnsignedInt) {
         this.items = [];
-        this.capacity = capacity.UnwrapOr(Infinity);
+        this.capacity = capacity.UnwrapOr(Todo());
     }
     /// Dynamically change the number of items in the stack.
     ///
@@ -18,7 +18,7 @@ public model ArrayStack<T> {
     /// ## Usage
     /// ```wrl
     /// use Core.Collections.ArrayStack;
-    /// stack: ArrayStack<Int> := new ArrayStack();
+    /// stack := new ArrayStack();
     ///
     /// AssertThat(stack.Capacity() == 0);
     /// stack.SetCapacity(1); // Sets the stack to contain only one item.
@@ -40,7 +40,7 @@ public model ArrayStack<T> {
     /// stack.setCapacity(2); // Shrinks the stack to only two items.
     /// AssertThat(stack.Size() == 2);
     /// ```
-    public function SetCapacity(value: Int) {
+    public function SetCapacity(value: UnsignedInt) {
         while value < this.items.Length() {
             this.items.Pop();
         }
@@ -73,4 +73,9 @@ public model ArrayStack<T> {
     public function Size(): Int {
         this.items.Length()
     }   
+}
+
+model StackError {
+    var message: String;
+    new(message: String){}   
 }

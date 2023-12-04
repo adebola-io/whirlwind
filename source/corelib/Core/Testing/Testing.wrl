@@ -8,6 +8,11 @@ public function Assert<T>(value: T): Assertion<T> {
     new Assertion(value)
 }
 
+/// Tests that a condition is true.
+public function AssertThat(proposition: Bool) {
+    Todo();
+}
+
 /// This model represents an assertion object, 
 /// which is the base object for testing operations.
 public model Assertion<T> {

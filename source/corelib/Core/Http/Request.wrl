@@ -4,6 +4,7 @@ use Super.Prelude.{Todo, String, Bool, Maybe, UnsignedInt, Outcome, Display};
 use Super.Memory.Buffer;
 use Super.Collections.HashMap;
 use Super.Io.IoError;
+use Http.HttpResponse;
 
 public enum HttpMethod {
     Get,
@@ -45,6 +46,10 @@ public model HttpRequest {
     /// Stores data on the request object.
     public function StoreData(key: String, value: String) {
         this.data.Set(key, value);
+    }
+    /// Creates a new response model from the request.
+    public function Respond(): HttpResponse {
+        return HttpResponse.From(this);
     }
 }
 

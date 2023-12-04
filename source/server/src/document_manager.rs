@@ -321,7 +321,6 @@ impl DocumentManager {
                 // Root not found, skip project altogether.
                 log_error!(msgs, "Could not determine main module for project.")
             }
-            standpoint.refresh_imports();
             standpoints.push(standpoint);
             // Todo: read whirlwind.yaml to find source module instead.
             break;

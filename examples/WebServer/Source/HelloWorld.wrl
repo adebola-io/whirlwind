@@ -1,5 +1,42 @@
 module HelloWorld;
 
-public function Main() {
-    Core.Io.Print("Hello, world!");
+/// A function that prints "Hello, world" to the console.
+function HelloWorld() {
+    Print("Hello, world!");
+}
+
+/// A function that calculates the factorial of a given number.
+function Factorial(n: Number): Number {
+    if n == 1 or n == 0 {
+        return 1;
+    };
+    return n * Factorial(n - 1);
+}
+
+/// A function that returns true if a string is a palindrome.
+function IsPalindrome(str: &String): Bool {
+    return *str == str.Reverse();
+}
+
+/// Returns the nth Fibonacci number.
+function Fibonacci(n: Number): Number {
+    if n == 0 {0} 
+    else if n == 1 {1} 
+    else Fibonacci(n-1) + Fibonacci(n-2)
+}
+
+use Core.Io.IoError;
+/// Function to display content from a file.
+function ReadFile<T implements IoError>(path: String): Outcome<String, T> {
+    return Todo();
+}
+
+use Core.Http.HttpServer;
+/// Server that returns hello world.
+function HelloWorldServer() {
+    app := new HttpServer("new-server", 8080);
+    app.Get("/", async fn(request) {
+        Ok(*request.Respond().Html("Hello, world!"))
+    });
+    app.Start().Run();
 }
