@@ -6,9 +6,8 @@ use crate::{
     message_store::{MessageStore, WithMessages},
 };
 use analyzer::{
-    utils::symbol_to_type, Module, PathIndex, ProgramErrorType, SemanticSymbol,
-    SemanticSymbolDeclaration, SemanticSymbolKind, Standpoint, StandpointStatus, SymbolIndex,
-    TypedModule, TypedVisitorNoArgs,
+    utils::symbol_to_type, Module, PathIndex, SemanticSymbol, SemanticSymbolDeclaration,
+    SemanticSymbolKind, Standpoint, StandpointStatus, SymbolIndex, TypedModule, TypedVisitorNoArgs,
 };
 use ast::{is_keyword_or_operator, is_valid_identifier, is_valid_identifier_start, Span};
 use printer::SymbolWriter;
