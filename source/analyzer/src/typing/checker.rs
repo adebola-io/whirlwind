@@ -8,10 +8,10 @@ use crate::{
         update_expression_type,
     },
     EvaluatedType, Literal, LiteralMap, ParameterType, PathIndex, ProgramError, ScopeId,
-    SemanticSymbolKind, SymbolIndex, SymbolTable, TypedAccessExpr, TypedAssignmentExpr, TypedBlock,
-    TypedCallExpr, TypedExpression, TypedFnExpr, TypedFunctionDeclaration, TypedIdent, TypedIfExpr,
-    TypedIndexExpr, TypedLogicExpr, TypedModule, TypedNewExpr, TypedReturnStatement, TypedStmnt,
-    TypedThisExpr, UnifyOptions,
+    SemanticSymbolKind, SymbolIndex, SymbolLibrary, TypedAccessExpr, TypedAssignmentExpr,
+    TypedBlock, TypedCallExpr, TypedExpression, TypedFnExpr, TypedFunctionDeclaration, TypedIdent,
+    TypedIfExpr, TypedIndexExpr, TypedLogicExpr, TypedModule, TypedNewExpr, TypedReturnStatement,
+    TypedStmnt, TypedThisExpr, UnifyOptions,
 };
 use ast::{Span, UnaryOperator};
 use errors::{missing_intrinsic, TypeError, TypeErrorType};
@@ -88,11 +88,11 @@ impl<'a> TypecheckerContext<'a> {
         Some((self.errors, self.path_idx))
     }
     /// Calculates the span of a typed expression using the symboltable and the list of literals.
-    fn span_of_expr(&self, expression: &TypedExpression, symboltable: &SymbolTable) -> Span {
+    fn span_of_expr(&self, expression: &TypedExpression, symboltable: &SymbolLibrary) -> Span {
         span_of_typed_expression(expression, symboltable, self.literals)
     }
     /// Calculates the span of a statement using the symboltable and the list of literals.
-    fn span_of_stmnt(&self, s: &TypedStmnt, symboltable: &mut SymbolTable) -> Span {
+    fn span_of_stmnt(&self, s: &TypedStmnt, symboltable: &mut SymbolLibrary) -> Span {
         span_of_typed_statement(s, symboltable, self.literals)
     }
 }
@@ -100,7 +100,7 @@ impl<'a> TypecheckerContext<'a> {
 /// Typechecks a module.
 pub fn typecheck(
     module: &mut TypedModule,
-    symboltable: &mut SymbolTable,
+    symboltable: &mut SymbolLibrary,
     errors: &mut Vec<ProgramError>,
     literals: &LiteralMap,
 ) {
@@ -149,7 +149,7 @@ mod statements {
     pub fn typecheck_statement(
         statement: &mut TypedStmnt,
         checker_ctx: &mut TypecheckerContext,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
     ) {
         match statement {
             // TypedStmnt::RecordDeclaration => todo!(),
@@ -200,7 +200,7 @@ mod statements {
     fn typecheck_model_declaration(
         model: &mut TypedModelDeclaration,
         checker_ctx: &mut TypecheckerContext,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
     ) {
         let model_symbol = symboltable.get(model.name);
         if model_symbol.is_none() {
@@ -424,9 +424,9 @@ mod statements {
         checker_ctx: &mut TypecheckerContext<'_>,
         return_type: EvaluatedType,
         body: &mut TypedBlock,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
         return_type_span: Option<Span>,
-    ) -> () {
+    ) {
         checker_ctx
             .current_function_context
             .push(CurrentFunctionContext {
@@ -480,7 +480,7 @@ mod statements {
     }
 
     fn show_trait_as_type_error(
-        symboltable: &SymbolTable,
+        symboltable: &SymbolLibrary,
         trait_: SymbolIndex,
         checker_ctx: &mut TypecheckerContext<'_>,
         span: Span,
@@ -498,7 +498,7 @@ mod statements {
     fn typecheck_variable_declaration(
         variable: &mut crate::TypedVariableDeclaration,
         checker_ctx: &mut TypecheckerContext<'_>,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
     ) {
         let names = &variable.names;
         if variable.names.len() == 0 {
@@ -731,7 +731,7 @@ mod statements {
     fn typecheck_while_statement(
         whil: &mut crate::TypedWhileStatement,
         checker_ctx: &mut TypecheckerContext<'_>,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
     ) {
         let condition_type =
             expressions::typecheck_expression(&mut whil.condition, checker_ctx, symboltable);
@@ -750,7 +750,7 @@ mod statements {
     pub fn typecheck_shorthand_variable_declaration(
         shorthand_variable: &mut crate::TypedShorthandVariableDeclaration,
         checker_ctx: &mut TypecheckerContext,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
     ) {
         let name = shorthand_variable.name;
         let symbol = symboltable.get_forwarded(name).unwrap();
@@ -825,7 +825,7 @@ mod statements {
     pub fn typecheck_return_statement(
         retstat: &mut TypedReturnStatement,
         checker_ctx: &mut TypecheckerContext,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
     ) {
         let function_context = checker_ctx.current_function_context.last().cloned();
         let maybe_eval_expr = retstat.value.as_mut().map(|expr| {
@@ -926,7 +926,7 @@ mod statements {
     pub fn typecheck_function(
         function: &mut TypedFunctionDeclaration,
         checker_ctx: &mut TypecheckerContext,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
     ) {
         let symbol = symboltable.get_forwarded(function.name).unwrap();
         let (evaluated_param_types, return_type, return_type_span) =
@@ -988,7 +988,7 @@ mod statements {
 
     fn validate_return_type_and_params(
         return_type: &EvaluatedType,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
         checker_ctx: &mut TypecheckerContext<'_>,
         return_type_span: Option<Span>,
         evaluated_param_types: Vec<(SymbolIndex, EvaluatedType)>,
@@ -1033,7 +1033,7 @@ mod expressions {
     pub fn typecheck_expression(
         expression: &mut crate::TypedExpression,
         checker_ctx: &mut TypecheckerContext,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
     ) -> EvaluatedType {
         match expression {
             TypedExpression::Identifier(i) => {
@@ -1096,7 +1096,7 @@ mod expressions {
     fn typecheck_update_expression(
         updateexp: &mut crate::TypedUpdateExpr,
         checker_ctx: &mut TypecheckerContext<'_>,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
     ) -> EvaluatedType {
         updateexp.inferred_type = (|| {
             let operand_type =
@@ -1111,8 +1111,13 @@ mod expressions {
                             SemanticSymbolKind::Trait { generic_params, .. } => generic_params[0],
                             _ => return EvaluatedType::Unknown,
                         };
+                        // Reference types of models that implement Guarantee, also implement Guarantee.
+                        let operand_type_deref = match &operand_type {
+                            EvaluatedType::Borrowed { base } => &*base,
+                            _ => &operand_type,
+                        };
                         if let Some(implementation) =
-                            get_implementation_of(guaranteed, &operand_type, &symboltable)
+                            get_implementation_of(guaranteed, operand_type_deref, &symboltable)
                         {
                             match implementation {
                                 EvaluatedType::TraitInstance {
@@ -1168,8 +1173,13 @@ mod expressions {
                                 }
                                 _ => return EvaluatedType::Unknown,
                             };
+                        // Reference types of models that implement Try, also implement Try.
+                        let operand_type = match &operand_type {
+                            EvaluatedType::Borrowed { base } => &*base,
+                            _ => &operand_type,
+                        };
                         let implementation =
-                            get_implementation_of(try_idx, &operand_type, &symboltable);
+                            get_implementation_of(try_idx, operand_type, &symboltable);
                         if implementation.is_none() {
                             let name = symboltable.format_evaluated_type(&operand_type);
                             checker_ctx.add_error(errors::illegal_try(name, updateexp.span));
@@ -1281,7 +1291,7 @@ mod expressions {
     /// Typechecks a unary expression.
     fn typecheck_unary_expression(
         unaryexp: &mut crate::TypedUnaryExpr,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
         checker_ctx: &mut TypecheckerContext<'_>,
     ) -> EvaluatedType {
         unaryexp.inferred_type = (|| {
@@ -1330,7 +1340,7 @@ mod expressions {
     fn typecheck_if_expression(
         ifexp: &mut TypedIfExpr,
         checker_ctx: &mut TypecheckerContext<'_>,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
     ) -> EvaluatedType {
         ifexp.inferred_type = {
             let condition_type =
@@ -1400,7 +1410,7 @@ mod expressions {
     fn typecheck_assignment_expression(
         assexp: &mut TypedAssignmentExpr,
         checker_ctx: &mut TypecheckerContext<'_>,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
     ) -> EvaluatedType {
         assexp.inferred_type = (|| {
             let left_type = typecheck_expression(&mut assexp.left, checker_ctx, symboltable);
@@ -1585,7 +1595,7 @@ mod expressions {
     /// Otherwise it returns none.
     fn expression_is_attribute(
         expr: &TypedExpression,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
     ) -> Option<SymbolIndex> {
         match expr {
             TypedExpression::AccessExpr(accessexp) => match &accessexp.object {
@@ -1633,7 +1643,7 @@ mod expressions {
     fn typecheck_logic_expression(
         logexp: &mut TypedLogicExpr,
         checker_ctx: &mut TypecheckerContext<'_>,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
     ) -> EvaluatedType {
         logexp.inferred_type = (|| {
             let left = typecheck_expression(&mut logexp.left, checker_ctx, symboltable);
@@ -1666,7 +1676,7 @@ mod expressions {
 
     fn typecheck_this_expression(
         this: &mut TypedThisExpr,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
         checker_ctx: &mut TypecheckerContext,
     ) -> EvaluatedType {
         this.inferred_type = (|| {
@@ -1704,7 +1714,7 @@ mod expressions {
     /// Typechecks a new expression.
     fn typecheck_new_expression(
         newexp: &mut TypedNewExpr,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
         checker_ctx: &mut TypecheckerContext,
     ) -> EvaluatedType {
         newexp.inferred_type = (|| {
@@ -1806,7 +1816,7 @@ mod expressions {
     /// Typechecks an index expression.
     fn typecheck_index_expression(
         indexexp: &mut TypedIndexExpr,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
         checker_ctx: &mut TypecheckerContext,
     ) -> EvaluatedType {
         indexexp.inferred_type = (|| {
@@ -1815,7 +1825,13 @@ mod expressions {
             let _type_of_indexer =
                 typecheck_expression(&mut indexexp.index, checker_ctx, symboltable);
             // todo: handle Index trait overloading.
-            if !is_array(&type_of_indexed, symboltable) {
+            if !is_array(
+                match &type_of_indexed {
+                    EvaluatedType::Borrowed { base } => &*base,
+                    _ => &type_of_indexed,
+                },
+                symboltable,
+            ) {
                 checker_ctx.add_error(errors::invalid_index_subject(
                     symboltable.format_evaluated_type(&type_of_indexed),
                     indexexp.span,
@@ -1843,7 +1859,7 @@ mod expressions {
     /// Typechecks an array expression.
     fn typecheck_array_expression(
         array: &mut crate::TypedArrayExpr,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
         checker_ctx: &mut TypecheckerContext,
     ) -> EvaluatedType {
         array.inferred_type = (|| {
@@ -1941,7 +1957,7 @@ mod expressions {
     fn typecheck_literal(
         l: &mut crate::LiteralIndex,
         checker_ctx: &mut TypecheckerContext,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
     ) -> EvaluatedType {
         match &checker_ctx.literals.get(*l).unwrap() {
             Literal::StringLiteral { value, .. } => {
@@ -1969,7 +1985,7 @@ mod expressions {
     fn typecheck_numeric_literal(
         value: &ast::WhirlNumber,
         checker_ctx: &mut TypecheckerContext<'_>,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
     ) -> EvaluatedType {
         // todo: errors for missing intrinsics.
         // TODO. 😑
@@ -1978,7 +1994,7 @@ mod expressions {
 
     /// Typechecks a bool literal by matching it with the bool intrinsic symbol.
     fn typecheck_boolean_literal(
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
         checker_ctx: &mut TypecheckerContext,
         start_line: &u32,
         start_character: &u32,
@@ -2002,7 +2018,7 @@ mod expressions {
     fn typecheck_string_literal(
         value: &ast::WhirlString,
         checker_ctx: &mut TypecheckerContext,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
     ) -> EvaluatedType {
         if let Some(string_index) = symboltable.string {
             return EvaluatedType::ModelInstance {
@@ -2010,7 +2026,6 @@ mod expressions {
                 generic_arguments: vec![],
             };
         }
-        // println!("could not find string in {:?}!!!", checker_ctx.path_idx);
         checker_ctx.add_error(errors::missing_intrinsic(format!("String"), value.span));
         return EvaluatedType::Unknown;
     }
@@ -2018,7 +2033,7 @@ mod expressions {
     /// Typechecks a call expression.
     fn typecheck_call_expression(
         callexp: &mut TypedCallExpr,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
         checker_ctx: &mut TypecheckerContext,
     ) -> EvaluatedType {
         let caller = typecheck_expression(&mut callexp.caller, checker_ctx, symboltable);
@@ -2127,7 +2142,7 @@ mod expressions {
         evaluated_args: Vec<EvaluatedType>,
         checker_ctx: &mut TypecheckerContext,
         callexp: &TypedCallExpr,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
         generic_arguments: &mut Vec<(SymbolIndex, EvaluatedType)>,
     ) {
         // mismatched arguments. It checks if the parameter list is longer, so it can account for optional parameters.
@@ -2202,7 +2217,7 @@ mod expressions {
 
     fn convert_param_list_to_type(
         params: &Vec<SymbolIndex>,
-        symboltable: &SymbolTable,
+        symboltable: &SymbolLibrary,
         solved_generics: &Vec<(SymbolIndex, EvaluatedType)>,
         checker_ctx: &mut TypecheckerContext,
     ) -> Vec<ParameterType> {
@@ -2241,7 +2256,7 @@ mod expressions {
 
     fn extract_call_of(
         caller: EvaluatedType,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
         checker_ctx: &mut TypecheckerContext,
         caller_span: Span,
     ) -> EvaluatedType {
@@ -2291,7 +2306,7 @@ mod expressions {
     /// Typechecks a function expression.
     fn typecheck_function_expression(
         f: &mut TypedFnExpr,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
         checker_ctx: &mut TypecheckerContext,
     ) -> EvaluatedType {
         f.inferred_type = (|| {
@@ -2426,7 +2441,7 @@ mod expressions {
     /// Typechecks an access expression.
     fn typecheck_access_expression(
         access: &mut TypedAccessExpr,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
         checker_ctx: &mut TypecheckerContext,
     ) -> EvaluatedType {
         access.inferred_type = (|| {
@@ -2449,7 +2464,7 @@ mod expressions {
     /// Extract a property based on the value of its object.
     fn extract_property_of(
         object_type: EvaluatedType,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
         property_symbol_idx: SymbolIndex,
         checker_ctx: &mut TypecheckerContext,
         access: &mut TypedAccessExpr,
@@ -2668,7 +2683,7 @@ mod expressions {
     /// to determine the property being referenced.
     pub fn search_for_property(
         checker_ctx: &mut TypecheckerContext,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
         model: SymbolIndex,
         property_symbol_idx: SymbolIndex,
         mut generic_arguments: Vec<(SymbolIndex, EvaluatedType)>,
@@ -2852,7 +2867,7 @@ mod expressions {
     /// Typechecks an identifier.
     fn typecheck_identifier(
         i: &mut TypedIdent,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
     ) -> Result<EvaluatedType, TypeErrorType> {
         let name = symboltable.forward(i.value);
         let symbol = match symboltable.get_forwarded(name) {
@@ -2871,7 +2886,7 @@ mod expressions {
         body: &mut TypedBlock,
         is_function_block: bool,
         checker_ctx: &mut TypecheckerContext,
-        symboltable: &mut SymbolTable,
+        symboltable: &mut SymbolLibrary,
     ) -> EvaluatedType {
         body.inferred_type = (|| {
             let mut loopindex = 0;

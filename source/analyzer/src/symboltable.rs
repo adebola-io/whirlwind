@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{
     evaluate,
     utils::{get_numeric_type, symbol_to_type},
@@ -12,11 +14,10 @@ pub enum SymbolEntry {
     Symbol(SemanticSymbol),
 }
 
-/// The symbol table for the whole project.
+/// The symbol library contains all the symbols for the whole standpoint.
 #[derive(Debug, Default)]
-pub struct SymbolTable {
-    holes: Vec<usize>,
-    symbols: Vec<SymbolEntry>,
+pub struct SymbolLibrary {
+    tables: HashMap<PathIndex, SymbolTable>,
     pub float: Option<SymbolIndex>,
     pub float32: Option<SymbolIndex>,
     pub float64: Option<SymbolIndex>,
@@ -41,46 +42,70 @@ pub struct SymbolTable {
     pub default: Option<SymbolIndex>,
 }
 
+#[derive(Debug)]
+pub struct SymbolTable {
+    symbols: Vec<SemanticSymbol>,
+}
+
 impl SymbolTable {
+    pub fn new() -> Self {
+        Self { symbols: vec![] }
+    }
+}
+
+impl SymbolLibrary {
     /// Create a new symbol table.
     pub fn new() -> Self {
         Self {
-            symbols: vec![],
             ..Default::default()
         }
     }
-    /// Add a symbol to the table and return its index number.
-    pub fn add(&mut self, symbol: SemanticSymbol) -> SymbolIndex {
-        // Fill any holes by removed symbols.
-        let index = match self.holes.pop() {
-            Some(void_idx) => {
-                self.symbols[void_idx] = SymbolEntry::Symbol(symbol);
-                void_idx
-            }
-            None => {
-                let id = self.symbols.len();
-                self.symbols.push(SymbolEntry::Symbol(symbol));
-                id
-            }
-        };
-        SymbolIndex(index)
+    /// Add a symbol to a module's symbol table and return its index number.
+    pub fn add_to_table(&mut self, module: PathIndex, symbol: SemanticSymbol) -> SymbolIndex {
+        // Create the table if it does not exist.
+        if self.tables.get(&module).is_none() {
+            self.tables.insert(module, SymbolTable::new());
+        }
+        let table = self.tables.get_mut(&module).unwrap();
+        let id = table.symbols.len();
+        table.symbols.push(symbol);
+        // // Fill any holes by removed symbols.
+        // let index = match self.holes.pop() {
+        //     Some(void_idx) => {
+        //         self.symbols[void_idx] = SymbolEntry::Symbol(symbol);
+        //         void_idx
+        //     }
+        //     None => {
+        //         let id = self.symbols.len();
+        //         self.symbols.push(SymbolEntry::Symbol(symbol));
+        //         id
+        //     }
+        // };
+        SymbolIndex(module, id as u32)
     }
     /// Returns an iterator over all the symbols in the table.
     pub fn symbols(&self) -> impl Iterator<Item = (SymbolIndex, &SemanticSymbol)> {
-        self.symbols
+        self.tables
             .iter()
-            .enumerate()
-            .filter_map(|symbolentry| match symbolentry {
-                (idx, SymbolEntry::Symbol(symbol)) => Some((SymbolIndex(idx), symbol)),
-                _ => None,
+            .map(|(pathindex, table)| {
+                table
+                    .symbols
+                    .iter()
+                    .enumerate()
+                    .map(|(index, symbol)| (SymbolIndex(*pathindex, index as u32), symbol))
             })
+            .flatten()
+        // self.tables.iter()
+
+        //     .enumerate()
+        //     .filter_map(|symbolentry| match symbolentry {
+        //         (idx, SymbolEntry::Symbol(symbol)) => Some((SymbolIndex(idx), symbol)),
+        //         _ => None,
+        //     })
     }
     /// Get a symbol using its index.
     pub fn get(&self, index: SymbolIndex) -> Option<&SemanticSymbol> {
-        match self.symbols.get(index.0)? {
-            SymbolEntry::Removed => None,
-            SymbolEntry::Symbol(symbol) => Some(symbol),
-        }
+        self.tables.get(&index.0)?.symbols.get(index.1 as usize)
     }
     /// Returns an iterator of the undeclared values in the table.
     pub fn undeclared_values(&self) -> impl Iterator<Item = &SemanticSymbol> {
@@ -90,14 +115,8 @@ impl SymbolTable {
     }
     /// Returns a list of the symbols in a module.
     pub fn in_module(&self, module_path: PathIndex) -> impl Iterator<Item = &SemanticSymbol> {
-        self.symbols()
-            .map(|(_, symbol)| symbol)
-            .filter(move |symbol| {
-                symbol
-                    .references
-                    .first()
-                    .is_some_and(|reference| reference.module_path == module_path)
-            })
+        let table = self.tables.get(&module_path);
+        table.unwrap().symbols.iter()
     }
     /// Returns the first symbol in the table that adheres to a predicate.
     pub fn find<F: FnMut(&&SemanticSymbol) -> bool>(
@@ -145,10 +164,7 @@ impl SymbolTable {
     }
     /// Get a symbol mutably using its index.
     pub fn get_mut(&mut self, idx: SymbolIndex) -> Option<&mut SemanticSymbol> {
-        match self.symbols.get_mut(idx.0)? {
-            SymbolEntry::Removed => None,
-            SymbolEntry::Symbol(symbol) => Some(symbol),
-        }
+        self.tables.get_mut(&idx.0)?.symbols.get_mut(idx.1 as usize)
     }
     /// A modified version of the `get()` method that also accounts for import and property redirections.
     pub fn get_forwarded(&self, idx: SymbolIndex) -> Option<&SemanticSymbol> {
@@ -180,14 +196,9 @@ impl SymbolTable {
             None => idx,
         }
     }
-    /// Remove a symbol using its index.
-    pub fn remove(&mut self, index: SymbolIndex) -> Option<SemanticSymbol> {
-        let symbolentry = std::mem::take(self.symbols.get_mut(index.0)?);
-        self.holes.push(index.0);
-        match symbolentry {
-            SymbolEntry::Removed => None,
-            SymbolEntry::Symbol(symbol) => Some(symbol),
-        }
+    /// Remove a symbol table using its index.
+    pub fn remove_module_table(&mut self, module_path: PathIndex) -> Option<SymbolTable> {
+        self.tables.remove(&module_path)
     }
     /// Get a list of at most five related symbols for a symbol at an index.
     pub fn get_relations(&self, _index: SymbolIndex) -> Option<Vec<&SemanticSymbol>> {
@@ -195,7 +206,10 @@ impl SymbolTable {
     }
     /// Returns the number of symbols in the table.
     pub fn len(&self) -> usize {
-        self.symbols.len() - self.holes.len()
+        self.tables
+            .iter()
+            .map(|(_, table)| table.symbols.len())
+            .fold(0, |acc, x| acc + x)
     }
 
     /// Prints a list of generic types.
@@ -471,46 +485,52 @@ fn get_just_types(
 mod tests {
     use ast::Span;
 
-    use crate::{ScopeId, SemanticSymbol, SemanticSymbolKind, SymbolTable};
+    use crate::{ScopeId, SemanticSymbol, SemanticSymbolKind, SymbolLibrary};
 
     #[test]
     fn test_symbol_adding() {
-        let mut symboltable = SymbolTable::new();
-        let symbol_index = symboltable.add(SemanticSymbol {
-            name: format!("newVariable"),
-            kind: SemanticSymbolKind::TypeName {
-                is_public: false,
-                generic_params: vec![],
-                value: crate::IntermediateType::Placeholder,
+        let mut symboltable = SymbolLibrary::new();
+        let symbol_index = symboltable.add_to_table(
+            crate::PathIndex(0),
+            SemanticSymbol {
+                name: format!("newVariable"),
+                kind: SemanticSymbolKind::TypeName {
+                    is_public: false,
+                    generic_params: vec![],
+                    value: crate::IntermediateType::Placeholder,
+                },
+                references: vec![],
+                doc_info: None,
+                origin_span: Span::default(),
+                origin_scope_id: Some(ScopeId(0)),
             },
-            references: vec![],
-            doc_info: None,
-            origin_span: Span::default(),
-            origin_scope_id: Some(ScopeId(0)),
-        });
+        );
         assert_eq!(symboltable.get(symbol_index).unwrap().name, "newVariable")
     }
 
     #[test]
     fn test_symbol_removal() {
-        let mut symboltable = SymbolTable::new();
-        let symbol_index = symboltable.add(SemanticSymbol {
-            name: format!("newVariable"),
-            kind: SemanticSymbolKind::TypeName {
-                is_public: false,
-                generic_params: vec![],
-                value: crate::IntermediateType::Placeholder,
+        let mut symboltable = SymbolLibrary::new();
+        let symbol_index = symboltable.add_to_table(
+            crate::PathIndex(0),
+            SemanticSymbol {
+                name: format!("newVariable"),
+                kind: SemanticSymbolKind::TypeName {
+                    is_public: false,
+                    generic_params: vec![],
+                    value: crate::IntermediateType::Placeholder,
+                },
+                references: vec![],
+                doc_info: None,
+                origin_span: Span::default(),
+                origin_scope_id: Some(ScopeId(0)),
             },
-            references: vec![],
-            doc_info: None,
-            origin_span: Span::default(),
-            origin_scope_id: Some(ScopeId(0)),
-        });
+        );
         assert_eq!(symboltable.len(), 1);
 
-        let removed = symboltable.remove(symbol_index).unwrap();
-
-        assert_eq!(removed.name, "newVariable");
+        symboltable
+            .remove_module_table(crate::PathIndex(0))
+            .unwrap();
 
         assert_eq!(symboltable.len(), 0);
 

@@ -47,7 +47,7 @@ public model ArrayStack<T> {
         this.capacity = value;
     }
     /// Returns the top value in the stack without removing it.
-    public function Top(): Maybe<T> {
+    public function Top(): Maybe<&T> {
         this.items.Last()
     }
     /// Removes the last item from the stack and returns it, if it exists.
@@ -62,7 +62,7 @@ public model ArrayStack<T> {
             Err(new StackError("The stack is already full."))
         } else {
             this.items.Push(data);
-            Ok(Bool)
+            Ok(true)
         }
     }
     /// Returns the capacity of the stack.
@@ -77,5 +77,7 @@ public model ArrayStack<T> {
 
 model StackError {
     var message: String;
-    new(message: String){}   
+    new(message: String){
+        this.message = message;
+    }   
 }

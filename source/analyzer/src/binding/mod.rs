@@ -4,8 +4,8 @@ mod typed_statement;
 
 use crate::{
     CurrentModuleType, IntermediateType, Literal, LiteralIndex, LiteralMap, Module, PathIndex,
-    ProgramError, ProgramErrorType, SemanticSymbol, SemanticSymbolKind, SymbolIndex,
-    SymbolReferenceList, SymbolTable,
+    ProgramError, ProgramErrorType, SemanticSymbol, SemanticSymbolKind, SymbolIndex, SymbolLibrary,
+    SymbolReferenceList,
 };
 use ast::{
     Block, ConstantDeclaration, EnumDeclaration, EnumVariant, Expression, FunctionExpr,
@@ -71,7 +71,7 @@ pub fn bind(
     // The reserved module path.
     path_idx: PathIndex,
     // The context symbol table.
-    symbol_table: &mut SymbolTable,
+    symbol_table: &mut SymbolLibrary,
     // The context errors.
     errors: &mut Vec<ProgramError>,
     // Literal values.
@@ -135,7 +135,7 @@ pub fn bind(
         origin_span,
         origin_scope_id: None,
     };
-    let symbol_idx = symbol_table.add(module_symbol);
+    let symbol_idx = symbol_table.add_to_table(binder.path, module_symbol);
     Some(TypedModule {
         path_idx,
         path_buf,
@@ -156,7 +156,7 @@ mod bind_utils {
     /// Bind an entry within a scope.
     pub fn handle_scope_entry(
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         ambience: &ModuleAmbience,
         address: ScopeAddress,
@@ -199,7 +199,7 @@ mod bind_utils {
                 )
             }
         } else {
-            Err(SymbolIndex(0))
+            Err(SymbolIndex(binder.path, 0))
         };
         // mark a global value.
         if shadow.is_in_global_scope() && symbol_idx.is_ok() {
@@ -223,7 +223,7 @@ mod bind_utils {
     /// Add an error for a duplicate declaration, and return the symbol index of the first declaration symbol.
     pub fn error_and_return_first_instance(
         binder: &Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         entry_1: &ScopeEntry,
         entry_2: &ScopeEntry,
@@ -250,7 +250,7 @@ mod bind_utils {
     /// Check if a symbol has been jumped to already.
     pub fn maybe_bound(
         binder: &Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         entry: &ScopeEntry,
         should_cause_error: bool,
@@ -289,7 +289,7 @@ mod bind_utils {
     /// Create a binding for a signature from a scope entry.
     pub fn bind_signature(
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         ambience: &ModuleAmbience,
         origin_scope_id: Option<ScopeId>,
@@ -304,7 +304,7 @@ mod bind_utils {
                     origin_span,
                     origin_scope_id,
                 );
-                let index = symbol_table.add(symbol);
+                let index = symbol_table.add_to_table(binder.path, symbol);
                 let span = function.name.span;
                 binder.known_values.insert(span, index);
                 // Return type, parameters and generic parameters are bound at declaration to prevent recursive loops.
@@ -313,7 +313,7 @@ mod bind_utils {
             ScopeEntry::Type(_type) => {
                 let symbol =
                     SemanticSymbol::from_type(_type, binder.path, origin_span, origin_scope_id);
-                let index = symbol_table.add(symbol);
+                let index = symbol_table.add_to_table(binder.path, symbol);
                 let span = _type.name.span;
                 binder.known_values.insert(span, index);
                 // Type value and generic parameters are bound at declaration to prevent recursive loops.
@@ -344,7 +344,7 @@ mod bind_utils {
                     origin_span,
                     origin_scope_id,
                 };
-                let index = symbol_table.add(symbol);
+                let index = symbol_table.add_to_table(binder.path, symbol);
                 let span = model.name.span;
                 binder.known_values.insert(span, index);
                 index
@@ -352,7 +352,7 @@ mod bind_utils {
             ScopeEntry::Enum(_enum) => {
                 let symbol =
                     SemanticSymbol::from_enum(_enum, binder.path, origin_span, origin_scope_id);
-                let index = symbol_table.add(symbol);
+                let index = symbol_table.add_to_table(binder.path, symbol);
                 let span = _enum.name.span;
                 binder.known_values.insert(span, index);
                 index
@@ -364,7 +364,7 @@ mod bind_utils {
                     origin_span,
                     origin_scope_id,
                 );
-                let index = symbol_table.add(symbol);
+                let index = symbol_table.add_to_table(binder.path, symbol);
                 let span = variable.name.span;
                 binder.known_values.insert(span, index);
                 // Add type. Hackery to prevent recursive real-name-is-also-type-name loops.
@@ -397,7 +397,7 @@ mod bind_utils {
                     origin_span,
                     origin_scope_id,
                 };
-                let index = symbol_table.add(symbol);
+                let index = symbol_table.add_to_table(binder.path, symbol);
                 let span = _trait.name.span;
                 binder.known_values.insert(span, index);
                 index
@@ -410,7 +410,7 @@ mod bind_utils {
                     origin_span,
                     origin_scope_id,
                 );
-                let index = symbol_table.add(symbol);
+                let index = symbol_table.add_to_table(binder.path, symbol);
                 let span = use_signature.name.span;
                 binder.known_values.insert(span, index);
                 index
@@ -428,7 +428,7 @@ mod bind_utils {
                     origin_span,
                     origin_scope_id,
                 );
-                let index = symbol_table.add(symbol);
+                let index = symbol_table.add_to_table(binder.path, symbol);
                 let span = constant.name.span;
                 binder.known_values.insert(span, index);
                 let declared_const_type = types::bind_type_expression(
@@ -482,7 +482,7 @@ mod bind_utils {
                             origin_scope_id,
                         };
                         property_symbol.add_reference(binder.path, real_name.span);
-                        let from_property = symbol_table.add(property_symbol);
+                        let from_property = symbol_table.add_to_table(binder.path, property_symbol);
                         let name = alias.as_ref().unwrap_or(real_name);
                         (
                             SemanticSymbol {
@@ -527,7 +527,7 @@ mod bind_utils {
                     ),
                 };
                 // Types will be resolved later.
-                let symbol_idx = symbol_table.add(symbol);
+                let symbol_idx = symbol_table.add_to_table(binder.path, symbol);
                 binder.known_values.insert(span, symbol_idx);
                 symbol_idx
             }
@@ -573,7 +573,7 @@ mod bind_utils {
     /// Finds an already existing symbol or creates a new one.
     pub fn find_or_create(
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         ambience: &ModuleAmbience,
         name: &Identifier,
@@ -663,7 +663,7 @@ mod bind_utils {
                         origin_span: name.span,
                         origin_scope_id: Some(ScopeId(binder.current_scope as u32)),
                     };
-                    let index = symbol_table.add(new_symbol);
+                    let index = symbol_table.add_to_table(binder.path, new_symbol);
                     binder
                         .unknown_values
                         .insert((name.name.to_owned(), binder.current_scope), index);
@@ -750,7 +750,7 @@ mod statements {
     pub fn bind_statement(
         statement: Statement,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -881,7 +881,7 @@ mod statements {
     pub fn bind_test_declaration(
         test: TestDeclaration,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -904,7 +904,7 @@ mod statements {
     pub fn bind_use_declaration(
         usedecl: UseDeclaration,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         ambience: &mut ModuleAmbience,
     ) -> TypedUseDeclaration {
@@ -936,7 +936,7 @@ mod statements {
     fn bind_shorthand_variable_declaration(
         shorthand: ShorthandVariableDeclaration,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -970,7 +970,7 @@ mod statements {
     fn bind_constant_declaration(
         constant: ConstantDeclaration,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -1004,7 +1004,7 @@ mod statements {
     fn bind_model_declaration(
         model: ModelDeclaration,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -1097,7 +1097,7 @@ mod statements {
         owner_idx: SymbolIndex,
         constructor_params: Option<Vec<Parameter>>,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -1145,7 +1145,7 @@ mod statements {
         property: ModelProperty,
         owner: SymbolIndex,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -1202,7 +1202,8 @@ mod statements {
                         origin_scope_id: Some(crate::ScopeId(binder.current_scope as u32)),
                     };
                     property_symbol.add_reference(binder.path, property_type.name.span);
-                    let property_symbol_idx = symbol_table.add(property_symbol);
+                    let property_symbol_idx =
+                        symbol_table.add_to_table(binder.path, property_symbol);
                     // Collect generics.
                     let mut generic_args = vec![];
                     if let Some(ref arguments) = property_type.generic_args {
@@ -1253,7 +1254,7 @@ mod statements {
         span: Span,
         owner: SymbolIndex,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         ambience: &ModuleAmbience,
     ) -> TypedModelProperty {
@@ -1346,7 +1347,7 @@ mod statements {
                 origin_span: span,
                 origin_scope_id: None,
             };
-            let index = symbol_table.add(symbol);
+            let index = symbol_table.add_to_table(binder.path, symbol);
             // Add it to the list of attributes in the parent model as well.
             if let Some(SemanticSymbol {
                 kind: SemanticSymbolKind::Model { attributes, .. },
@@ -1372,7 +1373,7 @@ mod statements {
         owner: SymbolIndex,
         body: Block,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -1445,7 +1446,7 @@ mod statements {
                 origin_span: span,
                 origin_scope_id: None,
             };
-            let index = symbol_table.add(symbol);
+            let index = symbol_table.add_to_table(binder.path, symbol);
             // Add it to the list of methods in the parent model as well.
             if let Some(SemanticSymbol {
                 kind: SemanticSymbolKind::Model { methods, .. },
@@ -1510,7 +1511,7 @@ mod statements {
     fn function_declaration(
         func: ast::FunctionDeclaration,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -1589,7 +1590,7 @@ mod statements {
         block: Block,
         params: Vec<Parameter>,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -1646,7 +1647,7 @@ mod statements {
             };
             symbol.add_reference(binder.path, parameter.name.span);
             // add symbol.
-            let index = symbol_table.add(symbol);
+            let index = symbol_table.add_to_table(binder.path, symbol);
             binder.known_values.insert(parameter.name.span, index);
             // store for next param check.
             parameters.push(TemporaryParameterDetails {
@@ -1673,7 +1674,7 @@ mod statements {
     pub fn enum_declaration(
         enumdecl: EnumDeclaration,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         ambience: &ModuleAmbience,
     ) -> TypedEnumDeclaration {
@@ -1746,7 +1747,7 @@ mod statements {
         variants: &[EnumVariant],
         symbol_idx: SymbolIndex,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         ambience: &ModuleAmbience,
     ) -> Vec<SymbolIndex> {
@@ -1792,7 +1793,7 @@ mod statements {
                 origin_span: variant.span,
                 origin_scope_id: None,
             };
-            let symbol_idx = symbol_table.add(symbol);
+            let symbol_idx = symbol_table.add_to_table(binder.path, symbol);
             binder.known_values.insert(variant.name.span, symbol_idx);
             // store for next variant check.
             temp_variants.push(TemporaryVariantDetails {
@@ -1807,7 +1808,7 @@ mod statements {
     pub fn bind_trait_declaration(
         trait_decl: ast::TraitDeclaration,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -1882,7 +1883,7 @@ mod statements {
         body: TraitBody,
         owner_idx: SymbolIndex,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -1911,7 +1912,7 @@ mod statements {
         property: ast::TraitProperty,
         owner: SymbolIndex,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -1947,7 +1948,7 @@ mod statements {
         span: Span,
         owner: SymbolIndex,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2004,7 +2005,7 @@ mod statements {
                 origin_span: span,
                 origin_scope_id: None,
             };
-            let index = symbol_table.add(symbol);
+            let index = symbol_table.add_to_table(binder.path, symbol);
             binder.known_values.insert(method.name.span, index);
             index
         };
@@ -2082,7 +2083,7 @@ mod statements {
         owner: SymbolIndex,
         body: Block,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2140,7 +2141,7 @@ mod statements {
                 origin_span: span,
                 origin_scope_id: None,
             };
-            let index = symbol_table.add(symbol);
+            let index = symbol_table.add_to_table(binder.path, symbol);
             binder.known_values.insert(method.name.span, index);
             index
         };
@@ -2205,7 +2206,7 @@ mod statements {
     pub fn bind_type_declaration(
         type_decl: TypeDeclaration,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         ambience: &ModuleAmbience,
     ) -> TypedTypeDeclaration {
@@ -2258,7 +2259,7 @@ mod statements {
     fn bind_while_statement(
         while_statement: WhileStatement,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2288,7 +2289,7 @@ mod statements {
     fn bind_return_statement(
         returnstmnt: ReturnStatement,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2305,7 +2306,7 @@ mod statements {
     pub fn bind_break_statement(
         _break: ast::BreakStatement,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         ambience: &ModuleAmbience,
     ) -> TypedBreakStatement {
@@ -2320,7 +2321,7 @@ mod statements {
     pub fn bind_continue_statement(
         cont: ast::ContinueStatement,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         ambience: &ModuleAmbience,
     ) -> TypedContinueStatement {
@@ -2336,7 +2337,7 @@ mod statements {
     pub fn bind_variable_declaration(
         variable: ast::VariableDeclaration,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2398,7 +2399,7 @@ mod expressions {
     pub fn bind_expression(
         expression: Expression,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2525,7 +2526,7 @@ mod expressions {
     pub fn bind_identifier(
         identifier: Identifier,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         ambience: &ModuleAmbience,
     ) -> TypedIdent {
@@ -2542,7 +2543,7 @@ mod expressions {
     pub fn bind_new_expression(
         new_expr: Box<ast::NewExpr>,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2565,7 +2566,7 @@ mod expressions {
     pub fn this_expression(
         this: ast::ThisExpr,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         ambience: &ModuleAmbience,
     ) -> TypedThisExpr {
@@ -2598,7 +2599,7 @@ mod expressions {
     fn bind_call_expression(
         call: Box<ast::CallExpr>,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2621,7 +2622,7 @@ mod expressions {
     fn function_expression(
         func: FunctionExpr,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2704,7 +2705,7 @@ mod expressions {
     pub fn bind_block(
         block: Block,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2738,7 +2739,7 @@ mod expressions {
     fn binary_expression(
         binexp: Box<ast::BinaryExpr>,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2769,7 +2770,7 @@ mod expressions {
     fn bind_if_expression(
         ifexpr: Box<ast::IfExpression>,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2811,7 +2812,7 @@ mod expressions {
     fn bind_array_expression(
         array: ast::ArrayExpr,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2832,7 +2833,7 @@ mod expressions {
     fn index_expression(
         indexexp: Box<ast::IndexExpr>,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2862,7 +2863,7 @@ mod expressions {
     fn bind_assignment_expression(
         assexp: Box<ast::AssignmentExpr>,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2894,7 +2895,7 @@ mod expressions {
     fn access_expression(
         accessexp: Box<ast::AccessExpr>,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2928,7 +2929,7 @@ mod expressions {
             origin_scope_id: None,
         };
         property_symbol.add_reference(binder.path, property_ident.span);
-        let symbol_idx = symbol_table.add(property_symbol);
+        let symbol_idx = symbol_table.add_to_table(binder.path, property_symbol);
 
         let property = TypedExpression::Identifier(TypedIdent {
             value: symbol_idx,
@@ -2946,7 +2947,7 @@ mod expressions {
     fn bind_unary_expression(
         unaryexp: Box<ast::UnaryExpr>,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2969,7 +2970,7 @@ mod expressions {
     fn bind_logic_expression(
         logicexp: Box<ast::LogicExpr>,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -3000,7 +3001,7 @@ mod expressions {
     fn bind_update_expression(
         updateexp: Box<ast::UpdateExpr>,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -3071,7 +3072,7 @@ mod literals {
 
 /// Types
 mod types {
-    use crate::{EvaluatedType, ParameterType};
+    use crate::{EvaluatedType, IntermediateTypeProperty, ParameterType};
 
     use super::*;
 
@@ -3079,7 +3080,7 @@ mod types {
     pub fn bind_type_expression(
         type_exp: &TypeExpression,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         ambience: &ModuleAmbience,
     ) -> IntermediateType {
@@ -3131,24 +3132,11 @@ mod types {
                 );
                 // Same as in access expressions, properties cannot be bound
                 // until imports are resolved and types are inferred.
-                // So, a placeholder is used.
                 let property_type = match &*member_type.property {
                     TypeExpression::Discrete(discrete_type) => discrete_type,
                     _ => unreachable!("Found and attempted to bind a type property that is not a simple/discrete type. Fix parsing.")
                 };
-                let mut property_symbol = SemanticSymbol {
-                    name: property_type.name.name.to_owned(),
-                    kind: SemanticSymbolKind::Property {
-                        resolved: None,
-                        is_opaque: false,
-                    },
-                    references: vec![],
-                    doc_info: None,
-                    origin_span: property_type.name.span,
-                    origin_scope_id: None,
-                };
-                property_symbol.add_reference(binder.path, property_type.name.span);
-                let property_symbol_idx = symbol_table.add(property_symbol);
+
                 // Collect generics.
                 let mut generic_args = vec![];
                 if let Some(ref arguments) = property_type.generic_args {
@@ -3163,15 +3151,14 @@ mod types {
                     }
                 }
 
-                let final_property_type = IntermediateType::SimpleType {
-                    value: property_symbol_idx,
-                    generic_args: generic_args,
-                    span: property_type.span,
-                };
-
                 IntermediateType::MemberType {
                     object: Box::new(object_type),
-                    property: Box::new(final_property_type),
+                    property: IntermediateTypeProperty {
+                        actual: None,
+                        name: property_type.name.name.to_owned(),
+                        generic_args,
+                        span: property_type.name.span,
+                    },
                     span: member_type.span,
                 }
             }
@@ -3199,7 +3186,7 @@ mod types {
     pub fn bind_discrete_type(
         discrete_type: &ast::DiscreteType,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         ambience: &ModuleAmbience,
     ) -> IntermediateType {
@@ -3233,7 +3220,7 @@ mod types {
     pub fn bind_generic_parameters(
         param_list: Option<&Vec<GenericParameter>>,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         ambience: &ModuleAmbience,
     ) -> Vec<SymbolIndex> {
@@ -3284,7 +3271,7 @@ mod types {
     pub fn bind_generic_parameter_name(
         parameter: &GenericParameter,
         binder: &mut Binder,
-        symbol_table: &mut SymbolTable,
+        symbol_table: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
     ) -> Result<SymbolIndex, SymbolIndex> {
         // Check if a generic parameter with this name already exists in this pool.
@@ -3313,7 +3300,7 @@ mod types {
             origin_span: parameter.span,
             origin_scope_id: None,
         };
-        let index = symbol_table.add(symbol);
+        let index = symbol_table.add_to_table(binder.path, symbol);
         binder.add_generic_parameter(&parameter.name.name, index);
         binder.known_values.insert(parameter.name.span, index);
         Ok(index)

@@ -10,6 +10,7 @@ public use Request.{
     HttpMethod, 
     HttpRequestError,
 };
+public use Response.HttpResponse;
 
 
 model Endpoints {
@@ -76,35 +77,6 @@ public model HttpServer {
     /// Middlewares are executed in the order in which they are registered.
     public function UseMiddleware(middleware: Middleware) {
         this.middleware.Push(middleware)
-    }
-}
-
-/// The headers on a 
-public model ResponseHeaders {
-    public function Set(key: String, value: String) {
-
-    }
-}
-
-
-public model HttpResponse {
-    var status: UnsignedInt;
-    var headers: ResponseHeaders;
-    var data: Maybe<String>;  
-    /// Build a response object from a request.
-    public static function From(request: HttpRequest): This {
-        return Todo();
-    }
-    /// Sets the status code value of the response.
-    public function Status(value: UnsignedInt): &This {
-        this.status = value;
-        return this;
-    }
-    /// Sets the response type to HTML Text.
-    public function Html(string: String): &This {
-        this.headers.Set("Content-Type", "text/html");
-        this.data = Some(string);
-        return this;
     }
 }
 

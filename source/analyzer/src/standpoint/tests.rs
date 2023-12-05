@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 // todo: use virtual fs.
-use crate::{IntrinsicPaths, Module, PathIndex, Standpoint, BASE_CORE_PATH};
+use crate::{Module, PathIndex, Standpoint, CORE_LIBRARY_PATH};
 
 #[test]
 fn bind_variables_and_constants() {
@@ -436,8 +436,47 @@ fn test_variable_binding() {
 }
 
 #[test]
-fn intrinsic() {
-    let mut path_value = PathBuf::from(BASE_CORE_PATH);
-    path_value.push(Standpoint::ARRAY);
-    println!("{:?}", path_value);
+fn testing_the_standard_library() {
+    let time = std::time::Instant::now();
+    let mut standpoint = Standpoint::new(true, Some(PathBuf::from(CORE_LIBRARY_PATH)));
+    standpoint.validate();
+    println!("Built Core in {:?}", time.elapsed());
+    for error in standpoint.errors {
+        let start = error.span().start;
+        let offending_module = standpoint
+            .module_map
+            .get(error.offending_file)
+            .and_then(|module| module.path_buf.to_str());
+        println!(
+            "In Module:\n {:?}:{:?}:{:?} == {:#?}\n\n",
+            offending_module.unwrap(),
+            start[0],
+            start[1],
+            error.error_type
+        );
+    }
+}
+
+#[test]
+fn refreshing() {
+    let mut text = String::from(
+        "
+    module Test;
+
+    public function Main() {
+        
+    }
+    ",
+    );
+    let mut module = Module::from_text(&text);
+    module.module_path = Some(PathBuf::from("testing:://Test.wrl"));
+    let mut standpoint = Standpoint::new(true, Some(PathBuf::from(CORE_LIBRARY_PATH)));
+    let idx = standpoint.add_module(module).unwrap();
+    standpoint.validate();
+    for _ in 0..300 {
+        text.push_str("a");
+        let time = std::time::Instant::now();
+        standpoint.refresh_module(idx, &text);
+        println!("{:?}", time.elapsed())
+    }
 }

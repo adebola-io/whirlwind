@@ -213,6 +213,7 @@ impl DocumentManager {
                             )),
                             None => msgs.inform("The module was not added. Something went wrong."),
                         }
+                        context.validate();
                     }
                     // If module cannot be added, store error in the root file.
                     Err(error) => {
@@ -274,6 +275,7 @@ impl DocumentManager {
                         }
                         Err(error) => context.add_import_error(error),
                     }
+                    context.validate();
                     return msgs;
                 }
             }
@@ -298,23 +300,28 @@ impl DocumentManager {
             // Start at main module.
             if let Some(_) = standpoint.add_module(main_module) {
                 // now add the current module. (if it was not already automatically added.)
-                if !standpoint.contains_file(&path_buf) {
+                let path_idx = if !standpoint.contains_file(&path_buf) {
                     match Module::from_path(path_buf) {
-                        Ok(current_module) => {
-                            if let None = standpoint.add_module(current_module) {
+                        Ok(current_module) => match standpoint.add_module(current_module) {
+                            None => {
                                 log_error!(
-                            msgs,
-                            "Could not add this module to fresh standpoint. Skipping altogether.."
-                        )
+                                msgs,
+                                "Could not add this module to fresh standpoint. Skipping altogether.."
+                                                        )
                             }
-                        }
+                            Some(idx) => idx,
+                        },
                         Err(error) => {
                             msgs.inform(format!("Error creating current module: {error:?}"));
                             standpoints.push(standpoint);
                             return msgs;
                         }
                     }
+                } else {
+                    standpoint.module_map.map_path_to_index(&path_buf).unwrap()
                 };
+                standpoint.validate();
+                standpoint.refresh_module(path_idx, &params.text_document.text);
                 msgs.inform("Module added successfully.");
             } else {
                 // Root not found, skip project altogether.
@@ -554,6 +561,7 @@ impl DocumentManager {
             let path = path.unwrap();
             module.module_path = Some(path);
             standpoint.add_module(module);
+            standpoint.validate();
         };
         msgs
     }
@@ -841,13 +849,10 @@ impl DocumentManager {
 
     /// Returns the last workspace diagnostics report, or computes another one if there was a file change.
     fn get_or_compute_workspace_diagnostics(&self) -> WorkspaceDiagnosticReportResult {
-        let mut standpoints = self.standpoints.lock().unwrap();
+        let standpoints = self.standpoints.lock().unwrap();
         let mut was_updated = self.was_updated.lock().unwrap();
         let mut diagnostic_report = self.diagnostic_report.lock().unwrap();
         if *was_updated {
-            standpoints.iter_mut().for_each(|standpoint| {
-                standpoint.refresh_imports();
-            });
             *diagnostic_report =
                 WorkspaceDiagnosticReportResult::Report(WorkspaceDiagnosticReport {
                     items: match standpoints.first() {
@@ -967,7 +972,7 @@ fn is_valid_complete_target(
 
 /// Returns the symbol that is closest to a completion trigger.
 fn get_closest_symbol<'a>(
-    symboltable: &'a analyzer::SymbolTable,
+    symboltable: &'a analyzer::SymbolLibrary,
     module: &'a TypedModule,
     pos: [u32; 2],
     trigger_is_dot: bool,

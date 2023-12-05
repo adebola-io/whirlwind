@@ -27,11 +27,11 @@ public trait Iteratable<I> {
     public function Next(): Maybe<I>;
     /// Gathers all the items left in the iterator into an array.
     public function Collect(): Array<I> {
-        array := [];
+        // array := Todo();
         // for item in this {
         //     array.Push(item);
         // }
-        array
+        Todo()
     }
     /// Returns an iterator that only yields items that match a predicate.
     /// ### Usage

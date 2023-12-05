@@ -17,7 +17,7 @@ pub struct ScopeId(pub u32);
 
 /// An index into the symbol table.
 #[derive(Debug, PartialEq, Clone, Copy, Eq, Hash)]
-pub struct SymbolIndex(pub usize);
+pub struct SymbolIndex(pub PathIndex, pub u32);
 
 /// A symbol in the context of a fully resolved program.
 #[derive(Debug)]
@@ -191,6 +191,14 @@ impl SemanticSymbolKind {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub struct IntermediateTypeProperty {
+    pub actual: Option<SymbolIndex>,
+    pub name: String,
+    pub generic_args: Vec<IntermediateType>,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum IntermediateType {
     FunctionType {
         params: Vec<ParameterType>,
@@ -199,7 +207,7 @@ pub enum IntermediateType {
     },
     MemberType {
         object: Box<IntermediateType>,
-        property: Box<IntermediateType>,
+        property: IntermediateTypeProperty,
         span: Span,
     },
     SimpleType {

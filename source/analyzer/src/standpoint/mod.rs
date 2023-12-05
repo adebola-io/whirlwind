@@ -5,7 +5,7 @@ use super::{symbols::*, ProgramError};
 use crate::{
     bind, typecheck, CurrentModuleType, IntrinsicPaths, LiteralMap, Module, ModuleMap, PathIndex,
     ProgramErrorType::{self, Importing},
-    SymbolTable, TypedModule, BASE_CORE_PATH, PRELUDE_PATH,
+    SurfaceAreaCalculator, SymbolLibrary, TypedModule, BASE_CORE_PATH, PRELUDE_PATH,
 };
 use ast::UseTarget;
 use std::{
@@ -21,7 +21,7 @@ pub struct Standpoint {
     pub root_folder: Option<PathBuf>,
     pub entry_module: PathIndex,
     pub directories: HashMap<PathBuf, HashMap<String, PathIndex>>,
-    pub symbol_table: SymbolTable,
+    pub symbol_table: SymbolLibrary,
     pub literals: LiteralMap,
     pub errors: Vec<ProgramError>,
     /// This flag permits the standpoint to update itself automatically
@@ -49,7 +49,7 @@ impl Standpoint {
             module_map: ModuleMap::new(),
             entry_module: PathIndex(0),
             directories: HashMap::new(),
-            symbol_table: SymbolTable::new(),
+            symbol_table: SymbolLibrary::new(),
             literals: LiteralMap::new(),
             errors: vec![],
             root_folder: None,
@@ -158,11 +158,28 @@ impl Standpoint {
         self.entry_module = self.add_module(Module::from_path(entry_path).ok()?)?;
         Some(())
     }
+    /// The validate method is responsible for assessing all imports in the standpoint
+    /// and building type information for every module in the program.
+    pub fn validate(&mut self) {
+        self.errors.retain(|error| {
+            !matches!(
+                error.error_type,
+                ProgramErrorType::Typing(_) | ProgramErrorType::Importing(_)
+            )
+        });
+        self.resolve_imports();
+        self.check_all_modules();
+    }
 }
 
+/// The point of having two separate phases for resolution
+/// is to deal with cyclic use statements.
 #[derive(Clone, Copy)]
 pub enum ResolutionPhase {
+    /// A half check for imports. It does not produce any errors.
     Discovery,
+    /// It should happen after discovery. It checks that all the imports
+    /// expected have been added, and produces errors otherwise.
     Assessment,
 }
 
@@ -176,31 +193,26 @@ impl ResolutionPhase {
 // IMPORT OPERATIONS
 impl Standpoint {
     // Resolve the imports of a module given its path index.
-    pub fn resolve_imports_of(
-        &self,
-        root_path_idx: PathIndex,
-        phase: ResolutionPhase,
-    ) -> Result<(), String> {
+    pub fn analyze_imports(&self, root_path_idx: PathIndex, phase: ResolutionPhase) {
         // The module requesting imports.
         let base_module = match self.module_map.get(root_path_idx) {
             Some(module) => module,
-            None => return Err("Could not get base module".to_owned()),
+            None => return,
         };
         let parent_dir = match get_parent_dir(&base_module.path_buf) {
             Some(dir) => dir,
-            None => return Err("Could not get parent directory".to_owned()),
+            None => return,
         }
         .to_path_buf();
-        // Please ignore the next two lines...
+        // Please ignore the next two lines. They are symptoms of a skill issue.
         #[allow(mutable_transmutes)]
         let this = unsafe { std::mem::transmute::<&Standpoint, &mut Standpoint>(self) };
         // Find the modules to import.
         // todo: solve import graphs in parallel.
         // todo: reduce cloning.
         for (target, leaves) in &base_module.imports {
-            this.resolve_import_target(&parent_dir, target, root_path_idx, leaves, phase)?;
+            this.resolve_import_target(&parent_dir, target, root_path_idx, leaves, phase);
         }
-        Ok(())
     }
 
     /// Resolve an import target.
@@ -211,7 +223,7 @@ impl Standpoint {
         root: PathIndex,
         leaves: &[SymbolIndex],
         phase: ResolutionPhase,
-    ) -> Result<(), String> {
+    ) {
         let path_index =
             match self.get_or_create_module_in_dir(parent_dir, &target.name.name, phase) {
                 Some(path_index) => path_index,
@@ -226,7 +238,7 @@ impl Standpoint {
                             )),
                         });
                     }
-                    return Ok(()); // todo: fuzzy search suggestions.
+                    return; // todo: fuzzy search suggestions.
                 }
             };
         // Block self referential imports.
@@ -237,18 +249,18 @@ impl Standpoint {
                     error_type: Importing(errors::self_import(target)),
                 });
             }
-            return Ok(());
+            return;
         }
         let imported_module = match self.module_map.get(path_index) {
             Some(imp_module) => imp_module,
-            None => return Err("Could not get imported module.".to_owned()),
+            None => return,
         };
         let index = imported_module.symbol_idx;
         let solved_import_sources = self.solve_import_symbols(&target, leaves, index, root, phase);
         for (initial, solved) in solved_import_sources {
             let import_symbol = match self.symbol_table.get_mut(initial) {
                 Some(symbol) => symbol,
-                None => return Err(format!("Tried to get an import index that does not exist.")),
+                None => return,
             };
             let mut import_references;
             match &mut import_symbol.kind {
@@ -257,23 +269,18 @@ impl Standpoint {
                     import_references = import_symbol.references.clone();
                 }
                 _ => {
-                    return Err(format!(
-                        "An import symbol is bound incorrectly. Fix binding."
-                    ))
+                    return;
                 }
             }
             // Join references.
             if let Some(solved) = solved {
                 let source_symbol = match self.symbol_table.get_mut(solved) {
                     Some(symbol) => symbol,
-                    None => {
-                        return Err(format!("Tried to get a solved index that does not exist."))
-                    }
+                    None => return,
                 };
                 source_symbol.references.append(&mut import_references);
             }
         }
-        return Ok(());
     }
 
     /// Solve import symbols recursively.
@@ -448,6 +455,24 @@ impl Standpoint {
             error_type: Importing(error),
         })
     }
+
+    /// Resolves all imports in the standpoint, and produces errors
+    /// for unresolvable items.
+    pub fn resolve_imports(&mut self) {
+        for (idx, _) in self.module_map.paths() {
+            // Remove all stale errors.
+            let mut i = 0;
+            while i < self.errors.len() {
+                let error = &self.errors[i];
+                let should_remove = error.offending_file == idx;
+                if should_remove {
+                    self.errors.swap_remove(i);
+                }
+                i += 1;
+            }
+            self.analyze_imports(idx, ResolutionPhase::Assessment);
+        }
+    }
 }
 
 // MODULE OPERATIONS
@@ -563,10 +588,7 @@ impl Standpoint {
 
         // Get just added module and resolve imports.
         if self.auto_update {
-            self.resolve_imports_of(path_idx, ResolutionPhase::Discovery)
-                .unwrap();
-            self.resolve_imports_of(path_idx, ResolutionPhase::Assessment)
-                .unwrap();
+            self.analyze_imports(path_idx, ResolutionPhase::Discovery);
         }
 
         Some(path_idx)
@@ -574,10 +596,11 @@ impl Standpoint {
 
     /// Removes the module with a particlar index and all its related characteristics.
     pub fn remove_module(&mut self, path_idx: PathIndex) -> Option<TypedModule> {
-        let stale_module = self.module_map.remove(path_idx)?;
+        let stale_module = self.module_map.get(path_idx)?;
+        let area = SurfaceAreaCalculator::gather_from_module(stale_module, self);
         let module_symbol_idx = stale_module.symbol_idx;
-        let module_symbol = self.symbol_table.remove(module_symbol_idx)?;
-        let module_name = module_symbol.name;
+        let module_symbol = self.symbol_table.get(module_symbol_idx)?;
+        let module_name = module_symbol.name.clone();
         let literals_to_remove = self
             .literals
             .literals()
@@ -592,105 +615,48 @@ impl Standpoint {
                 return None;
             })
             .collect::<Vec<_>>();
-        let mut symbols_to_prune = vec![];
-        let mut other_affected_modules = vec![];
-        let symbols_to_remove = self
-            .symbol_table
-            .symbols()
-            .filter_map(|(idx, symbol)| {
-                // Symbol is declared in this module.
-                if symbol.was_declared_in(path_idx) {
-                    symbol.references.iter().skip(1).for_each(|referencelist| {
-                        other_affected_modules.push(referencelist.module_path);
-                    });
-                    return Some(idx);
-                }
-                // Symbol is referenced in the symbol.
-                if symbol
-                    .references
-                    .iter()
-                    .skip(1)
-                    .find(|reference| reference.module_path == path_idx)
-                    .is_some()
-                {
-                    symbols_to_prune.push(idx);
-                    return None;
-                }
-                return None;
-            })
-            .collect::<Vec<_>>();
-        for symbol_idx in symbols_to_remove {
-            self.symbol_table.remove(symbol_idx);
-        }
+        // let symbols_to_remove = self
+        //     .symbol_table
+        //     .symbols()
+        //     .filter_map(|(idx, symbol)| {
+        //         // Symbol is declared in this module.
+        //         if symbol.was_declared_in(path_idx) {
+        //             symbol.references.iter().skip(1).for_each(|referencelist| {
+        //                 other_affected_modules.push(referencelist.module_path);
+        //             });
+        //             return Some(idx);
+        //         }
+        //         return None;
+        //     })
+        //     .collect::<Vec<_>>();
+        self.symbol_table.remove_module_table(path_idx);
         for literal_idx in literals_to_remove {
             self.literals.remove(literal_idx);
         }
-        for symbol_idx in symbols_to_prune {
+        for symbol_idx in area.outer_symbols {
             if let Some(symbol) = self.symbol_table.get_mut(symbol_idx) {
                 symbol
                     .references
                     .retain(|reference| reference.module_path != path_idx);
             }
         }
-        // delete stale errors.
-        let mut i = 0;
-        while i < self.errors.len() {
-            let error = &self.errors[i];
-            let should_remove = error.offending_file == path_idx;
-            if should_remove {
-                self.errors.swap_remove(i);
-            }
-            i += 1;
-        }
-        // recheck dependent modules.
-        for module_idx in other_affected_modules {
-            self.resolve_imports_of(module_idx, ResolutionPhase::Assessment)
-                .ok();
-        }
+        self.errors.retain(|error| error.offending_file != path_idx);
         let parent_directory = get_parent_dir(&stale_module.path_buf)?;
         let dir_map = self.directories.get_mut(parent_directory)?;
         dir_map.remove(&module_name);
         if dir_map.is_empty() {
             self.directories.remove(parent_directory);
         }
-        Some(stale_module)
-    }
-
-    /// Refreshes all import resolutions in the entire standpoint.
-    pub fn refresh_imports(&mut self) {
-        let all_paths = self
-            .module_map
-            .paths()
-            .map(|(idx, _)| idx)
-            .collect::<Vec<_>>();
-        for idx in all_paths {
-            // Remove all stale errors.
-            let mut i = 0;
-            while i < self.errors.len() {
-                let error = &self.errors[i];
-                let should_remove = error.offending_file == idx;
-                if should_remove {
-                    self.errors.swap_remove(i);
-                }
-                i += 1;
-            }
-            self.resolve_imports_of(idx, ResolutionPhase::Assessment)
-                .unwrap();
-        }
+        self.module_map.remove(path_idx)
     }
 
     /// Changes the content of a single module and updates the entire standpoint accordingly.
-    pub fn refresh_module(
-        &mut self,
-        path_idx: PathIndex,
-        text: &String,
-    ) -> Option<StandpointStatus> {
-        let path = self.module_map.get(path_idx)?.path_buf.clone();
-        self.remove_module(path_idx);
+    pub fn refresh_module(&mut self, path_idx: PathIndex, text: &str) -> Option<StandpointStatus> {
+        let module = self.remove_module(path_idx)?;
 
         // Add updated module.
         let mut update = Module::from_text(&text);
-        update.module_path = Some(path.clone());
+        update.module_path = Some(module.path_buf);
         let new_path_idx = self.add_module(update)?;
         // if it was the Core library that was updated:
         if self
@@ -699,9 +665,6 @@ impl Standpoint {
         {
             self.corelib_path = Some(new_path_idx);
         }
-
-        // // todo: find more performant ways to implement this.
-        // Update all modules.
         self.check_module(path_idx);
         Some(StandpointStatus::RefreshSuccessful)
     }
@@ -780,16 +743,6 @@ impl Standpoint {
     /// Runs the typechecker on a module.
     pub fn check_module(&mut self, module_path_idx: PathIndex) -> Option<()> {
         let module = self.module_map.get_mut(module_path_idx)?;
-        let mut i = 0;
-        while i < self.errors.len() {
-            let error = &self.errors[i];
-            let should_remove = error.offending_file == module_path_idx
-                && matches!(error.error_type, ProgramErrorType::Typing(_));
-            if should_remove {
-                self.errors.swap_remove(i);
-            }
-            i += 1;
-        }
         typecheck(
             module,
             &mut self.symbol_table,
@@ -797,5 +750,17 @@ impl Standpoint {
             &self.literals,
         );
         Some(())
+    }
+
+    /// Runs the typechecker on every module in the standpoint.
+    pub fn check_all_modules(&mut self) {
+        for (_, mut module) in self.module_map.paths_mut() {
+            typecheck(
+                &mut module,
+                &mut self.symbol_table,
+                &mut self.errors,
+                &self.literals,
+            );
+        }
     }
 }

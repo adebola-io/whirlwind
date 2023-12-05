@@ -1,6 +1,6 @@
 use super::LiteralIndex;
 use crate::{
-    EvaluatedType, IntermediateType, Literal, LiteralMap, SymbolIndex, SymbolTable, TypedBlock,
+    EvaluatedType, IntermediateType, Literal, LiteralMap, SymbolIndex, SymbolLibrary, TypedBlock,
 };
 use ast::{AssignOperator, BinOperator, LogicOperator, Span, UnaryOperator, UpdateOperator};
 
@@ -153,7 +153,7 @@ pub struct TypedAssignmentExpr {
 
 pub fn span_of_typed_expression(
     expression: &TypedExpression,
-    symboltable: &SymbolTable,
+    symboltable: &SymbolLibrary,
     literals: &LiteralMap,
 ) -> Span {
     match expression {

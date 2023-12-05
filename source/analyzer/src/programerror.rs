@@ -8,6 +8,19 @@ pub struct ProgramError {
 }
 
 impl ProgramError {
+    pub fn span(&self) -> ast::Span {
+        match &self.error_type {
+            ProgramErrorType::Lexical(le) => match le.position {
+                errors::LexErrorPos::Point(point) => ast::Span::at(point),
+                errors::LexErrorPos::Span(span) => span,
+            },
+            ProgramErrorType::Syntax(syntax) => syntax.span,
+            ProgramErrorType::Context(ctx) => ctx.span,
+            ProgramErrorType::Importing(import) => import.span.unwrap_or_default(),
+            ProgramErrorType::Typing(typing) => typing.span,
+        }
+    }
+
     pub fn contextual(offending_file: PathIndex, error: ContextError) -> Self {
         ProgramError {
             offending_file,

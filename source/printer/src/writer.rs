@@ -1,8 +1,8 @@
 use std::cell::RefCell;
 
 use analyzer::{
-    EvaluatedType, IntermediateType, ParameterType, SemanticSymbolKind, Standpoint, SymbolIndex,
-    VariablePatternForm,
+    EvaluatedType, IntermediateType, IntermediateTypeProperty, ParameterType, SemanticSymbolKind,
+    Standpoint, SymbolIndex, VariablePatternForm,
 };
 
 pub struct SymbolWriter<'a> {
@@ -429,10 +429,26 @@ impl<'a> SymbolWriter<'a> {
                 format!(
                     "{}.{}",
                     self.print_intermediate_type(object),
-                    self.print_intermediate_type(property)
+                    self.print_intermediate_type_property(property)
                 )
             }
         }
+    }
+
+    pub fn print_intermediate_type_property(&self, prop: &IntermediateTypeProperty) -> String {
+        let mut string = prop.name.clone();
+        let generic_args = &prop.generic_args;
+        if generic_args.len() > 0 {
+            string.push('<');
+            for (index, genarg) in generic_args.iter().enumerate() {
+                string.push_str(&self.print_intermediate_type(genarg));
+                if index + 1 < generic_args.len() {
+                    string.push_str(", ")
+                }
+            }
+            string.push('>');
+        }
+        string
     }
 
     pub fn print_parameter_type(&self, param: &ParameterType) -> String {

@@ -2,7 +2,7 @@ use crate::{
     unify_generic_arguments, unify_types,
     utils::{get_method_types_from_symbol, get_trait_types_from_symbol},
     IntermediateType, ParameterType, PathIndex, ProgramError, SemanticSymbolKind, SymbolIndex,
-    SymbolTable, TypecheckerContext, UnifyOptions,
+    SymbolLibrary, TypecheckerContext, UnifyOptions,
 };
 use ast::Span;
 use errors::{
@@ -310,7 +310,7 @@ impl EvaluatedType {
 /// Converts an intermediate type into an evaluation.
 pub fn evaluate(
     typ: &IntermediateType,
-    symboltable: &SymbolTable,
+    symboltable: &SymbolLibrary,
     // A map of the solutions for previously encountered generic types.
     solved_generics: Option<&Vec<(SymbolIndex, EvaluatedType)>>,
     // Error store from the standpoint, if it exists.
@@ -318,7 +318,7 @@ pub fn evaluate(
     // A value that safe guards against infinitely recursive union types, or indirect recursion in type aliases.
     mut recursion_depth: u64,
 ) -> EvaluatedType {
-    if recursion_depth == 2000 {
+    if recursion_depth == 500 {
         return EvaluatedType::Never;
     } else {
         recursion_depth += 1;
@@ -639,7 +639,7 @@ fn generate_generics_from_arguments(
     mut error_tracker: &mut Option<(&mut Vec<ProgramError>, PathIndex)>,
     typ: &crate::SemanticSymbol,
     span: &Span,
-    symboltable: &SymbolTable,
+    symboltable: &SymbolLibrary,
     solved_generics: Option<&Vec<(SymbolIndex, EvaluatedType)>>,
 ) -> Vec<(SymbolIndex, EvaluatedType)> {
     if generic_args.len() > 0 && generic_params.len() == 0 {
@@ -732,7 +732,7 @@ fn add_error_if_possible(
 /// Converts a set of parameter indexes into their correct inferred type.
 pub fn evaluate_parameter_idxs(
     params: &Vec<SymbolIndex>,
-    symboltable: &SymbolTable,
+    symboltable: &SymbolLibrary,
     generic_arguments: Vec<(SymbolIndex, EvaluatedType)>,
     checker_ctx: &mut TypecheckerContext<'_>,
 ) -> Vec<(SymbolIndex, EvaluatedType)> {

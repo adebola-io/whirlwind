@@ -17,7 +17,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// ```
     /// ```
     public function Iter(): ArrayRefIter<T> {
-        new ArrayRefIter(&this)
+        new ArrayRefIter(this)
     }
     /// Returns the item at a particular index in the array, if it exists.
     /// Indexes are zero-based, meaning that the first item is at index 0.
@@ -148,6 +148,10 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     public function Shift(): Maybe<T> {
         Todo()
     }
+    /// Returns a reference to the last item in the array.
+    public function Last(): Maybe<&T> {
+        Todo()
+    }
     /// Converts an array to a string representation,
     /// given that its elements implement `Display`.
     /// ### Usage
@@ -211,9 +215,9 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
 /// An owned iterator built from the elements of an array.
 /// ## Usage
 public model ArrayIter<T> implements Iteratable<T> {
-    var array: Array<T>;
+    var array: &Array<T>;
     var idx: UnsignedInt;
-    new(array: Array<T>) {
+    new(array: &Array<T>) {
         this.array = array;
         this.idx = 0;
     }

@@ -17,7 +17,7 @@ test "Testing types." {
     swapped := tuple.Swap();
     Assert(tuple.Swap()).Equals(swapped);
     Assert(Swap(tuple)).Equals(tuple.Swap());
-
+ 
     // Coercion.
     stringItself := Identity("String"); // Should have type String.
     maybe := Err(true);
@@ -92,7 +92,6 @@ test "Testing types." {
     strArray := ["hello", "world"];
     strArrayHasHello := strArray.Iter().Any(fn(element) element == "hello");
     functor: fn(): fn(value: String): String := fn() fn(value) value.ToStr();
-
     // Auto inferred generics.
     arr := [];
     arr = ["Hello", "world"]; // arr should infer type Array<String>

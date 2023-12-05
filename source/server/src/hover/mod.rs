@@ -847,7 +847,21 @@ impl HoverFinder<'_> {
                 // Hovering over the namespace.
                 maybe!(self.type_hover(&object));
                 // Hovering over the property.
-                maybe!(self.type_hover(&property));
+                if property.span.contains(self.pos) {
+                    if let Some(origin) = property.actual {
+                        self.message_store
+                            .borrow_mut()
+                            .inform("Hovering over a type (property).");
+                        return Some(HoverInfo::from((self.standpoint, origin)));
+                    }
+                    return Some(HoverInfo::from_str(&format!(
+                        "(property) {}: {{unknown}}",
+                        property.name
+                    )));
+                }
+                for typ in &property.generic_args {
+                    maybe!(self.type_hover(typ))
+                }
             }
         }
         return None;

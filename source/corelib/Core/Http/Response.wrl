@@ -1,21 +1,30 @@
 module Response;
 use Request.HttpRequest;
 
+/// The headers on a 
+public model ResponseHeaders {
+    public function Set(key: String, value: String) {
+
+    }
+}
+
 public model HttpResponse {
     var status: UnsignedInt;
+    var headers: ResponseHeaders;
+    var data: String;
     /// Build a response object from a request.
-    public static function From(request: HttpRequest): This {
+    public static function From(request: &HttpRequest): This {
         return Todo();
     }
     /// Sets the status code value of the response.
-    function Status(value: UnsignedInt): &This {
+    public function Status(value: UnsignedInt): &This {
         this.status = value;
-        return &this;
+        return this;
     }
     /// Sets the response type to HTML Text.
-    function Html(string: String): &This {
+    public function Html(string: String): &This {
         this.headers.Set("Content-Type", "text/html");
         this.data = string;
-        return &this;
+        return this;
     }
 }

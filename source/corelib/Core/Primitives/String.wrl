@@ -18,7 +18,7 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
         return Invoke(Injunction.NextChar(this));
     }
     public function [Display.ToStr](): String {
-        return this;
+        return this + "";
     }
     /// Adds two strings together.
     /// ## Usage
@@ -108,7 +108,7 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     /// }
     /// ```
     public function Chars(): Chars {
-        return new Chars(&this);
+        return new Chars(this);
     }
     /// Empties the string of its characters.
     /// ## Usage

@@ -4,7 +4,7 @@ use Super.Prelude.{Todo, String, Bool, Maybe, UnsignedInt, Outcome, Display};
 use Super.Memory.Buffer;
 use Super.Collections.HashMap;
 use Super.Io.IoError;
-use Http.HttpResponse;
+use Response.HttpResponse;
 
 public enum HttpMethod {
     Get,

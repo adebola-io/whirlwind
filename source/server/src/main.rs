@@ -5,7 +5,7 @@ mod error;
 mod hover;
 mod message_store;
 
-use analyzer::{typecheck, Module, Standpoint, CORE_LIBRARY_PATH};
+use analyzer::{Module, Standpoint, CORE_LIBRARY_PATH};
 use document_manager::{uri_to_absolute_path, DocumentManager};
 use message_store::MessageStore;
 use std::path::PathBuf;
@@ -41,7 +41,7 @@ impl LanguageServer for Backend {
                 let root_folder_path = unwrap_or_continue!(uri_to_absolute_path(folder.uri).ok());
                 let children = unwrap_or_continue!(root_folder_path.read_dir().ok())
                     .filter_map(|entry| entry.ok());
-                for entry in children {
+                children.for_each(|entry| {
                     let file_path = entry.path();
                     if file_path.is_file()
                         && file_path
@@ -51,21 +51,13 @@ impl LanguageServer for Backend {
                             .is_some_and(|is_wrl_file| is_wrl_file)
                     {
                         if !standpoint.contains_file(&file_path) {
-                            let module = unwrap_or_continue!(Module::from_path(file_path).ok());
-                            standpoint.add_module(module);
+                            Module::from_path(file_path)
+                                .ok()
+                                .and_then(|module| standpoint.add_module(module));
                         }
                     }
-                }
-                // Typecheck every module in the program.
-                let module_map = &mut standpoint.module_map;
-                for (_, mut module) in module_map.paths_mut() {
-                    typecheck(
-                        &mut module,
-                        &mut standpoint.symbol_table,
-                        &mut standpoint.errors,
-                        &standpoint.literals,
-                    );
-                }
+                });
+                standpoint.validate();
             }
             standpoints.push(standpoint);
         }
