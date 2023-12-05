@@ -87,20 +87,20 @@ impl<'a> TypecheckerContext<'a> {
     pub fn tracker(&mut self) -> Option<(&mut Vec<ProgramError>, PathIndex)> {
         Some((self.errors, self.path_idx))
     }
-    /// Calculates the span of a typed expression using the symboltable and the list of literals.
-    fn span_of_expr(&self, expression: &TypedExpression, symboltable: &SymbolLibrary) -> Span {
-        span_of_typed_expression(expression, symboltable, self.literals)
+    /// Calculates the span of a typed expression using the symbollib and the list of literals.
+    fn span_of_expr(&self, expression: &TypedExpression, symbollib: &SymbolLibrary) -> Span {
+        span_of_typed_expression(expression, symbollib, self.literals)
     }
-    /// Calculates the span of a statement using the symboltable and the list of literals.
-    fn span_of_stmnt(&self, s: &TypedStmnt, symboltable: &mut SymbolLibrary) -> Span {
-        span_of_typed_statement(s, symboltable, self.literals)
+    /// Calculates the span of a statement using the symbollib and the list of literals.
+    fn span_of_stmnt(&self, s: &TypedStmnt, symbollib: &mut SymbolLibrary) -> Span {
+        span_of_typed_statement(s, symbollib, self.literals)
     }
 }
 
 /// Typechecks a module.
 pub fn typecheck(
     module: &mut TypedModule,
-    symboltable: &mut SymbolLibrary,
+    symbollib: &mut SymbolLibrary,
     errors: &mut Vec<ProgramError>,
     literals: &LiteralMap,
 ) {
@@ -114,10 +114,10 @@ pub fn typecheck(
         literals,
     };
     for statement in &mut module.statements {
-        statements::typecheck_statement(statement, &mut checker_ctx, symboltable);
+        statements::typecheck_statement(statement, &mut checker_ctx, symbollib);
     }
     // Block uninferrable generics and unknowns at the end.
-    for symbol in symboltable.in_module(module.path_idx) {
+    for symbol in symbollib.in_module(module.path_idx) {
         if let SemanticSymbolKind::Variable { inferred_type, .. } = &symbol.kind {
             if inferred_type.contains_child_for_which(&|child| {
                 matches!(
@@ -149,48 +149,44 @@ mod statements {
     pub fn typecheck_statement(
         statement: &mut TypedStmnt,
         checker_ctx: &mut TypecheckerContext,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
     ) {
         match statement {
             // TypedStmnt::RecordDeclaration => todo!(),
             TypedStmnt::TestDeclaration(test) => {
                 push_scopetype(checker_ctx, ScopeType::Other);
-                typecheck_block(&mut test.body, false, checker_ctx, symboltable);
+                typecheck_block(&mut test.body, false, checker_ctx, symbollib);
                 pop_scopetype(checker_ctx);
             }
             // TypedStmnt::EnumDeclaration(_) => todo!(),
             TypedStmnt::VariableDeclaration(variable) => {
-                typecheck_variable_declaration(variable, checker_ctx, symboltable)
+                typecheck_variable_declaration(variable, checker_ctx, symbollib)
             }
             TypedStmnt::ShorthandVariableDeclaration(shorthand_variable) => {
-                typecheck_shorthand_variable_declaration(
-                    shorthand_variable,
-                    checker_ctx,
-                    symboltable,
-                )
+                typecheck_shorthand_variable_declaration(shorthand_variable, checker_ctx, symbollib)
             }
             // TypedStmnt::ConstantDeclaration(_) => todo!(),
             // TypedStmnt::TypeDeclaration(_) => todo!(),
             // TypedStmnt::ModelDeclaration(_) => todo!(),
             // TypedStmnt::ModuleDeclaration(_) => todo!(),
             TypedStmnt::FunctionDeclaration(function) => {
-                typecheck_function(function, checker_ctx, symboltable)
+                typecheck_function(function, checker_ctx, symbollib)
             }
             // TypedStmnt::TraitDeclaration(_) => todo!(),
             TypedStmnt::ExpressionStatement(expression)
             | TypedStmnt::FreeExpression(expression) => {
-                expressions::typecheck_expression(expression, checker_ctx, symboltable);
+                expressions::typecheck_expression(expression, checker_ctx, symbollib);
             }
             TypedStmnt::ReturnStatement(retstat) => {
-                typecheck_return_statement(retstat, checker_ctx, symboltable);
+                typecheck_return_statement(retstat, checker_ctx, symbollib);
             }
             // TypedStmnt::BreakStatement(_) => todo!(),
             // TypedStmnt::ForStatement(_) => todo!(),
             TypedStmnt::WhileStatement(whil) => {
-                typecheck_while_statement(whil, checker_ctx, symboltable)
+                typecheck_while_statement(whil, checker_ctx, symbollib)
             }
             TypedStmnt::ModelDeclaration(model) => {
-                typecheck_model_declaration(model, checker_ctx, symboltable)
+                typecheck_model_declaration(model, checker_ctx, symbollib)
             }
             _ => {}
         }
@@ -200,9 +196,9 @@ mod statements {
     fn typecheck_model_declaration(
         model: &mut TypedModelDeclaration,
         checker_ctx: &mut TypecheckerContext,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
     ) {
-        let model_symbol = symboltable.get(model.name);
+        let model_symbol = symbollib.get(model.name);
         if model_symbol.is_none() {
             return;
         }
@@ -218,7 +214,7 @@ mod statements {
             // this.b = someValue;
             // answer: All instances of the attribute are recorded and tracked. If the first instance is not an assignment, error.
             // NOTE: if the type of the attribute implements Default, then this check is not needed.
-            let model_symbol = symboltable.get(model.name).unwrap();
+            let model_symbol = symbollib.get(model.name).unwrap();
             let attribute_idxs =
                 if let SemanticSymbolKind::Model { attributes, .. } = &model_symbol.kind {
                     attributes
@@ -243,19 +239,19 @@ mod statements {
                     is_named: true,
                     return_type: EvaluatedType::Void,
                 });
-            let block_type = typecheck_block(constructor, true, checker_ctx, symboltable);
+            let block_type = typecheck_block(constructor, true, checker_ctx, symbollib);
             if !block_type.is_void() && !block_type.is_never() {
                 let span = constructor
                     .statements
                     .last()
-                    .map(|statement| checker_ctx.span_of_stmnt(statement, symboltable))
+                    .map(|statement| checker_ctx.span_of_stmnt(statement, symbollib))
                     .unwrap_or_else(|| constructor.span);
                 checker_ctx.add_error(errors::return_from_constructor(span));
             }
             checker_ctx.current_function_context.pop();
             let constructor_context = checker_ctx.current_constructor_context.pop().unwrap();
             for (attribute_idx, assignments) in constructor_context.attributes {
-                let attribute_symbol = symboltable.get(attribute_idx);
+                let attribute_symbol = symbollib.get(attribute_idx);
                 if attribute_symbol.is_none() {
                     continue;
                 }
@@ -288,22 +284,18 @@ mod statements {
                     let inferred_type = match &attribute_symbol.kind {
                         SemanticSymbolKind::Attribute { declared_type, .. } => evaluate(
                             declared_type,
-                            symboltable,
+                            symbollib,
                             None,
                             &mut checker_ctx.tracker(),
                             0,
                         ),
                         _ => EvaluatedType::Unknown,
                     };
-                    let default_symbol = symboltable.default;
+                    let default_symbol = symbollib.default;
                     // Type implements Default, so carry on.
                     if default_symbol.is_some() {
-                        if get_implementation_of(
-                            default_symbol.unwrap(),
-                            &inferred_type,
-                            symboltable,
-                        )
-                        .is_some()
+                        if get_implementation_of(default_symbol.unwrap(), &inferred_type, symbollib)
+                            .is_some()
                         {
                             should_error = false;
                         }
@@ -332,7 +324,7 @@ mod statements {
                 crate::TypedModelPropertyType::TypedAttribute => {
                     // Only thing to do is check that the type is valid,
                     // and calculate the size.
-                    let attribute_symbol = symboltable.get(property.name);
+                    let attribute_symbol = symbollib.get(property.name);
                     if attribute_symbol.is_none() {
                         continue;
                     }
@@ -341,7 +333,7 @@ mod statements {
                         SemanticSymbolKind::Attribute { declared_type, .. } => declared_type,
                         _ => continue,
                     };
-                    let inferred_type = evaluate(declared_type, symboltable, None, &mut None, 0);
+                    let inferred_type = evaluate(declared_type, symbollib, None, &mut None, 0);
                     let size_of_attribute = get_size_of_type(inferred_type, model.name);
                     _model_size += match size_of_attribute {
                         Ok(size) => size,
@@ -357,7 +349,7 @@ mod statements {
                 // todo: compare with trait definition.
                 crate::TypedModelPropertyType::TypedMethod { body }
                 | crate::TypedModelPropertyType::TraitImpl { body, .. } => {
-                    let symbol = match symboltable.get_forwarded(property.name) {
+                    let symbol = match symbollib.get_forwarded(property.name) {
                         Some(symbol) => symbol,
                         None => continue,
                     };
@@ -375,7 +367,7 @@ mod statements {
                             let generic_arguments = evaluate_generic_params(generic_params, true);
                             let evaluated_param_types = evaluate_parameter_idxs(
                                 params,
-                                symboltable,
+                                symbollib,
                                 generic_arguments,
                                 checker_ctx,
                             );
@@ -386,7 +378,7 @@ mod statements {
                                     .map(|typ| {
                                         evaluate(
                                             typ,
-                                            &symboltable,
+                                            &symbollib,
                                             None,
                                             &mut checker_ctx.tracker(),
                                             0,
@@ -400,7 +392,7 @@ mod statements {
                         };
                     validate_return_type_and_params(
                         &return_type,
-                        symboltable,
+                        symbollib,
                         checker_ctx,
                         return_type_span,
                         evaluated_param_types,
@@ -409,7 +401,7 @@ mod statements {
                         checker_ctx,
                         return_type,
                         body,
-                        symboltable,
+                        symbollib,
                         return_type_span,
                     );
                     checker_ctx.current_function_is_static = former_is_static;
@@ -424,7 +416,7 @@ mod statements {
         checker_ctx: &mut TypecheckerContext<'_>,
         return_type: EvaluatedType,
         body: &mut TypedBlock,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
         return_type_span: Option<Span>,
     ) {
         checker_ctx
@@ -435,7 +427,7 @@ mod statements {
             });
         push_scopetype(checker_ctx, ScopeType::Other);
         let mut block_return_type =
-            expressions::typecheck_block(body, true, checker_ctx, symboltable);
+            expressions::typecheck_block(body, true, checker_ctx, symbollib);
         pop_scopetype(checker_ctx);
         if !block_return_type.is_generic() {
             block_return_type = coerce_all_generics(&block_return_type, EvaluatedType::Never);
@@ -453,14 +445,14 @@ mod statements {
         if let Err(typeerrortype) = unify_types(
             &return_type,
             &block_return_type,
-            &symboltable,
+            &symbollib,
             UnifyOptions::Return,
             None,
         ) {
             let span = body
                 .statements
                 .last()
-                .map(|s| checker_ctx.span_of_stmnt(s, symboltable))
+                .map(|s| checker_ctx.span_of_stmnt(s, symbollib))
                 .or(return_type_span)
                 .unwrap_or_else(|| body.span);
             for errortype in typeerrortype {
@@ -471,8 +463,8 @@ mod statements {
             }
             checker_ctx.add_error(TypeError {
                 _type: TypeErrorType::MismatchedReturnType {
-                    found: symboltable.format_evaluated_type(&block_return_type),
-                    expected: symboltable.format_evaluated_type(&return_type),
+                    found: symbollib.format_evaluated_type(&block_return_type),
+                    expected: symbollib.format_evaluated_type(&return_type),
                 },
                 span,
             });
@@ -480,12 +472,12 @@ mod statements {
     }
 
     fn show_trait_as_type_error(
-        symboltable: &SymbolLibrary,
+        symbollib: &SymbolLibrary,
         trait_: SymbolIndex,
         checker_ctx: &mut TypecheckerContext<'_>,
         span: Span,
     ) {
-        let symbol = symboltable.get(trait_);
+        let symbol = symbollib.get(trait_);
         checker_ctx.add_error(errors::trait_as_type(
             symbol
                 .map(|symbol| symbol.name.clone())
@@ -498,12 +490,12 @@ mod statements {
     fn typecheck_variable_declaration(
         variable: &mut crate::TypedVariableDeclaration,
         checker_ctx: &mut TypecheckerContext<'_>,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
     ) {
         let names = &variable.names;
         if variable.names.len() == 0 {
             if let Some(expr) = variable.value.as_mut() {
-                expressions::typecheck_expression(expr, checker_ctx, symboltable);
+                expressions::typecheck_expression(expr, checker_ctx, symbollib);
                 // for continuity.
             }
             return;
@@ -513,13 +505,13 @@ mod statements {
         // Bidirectional inferencing is still needed, so the first variable declared is used as a foundation
         // for checking others.
         let declared_type = {
-            let symbol = symboltable.get_forwarded(variable.names[0]).unwrap();
+            let symbol = symbollib.get_forwarded(variable.names[0]).unwrap();
             let declared_type =
                 if let SemanticSymbolKind::Variable { declared_type, .. } = &symbol.kind {
                     declared_type
                 } else {
                     if let Some(expr) = variable.value.as_mut() {
-                        expressions::typecheck_expression(expr, checker_ctx, symboltable);
+                        expressions::typecheck_expression(expr, checker_ctx, symbollib);
                         // for continuity.
                     }
                     return;
@@ -529,7 +521,7 @@ mod statements {
                 let declared_type = declared_type.as_ref().unwrap();
                 Some(evaluate(
                     declared_type,
-                    symboltable,
+                    symbollib,
                     None,
                     &mut checker_ctx.tracker(),
                     0,
@@ -543,20 +535,20 @@ mod statements {
             infer_ahead(
                 &mut variable.value.as_mut().unwrap(),
                 &declared_type.as_ref().unwrap(),
-                symboltable,
+                symbollib,
             );
         }
         let mut inferred_result = variable
             .value
             .as_mut()
-            .map(|expr| expressions::typecheck_expression(expr, checker_ctx, symboltable));
+            .map(|expr| expressions::typecheck_expression(expr, checker_ctx, symbollib));
         // if value and label are available, unification can be done early.
         // so that the focus later will be the extraction of array and model types.
         if declared_type.is_some() && inferred_result.is_some() {
             let declared = declared_type.as_ref().unwrap();
             // Traits are not allowed in type contexts.
             if let EvaluatedType::TraitInstance { trait_, .. } = &declared {
-                let symbol = symboltable.get(*trait_);
+                let symbol = symbollib.get(*trait_);
                 checker_ctx.add_error(errors::trait_as_type(
                     symbol
                         .map(|symbol| symbol.name.clone())
@@ -570,7 +562,7 @@ mod statements {
                 checker_ctx.add_error(errors::never_as_declared(variable.span));
             }
             let type_of_value = inferred_result.as_ref().unwrap();
-            match unify_freely(declared, &type_of_value, symboltable, None) {
+            match unify_freely(declared, &type_of_value, symbollib, None) {
                 Ok(unified_type) => inferred_result = Some(unified_type),
                 Err(errortypes) => {
                     for error in errortypes {
@@ -585,12 +577,12 @@ mod statements {
         // if label is present but no value:
         if declared_type.is_some() && variable.value.is_none() {
             let declared = declared_type.as_ref().unwrap();
-            if let Some(default) = symboltable.default {
+            if let Some(default) = symbollib.default {
                 let default_is_implemented =
-                    get_implementation_of(default, declared, symboltable).is_some();
+                    get_implementation_of(default, declared, symbollib).is_some();
                 if !default_is_implemented {
                     checker_ctx.add_error(errors::no_default(
-                        symboltable.format_evaluated_type(declared),
+                        symbollib.format_evaluated_type(declared),
                         variable.span,
                     ));
                 }
@@ -606,12 +598,12 @@ mod statements {
         ensure_assignment_validity(&final_type, checker_ctx, span);
         // Pattern resolutions.
         for name in names {
-            let symbol = symboltable.get_mut(*name).unwrap();
+            let symbol = symbollib.get_mut(*name).unwrap();
             // Only pure, immutable and literal types should be allowed as global variables.
             if variable.value.is_some() && symbol.origin_scope_id.is_some_and(|id| id.0 == 0) {
                 let expression = variable.value.as_ref().unwrap();
                 if !is_pure(expression) {
-                    let span = checker_ctx.span_of_expr(expression, symboltable);
+                    let span = checker_ctx.span_of_expr(expression, symbollib);
                     checker_ctx.add_error(errors::non_pure_global(span));
                     return;
                 }
@@ -641,22 +633,22 @@ mod statements {
                             model,
                             generic_arguments,
                         } => {
-                            let property_span = symboltable
+                            let property_span = symbollib
                                 .get(property_symbol_idx)
                                 .map(|sym| sym.ident_span())
                                 .unwrap_or_default();
                             let property_type = expressions::search_for_property(
                                 checker_ctx,
-                                symboltable,
+                                symbollib,
                                 *model,
                                 property_symbol_idx,
                                 generic_arguments.clone(),
                                 true,
                                 property_span,
                             );
-                            let get_model_name = || symboltable.get(*model).unwrap().name.clone();
+                            let get_model_name = || symbollib.get(*model).unwrap().name.clone();
                             let get_property_name =
-                                || symboltable.get(property_symbol_idx).unwrap().name.clone();
+                                || symbollib.get(property_symbol_idx).unwrap().name.clone();
                             if property_type.is_none() {
                                 let property_name = get_property_name();
                                 let model_name = get_model_name();
@@ -680,7 +672,7 @@ mod statements {
                         }
                         _ => {
                             checker_ctx.add_error(errors::illegal_model_destructure(
-                                symboltable.format_evaluated_type(&final_type),
+                                symbollib.format_evaluated_type(&final_type),
                                 variable.span,
                             ));
                             // No point in checking other patterns.
@@ -691,12 +683,12 @@ mod statements {
                 crate::VariablePatternForm::DestructuredFromArray => match &final_type {
                     EvaluatedType::ModelInstance {
                         generic_arguments, ..
-                    } if is_array(&final_type, symboltable) => {
+                    } if is_array(&final_type, symbollib) => {
                         pattern_result = generic_arguments.first().unwrap().1.clone()
                     }
                     _ => {
                         checker_ctx.add_error(errors::illegal_array_destructure(
-                            symboltable.format_evaluated_type(&final_type),
+                            symbollib.format_evaluated_type(&final_type),
                             variable.span,
                         ));
                         // No point in checking other patterns.
@@ -706,7 +698,7 @@ mod statements {
                 _ => {}
             }
             if let SemanticSymbolKind::Variable { inferred_type, .. } =
-                &mut symboltable.get_mut(*name).unwrap().kind
+                &mut symbollib.get_mut(*name).unwrap().kind
             {
                 *inferred_type = pattern_result;
             }
@@ -731,18 +723,18 @@ mod statements {
     fn typecheck_while_statement(
         whil: &mut crate::TypedWhileStatement,
         checker_ctx: &mut TypecheckerContext<'_>,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
     ) {
         let condition_type =
-            expressions::typecheck_expression(&mut whil.condition, checker_ctx, symboltable);
-        if !is_boolean(&condition_type, symboltable) && !condition_type.is_unknown() {
+            expressions::typecheck_expression(&mut whil.condition, checker_ctx, symbollib);
+        if !is_boolean(&condition_type, symbollib) && !condition_type.is_unknown() {
             checker_ctx.add_error(errors::non_boolean_logic(
-                symboltable.format_evaluated_type(&condition_type),
-                checker_ctx.span_of_expr(&whil.condition, symboltable),
+                symbollib.format_evaluated_type(&condition_type),
+                checker_ctx.span_of_expr(&whil.condition, symbollib),
             ))
         }
         push_scopetype(checker_ctx, ScopeType::Other);
-        typecheck_block(&mut whil.body, false, checker_ctx, symboltable);
+        typecheck_block(&mut whil.body, false, checker_ctx, symbollib);
         pop_scopetype(checker_ctx);
     }
 
@@ -750,17 +742,17 @@ mod statements {
     pub fn typecheck_shorthand_variable_declaration(
         shorthand_variable: &mut crate::TypedShorthandVariableDeclaration,
         checker_ctx: &mut TypecheckerContext,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
     ) {
         let name = shorthand_variable.name;
-        let symbol = symboltable.get_forwarded(name).unwrap();
+        let symbol = symbollib.get_forwarded(name).unwrap();
         // First evaluate the declared type, if any,
         let declared_type = if let SemanticSymbolKind::Variable { declared_type, .. } = &symbol.kind
         {
             declared_type.as_ref().map(|typ| {
                 evaluate(
                     typ,
-                    symboltable,
+                    symbollib,
                     None,
                     &mut Some((checker_ctx.errors, checker_ctx.path_idx)),
                     0,
@@ -772,12 +764,12 @@ mod statements {
         if declared_type.is_some() {
             // Try to guess the type of the value.
             let declared_type = declared_type.as_ref().unwrap();
-            infer_ahead(&mut shorthand_variable.value, &declared_type, symboltable);
+            infer_ahead(&mut shorthand_variable.value, &declared_type, symbollib);
         }
         let type_of_value = expressions::typecheck_expression(
             &mut shorthand_variable.value,
             checker_ctx,
-            symboltable,
+            symbollib,
         );
 
         // if no declared type, just assign to variable.
@@ -785,7 +777,7 @@ mod statements {
         // If unification fails, then carry on with the declared type value.
         let inference_result = if let Some(declared) = declared_type {
             if let EvaluatedType::TraitInstance { trait_, .. } = &declared {
-                let symbol = symboltable.get(*trait_);
+                let symbol = symbollib.get(*trait_);
                 checker_ctx.add_error(errors::trait_as_type(
                     symbol
                         .map(|symbol| symbol.name.clone())
@@ -797,7 +789,7 @@ mod statements {
             if declared.contains(&EvaluatedType::Never) {
                 checker_ctx.add_error(errors::never_as_declared(shorthand_variable.span))
             }
-            match unify_freely(&declared, &type_of_value, symboltable, None) {
+            match unify_freely(&declared, &type_of_value, symbollib, None) {
                 Ok(eval_type) => eval_type,
                 Err(errortypes) => {
                     for error in errortypes {
@@ -815,7 +807,7 @@ mod statements {
         let span = shorthand_variable.span;
         ensure_assignment_validity(&inference_result, checker_ctx, span);
         if let SemanticSymbolKind::Variable { inferred_type, .. } =
-            &mut symboltable.get_mut(name).unwrap().kind
+            &mut symbollib.get_mut(name).unwrap().kind
         {
             *inferred_type = inference_result;
         }
@@ -825,16 +817,16 @@ mod statements {
     pub fn typecheck_return_statement(
         retstat: &mut TypedReturnStatement,
         checker_ctx: &mut TypecheckerContext,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
     ) {
         let function_context = checker_ctx.current_function_context.last().cloned();
         let maybe_eval_expr = retstat.value.as_mut().map(|expr| {
             if let Some(ctx) = &function_context {
                 // try to guess the type for the returned expression.
-                infer_ahead(expr, &ctx.return_type, symboltable);
+                infer_ahead(expr, &ctx.return_type, symbollib);
             }
             // Coerce unresolved nested generic types to never, since they are no longer resolvable.
-            let mut return_type = expressions::typecheck_expression(expr, checker_ctx, symboltable);
+            let mut return_type = expressions::typecheck_expression(expr, checker_ctx, symbollib);
             if !return_type.is_generic()
                 && function_context.as_ref().is_some_and(|ctx| ctx.is_named)
             {
@@ -850,8 +842,8 @@ mod statements {
                 // returns with a value, but no value was requested.
                 checker_ctx.add_error(TypeError {
                     _type: TypeErrorType::MismatchedReturnType {
-                        expected: symboltable.format_evaluated_type(&EvaluatedType::Void),
-                        found: symboltable.format_evaluated_type(eval_type),
+                        expected: symbollib.format_evaluated_type(&EvaluatedType::Void),
+                        found: symbollib.format_evaluated_type(eval_type),
                     },
                     span: retstat.span,
                 });
@@ -874,7 +866,7 @@ mod statements {
             match unify_types(
                 ctx_return_type,
                 eval_type,
-                symboltable,
+                symbollib,
                 UnifyOptions::Return,
                 None,
             ) {
@@ -885,7 +877,7 @@ mod statements {
                     if let Some(expr) = retstat.value.as_mut() {
                         let empty = vec![];
                         let generic_arguments = get_type_generics(&typ, &empty);
-                        update_expression_type(expr, symboltable, generic_arguments);
+                        update_expression_type(expr, symbollib, generic_arguments);
                     }
                     prior_evaluated_type.return_type = typ;
                 }
@@ -899,8 +891,8 @@ mod statements {
                     }
                     checker_ctx.add_error(TypeError {
                         _type: TypeErrorType::MismatchedReturnType {
-                            expected: symboltable.format_evaluated_type(&ctx_return_type),
-                            found: symboltable.format_evaluated_type(eval_type),
+                            expected: symbollib.format_evaluated_type(&ctx_return_type),
+                            found: symbollib.format_evaluated_type(eval_type),
                         },
                         span: retstat.span,
                     })
@@ -912,8 +904,8 @@ mod statements {
                 if !return_type.is_void() {
                     checker_ctx.add_error(TypeError {
                         _type: TypeErrorType::MismatchedReturnType {
-                            expected: symboltable.format_evaluated_type(return_type),
-                            found: symboltable.format_evaluated_type(&EvaluatedType::Void),
+                            expected: symbollib.format_evaluated_type(return_type),
+                            found: symbollib.format_evaluated_type(&EvaluatedType::Void),
                         },
                         span: retstat.span,
                     })
@@ -926,9 +918,9 @@ mod statements {
     pub fn typecheck_function(
         function: &mut TypedFunctionDeclaration,
         checker_ctx: &mut TypecheckerContext,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
     ) {
-        let symbol = symboltable.get_forwarded(function.name).unwrap();
+        let symbol = symbollib.get_forwarded(function.name).unwrap();
         let (evaluated_param_types, return_type, return_type_span) =
             if let SemanticSymbolKind::Function {
                 params,
@@ -940,13 +932,13 @@ mod statements {
                 let generic_arguments = evaluate_generic_params(generic_params, true);
                 let mut evaluated_param_types = vec![];
                 for param in params {
-                    let parameter_symbol = symboltable.get(*param).unwrap();
+                    let parameter_symbol = symbollib.get(*param).unwrap();
                     let inferred_type = match &parameter_symbol.kind {
                         SemanticSymbolKind::Parameter { param_type, .. } => {
                             if let Some(declared_type) = param_type {
                                 evaluate(
                                     declared_type,
-                                    symboltable,
+                                    symbollib,
                                     Some(&generic_arguments),
                                     &mut Some((checker_ctx.errors, checker_ctx.path_idx)),
                                     0,
@@ -963,7 +955,7 @@ mod statements {
                 (
                     evaluated_param_types,
                     return_type
-                        .map(|typ| evaluate(typ, &symboltable, None, &mut checker_ctx.tracker(), 0))
+                        .map(|typ| evaluate(typ, &symbollib, None, &mut checker_ctx.tracker(), 0))
                         .unwrap_or_else(|| EvaluatedType::Void),
                     return_type.map(|typ| typ.span()),
                 )
@@ -972,7 +964,7 @@ mod statements {
             };
         validate_return_type_and_params(
             &return_type,
-            symboltable,
+            symbollib,
             checker_ctx,
             return_type_span,
             evaluated_param_types,
@@ -981,14 +973,14 @@ mod statements {
             checker_ctx,
             return_type,
             &mut function.body,
-            symboltable,
+            symbollib,
             return_type_span,
         );
     }
 
     fn validate_return_type_and_params(
         return_type: &EvaluatedType,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
         checker_ctx: &mut TypecheckerContext<'_>,
         return_type_span: Option<Span>,
         evaluated_param_types: Vec<(SymbolIndex, EvaluatedType)>,
@@ -996,7 +988,7 @@ mod statements {
         // Traits cannot be used as return types.
         if let EvaluatedType::TraitInstance { trait_, .. } = return_type {
             show_trait_as_type_error(
-                symboltable,
+                symbollib,
                 *trait_,
                 checker_ctx,
                 return_type_span.unwrap_or_default(),
@@ -1008,7 +1000,7 @@ mod statements {
                 inferred_type,
                 param_type,
                 ..
-            } = &mut symboltable.get_mut(param_idx).unwrap().kind
+            } = &mut symbollib.get_mut(param_idx).unwrap().kind
             {
                 // Traits cannot be used as parameter types.
                 if let EvaluatedType::TraitInstance { trait_, .. } = &new_type {
@@ -1020,7 +1012,7 @@ mod statements {
                 *inferred_type = new_type;
             }
             if let Some((trait_, span)) = trait_in_label {
-                show_trait_as_type_error(symboltable, trait_, checker_ctx, span)
+                show_trait_as_type_error(symbollib, trait_, checker_ctx, span)
             }
         }
     }
@@ -1033,60 +1025,60 @@ mod expressions {
     pub fn typecheck_expression(
         expression: &mut crate::TypedExpression,
         checker_ctx: &mut TypecheckerContext,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
     ) -> EvaluatedType {
         match expression {
             TypedExpression::Identifier(i) => {
                 // Ensure that identifiers refer to values, not types.
-                match typecheck_identifier(i, symboltable) {
+                match typecheck_identifier(i, symbollib) {
                     Ok(evaluated_type) => evaluated_type,
                     Err(error_type) => {
                         checker_ctx.add_error(TypeError {
                             _type: error_type,
-                            span: checker_ctx.span_of_expr(expression, &symboltable),
+                            span: checker_ctx.span_of_expr(expression, &symbollib),
                         });
                         EvaluatedType::Unknown
                     }
                 }
             }
-            TypedExpression::Literal(l) => typecheck_literal(l, checker_ctx, symboltable),
+            TypedExpression::Literal(l) => typecheck_literal(l, checker_ctx, symbollib),
             TypedExpression::NewExpr(newexp) => {
-                typecheck_new_expression(&mut *newexp, symboltable, checker_ctx)
+                typecheck_new_expression(&mut *newexp, symbollib, checker_ctx)
             }
             TypedExpression::ThisExpr(this) => {
-                typecheck_this_expression(this, symboltable, checker_ctx)
+                typecheck_this_expression(this, symbollib, checker_ctx)
             }
             TypedExpression::CallExpr(c) => {
-                typecheck_call_expression(&mut *c, symboltable, checker_ctx)
+                typecheck_call_expression(&mut *c, symbollib, checker_ctx)
             }
             TypedExpression::FnExpr(f) => {
-                typecheck_function_expression(&mut *f, symboltable, checker_ctx)
+                typecheck_function_expression(&mut *f, symbollib, checker_ctx)
             }
-            TypedExpression::Block(body) => typecheck_block(body, false, checker_ctx, symboltable),
+            TypedExpression::Block(body) => typecheck_block(body, false, checker_ctx, symbollib),
             TypedExpression::IfExpr(ifexp) => {
-                typecheck_if_expression(ifexp, checker_ctx, symboltable)
+                typecheck_if_expression(ifexp, checker_ctx, symbollib)
             }
             TypedExpression::AccessExpr(access) => {
-                typecheck_access_expression(&mut *access, symboltable, checker_ctx)
+                typecheck_access_expression(&mut *access, symbollib, checker_ctx)
             }
             TypedExpression::ArrayExpr(array) => {
-                typecheck_array_expression(array, symboltable, checker_ctx)
+                typecheck_array_expression(array, symbollib, checker_ctx)
             }
             TypedExpression::IndexExpr(indexexp) => {
-                typecheck_index_expression(indexexp, symboltable, checker_ctx)
+                typecheck_index_expression(indexexp, symbollib, checker_ctx)
             }
             // TypedExpression::BinaryExpr(binexp) => typecheck_binary_expression(),
             TypedExpression::AssignmentExpr(assexp) => {
-                typecheck_assignment_expression(assexp, checker_ctx, symboltable)
+                typecheck_assignment_expression(assexp, checker_ctx, symbollib)
             }
             TypedExpression::UnaryExpr(unaryexp) => {
-                typecheck_unary_expression(unaryexp, symboltable, checker_ctx)
+                typecheck_unary_expression(unaryexp, symbollib, checker_ctx)
             }
             TypedExpression::LogicExpr(logexp) => {
-                typecheck_logic_expression(logexp, checker_ctx, symboltable)
+                typecheck_logic_expression(logexp, checker_ctx, symbollib)
             }
             TypedExpression::UpdateExpr(updateexp) => {
-                typecheck_update_expression(updateexp, checker_ctx, symboltable)
+                typecheck_update_expression(updateexp, checker_ctx, symbollib)
             }
             _ => EvaluatedType::Unknown,
         }
@@ -1096,18 +1088,17 @@ mod expressions {
     fn typecheck_update_expression(
         updateexp: &mut crate::TypedUpdateExpr,
         checker_ctx: &mut TypecheckerContext<'_>,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
     ) -> EvaluatedType {
         updateexp.inferred_type = (|| {
-            let operand_type =
-                typecheck_expression(&mut updateexp.operand, checker_ctx, symboltable);
+            let operand_type = typecheck_expression(&mut updateexp.operand, checker_ctx, symbollib);
             match updateexp.operator {
                 // the ! operator.
                 // Can only be used by models that implement Guaranteed.
                 // It evaluates to the single generic type of the trait.
                 ast::UpdateOperator::Assert => {
-                    if let Some(guaranteed) = symboltable.guaranteed {
-                        let guaranteed_generic = match &symboltable.get(guaranteed).unwrap().kind {
+                    if let Some(guaranteed) = symbollib.guaranteed {
+                        let guaranteed_generic = match &symbollib.get(guaranteed).unwrap().kind {
                             SemanticSymbolKind::Trait { generic_params, .. } => generic_params[0],
                             _ => return EvaluatedType::Unknown,
                         };
@@ -1117,7 +1108,7 @@ mod expressions {
                             _ => &operand_type,
                         };
                         if let Some(implementation) =
-                            get_implementation_of(guaranteed, operand_type_deref, &symboltable)
+                            get_implementation_of(guaranteed, operand_type_deref, &symbollib)
                         {
                             match implementation {
                                 EvaluatedType::TraitInstance {
@@ -1127,7 +1118,7 @@ mod expressions {
                                         .into_iter()
                                         .find(|generic| generic.0 == guaranteed_generic);
                                     if generic_solution.is_none() {
-                                        let name = symboltable.format_evaluated_type(&operand_type);
+                                        let name = symbollib.format_evaluated_type(&operand_type);
                                         checker_ctx.add_error(errors::illegal_guarantee(
                                             name,
                                             updateexp.span,
@@ -1149,7 +1140,7 @@ mod expressions {
                                 _ => return EvaluatedType::Unknown,
                             }
                         } else {
-                            let name = symboltable.format_evaluated_type(&operand_type);
+                            let name = symbollib.format_evaluated_type(&operand_type);
                             checker_ctx.add_error(errors::illegal_guarantee(name, updateexp.span));
                             EvaluatedType::Unknown
                         }
@@ -1165,9 +1156,9 @@ mod expressions {
                 // The Try trait has two generics, one for the value to be retreived,
                 // and another for the value to be immediately returned.
                 ast::UpdateOperator::TryFrom => {
-                    if let Some(try_idx) = symboltable.try_s {
+                    if let Some(try_idx) = symbollib.try_s {
                         let (first_generic, second_generic) =
-                            match &symboltable.get(try_idx).unwrap().kind {
+                            match &symbollib.get(try_idx).unwrap().kind {
                                 SemanticSymbolKind::Trait { generic_params, .. } => {
                                     (generic_params[0], generic_params[1])
                                 }
@@ -1179,9 +1170,9 @@ mod expressions {
                             _ => &operand_type,
                         };
                         let implementation =
-                            get_implementation_of(try_idx, operand_type, &symboltable);
+                            get_implementation_of(try_idx, operand_type, &symbollib);
                         if implementation.is_none() {
-                            let name = symboltable.format_evaluated_type(&operand_type);
+                            let name = symbollib.format_evaluated_type(&operand_type);
                             checker_ctx.add_error(errors::illegal_try(name, updateexp.span));
                             return EvaluatedType::Unknown;
                         }
@@ -1199,7 +1190,7 @@ mod expressions {
                                 .find(|generic| generic.0 == second_generic);
                             if first_generic_solution.is_none() || second_generic_solution.is_none()
                             {
-                                let name = symboltable.format_evaluated_type(&operand_type);
+                                let name = symbollib.format_evaluated_type(&operand_type);
                                 checker_ctx.add_error(errors::illegal_try(name, updateexp.span));
                                 return EvaluatedType::Unknown;
                             }
@@ -1228,9 +1219,9 @@ mod expressions {
                             if function_ctx.is_none() {
                                 checker_ctx.add_error(TypeError {
                                     _type: TypeErrorType::MismatchedReturnType {
-                                        expected: symboltable
+                                        expected: symbollib
                                             .format_evaluated_type(&EvaluatedType::Void),
-                                        found: symboltable.format_evaluated_type(&returned_type),
+                                        found: symbollib.format_evaluated_type(&returned_type),
                                     },
                                     span: updateexp.span,
                                 });
@@ -1240,7 +1231,7 @@ mod expressions {
                             match unify_types(
                                 &function_ctx.return_type,
                                 &returned_type,
-                                &symboltable,
+                                &symbollib,
                                 UnifyOptions::Return,
                                 None,
                             ) {
@@ -1256,10 +1247,9 @@ mod expressions {
                                 Err(errors) => {
                                     checker_ctx.add_error(TypeError {
                                         _type: TypeErrorType::MismatchedReturnType {
-                                            expected: symboltable
+                                            expected: symbollib
                                                 .format_evaluated_type(&function_ctx.return_type),
-                                            found: symboltable
-                                                .format_evaluated_type(&returned_type),
+                                            found: symbollib.format_evaluated_type(&returned_type),
                                         },
                                         span: updateexp.span,
                                     });
@@ -1291,22 +1281,21 @@ mod expressions {
     /// Typechecks a unary expression.
     fn typecheck_unary_expression(
         unaryexp: &mut crate::TypedUnaryExpr,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
         checker_ctx: &mut TypecheckerContext<'_>,
     ) -> EvaluatedType {
         unaryexp.inferred_type = (|| {
-            let operand_type =
-                typecheck_expression(&mut unaryexp.operand, checker_ctx, symboltable);
+            let operand_type = typecheck_expression(&mut unaryexp.operand, checker_ctx, symbollib);
             match unaryexp.operator {
                 UnaryOperator::Negation | UnaryOperator::NegationLiteral => {
-                    if !is_boolean(&operand_type, symboltable) {
-                        let name = symboltable.format_evaluated_type(&operand_type);
+                    if !is_boolean(&operand_type, symbollib) {
+                        let name = symbollib.format_evaluated_type(&operand_type);
                         checker_ctx.add_error(TypeError {
                             _type: TypeErrorType::NonBooleanLogic { name },
                             span: unaryexp.span,
                         })
                     }
-                    symboltable
+                    symbollib
                         .bool
                         .map(|boolean| EvaluatedType::ModelInstance {
                             model: boolean,
@@ -1320,7 +1309,7 @@ mod expressions {
                 UnaryOperator::Deref => match operand_type {
                     EvaluatedType::Borrowed { base } => *base,
                     _ => {
-                        let name = symboltable.format_evaluated_type(&operand_type);
+                        let name = symbollib.format_evaluated_type(&operand_type);
                         checker_ctx.add_error(TypeError {
                             _type: TypeErrorType::InvalidDereference { name },
                             span: unaryexp.span,
@@ -1340,15 +1329,14 @@ mod expressions {
     fn typecheck_if_expression(
         ifexp: &mut TypedIfExpr,
         checker_ctx: &mut TypecheckerContext<'_>,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
     ) -> EvaluatedType {
         ifexp.inferred_type = {
-            let condition_type =
-                typecheck_expression(&mut ifexp.condition, checker_ctx, symboltable);
-            if !is_boolean(&condition_type, symboltable) && !condition_type.is_unknown() {
+            let condition_type = typecheck_expression(&mut ifexp.condition, checker_ctx, symbollib);
+            if !is_boolean(&condition_type, symbollib) && !condition_type.is_unknown() {
                 checker_ctx.add_error(errors::non_boolean_logic(
-                    symboltable.format_evaluated_type(&condition_type),
-                    checker_ctx.span_of_expr(&ifexp.condition, symboltable),
+                    symbollib.format_evaluated_type(&condition_type),
+                    checker_ctx.span_of_expr(&ifexp.condition, symbollib),
                 ));
             }
             // If in a model's constructor, update the scope entered.
@@ -1358,8 +1346,7 @@ mod expressions {
                     id: ifexp.consequent.scopeid,
                 },
             );
-            let block_type =
-                typecheck_block(&mut ifexp.consequent, false, checker_ctx, symboltable);
+            let block_type = typecheck_block(&mut ifexp.consequent, false, checker_ctx, symbollib);
             pop_scopetype(checker_ctx);
             if let Some(else_) = &mut ifexp.alternate {
                 push_scopetype(
@@ -1368,13 +1355,12 @@ mod expressions {
                         id_of_parent_if: ifexp.consequent.scopeid,
                     },
                 );
-                let else_type =
-                    typecheck_expression(&mut else_.expression, checker_ctx, symboltable);
+                let else_type = typecheck_expression(&mut else_.expression, checker_ctx, symbollib);
                 pop_scopetype(checker_ctx);
                 match unify_types(
                     &block_type,
                     &else_type,
-                    symboltable,
+                    symbollib,
                     UnifyOptions::AnyNever,
                     None,
                 ) {
@@ -1382,8 +1368,8 @@ mod expressions {
                     Err(errors) => {
                         checker_ctx.add_error(errors::separate_if_types(
                             ifexp.span,
-                            symboltable.format_evaluated_type(&block_type),
-                            symboltable.format_evaluated_type(&else_type),
+                            symbollib.format_evaluated_type(&block_type),
+                            symbollib.format_evaluated_type(&else_type),
                         ));
                         for error in errors {
                             checker_ctx.add_error(TypeError {
@@ -1410,18 +1396,18 @@ mod expressions {
     fn typecheck_assignment_expression(
         assexp: &mut TypedAssignmentExpr,
         checker_ctx: &mut TypecheckerContext<'_>,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
     ) -> EvaluatedType {
         assexp.inferred_type = (|| {
-            let left_type = typecheck_expression(&mut assexp.left, checker_ctx, symboltable);
+            let left_type = typecheck_expression(&mut assexp.left, checker_ctx, symbollib);
             let right_type = if !is_valid_lhs(&assexp.left) {
                 checker_ctx.add_error(errors::invalid_assignment_target(assexp.span));
-                typecheck_expression(&mut assexp.right, checker_ctx, symboltable); // For continuity.
+                typecheck_expression(&mut assexp.right, checker_ctx, symbollib); // For continuity.
                 return EvaluatedType::Unknown;
             } else {
                 // Try to guess the type of the right.
-                infer_ahead(&mut assexp.right, &left_type, symboltable);
-                typecheck_expression(&mut assexp.right, checker_ctx, symboltable)
+                infer_ahead(&mut assexp.right, &left_type, symbollib);
+                typecheck_expression(&mut assexp.right, checker_ctx, symbollib)
             };
             if matches!(&assexp.left, TypedExpression::UnaryExpr(unexp) if matches!(unexp.operator, UnaryOperator::Ref))
             {
@@ -1447,7 +1433,7 @@ mod expressions {
                     match unify_types(
                         &left_type,
                         &right_type,
-                        symboltable,
+                        symbollib,
                         UnifyOptions::Conform,
                         Some(&mut generic_hashmap),
                     ) {
@@ -1464,13 +1450,13 @@ mod expressions {
                     }
                 }
                 EvaluatedType::MethodInstance { method, .. } => {
-                    let method_symbol = symboltable.get_forwarded(*method).unwrap();
+                    let method_symbol = symbollib.get_forwarded(*method).unwrap();
                     let name = method_symbol.name.clone();
                     let owner = match &method_symbol.kind {
                         SemanticSymbolKind::Method {
                             owner_model_or_trait,
                             ..
-                        } => symboltable.get(*owner_model_or_trait).unwrap().name.clone(),
+                        } => symbollib.get(*owner_model_or_trait).unwrap().name.clone(),
                         _ => String::from("[Model]"),
                     };
                     checker_ctx.add_error(errors::mutating_method(owner, name, assexp.span));
@@ -1482,13 +1468,13 @@ mod expressions {
                 }
             };
             if let EvaluatedType::MethodInstance { method, .. } = right_type {
-                let method_symbol = symboltable.get_forwarded(method).unwrap();
+                let method_symbol = symbollib.get_forwarded(method).unwrap();
                 let name = method_symbol.name.clone();
                 let owner = match &method_symbol.kind {
                     SemanticSymbolKind::Method {
                         owner_model_or_trait,
                         ..
-                    } => symboltable.get(*owner_model_or_trait).unwrap().name.clone(),
+                    } => symbollib.get(*owner_model_or_trait).unwrap().name.clone(),
                     _ => String::from("[Model]"),
                 };
                 checker_ctx.add_error(errors::mutating_method(owner, name, assexp.span));
@@ -1497,7 +1483,7 @@ mod expressions {
 
             // If lhs is an attribute and we are in a constructor, rigorously check for attribute assignment..
             'check_for_attribute_assignment: {
-                let expression_as_attrib = expression_is_attribute(&assexp.left, symboltable);
+                let expression_as_attrib = expression_is_attribute(&assexp.left, symbollib);
                 if !matches!(assexp.operator, ast::AssignOperator::Assign) {
                     break 'check_for_attribute_assignment;
                 }
@@ -1529,8 +1515,8 @@ mod expressions {
                 }
                 // First check that the attribute does not reference itself in its initialization.
                 let span_of_rhs =
-                    span_of_typed_expression(&assexp.right, symboltable, checker_ctx.literals);
-                let attribute_symbol = symboltable.get(attribute_idx).unwrap();
+                    span_of_typed_expression(&assexp.right, symbollib, checker_ctx.literals);
+                let attribute_symbol = symbollib.get(attribute_idx).unwrap();
                 if attribute_symbol
                     .references
                     .first()
@@ -1554,7 +1540,7 @@ mod expressions {
                         if prior_assignments.iter().any(|assignment| matches!(assignment, AttributeAssignment::InIfBlock { id } if id == id_of_parent_if)) {
                             // Branching assignment, but in the constructor scope.
                             if constructor_ctx.scopes.len() == 1 {
-                                AttributeAssignment::Definite { span: span_of_typed_expression(&assexp.left, symboltable, checker_ctx.literals) }
+                                AttributeAssignment::Definite { span: span_of_typed_expression(&assexp.left, symbollib, checker_ctx.literals) }
                             } else {
                                 // Branching assignment, but in another scope.
                                 let previous_scope =scopes.get(scopes.len() -2 ).unwrap();
@@ -1573,7 +1559,7 @@ mod expressions {
                     None => AttributeAssignment::Definite {
                         span: span_of_typed_expression(
                             &assexp.left,
-                            symboltable,
+                            symbollib,
                             checker_ctx.literals,
                         ),
                     },
@@ -1585,7 +1571,7 @@ mod expressions {
 
             // Update value of left hand side based on the inferred type.
             let generics = generic_hashmap.into_iter().collect::<Vec<_>>();
-            update_expression_type(&mut assexp.left, symboltable, &generics);
+            update_expression_type(&mut assexp.left, symbollib, &generics);
             return EvaluatedType::Void;
         })();
         assexp.inferred_type.clone()
@@ -1595,25 +1581,25 @@ mod expressions {
     /// Otherwise it returns none.
     fn expression_is_attribute(
         expr: &TypedExpression,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
     ) -> Option<SymbolIndex> {
         match expr {
             TypedExpression::AccessExpr(accessexp) => match &accessexp.object {
                 TypedExpression::ThisExpr(this) => {
                     let property_name = match &accessexp.property {
                         TypedExpression::Identifier(ident) => {
-                            symboltable.get(ident.value)?.name.as_str()
+                            symbollib.get(ident.value)?.name.as_str()
                         }
                         _ => return None,
                     };
-                    let model_or_trait = symboltable.get(this.model_or_trait?)?;
+                    let model_or_trait = symbollib.get(this.model_or_trait?)?;
                     let attributes = match &model_or_trait.kind {
                         SemanticSymbolKind::Model { attributes, .. } => attributes,
                         _ => return None,
                     };
                     for attribute_idx in attributes {
                         let attribute_idx = *attribute_idx;
-                        let attribute = symboltable.get(attribute_idx)?;
+                        let attribute = symbollib.get(attribute_idx)?;
                         if attribute.name == property_name {
                             return Some(attribute_idx);
                         }
@@ -1643,25 +1629,25 @@ mod expressions {
     fn typecheck_logic_expression(
         logexp: &mut TypedLogicExpr,
         checker_ctx: &mut TypecheckerContext<'_>,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
     ) -> EvaluatedType {
         logexp.inferred_type = (|| {
-            let left = typecheck_expression(&mut logexp.left, checker_ctx, symboltable);
-            let right = typecheck_expression(&mut logexp.right, checker_ctx, symboltable);
+            let left = typecheck_expression(&mut logexp.left, checker_ctx, symbollib);
+            let right = typecheck_expression(&mut logexp.right, checker_ctx, symbollib);
 
-            if !is_boolean(&left, symboltable) && !left.is_unknown() {
+            if !is_boolean(&left, symbollib) && !left.is_unknown() {
                 checker_ctx.add_error(errors::non_boolean_logic(
-                    symboltable.format_evaluated_type(&left),
-                    checker_ctx.span_of_expr(&logexp.right, symboltable),
+                    symbollib.format_evaluated_type(&left),
+                    checker_ctx.span_of_expr(&logexp.right, symbollib),
                 ));
             }
-            if !is_boolean(&right, symboltable) && !right.is_unknown() {
+            if !is_boolean(&right, symbollib) && !right.is_unknown() {
                 checker_ctx.add_error(errors::non_boolean_logic(
-                    symboltable.format_evaluated_type(&right),
-                    checker_ctx.span_of_expr(&logexp.right, symboltable),
+                    symbollib.format_evaluated_type(&right),
+                    checker_ctx.span_of_expr(&logexp.right, symbollib),
                 ));
             }
-            if let Some(boolean_idx) = symboltable.bool {
+            if let Some(boolean_idx) = symbollib.bool {
                 return EvaluatedType::ModelInstance {
                     model: boolean_idx,
                     generic_arguments: vec![],
@@ -1676,7 +1662,7 @@ mod expressions {
 
     fn typecheck_this_expression(
         this: &mut TypedThisExpr,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
         checker_ctx: &mut TypecheckerContext,
     ) -> EvaluatedType {
         this.inferred_type = (|| {
@@ -1693,7 +1679,7 @@ mod expressions {
                 checker_ctx.add_error(errors::this_in_static_method(Span::on_line(start, 4)));
                 return EvaluatedType::Unknown;
             }
-            let symbol = symboltable.get_forwarded(model_or_trait).unwrap();
+            let symbol = symbollib.get_forwarded(model_or_trait).unwrap();
             let base = match &symbol.kind {
                 SemanticSymbolKind::Model { generic_params, .. } => EvaluatedType::ModelInstance {
                     model: model_or_trait,
@@ -1714,14 +1700,14 @@ mod expressions {
     /// Typechecks a new expression.
     fn typecheck_new_expression(
         newexp: &mut TypedNewExpr,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
         checker_ctx: &mut TypecheckerContext,
     ) -> EvaluatedType {
         newexp.inferred_type = (|| {
             match &mut newexp.value {
                 // Helper to fix code if new X is called without parenthesis.
                 TypedExpression::Identifier(ident) => {
-                    let symbol = match symboltable.get_forwarded(ident.value) {
+                    let symbol = match symbollib.get_forwarded(ident.value) {
                         Some(symbol) => symbol,
                         None => return EvaluatedType::Unknown,
                     };
@@ -1735,15 +1721,15 @@ mod expressions {
                 }
                 TypedExpression::CallExpr(callexp) => {
                     let caller = &mut callexp.caller;
-                    let evaluated_caller = typecheck_expression(caller, checker_ctx, symboltable);
+                    let evaluated_caller = typecheck_expression(caller, checker_ctx, symbollib);
                     let evaluated_args = callexp
                         .arguments
                         .iter_mut()
-                        .map(|arg| typecheck_expression(arg, checker_ctx, symboltable))
+                        .map(|arg| typecheck_expression(arg, checker_ctx, symbollib))
                         .collect::<Vec<_>>();
                     match evaluated_caller {
                         EvaluatedType::Model(model) => {
-                            let model_symbol = symboltable.get_forwarded(model).unwrap();
+                            let model_symbol = symbollib.get_forwarded(model).unwrap();
                             let (mut generic_arguments, generic_params, parameter_types) =
                                 if let SemanticSymbolKind::Model {
                                     generic_params,
@@ -1764,7 +1750,7 @@ mod expressions {
                                         evaluate_generic_params(generic_params, false);
                                     let parameter_types = convert_param_list_to_type(
                                         constructor_parameters.as_ref().unwrap_or(&vec![]),
-                                        symboltable,
+                                        symbollib,
                                         &generic_arguments,
                                         checker_ctx,
                                     );
@@ -1777,7 +1763,7 @@ mod expressions {
                                 evaluated_args,
                                 checker_ctx,
                                 &callexp,
-                                symboltable,
+                                symbollib,
                                 &mut generic_arguments,
                             );
                             let result_model_instance = EvaluatedType::ModelInstance {
@@ -1794,7 +1780,7 @@ mod expressions {
                         }
                         _ => {
                             checker_ctx.add_error(errors::invalid_new_expression(
-                                checker_ctx.span_of_expr(&callexp.caller, &symboltable),
+                                checker_ctx.span_of_expr(&callexp.caller, &symbollib),
                             ));
                             return EvaluatedType::Unknown;
                         }
@@ -1803,9 +1789,9 @@ mod expressions {
                 // Invalid new expressions.
                 _ => {
                     checker_ctx.add_error(errors::invalid_new_expression(
-                        checker_ctx.span_of_expr(&newexp.value, &symboltable),
+                        checker_ctx.span_of_expr(&newexp.value, &symbollib),
                     ));
-                    typecheck_expression(&mut newexp.value, checker_ctx, symboltable);
+                    typecheck_expression(&mut newexp.value, checker_ctx, symbollib);
                     return EvaluatedType::Unknown;
                 }
             }
@@ -1816,24 +1802,24 @@ mod expressions {
     /// Typechecks an index expression.
     fn typecheck_index_expression(
         indexexp: &mut TypedIndexExpr,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
         checker_ctx: &mut TypecheckerContext,
     ) -> EvaluatedType {
         indexexp.inferred_type = (|| {
             let type_of_indexed =
-                typecheck_expression(&mut indexexp.object, checker_ctx, symboltable);
+                typecheck_expression(&mut indexexp.object, checker_ctx, symbollib);
             let _type_of_indexer =
-                typecheck_expression(&mut indexexp.index, checker_ctx, symboltable);
+                typecheck_expression(&mut indexexp.index, checker_ctx, symbollib);
             // todo: handle Index trait overloading.
             if !is_array(
                 match &type_of_indexed {
                     EvaluatedType::Borrowed { base } => &*base,
                     _ => &type_of_indexed,
                 },
-                symboltable,
+                symbollib,
             ) {
                 checker_ctx.add_error(errors::invalid_index_subject(
-                    symboltable.format_evaluated_type(&type_of_indexed),
+                    symbollib.format_evaluated_type(&type_of_indexed),
                     indexexp.span,
                 ));
                 return EvaluatedType::Unknown;
@@ -1859,17 +1845,17 @@ mod expressions {
     /// Typechecks an array expression.
     fn typecheck_array_expression(
         array: &mut crate::TypedArrayExpr,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
         checker_ctx: &mut TypecheckerContext,
     ) -> EvaluatedType {
         array.inferred_type = (|| {
-            if symboltable.array.is_none() {
+            if symbollib.array.is_none() {
                 checker_ctx.add_error(missing_intrinsic(format!("Array"), array.span));
             }
             if array.elements.len() == 0 {
-                if symboltable.array.is_some() {
+                if symbollib.array.is_some() {
                     let empty = vec![];
-                    let placeholder = arrify(EvaluatedType::Unknown, symboltable);
+                    let placeholder = arrify(EvaluatedType::Unknown, symbollib);
                     let generic = get_type_generics(&placeholder, &empty)
                         .first()
                         .map(|(idx, _)| idx);
@@ -1878,25 +1864,25 @@ mod expressions {
                             EvaluatedType::Generic {
                                 base: *generic.unwrap(),
                             },
-                            symboltable,
+                            symbollib,
                         );
                     }
                 }
-                return arrify(EvaluatedType::Unknown, &symboltable);
+                return arrify(EvaluatedType::Unknown, &symbollib);
             }
             let mut element_types = vec![];
 
             let mut next_type = array
                 .elements
                 .first_mut()
-                .map(|expression| typecheck_expression(expression, checker_ctx, symboltable))
+                .map(|expression| typecheck_expression(expression, checker_ctx, symbollib))
                 .unwrap_or(EvaluatedType::Unknown);
             // The first type is the base type and is assumed to be the true type for every other type in the array.
             for element in &mut array.elements.iter_mut().skip(1) {
                 // Try to guess the type of the next element based on the first type.
                 // todo: should the next type be progressively unified before inferring?
-                infer_ahead(element, &next_type, symboltable);
-                element_types.push(typecheck_expression(element, checker_ctx, symboltable));
+                infer_ahead(element, &next_type, symbollib);
+                element_types.push(typecheck_expression(element, checker_ctx, symbollib));
             }
             // Reduce individual types to determine final array form.
             let mut i = 1;
@@ -1905,19 +1891,19 @@ mod expressions {
                 let mut unification = unify_types(
                     &next_type,
                     &evaluated_type,
-                    symboltable,
+                    symbollib,
                     UnifyOptions::None,
                     None,
                 );
                 // For numeric types, casting should occur bidirectionally.
                 // So that elements will always scale the array upwards in size.
-                if is_numeric_type(&next_type, symboltable)
-                    && is_numeric_type(&evaluated_type, symboltable)
+                if is_numeric_type(&next_type, symbollib)
+                    && is_numeric_type(&evaluated_type, symbollib)
                 {
                     unification = unification.or(unify_types(
                         &evaluated_type,
                         &next_type,
-                        symboltable,
+                        symbollib,
                         UnifyOptions::None,
                         None,
                     ));
@@ -1942,13 +1928,13 @@ mod expressions {
                             span: array
                                 .elements
                                 .get(idx)
-                                .map(|el| checker_ctx.span_of_expr(el, symboltable))
+                                .map(|el| checker_ctx.span_of_expr(el, symbollib))
                                 .unwrap_or(array.span),
                         });
                     }
                 }
             }
-            arrify(next_type, symboltable)
+            arrify(next_type, symbollib)
         })();
         array.inferred_type.clone()
     }
@@ -1957,14 +1943,14 @@ mod expressions {
     fn typecheck_literal(
         l: &mut crate::LiteralIndex,
         checker_ctx: &mut TypecheckerContext,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
     ) -> EvaluatedType {
         match &checker_ctx.literals.get(*l).unwrap() {
             Literal::StringLiteral { value, .. } => {
-                typecheck_string_literal(value, checker_ctx, symboltable)
+                typecheck_string_literal(value, checker_ctx, symbollib)
             }
             Literal::NumericLiteral { value, .. } => {
-                typecheck_numeric_literal(value, checker_ctx, symboltable)
+                typecheck_numeric_literal(value, checker_ctx, symbollib)
             } // todo.
             Literal::BooleanLiteral {
                 value,
@@ -1972,7 +1958,7 @@ mod expressions {
                 start_character,
                 ..
             } => typecheck_boolean_literal(
-                symboltable,
+                symbollib,
                 checker_ctx,
                 start_line,
                 start_character,
@@ -1985,22 +1971,22 @@ mod expressions {
     fn typecheck_numeric_literal(
         value: &ast::WhirlNumber,
         checker_ctx: &mut TypecheckerContext<'_>,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
     ) -> EvaluatedType {
         // todo: errors for missing intrinsics.
         // TODO. 😑
-        get_numeric_type(symboltable, value, Some(checker_ctx))
+        get_numeric_type(symbollib, value, Some(checker_ctx))
     }
 
     /// Typechecks a bool literal by matching it with the bool intrinsic symbol.
     fn typecheck_boolean_literal(
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
         checker_ctx: &mut TypecheckerContext,
         start_line: &u32,
         start_character: &u32,
         value: &bool,
     ) -> EvaluatedType {
-        if let Some(bool_index) = symboltable.bool {
+        if let Some(bool_index) = symbollib.bool {
             return EvaluatedType::ModelInstance {
                 model: bool_index,
                 generic_arguments: vec![],
@@ -2018,9 +2004,9 @@ mod expressions {
     fn typecheck_string_literal(
         value: &ast::WhirlString,
         checker_ctx: &mut TypecheckerContext,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
     ) -> EvaluatedType {
-        if let Some(string_index) = symboltable.string {
+        if let Some(string_index) = symbollib.string {
             return EvaluatedType::ModelInstance {
                 model: string_index,
                 generic_arguments: vec![],
@@ -2033,15 +2019,15 @@ mod expressions {
     /// Typechecks a call expression.
     fn typecheck_call_expression(
         callexp: &mut TypedCallExpr,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
         checker_ctx: &mut TypecheckerContext,
     ) -> EvaluatedType {
-        let caller = typecheck_expression(&mut callexp.caller, checker_ctx, symboltable);
-        let caller_span = checker_ctx.span_of_expr(&callexp.caller, &symboltable);
-        let caller = extract_call_of(caller, symboltable, checker_ctx, caller_span);
+        let caller = typecheck_expression(&mut callexp.caller, checker_ctx, symbollib);
+        let caller_span = checker_ctx.span_of_expr(&callexp.caller, &symbollib);
+        let caller = extract_call_of(caller, symbollib, checker_ctx, caller_span);
         if caller.is_unknown() {
             callexp.arguments.iter_mut().for_each(|arg| {
-                typecheck_expression(arg, checker_ctx, symboltable);
+                typecheck_expression(arg, checker_ctx, symbollib);
             }); // for continuity.
             return caller;
         }
@@ -2055,7 +2041,7 @@ mod expressions {
                 function: method,
                 mut generic_arguments,
             } => {
-                let method_symbol = symboltable.get(method).unwrap();
+                let method_symbol = symbollib.get(method).unwrap();
                 match &method_symbol.kind {
                     SemanticSymbolKind::Method {
                         is_async,
@@ -2073,14 +2059,14 @@ mod expressions {
                     } => {
                         let parameter_types = convert_param_list_to_type(
                             params,
-                            symboltable,
+                            symbollib,
                             &generic_arguments,
                             checker_ctx,
                         );
                         let return_type = return_type
                             .as_ref()
                             .map(|typ| {
-                                evaluate(typ, symboltable, None, &mut checker_ctx.tracker(), 0)
+                                evaluate(typ, symbollib, None, &mut checker_ctx.tracker(), 0)
                             })
                             .unwrap_or(EvaluatedType::Void);
                         (
@@ -2110,28 +2096,28 @@ mod expressions {
         for (index, argument) in callexp.arguments.iter_mut().enumerate() {
             // Try to preemptively guess the type of each argument.
             if let Some(parameter_type) = parameter_types.get(index) {
-                infer_ahead(argument, &parameter_type.inferred_type, symboltable);
+                infer_ahead(argument, &parameter_type.inferred_type, symbollib);
             }
         }
         let evaluated_args = callexp
             .arguments
             .iter_mut()
-            .map(|arg| typecheck_expression(arg, checker_ctx, symboltable))
+            .map(|arg| typecheck_expression(arg, checker_ctx, symbollib))
             .collect::<Vec<_>>();
         // Account for async functions.
         if is_async {
-            return_type = prospectify(return_type, symboltable);
+            return_type = prospectify(return_type, symbollib);
         }
         zip_arguments(
             parameter_types,
             evaluated_args,
             checker_ctx,
             &callexp,
-            symboltable,
+            symbollib,
             &mut generic_arguments,
         );
         callexp.inferred_type = coerce(return_type, &generic_arguments);
-        update_expression_type(&mut callexp.caller, symboltable, &generic_arguments);
+        update_expression_type(&mut callexp.caller, symbollib, &generic_arguments);
         callexp.inferred_type.clone()
     }
 
@@ -2142,7 +2128,7 @@ mod expressions {
         evaluated_args: Vec<EvaluatedType>,
         checker_ctx: &mut TypecheckerContext,
         callexp: &TypedCallExpr,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
         generic_arguments: &mut Vec<(SymbolIndex, EvaluatedType)>,
     ) {
         // mismatched arguments. It checks if the parameter list is longer, so it can account for optional parameters.
@@ -2177,9 +2163,9 @@ mod expressions {
             };
             let unification = if is_optional {
                 unify_types(
-                    &maybify(parameter_type.clone(), symboltable),
+                    &maybify(parameter_type.clone(), symbollib),
                     argument_type,
-                    symboltable,
+                    symbollib,
                     UnifyOptions::HardConform,
                     Some(&mut generic_map),
                 )
@@ -2187,7 +2173,7 @@ mod expressions {
                 unify_types(
                     parameter_type,
                     argument_type,
-                    symboltable,
+                    symbollib,
                     UnifyOptions::HardConform,
                     Some(&mut generic_map),
                 )
@@ -2196,7 +2182,7 @@ mod expressions {
                 for errortype in errortype {
                     checker_ctx.add_error(TypeError {
                         _type: errortype,
-                        span: checker_ctx.span_of_expr(&callexp.arguments[i], &symboltable),
+                        span: checker_ctx.span_of_expr(&callexp.arguments[i], &symbollib),
                     })
                 }
             }
@@ -2217,14 +2203,14 @@ mod expressions {
 
     fn convert_param_list_to_type(
         params: &Vec<SymbolIndex>,
-        symboltable: &SymbolLibrary,
+        symbollib: &SymbolLibrary,
         solved_generics: &Vec<(SymbolIndex, EvaluatedType)>,
         checker_ctx: &mut TypecheckerContext,
     ) -> Vec<ParameterType> {
         params
             .iter()
             .map(|param| {
-                let parameter_symbol = symboltable.get(*param).unwrap();
+                let parameter_symbol = symbollib.get(*param).unwrap();
                 let (is_optional, type_label) = match &parameter_symbol.kind {
                     SemanticSymbolKind::Parameter {
                         is_optional,
@@ -2242,7 +2228,7 @@ mod expressions {
                         .map(|typ| {
                             evaluate(
                                 typ,
-                                symboltable,
+                                symbollib,
                                 Some(solved_generics),
                                 &mut checker_ctx.tracker(),
                                 0,
@@ -2256,7 +2242,7 @@ mod expressions {
 
     fn extract_call_of(
         caller: EvaluatedType,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
         checker_ctx: &mut TypecheckerContext,
         caller_span: Span,
     ) -> EvaluatedType {
@@ -2271,7 +2257,7 @@ mod expressions {
             | EvaluatedType::FunctionExpressionInstance { .. }
             | EvaluatedType::MethodInstance { .. } => caller,
             EvaluatedType::Model(base) => {
-                let symbol = symboltable.get_forwarded(base).unwrap();
+                let symbol = symbollib.get_forwarded(base).unwrap();
                 checker_ctx.add_error(errors::illegal_model_call(symbol.name.clone(), caller_span));
                 EvaluatedType::Unknown
             }
@@ -2286,7 +2272,7 @@ mod expressions {
             | EvaluatedType::Never
             | EvaluatedType::OpaqueTypeInstance { .. } => {
                 checker_ctx.add_error(errors::not_callable(
-                    symboltable.format_evaluated_type(&caller),
+                    symbollib.format_evaluated_type(&caller),
                     caller_span,
                 ));
                 EvaluatedType::Unknown
@@ -2296,7 +2282,7 @@ mod expressions {
                 while let EvaluatedType::Borrowed { base: inner } = caller {
                     caller = *inner
                 }
-                extract_call_of(caller, symboltable, checker_ctx, caller_span)
+                extract_call_of(caller, symbollib, checker_ctx, caller_span)
             }
             _ => EvaluatedType::Unknown,
         };
@@ -2306,14 +2292,14 @@ mod expressions {
     /// Typechecks a function expression.
     fn typecheck_function_expression(
         f: &mut TypedFnExpr,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
         checker_ctx: &mut TypecheckerContext,
     ) -> EvaluatedType {
         f.inferred_type = (|| {
             let mut parameter_types = vec![];
             let generic_args = evaluate_generic_params(&f.generic_params, true);
             for param in &f.params {
-                let parameter_symbol = symboltable.get_forwarded(*param).unwrap();
+                let parameter_symbol = symbollib.get_forwarded(*param).unwrap();
                 let (param_type, is_optional) = match &parameter_symbol.kind {
                     SemanticSymbolKind::Parameter {
                         param_type,
@@ -2324,11 +2310,11 @@ mod expressions {
                 };
                 let inferred_type = param_type
                     .as_ref()
-                    .map(|typ| evaluate(typ, symboltable, None, &mut checker_ctx.tracker(), 0))
+                    .map(|typ| evaluate(typ, symbollib, None, &mut checker_ctx.tracker(), 0))
                     .unwrap_or(EvaluatedType::Unknown);
                 // Traits cannot be used as parameter types.
                 if let EvaluatedType::TraitInstance { trait_, .. } = &inferred_type {
-                    let symbol = symboltable.get(*trait_);
+                    let symbol = symbollib.get(*trait_);
                     checker_ctx.add_error(errors::trait_as_type(
                         symbol
                             .map(|symbol| symbol.name.clone())
@@ -2347,7 +2333,7 @@ mod expressions {
                 (
                     evaluate(
                         typ,
-                        &symboltable,
+                        &symbollib,
                         Some(&generic_args),
                         &mut checker_ctx.tracker(),
                         0,
@@ -2357,7 +2343,7 @@ mod expressions {
             });
             // Traits cannot be used as return types.
             if let Some((EvaluatedType::TraitInstance { trait_, .. }, _)) = &return_type {
-                let symbol = symboltable.get(*trait_);
+                let symbol = symbollib.get(*trait_);
                 checker_ctx.add_error(errors::trait_as_type(
                     symbol
                         .map(|symbol| symbol.name.clone())
@@ -2378,7 +2364,7 @@ mod expressions {
                                 .unwrap_or(EvaluatedType::Unknown),
                         });
                     push_scopetype(checker_ctx, ScopeType::Other);
-                    let blocktype = typecheck_block(block, false, checker_ctx, symboltable);
+                    let blocktype = typecheck_block(block, false, checker_ctx, symbollib);
                     pop_scopetype(checker_ctx);
                     checker_ctx.current_function_context.pop();
                     // Derive return type from last return.
@@ -2388,7 +2374,7 @@ mod expressions {
                                 .value
                                 .as_ref()
                                 .map(|expr| {
-                                    symboltable
+                                    symbollib
                                         .get_expression_type(expr, checker_ctx.literals)
                                         .unwrap_or(EvaluatedType::Unknown)
                                 })
@@ -2400,14 +2386,14 @@ mod expressions {
                         blocktype
                     }
                 }
-                expression => typecheck_expression(expression, checker_ctx, symboltable),
+                expression => typecheck_expression(expression, checker_ctx, symbollib),
             };
             if return_type.is_some() {
                 let (return_type, span) = return_type.unwrap();
                 match unify_types(
                     &return_type,
                     &inferred_return_type,
-                    symboltable,
+                    symbollib,
                     UnifyOptions::Return,
                     None,
                 ) {
@@ -2420,8 +2406,8 @@ mod expressions {
                         }
                         checker_ctx.add_error(TypeError {
                             _type: TypeErrorType::MismatchedReturnType {
-                                expected: symboltable.format_evaluated_type(&return_type),
-                                found: symboltable.format_evaluated_type(&inferred_return_type),
+                                expected: symbollib.format_evaluated_type(&return_type),
+                                found: symbollib.format_evaluated_type(&inferred_return_type),
                             },
                             span,
                         })
@@ -2441,18 +2427,18 @@ mod expressions {
     /// Typechecks an access expression.
     fn typecheck_access_expression(
         access: &mut TypedAccessExpr,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
         checker_ctx: &mut TypecheckerContext,
     ) -> EvaluatedType {
         access.inferred_type = (|| {
-            let object_type = typecheck_expression(&mut access.object, checker_ctx, symboltable);
+            let object_type = typecheck_expression(&mut access.object, checker_ctx, symbollib);
             let property_symbol_idx = match &access.property {
                 TypedExpression::Identifier(i) => i.value,
                 _ => unreachable!(),
             };
             extract_property_of(
                 object_type,
-                symboltable,
+                symbollib,
                 property_symbol_idx,
                 checker_ctx,
                 access,
@@ -2464,12 +2450,12 @@ mod expressions {
     /// Extract a property based on the value of its object.
     fn extract_property_of(
         object_type: EvaluatedType,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
         property_symbol_idx: SymbolIndex,
         checker_ctx: &mut TypecheckerContext,
         access: &mut TypedAccessExpr,
     ) -> EvaluatedType {
-        let property_span = symboltable.get(property_symbol_idx).unwrap().ident_span();
+        let property_span = symbollib.get(property_symbol_idx).unwrap().ident_span();
         match object_type {
             // Accessing a property on a model instance.
             EvaluatedType::ModelInstance {
@@ -2477,7 +2463,7 @@ mod expressions {
                 ref generic_arguments,
             } => search_for_property(
                 checker_ctx,
-                symboltable,
+                symbollib,
                 model,
                 property_symbol_idx,
                 {
@@ -2494,7 +2480,7 @@ mod expressions {
                 property_span,
             ),
             EvaluatedType::Model(model) => {
-                let symbol = symboltable.get_forwarded(model).unwrap();
+                let symbol = symbollib.get_forwarded(model).unwrap();
                 let object_is_instance = false;
                 // The generic arguments is an unknown list from the generic parameters.
                 let generic_arguments = match &symbol.kind {
@@ -2505,7 +2491,7 @@ mod expressions {
                 };
                 search_for_property(
                     checker_ctx,
-                    symboltable,
+                    symbollib,
                     model,
                     property_symbol_idx,
                     generic_arguments,
@@ -2516,15 +2502,15 @@ mod expressions {
             // EvaluatedType::Trait(_) => todo!(),
             // EvaluatedType::Enum(_) => todo!(),
             EvaluatedType::Module(module) => {
-                let module = symboltable.get_forwarded(module).unwrap();
-                let property_symbol = symboltable.get_forwarded(property_symbol_idx).unwrap();
+                let module = symbollib.get_forwarded(module).unwrap();
+                let property_symbol = symbollib.get_forwarded(property_symbol_idx).unwrap();
                 match &module.kind {
                     SemanticSymbolKind::Module {
                         global_declaration_symbols,
                         ..
                     } => {
                         for idx in global_declaration_symbols {
-                            let symbol = match symboltable.get(*idx) {
+                            let symbol = match symbollib.get(*idx) {
                                 Some(symbol) => symbol,
                                 None => continue,
                             };
@@ -2538,15 +2524,15 @@ mod expressions {
                                         span: property_span,
                                     });
                                 }
-                                let actualidx = symboltable.forward(*idx);
-                                let actualsymbol = symboltable.get_forwarded(actualidx).unwrap();
+                                let actualidx = symbollib.forward(*idx);
+                                let actualsymbol = symbollib.get_forwarded(actualidx).unwrap();
                                 let evaluated_type =
-                                    symbol_to_type(actualsymbol, actualidx, symboltable)
+                                    symbol_to_type(actualsymbol, actualidx, symbollib)
                                         .ok()
                                         .unwrap_or(EvaluatedType::Unknown);
                                 // get mutably and resolve.
                                 let property_symbol =
-                                    symboltable.get_mut(property_symbol_idx).unwrap();
+                                    symbollib.get_mut(property_symbol_idx).unwrap();
                                 if let SemanticSymbolKind::Property { resolved, .. } =
                                     &mut property_symbol.kind
                                 {
@@ -2590,7 +2576,7 @@ mod expressions {
                                 // Here a trait is treated as a generic argument and given a solution.
                                 // This allows the `This` marker to refer to the implementing model, rather than the trait.
                                 generic_arguments.push((trait_, object_type.clone()));
-                                let trait_symbol = symboltable.get_forwarded(trait_)?;
+                                let trait_symbol = symbollib.get_forwarded(trait_)?;
                                 match &trait_symbol.kind {
                                     SemanticSymbolKind::Trait { methods, .. } => Some(methods),
                                     _ => return None,
@@ -2605,17 +2591,17 @@ mod expressions {
                     .iter()
                     .chain(implementation_methods)
                     .collect();
-                let property_symbol = symboltable.get(property_symbol_idx).unwrap();
+                let property_symbol = symbollib.get(property_symbol_idx).unwrap();
                 for method in complete_method_list {
                     let method = *method;
-                    let method_symbol = match symboltable.get(method) {
+                    let method_symbol = match symbollib.get(method) {
                         Some(sym) => sym,
                         None => continue,
                     };
                     if method_symbol.name == property_symbol.name && method_symbol.kind.is_public()
                     {
                         // get mutably and resolve.
-                        let property_symbol = symboltable.get_mut(property_symbol_idx).unwrap();
+                        let property_symbol = symbollib.get_mut(property_symbol_idx).unwrap();
                         if let SemanticSymbolKind::Property {
                             resolved,
                             is_opaque,
@@ -2636,7 +2622,7 @@ mod expressions {
             EvaluatedType::Borrowed { base } => {
                 return extract_property_of(
                     *base,
-                    symboltable,
+                    symbollib,
                     property_symbol_idx,
                     checker_ctx,
                     access,
@@ -2646,7 +2632,7 @@ mod expressions {
             EvaluatedType::Generic { base } | EvaluatedType::HardGeneric { base } => {
                 search_for_property(
                     checker_ctx,
-                    symboltable,
+                    symbollib,
                     base,
                     property_symbol_idx,
                     vec![],
@@ -2658,14 +2644,14 @@ mod expressions {
             _ => None,
         }
         .unwrap_or_else(|| {
-            let property_symbol = symboltable.get_forwarded(property_symbol_idx).unwrap();
+            let property_symbol = symbollib.get_forwarded(property_symbol_idx).unwrap();
             let error = TypeErrorType::NoSuchProperty {
-                base_type: symboltable.format_evaluated_type(&object_type),
+                base_type: symbollib.format_evaluated_type(&object_type),
                 property: property_symbol.name.clone(),
             };
             checker_ctx.add_error(TypeError {
                 _type: error,
-                span: checker_ctx.span_of_expr(&access.property, &symboltable),
+                span: checker_ctx.span_of_expr(&access.property, &symbollib),
             });
             EvaluatedType::Unknown
         })
@@ -2683,7 +2669,7 @@ mod expressions {
     /// to determine the property being referenced.
     pub fn search_for_property(
         checker_ctx: &mut TypecheckerContext,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
         model: SymbolIndex,
         property_symbol_idx: SymbolIndex,
         mut generic_arguments: Vec<(SymbolIndex, EvaluatedType)>,
@@ -2691,8 +2677,8 @@ mod expressions {
         property_span: Span,
     ) -> Option<EvaluatedType> {
         // The base type of the model or generic.
-        let base_symbol = symboltable.get_forwarded(model).unwrap();
-        let property_symbol = symboltable.get_forwarded(property_symbol_idx).unwrap();
+        let base_symbol = symbollib.get_forwarded(model).unwrap();
+        let property_symbol = symbollib.get_forwarded(property_symbol_idx).unwrap();
         let impls = match &base_symbol.kind {
             SemanticSymbolKind::Model {
                 implementations, ..
@@ -2716,7 +2702,7 @@ mod expressions {
             .iter()
             .filter_map(|int_typ| {
                 let implementation =
-                    evaluate(int_typ, symboltable, Some(&generic_arguments), &mut None, 0);
+                    evaluate(int_typ, symbollib, Some(&generic_arguments), &mut None, 0);
                 match implementation {
                     EvaluatedType::TraitInstance {
                         trait_,
@@ -2733,7 +2719,7 @@ mod expressions {
                                 generic_arguments: generic_arguments.clone(),
                             },
                         ));
-                        let trait_symbol = symboltable.get_forwarded(trait_)?;
+                        let trait_symbol = symbollib.get_forwarded(trait_)?;
                         match &trait_symbol.kind {
                             SemanticSymbolKind::Trait { methods, .. } => Some(methods),
                             _ => return None,
@@ -2755,7 +2741,7 @@ mod expressions {
         // Search through the compound list of methods for appriopriate property.
         for method in complete_method_list.iter() {
             let method = **method;
-            let method_symbol = symboltable.get_forwarded(method).unwrap();
+            let method_symbol = symbollib.get_forwarded(method).unwrap();
             if method_symbol.name == property_symbol.name {
                 let method_is_static = match &method_symbol.kind {
                     SemanticSymbolKind::Method { is_static, .. } => *is_static,
@@ -2775,12 +2761,12 @@ mod expressions {
                     ))
                 }
                 // get mutably and resolve.
-                let property_symbol = symboltable.get_mut(property_symbol_idx).unwrap();
+                let property_symbol = symbollib.get_mut(property_symbol_idx).unwrap();
                 if let SemanticSymbolKind::Property { resolved, .. } = &mut property_symbol.kind {
                     *resolved = Some(method)
                 }
                 // Add reference on source.
-                let method_symbol = symboltable.get_mut(method).unwrap();
+                let method_symbol = symbollib.get_mut(method).unwrap();
                 method_symbol.add_reference(checker_ctx.path_idx, property_span);
                 // Block non-public access.
                 if !method_symbol.kind.is_public()
@@ -2801,13 +2787,13 @@ mod expressions {
         if let Some((_, attributes)) = model_props {
             for attribute in attributes.iter() {
                 let attribute = *attribute;
-                let attribute_symbol = symboltable.get_forwarded(attribute).unwrap();
+                let attribute_symbol = symbollib.get_forwarded(attribute).unwrap();
                 if attribute_symbol.name == property_symbol.name {
                     let result_type = match &attribute_symbol.kind {
                         // todo: Is attribute public?
                         SemanticSymbolKind::Attribute { declared_type, .. } => evaluate(
                             &declared_type,
-                            symboltable,
+                            symbollib,
                             Some(&generic_arguments),
                             &mut checker_ctx.tracker(),
                             0,
@@ -2815,13 +2801,13 @@ mod expressions {
                         _ => return Some(EvaluatedType::Unknown),
                     };
                     // get mutably.
-                    let property_symbol = symboltable.get_mut(property_symbol_idx).unwrap();
+                    let property_symbol = symbollib.get_mut(property_symbol_idx).unwrap();
                     if let SemanticSymbolKind::Property { resolved, .. } = &mut property_symbol.kind
                     {
                         *resolved = Some(attribute)
                     }
                     // Add reference on source.
-                    let attribute_symbol = symboltable.get_mut(attribute).unwrap();
+                    let attribute_symbol = symbollib.get_mut(attribute).unwrap();
                     attribute_symbol.add_reference(checker_ctx.path_idx, property_span);
                     if !attribute_symbol.kind.is_public()
                         && checker_ctx.enclosing_model_or_trait != Some(model)
@@ -2838,7 +2824,7 @@ mod expressions {
             // Search through the attribute list for possible suggestions.
             for attributes in attributes.iter() {
                 let attribute = *attributes;
-                let attribute_symbol = symboltable.get_forwarded(attribute).unwrap();
+                let attribute_symbol = symbollib.get_forwarded(attribute).unwrap();
                 if attribute_symbol.name.to_lowercase() == property_symbol.name.to_lowercase() {
                     checker_ctx.add_error(errors::mispelled_name(
                         attribute_symbol.name.clone(),
@@ -2852,7 +2838,7 @@ mod expressions {
         // Search through complete method list for suggestions.
         for method in complete_method_list {
             let method = *method;
-            let method_symbol = symboltable.get_forwarded(method).unwrap();
+            let method_symbol = symbollib.get_forwarded(method).unwrap();
             if method_symbol.name.to_lowercase() == property_symbol.name.to_lowercase() {
                 checker_ctx.add_error(errors::mispelled_name(
                     method_symbol.name.clone(),
@@ -2867,14 +2853,14 @@ mod expressions {
     /// Typechecks an identifier.
     fn typecheck_identifier(
         i: &mut TypedIdent,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
     ) -> Result<EvaluatedType, TypeErrorType> {
-        let name = symboltable.forward(i.value);
-        let symbol = match symboltable.get_forwarded(name) {
+        let name = symbollib.forward(i.value);
+        let symbol = match symbollib.get_forwarded(name) {
             Some(symbol) => symbol,
             None => return Ok(EvaluatedType::Unknown),
         };
-        let eval_type = match symbol_to_type(symbol, name, symboltable) {
+        let eval_type = match symbol_to_type(symbol, name, symbollib) {
             Ok(value) => value,
             Err(value) => return value,
         };
@@ -2886,7 +2872,7 @@ mod expressions {
         body: &mut TypedBlock,
         is_function_block: bool,
         checker_ctx: &mut TypecheckerContext,
-        symboltable: &mut SymbolLibrary,
+        symbollib: &mut SymbolLibrary,
     ) -> EvaluatedType {
         body.inferred_type = (|| {
             let mut loopindex = 0;
@@ -2904,17 +2890,17 @@ mod expressions {
                                 .last()
                                 .map(|ctx| &ctx.return_type)
                             {
-                                infer_ahead(expression, return_type, symboltable);
+                                infer_ahead(expression, return_type, symbollib);
                             }
                         }
                         let expression_type =
-                            typecheck_expression(expression, checker_ctx, symboltable);
+                            typecheck_expression(expression, checker_ctx, symbollib);
                         let empty = vec![];
                         let generics = get_type_generics(&expression_type, &empty);
-                        update_expression_type(expression, symboltable, generics);
+                        update_expression_type(expression, symbollib, generics);
                         return expression_type;
                     } else if let TypedStmnt::ReturnStatement(retstat) = statement {
-                        statements::typecheck_return_statement(retstat, checker_ctx, symboltable);
+                        statements::typecheck_return_statement(retstat, checker_ctx, symbollib);
                         if !is_function_block {
                             return EvaluatedType::Never;
                         } else {
@@ -2923,7 +2909,7 @@ mod expressions {
                         }
                     }
                 }
-                statements::typecheck_statement(statement, checker_ctx, symboltable);
+                statements::typecheck_statement(statement, checker_ctx, symbollib);
                 loopindex += 1;
             }
 

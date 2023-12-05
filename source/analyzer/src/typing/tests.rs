@@ -32,8 +32,8 @@ macro_rules! check_types {
         let mut standpoint = Standpoint::new(true, Some(CORE_LIBRARY_PATH.into()));
         let path_idx = standpoint.add_module(module).unwrap();
         standpoint.check_all_modules();
-        let symbol_table = &standpoint.symbol_table;
-        for symbol in symbol_table.in_module(path_idx) {
+        let symbol_library = &standpoint.symbol_library;
+        for symbol in symbol_library.in_module(path_idx) {
             for (symbol_name, type_value) in $types {
                 if symbol_name == &symbol.name {
                     let inferred_type = match &symbol.kind {
@@ -46,7 +46,7 @@ macro_rules! check_types {
                     };
                     let inferred_type_symbol = match inferred_type {
                         EvaluatedType::ModelInstance { model, .. } => {
-                            symbol_table.get(*model).unwrap()
+                            symbol_library.get(*model).unwrap()
                         }
                         other => {
                             println!("{symbol:#?}");

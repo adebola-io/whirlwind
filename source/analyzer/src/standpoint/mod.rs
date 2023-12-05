@@ -21,7 +21,7 @@ pub struct Standpoint {
     pub root_folder: Option<PathBuf>,
     pub entry_module: PathIndex,
     pub directories: HashMap<PathBuf, HashMap<String, PathIndex>>,
-    pub symbol_table: SymbolLibrary,
+    pub symbol_library: SymbolLibrary,
     pub literals: LiteralMap,
     pub errors: Vec<ProgramError>,
     /// This flag permits the standpoint to update itself automatically
@@ -49,7 +49,7 @@ impl Standpoint {
             module_map: ModuleMap::new(),
             entry_module: PathIndex(0),
             directories: HashMap::new(),
-            symbol_table: SymbolLibrary::new(),
+            symbol_library: SymbolLibrary::new(),
             literals: LiteralMap::new(),
             errors: vec![],
             root_folder: None,
@@ -80,7 +80,7 @@ impl Standpoint {
         index: SymbolIndex,
     ) -> Option<impl Iterator<Item = SemanticSymbolReference>> {
         Some(
-            self.symbol_table
+            self.symbol_library
                 .get(index)?
                 .references
                 .iter()
@@ -258,7 +258,7 @@ impl Standpoint {
         let index = imported_module.symbol_idx;
         let solved_import_sources = self.solve_import_symbols(&target, leaves, index, root, phase);
         for (initial, solved) in solved_import_sources {
-            let import_symbol = match self.symbol_table.get_mut(initial) {
+            let import_symbol = match self.symbol_library.get_mut(initial) {
                 Some(symbol) => symbol,
                 None => return,
             };
@@ -274,7 +274,7 @@ impl Standpoint {
             }
             // Join references.
             if let Some(solved) = solved {
-                let source_symbol = match self.symbol_table.get_mut(solved) {
+                let source_symbol = match self.symbol_library.get_mut(solved) {
                     Some(symbol) => symbol,
                     None => return,
                 };
@@ -307,7 +307,7 @@ impl Standpoint {
                     self.look_for_symbol_in_module(index, root, &target, &sub_target, phase);
                 if let Some(symbol_idx) = imported_symbol_idx {
                     // Block private imports.
-                    let symbol = self.symbol_table.get(symbol_idx).unwrap();
+                    let symbol = self.symbol_library.get(symbol_idx).unwrap();
                     if phase.is_assessment() {
                         if !symbol.kind.is_public() {
                             self.add_error(ProgramError {
@@ -357,10 +357,10 @@ impl Standpoint {
         sub_target: &UseTarget,
         phase: ResolutionPhase,
     ) -> Option<SymbolIndex> {
-        let imported_module_symbol = self.symbol_table.get_mut(imported_idx)?;
+        let imported_module_symbol = self.symbol_library.get_mut(imported_idx)?;
         imported_module_symbol.add_reference(root, target.name.span);
         // drop mutable reference.
-        let imported_module_symbol = self.symbol_table.get(imported_idx)?;
+        let imported_module_symbol = self.symbol_library.get(imported_idx)?;
         let symbols_in_imported_module = match &imported_module_symbol.kind {
             SemanticSymbolKind::Module {
                 global_declaration_symbols: symbols,
@@ -371,7 +371,7 @@ impl Standpoint {
                 if source.is_some() {
                     let mut source = source.clone();
                     while source.is_some() {
-                        let imported_symbol = self.symbol_table.get(source.clone().unwrap());
+                        let imported_symbol = self.symbol_library.get(source.clone().unwrap());
                         match imported_symbol {
                             Some(SemanticSymbol {
                                 kind:
@@ -419,7 +419,7 @@ impl Standpoint {
             }
         }?;
         let symbol_to_retrieve = symbols_in_imported_module.iter().find(|symbol| {
-            self.symbol_table
+            self.symbol_library
                 .get(**symbol)
                 .is_some_and(|symbol| symbol.name == sub_target.name.name)
         });
@@ -558,7 +558,7 @@ impl Standpoint {
             module_name.clone(),
             module,
             path_idx,
-            &mut self.symbol_table,
+            &mut self.symbol_library,
             &mut self.errors,
             &mut self.literals,
             corelib_symbol_idx,
@@ -599,7 +599,7 @@ impl Standpoint {
         let stale_module = self.module_map.get(path_idx)?;
         let area = SurfaceAreaCalculator::gather_from_module(stale_module, self);
         let module_symbol_idx = stale_module.symbol_idx;
-        let module_symbol = self.symbol_table.get(module_symbol_idx)?;
+        let module_symbol = self.symbol_library.get(module_symbol_idx)?;
         let module_name = module_symbol.name.clone();
         let literals_to_remove = self
             .literals
@@ -616,7 +616,7 @@ impl Standpoint {
             })
             .collect::<Vec<_>>();
         // let symbols_to_remove = self
-        //     .symbol_table
+        //     .symbol_library
         //     .symbols()
         //     .filter_map(|(idx, symbol)| {
         //         // Symbol is declared in this module.
@@ -629,12 +629,12 @@ impl Standpoint {
         //         return None;
         //     })
         //     .collect::<Vec<_>>();
-        self.symbol_table.remove_module_table(path_idx);
+        self.symbol_library.remove_module_table(path_idx);
         for literal_idx in literals_to_remove {
             self.literals.remove(literal_idx);
         }
         for symbol_idx in area.outer_symbols {
-            if let Some(symbol) = self.symbol_table.get_mut(symbol_idx) {
+            if let Some(symbol) = self.symbol_library.get_mut(symbol_idx) {
                 symbol
                     .references
                     .retain(|reference| reference.module_path != path_idx);
@@ -745,7 +745,7 @@ impl Standpoint {
         let module = self.module_map.get_mut(module_path_idx)?;
         typecheck(
             module,
-            &mut self.symbol_table,
+            &mut self.symbol_library,
             &mut self.errors,
             &self.literals,
         );
@@ -757,7 +757,7 @@ impl Standpoint {
         for (_, mut module) in self.module_map.paths_mut() {
             typecheck(
                 &mut module,
-                &mut self.symbol_table,
+                &mut self.symbol_library,
                 &mut self.errors,
                 &self.literals,
             );

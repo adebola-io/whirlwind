@@ -5,13 +5,13 @@ use crate::{
 use std::cell::RefCell;
 
 pub struct SurfaceAreaCalculator<'a> {
-    symboltable: &'a SymbolLibrary,
+    symbollib: &'a SymbolLibrary,
     module: &'a TypedModule,
     surfacearea: RefCell<SurfaceArea>,
 }
 /// Ths surface area of a module is a container for the symbols
 /// declared and referenced within a module, gotten by traversing the module
-/// in its entirety, as opposed to iterating over the symboltable.
+/// in its entirety, as opposed to iterating over the symbollib.
 #[derive(Default)]
 pub struct SurfaceArea {
     pub declared_in_module: Vec<SymbolIndex>,
@@ -29,9 +29,9 @@ macro_rules! unwrap_or_return {
 
 impl SurfaceAreaCalculator<'_> {
     pub fn gather_from_module(module: &TypedModule, standpoint: &Standpoint) -> SurfaceArea {
-        let symboltable = &standpoint.symbol_table;
+        let symbollib = &standpoint.symbol_library;
         let surfaceareacalculator = SurfaceAreaCalculator {
-            symboltable,
+            symbollib,
             module,
             surfacearea: RefCell::new(SurfaceArea {
                 declared_in_module: vec![],
@@ -48,7 +48,7 @@ impl SurfaceAreaCalculator<'_> {
             if std::ptr::eq(module, other_module) {
                 continue;
             }
-            let module_symbol = match symboltable.get(other_module.symbol_idx) {
+            let module_symbol = match symbollib.get(other_module.symbol_idx) {
                 Some(module_symbol) => module_symbol,
                 None => continue,
             };
@@ -97,7 +97,7 @@ impl<'a> TypedVisitorNoArgs for SurfaceAreaCalculator<'a> {
         let surface_area = self.surface_area();
         for import_symbol in &use_decl.imports {
             surface_area.declared_in_module.push(*import_symbol);
-            let symbol = self.symboltable.get(*import_symbol).unwrap();
+            let symbol = self.symbollib.get(*import_symbol).unwrap();
             if let SemanticSymbolKind::Import { source, .. } = &symbol.kind {
                 if let Some(source) = source {
                     surface_area.outer_symbols.push(*source);
@@ -111,14 +111,14 @@ impl<'a> TypedVisitorNoArgs for SurfaceAreaCalculator<'a> {
     fn trait_declaration(&self, _trait: &crate::TypedTraitDeclaration) {
         let surface_area = self.surface_area();
         surface_area.declared_in_module.push(_trait.name);
-        let symbol = unwrap_or_return!(self.symboltable.get(_trait.name));
+        let symbol = unwrap_or_return!(self.symbollib.get(_trait.name));
         if let SemanticSymbolKind::Trait { generic_params, .. } = &symbol.kind {
             generic_params
                 .iter()
                 .for_each(|method_idx| surface_area.declared_in_module.push(*method_idx));
         }
         for property in &_trait.body.properties {
-            let method_symbol = match self.symboltable.get(property.name) {
+            let method_symbol = match self.symbollib.get(property.name) {
                 Some(symbol) => symbol,
                 None => continue,
             };
@@ -247,7 +247,7 @@ impl<'a> TypedVisitorNoArgs for SurfaceAreaCalculator<'a> {
     fn type_decl(&self, type_decl: &crate::TypedTypeDeclaration) {
         let surface_area = self.surface_area();
         surface_area.declared_in_module.push(type_decl.name);
-        let symbol = unwrap_or_return!(self.symboltable.get(type_decl.name));
+        let symbol = unwrap_or_return!(self.symbollib.get(type_decl.name));
         if let SemanticSymbolKind::TypeName { generic_params, .. } = &symbol.kind {
             generic_params
                 .iter()
@@ -259,7 +259,7 @@ impl<'a> TypedVisitorNoArgs for SurfaceAreaCalculator<'a> {
 
     fn identifier(&self, ident: &crate::TypedIdent) {
         let area = self.surface_area();
-        let symbol = unwrap_or_return!(self.symboltable.get(ident.value));
+        let symbol = unwrap_or_return!(self.symbollib.get(ident.value));
         if !area.declared_in_module.contains(&ident.value) {
             if symbol.was_declared_in(self.module.path_idx) {
                 area.declared_in_module.push(ident.value);
@@ -318,7 +318,7 @@ impl<'a> TypedVisitorNoArgs for SurfaceAreaCalculator<'a> {
     }
 
     fn function(&self, function: &crate::TypedFunctionDeclaration) {
-        let symbol = unwrap_or_return!(self.symboltable.get(function.name));
+        let symbol = unwrap_or_return!(self.symbollib.get(function.name));
         let surface_area = self.surface_area();
         surface_area.declared_in_module.push(function.name);
         if let SemanticSymbolKind::Function {
@@ -341,7 +341,7 @@ impl<'a> TypedVisitorNoArgs for SurfaceAreaCalculator<'a> {
     }
 
     fn enum_decl(&self, enum_decl: &crate::TypedEnumDeclaration) {
-        let symbol = unwrap_or_return!(self.symboltable.get(enum_decl.name));
+        let symbol = unwrap_or_return!(self.symbollib.get(enum_decl.name));
         let surface_area = self.surface_area();
         if let SemanticSymbolKind::Enum {
             generic_params,
@@ -361,14 +361,14 @@ impl<'a> TypedVisitorNoArgs for SurfaceAreaCalculator<'a> {
     fn model_decl(&self, model: &crate::TypedModelDeclaration) {
         let surface_area = self.surface_area();
         surface_area.declared_in_module.push(model.name);
-        let symbol = unwrap_or_return!(self.symboltable.get(model.name));
+        let symbol = unwrap_or_return!(self.symbollib.get(model.name));
         if let SemanticSymbolKind::Model { generic_params, .. } = &symbol.kind {
             generic_params
                 .iter()
                 .for_each(|method_idx| surface_area.declared_in_module.push(*method_idx));
         }
         for property in &model.body.properties {
-            let symbol = match self.symboltable.get(property.name) {
+            let symbol = match self.symbollib.get(property.name) {
                 Some(symbol) => symbol,
                 None => continue,
             };
@@ -434,7 +434,7 @@ mod tests {
 
         let time = std::time::Instant::now();
         let area = standpoint
-            .symbol_table
+            .symbol_library
             .in_module(idx)
             .map(|symbol| symbol.name.as_str())
             .collect::<Vec<_>>();
@@ -452,7 +452,7 @@ mod tests {
         area.declared_in_module.len(),
         area.declared_in_module
             .iter()
-            .map(|idx| (standpoint.symbol_table.get(*idx).unwrap().name.as_str(), idx)).collect::<Vec<_>>(),
+            .map(|idx| (standpoint.symbol_library.get(*idx).unwrap().name.as_str(), idx)).collect::<Vec<_>>(),
         time.elapsed()
     );
     }

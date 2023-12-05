@@ -20,7 +20,7 @@ impl<'a> SymbolWriter<'a> {
     }
     /// Print a symbol.
     pub fn print_symbol_with_idx(&self, symbol_idx: SymbolIndex) -> String {
-        let symbol = match self.standpoint.symbol_table.get(symbol_idx) {
+        let symbol = match self.standpoint.symbol_library.get(symbol_idx) {
             Some(symbol) => symbol,
             None => return String::from("[[[UNKNOWN, UNTRACKED SYMBOL]]]"),
         };
@@ -90,7 +90,7 @@ impl<'a> SymbolWriter<'a> {
             } => {
                 let name_of_owner = &self
                     .standpoint
-                    .symbol_table
+                    .symbol_library
                     .get(*owner_enum)
                     .expect("Could not retrieve owner enum fro variant symbol while printing.")
                     .name;
@@ -125,7 +125,7 @@ impl<'a> SymbolWriter<'a> {
                 if !matches!(inferred_type, EvaluatedType::Unknown { .. }) {
                     let type_as_string = self
                         .standpoint
-                        .symbol_table
+                        .symbol_library
                         .format_evaluated_type(inferred_type);
                     string.push_str(&type_as_string);
                 } else if let Some(typ) = declared_type {
@@ -157,7 +157,7 @@ impl<'a> SymbolWriter<'a> {
                 if !matches!(inferred_type, EvaluatedType::Unknown { .. }) {
                     let type_as_string = self
                         .standpoint
-                        .symbol_table
+                        .symbol_library
                         .format_evaluated_type(inferred_type);
                     string.push_str(&type_as_string);
                 } else {
@@ -225,7 +225,7 @@ impl<'a> SymbolWriter<'a> {
                     string.push_str(
                         &self
                             .standpoint
-                            .symbol_table
+                            .symbol_library
                             .format_evaluated_type(inferred_type),
                     );
                 }
@@ -383,7 +383,7 @@ impl<'a> SymbolWriter<'a> {
                 generic_args,
                 ..
             } => {
-                let symbol = self.standpoint.symbol_table.get(*value).unwrap();
+                let symbol = self.standpoint.symbol_library.get(*value).unwrap();
                 let mut string = symbol.name.clone();
                 if generic_args.len() > 0 {
                     string.push('<');

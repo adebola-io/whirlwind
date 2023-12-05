@@ -18,17 +18,17 @@ fn bind_variables_and_constants() {
     let standpoint = Standpoint::build_from_module(module, false).unwrap();
     assert!(standpoint.errors.len() == 1);
     assert!(standpoint
-        .symbol_table
+        .symbol_library
         .find(|symbol| symbol.name == "greeting")
         .is_some());
     assert!(standpoint
-        .symbol_table
+        .symbol_library
         .find(|symbol| symbol.name == "CONSTANT")
         .is_some());
     println!(
         "{:#?}",
         standpoint
-            .symbol_table
+            .symbol_library
             .in_module(PathIndex(0))
             .map(|symbol| (&symbol.name, &symbol.kind, &symbol.references))
             .collect::<Vec<_>>()
@@ -58,11 +58,11 @@ fn bind_call_expression() {
     let standpoint = Standpoint::build_from_module(module, false).unwrap();
     assert!(standpoint.errors.len() == 1);
     assert!(standpoint
-        .symbol_table
+        .symbol_library
         .find(|symbol| symbol.name == "Println")
         .is_some());
     assert!(standpoint
-        .symbol_table
+        .symbol_library
         .find(|symbol| symbol.name == "greeting")
         .is_some());
 }
@@ -87,14 +87,14 @@ fn bind_models() {
     module.module_path = Some(PathBuf::from("testing://Test.wrl"));
     let standpoint = Standpoint::build_from_module(module, false).unwrap();
     assert!(standpoint
-        .symbol_table
+        .symbol_library
         .find(|symbol| symbol.name == "Car")
         .is_some());
     assert!(standpoint
-        .symbol_table
+        .symbol_library
         .find(|symbol| symbol.name == "Honk")
         .is_some());
-    println!("{:#?}", standpoint.symbol_table);
+    println!("{:#?}", standpoint.symbol_library);
 }
 
 #[test]
@@ -110,14 +110,14 @@ fn bind_traits() {
     module.module_path = Some(PathBuf::from("testing://Test.wrl"));
     let standpoint = Standpoint::build_from_module(module, false).unwrap();
     assert!(standpoint
-        .symbol_table
+        .symbol_library
         .find(|symbol| symbol.name == "Vehicle")
         .is_some());
     assert!(standpoint
-        .symbol_table
+        .symbol_library
         .find(|symbol| symbol.name == "Start")
         .is_some());
-    println!("{:#?}", standpoint.symbol_table);
+    println!("{:#?}", standpoint.symbol_library);
 }
 
 #[test]
@@ -154,7 +154,7 @@ fn test_enum_type() {
     println!(
         "{:#?}",
         standpoint
-            .symbol_table
+            .symbol_library
             .in_module(PathIndex(0))
             .map(|symbol| (&symbol.name, &symbol.kind, &symbol.references))
             .collect::<Vec<_>>()
@@ -185,7 +185,7 @@ fn test_fn_expr() {
     println!(
         "{:#?}",
         standpoint
-            .symbol_table
+            .symbol_library
             .in_module(PathIndex(0))
             .map(|symbol| (&symbol.name, &symbol.kind, &symbol.references))
             .collect::<Vec<_>>()
@@ -216,18 +216,18 @@ fn test_use_import() {
     module.module_path = Some(PathBuf::from("testing://Test.wrl"));
     let standpoint = Standpoint::build_from_module(module, false).unwrap();
     assert!(standpoint
-        .symbol_table
+        .symbol_library
         .find(|symbol| symbol.name == "Println")
         .is_some());
     assert!(standpoint
-        .symbol_table
+        .symbol_library
         .find(|symbol| symbol.name == "Main")
         .is_some());
     assert!(standpoint.errors.len() == 0);
     println!(
         "{:#?}",
         standpoint
-            .symbol_table
+            .symbol_library
             .in_module(PathIndex(0))
             .map(|symbol| (&symbol.name, &symbol.kind, &symbol.references))
             .collect::<Vec<_>>()
@@ -255,7 +255,7 @@ function Add(a: Int, b: Int): Int {
     println!(
         "{:#?}",
         standpoint
-            .symbol_table
+            .symbol_library
             .in_module(PathIndex(0))
             .collect::<Vec<_>>()
     );
@@ -279,7 +279,7 @@ fn show_imports() {
     println!(
         "{:#?}",
         standpoint
-            .symbol_table
+            .symbol_library
             .in_module(PathIndex(0))
             .collect::<Vec<_>>()
     );
@@ -331,7 +331,7 @@ fn resolve_single_module_imports() {
     println!(
         "{:#?}",
         standpoint
-            .symbol_table
+            .symbol_library
             .symbols()
             .map(|(_, symbol)| symbol)
             .collect::<Vec<_>>()
@@ -391,7 +391,7 @@ fn resolve_mutliple_module_imports() {
     println!(
         "{:?}",
         standpoint
-            .symbol_table
+            .symbol_library
             .symbols()
             .map(|(_, symbol)| (&symbol.name, &symbol.references, &symbol.kind))
             .collect::<Vec<_>>()
@@ -432,7 +432,7 @@ fn test_variable_binding() {
     let mut module = Module::from_text(text);
     module.module_path = Some(PathBuf::from("testing:://Test.wrl"));
     let standpoint = Standpoint::build_from_module(module, false).unwrap();
-    println!("{:#?}", standpoint.symbol_table);
+    println!("{:#?}", standpoint.symbol_library);
 }
 
 #[test]

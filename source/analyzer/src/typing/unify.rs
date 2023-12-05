@@ -24,15 +24,15 @@ pub enum UnifyOptions {
 pub fn unify_types(
     left: &EvaluatedType,
     right: &EvaluatedType,
-    symboltable: &SymbolLibrary,
+    symbollib: &SymbolLibrary,
     options: UnifyOptions,
     mut map: Option<&mut HashMap<SymbolIndex, EvaluatedType>>,
 ) -> Result<EvaluatedType, Vec<TypeErrorType>> {
     let default_error = || TypeErrorType::MismatchedAssignment {
-        left: symboltable.format_evaluated_type(left),
-        right: symboltable.format_evaluated_type(right),
+        left: symbollib.format_evaluated_type(left),
+        right: symbollib.format_evaluated_type(right),
     };
-    let maybify = |typ| utils::maybify(typ, symboltable);
+    let maybify = |typ| utils::maybify(typ, symbollib);
     // Types are directly equal.
     // therefore they are unifiable.
     if left == right {
@@ -47,7 +47,7 @@ pub fn unify_types(
                 &mut map,
                 base,
                 free_type,
-                symboltable,
+                symbollib,
                 default_error,
                 options,
             )
@@ -62,7 +62,7 @@ pub fn unify_types(
             &mut map,
             base,
             free_type,
-            symboltable,
+            symbollib,
             default_error,
             options,
         ),
@@ -74,7 +74,7 @@ pub fn unify_types(
                 &mut map,
                 base,
                 free_type,
-                symboltable,
+                symbollib,
                 default_error,
                 options,
             )
@@ -87,7 +87,7 @@ pub fn unify_types(
                 &mut map,
                 base,
                 free_type,
-                symboltable,
+                symbollib,
                 default_error,
                 options,
             )
@@ -111,38 +111,38 @@ pub fn unify_types(
                 model: second_model,
                 ..
             },
-        ) if is_numeric_type(left, symboltable) && is_numeric_type(right, symboltable) => {
+        ) if is_numeric_type(left, symbollib) && is_numeric_type(right, symbollib) => {
             let first_model = *first_model;
             let second_model = *second_model;
             if first_model == second_model {
                 return Ok(left.clone());
             }
-            let (first_is_uint8, second_is_unint8) = if let Some(idx) = symboltable.uint8 {
+            let (first_is_uint8, second_is_unint8) = if let Some(idx) = symbollib.uint8 {
                 (first_model == idx, second_model == idx)
             } else {
                 (false, false)
             };
-            let (first_is_uint16, second_is_unint16) = if let Some(idx) = symboltable.uint16 {
+            let (first_is_uint16, second_is_unint16) = if let Some(idx) = symbollib.uint16 {
                 (first_model == idx, second_model == idx)
             } else {
                 (false, false)
             };
-            let (first_is_uint32, second_is_unint32) = if let Some(idx) = symboltable.uint32 {
+            let (first_is_uint32, second_is_unint32) = if let Some(idx) = symbollib.uint32 {
                 (first_model == idx, second_model == idx)
             } else {
                 (false, false)
             };
-            let (_, second_is_unint64) = if let Some(idx) = symboltable.uint64 {
+            let (_, second_is_unint64) = if let Some(idx) = symbollib.uint64 {
                 (first_model == idx, second_model == idx)
             } else {
                 (false, false)
             };
-            let (first_is_float32, second_is_float32) = if let Some(idx) = symboltable.float32 {
+            let (first_is_float32, second_is_float32) = if let Some(idx) = symbollib.float32 {
                 (first_model == idx, second_model == idx)
             } else {
                 (false, false)
             };
-            let (first_is_float64, second_is_float64) = if let Some(idx) = symboltable.float64 {
+            let (first_is_float64, second_is_float64) = if let Some(idx) = symbollib.float64 {
                 (first_model == idx, second_model == idx)
             } else {
                 (false, false)
@@ -163,8 +163,8 @@ pub fn unify_types(
                 return Ok(left.clone());
             }
             return Err(vec![default_error(), TypeErrorType::NumericCastingError {
-                left: symboltable.format_evaluated_type(left),
-                right: symboltable.format_evaluated_type(right)
+                left: symbollib.format_evaluated_type(left),
+                right: symbollib.format_evaluated_type(right)
             }])
         }
         // Comparing model instances.
@@ -180,8 +180,8 @@ pub fn unify_types(
                 generic_arguments: second_gen_args,
             },
         ) => {
-            let first_model_symbol = symboltable.get(*first).unwrap();
-            let second_model_symbol = symboltable.get(*second).unwrap();
+            let first_model_symbol = symbollib.get(*first).unwrap();
+            let second_model_symbol = symbollib.get(*second).unwrap();
             if !std::ptr::eq(first_model_symbol, second_model_symbol) {
                 return Err(vec![default_error()]);
             }
@@ -198,7 +198,7 @@ pub fn unify_types(
             let final_generic_args = match unify_generic_arguments(
                 first_gen_args,
                 second_gen_args,
-                symboltable,
+                symbollib,
                 options,
                 map.as_deref_mut(),
             ) {
@@ -244,12 +244,12 @@ pub fn unify_types(
             FunctionExpressionInstance { .. } | FunctionInstance { .. } | MethodInstance { .. },
         ) => {
             let FunctionType {is_async: left_is_async, parameter_types: left_params, generic_arguments: left_generic_arguments, return_type: mut left_return_type} =
-                match distill_as_function_type(left, symboltable) {
+                match distill_as_function_type(left, symbollib) {
                     Some(functiontype) => functiontype,
                     None => return Ok(EvaluatedType::Unknown)
                 };
             let FunctionType {is_async: right_is_async, parameter_types: right_params, generic_arguments: right_generic_arguments, return_type: mut right_return_type} =
-                match distill_as_function_type(right, symboltable) {
+                match distill_as_function_type(right, symbollib) {
                     Some(functiontype) => functiontype,
                     None => return Ok(EvaluatedType::Unknown)
                 };
@@ -257,7 +257,7 @@ pub fn unify_types(
             let generic_args = match unify_generic_arguments(
                 left_generic_arguments,
                 right_generic_arguments,
-                symboltable,
+                symbollib,
                 options,
                 map.as_deref_mut(),
             ) {
@@ -300,7 +300,7 @@ pub fn unify_types(
                 if right_param.is_optional {
                     right_inferred_type = maybify(right_inferred_type);
                 }
-                let inferred_type = unify_types(&left_inferred_type, &right_inferred_type, symboltable, options, map);
+                let inferred_type = unify_types(&left_inferred_type, &right_inferred_type, symbollib, options, map);
                 let result = ParameterType {
                     name: left_param.name.clone(),
                     is_optional: false,
@@ -317,15 +317,15 @@ pub fn unify_types(
             }
             // RETURN TYPES.
             if left_is_async {
-                left_return_type = utils::prospectify(left_return_type, symboltable);
+                left_return_type = utils::prospectify(left_return_type, symbollib);
             }
             if right_is_async {
-                right_return_type = utils::prospectify(right_return_type, symboltable);
+                right_return_type = utils::prospectify(right_return_type, symbollib);
             }
             let return_type_unification = unify_types(
                 &left_return_type,
                 &right_return_type,
-                symboltable,
+                symbollib,
                 options,
                 map,
             );
@@ -350,7 +350,7 @@ pub fn unify_types(
                 base: Box::new(unify_types(
                     &left_type,
                     &right_type,
-                    symboltable,
+                    symbollib,
                     options,
                     map,
                 )?),
@@ -390,8 +390,8 @@ pub fn unify_types(
             let mut errors = vec![];
             if !collaborators.iter().any(|collab| collab == child) {
                 let error = TypeErrorType::InvalidOpaqueTypeAssignment {
-                    left: symboltable.format_evaluated_type(left),
-                    right: symboltable.format_evaluated_type(right),
+                    left: symbollib.format_evaluated_type(left),
+                    right: symbollib.format_evaluated_type(right),
                 };
                 errors.push(default_error());
                 errors.push(error);
@@ -401,7 +401,7 @@ pub fn unify_types(
             let generic_arguments = match unify_generic_arguments(
                 opaque_generics,
                 subgenerics,
-                symboltable,
+                symbollib,
                 options,
                 map,
             ) {
@@ -426,8 +426,8 @@ pub fn unify_types(
             let mut errors = vec![];
             if !collaborators.iter().any(|collab| collab == base) {
                 let error = TypeErrorType::InvalidOpaqueTypeAssignment {
-                    left: symboltable.format_evaluated_type(left),
-                    right: symboltable.format_evaluated_type(right),
+                    left: symbollib.format_evaluated_type(left),
+                    right: symbollib.format_evaluated_type(right),
                 };
                 errors.push(default_error());
                 errors.push(error);
@@ -456,8 +456,8 @@ pub fn unify_types(
             for ri in right_collaborators {
                 if !left_collaborators.iter().any(|c| c == ri) {
                     errors.push(TypeErrorType::MissingOpaqueComponent {
-                        left: symboltable.format_evaluated_type(left),
-                        right: symboltable.format_evaluated_type(right),
+                        left: symbollib.format_evaluated_type(left),
+                        right: symbollib.format_evaluated_type(right),
                     });
                     return Err(errors);
                 }
@@ -466,7 +466,7 @@ pub fn unify_types(
             let generic_arguments = match unify_generic_arguments(
                 left_generics,
                 right_generics,
-                symboltable,
+                symbollib,
                 options,
                 map,
             ) {
@@ -487,8 +487,8 @@ pub fn unify_types(
         }
         // Otherwise, both types cannot be unified.
         _ => Err(vec![TypeErrorType::MismatchedAssignment {
-            left: symboltable.format_evaluated_type(left),
-            right: symboltable.format_evaluated_type(right),
+            left: symbollib.format_evaluated_type(left),
+            right: symbollib.format_evaluated_type(right),
         }]),
     }
 }
@@ -499,7 +499,7 @@ fn solve_generic_type(
     map: &mut Option<&mut HashMap<SymbolIndex, EvaluatedType>>,
     base: &SymbolIndex,
     free_type: &EvaluatedType,
-    symboltable: &SymbolLibrary,
+    symbollib: &SymbolLibrary,
     default_error: impl Fn() -> TypeErrorType,
     options: UnifyOptions,
 ) -> Result<EvaluatedType, Vec<TypeErrorType>> {
@@ -511,7 +511,7 @@ fn solve_generic_type(
             match unify_types(
                 &already_assigned,
                 &free_type,
-                symboltable,
+                symbollib,
                 options,
                 Some(map),
             ) {
@@ -526,7 +526,7 @@ fn solve_generic_type(
             }
         }
     }
-    let base_parameter = symboltable.get_forwarded(*base).unwrap();
+    let base_parameter = symbollib.get_forwarded(*base).unwrap();
     match &base_parameter.kind {
         SemanticSymbolKind::GenericParameter {
             traits,
@@ -540,7 +540,7 @@ fn solve_generic_type(
                 if free_type.is_unknown() {
                     return Ok(evaluate(
                         default,
-                        symboltable,
+                        symbollib,
                         solved_generics.as_ref(),
                         &mut None,
                         0,
@@ -548,7 +548,7 @@ fn solve_generic_type(
                 }
             }
             for _trait in traits {
-                let trait_evaluated = evaluate(_trait, symboltable, None, &mut None, 0);
+                let trait_evaluated = evaluate(_trait, symbollib, None, &mut None, 0);
                 // The trait guard does not refer to a trait.
                 // Unification cannot continue, but it is not the problem of this process.
                 if !trait_evaluated.is_trait_instance() {
@@ -558,7 +558,7 @@ fn solve_generic_type(
                     ModelInstance { model: base, .. }
                     | TraitInstance { trait_: base,.. }
                     | Generic { base }
-                    | HardGeneric { base } => match &symboltable.get_forwarded(*base).unwrap().kind
+                    | HardGeneric { base } => match &symbollib.get_forwarded(*base).unwrap().kind
                     {
                         SemanticSymbolKind::GenericParameter {
                             traits: implementations,
@@ -585,7 +585,7 @@ fn solve_generic_type(
                         .iter()
                         .find(|implementation| {
                             // todo: block infinite types.
-                            evaluate(implementation, symboltable, free_type_generics, &mut None, 0)
+                            evaluate(implementation, symbollib, free_type_generics, &mut None, 0)
                                 == trait_evaluated
                         })
                         .is_some()
@@ -599,8 +599,8 @@ fn solve_generic_type(
                     return Err(vec![
                         default_error(),
                         TypeErrorType::UnimplementedTrait {
-                            offender: symboltable.format_evaluated_type(free_type),
-                            _trait: symboltable.format_evaluated_type(&trait_evaluated),
+                            offender: symbollib.format_evaluated_type(free_type),
+                            _trait: symbollib.format_evaluated_type(&trait_evaluated),
                         },
                     ]);
                 }
@@ -621,7 +621,7 @@ fn solve_generic_type(
 pub fn unify_generic_arguments(
     left_generic_arguments: &Vec<(SymbolIndex, EvaluatedType)>,
     right_generic_arguments: &Vec<(SymbolIndex, EvaluatedType)>,
-    symboltable: &SymbolLibrary,
+    symbollib: &SymbolLibrary,
     options: UnifyOptions,
     mut map: Option<&mut HashMap<SymbolIndex, EvaluatedType>>,
 ) -> Result<Vec<(SymbolIndex, EvaluatedType)>, Vec<TypeErrorType>> {
@@ -670,7 +670,7 @@ pub fn unify_generic_arguments(
             match unify_types(
                 left_evaluated_type,
                 right_evaluated_type,
-                symboltable,
+                symbollib,
                 options,
                 map.as_deref_mut(),
             ) {
@@ -712,22 +712,22 @@ pub fn zip<'a>(
 pub fn unify_freely(
     left: &EvaluatedType,
     right: &EvaluatedType,
-    symboltable: &SymbolLibrary,
+    symbollib: &SymbolLibrary,
     mut map: Option<&mut HashMap<SymbolIndex, EvaluatedType>>,
 ) -> Result<EvaluatedType, Vec<TypeErrorType>> {
     let default_error = || TypeErrorType::MismatchedAssignment {
-        left: symboltable.format_evaluated_type(left),
-        right: symboltable.format_evaluated_type(right),
+        left: symbollib.format_evaluated_type(left),
+        right: symbollib.format_evaluated_type(right),
     };
     match (left, right) {
         (free_type, Generic { base }) => solve_generic_type(
             &mut map,
             base,
             free_type,
-            symboltable,
+            symbollib,
             default_error,
             UnifyOptions::Conform,
         ),
-        _ => unify_types(left, right, symboltable, UnifyOptions::Conform, map),
+        _ => unify_types(left, right, symbollib, UnifyOptions::Conform, map),
     }
 }

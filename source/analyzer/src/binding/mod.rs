@@ -71,7 +71,7 @@ pub fn bind(
     // The reserved module path.
     path_idx: PathIndex,
     // The context symbol table.
-    symbol_table: &mut SymbolLibrary,
+    symbol_library: &mut SymbolLibrary,
     // The context errors.
     errors: &mut Vec<ProgramError>,
     // Literal values.
@@ -99,7 +99,7 @@ pub fn bind(
         statements.push(statements::bind_statement(
             statement,
             &mut binder,
-            symbol_table,
+            symbol_library,
             errors,
             literals,
             &mut module.ambience,
@@ -135,7 +135,7 @@ pub fn bind(
         origin_span,
         origin_scope_id: None,
     };
-    let symbol_idx = symbol_table.add_to_table(binder.path, module_symbol);
+    let symbol_idx = symbol_library.add_to_table(binder.path, module_symbol);
     Some(TypedModule {
         path_idx,
         path_buf,
@@ -156,7 +156,7 @@ mod bind_utils {
     /// Bind an entry within a scope.
     pub fn handle_scope_entry(
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         ambience: &ModuleAmbience,
         address: ScopeAddress,
@@ -172,7 +172,7 @@ mod bind_utils {
             if !std::ptr::eq(search.entry, entry) {
                 Err(error_and_return_first_instance(
                     &binder,
-                    symbol_table,
+                    symbol_library,
                     errors,
                     search.entry,
                     entry,
@@ -182,13 +182,13 @@ mod bind_utils {
                 // If the symbol has already been used before, equate the instances.
                 // If the symbol cannot be hoisted, e.g. a constant or a variable, cause an error.
                 Ok(
-                    maybe_bound(&binder, symbol_table, errors, entry, !allow_hoisting, span)
+                    maybe_bound(&binder, symbol_library, errors, entry, !allow_hoisting, span)
                         // No clashes in the current scope, and no previous usage.
                         // create new symbol for this constant.
                         .unwrap_or_else(|| {
                             bind_signature(
                                 binder,
-                                symbol_table,
+                                symbol_library,
                                 errors,
                                 ambience,
                                 Some(ScopeId(search.scope.id as u32)),
@@ -223,7 +223,7 @@ mod bind_utils {
     /// Add an error for a duplicate declaration, and return the symbol index of the first declaration symbol.
     pub fn error_and_return_first_instance(
         binder: &Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         entry_1: &ScopeEntry,
         entry_2: &ScopeEntry,
@@ -239,7 +239,7 @@ mod bind_utils {
         let span = entry_1.ident().unwrap().span;
         let symbol_index = *(binder.known_values.get(&span).unwrap());
         // Add reference to this.
-        symbol_table
+        symbol_library
             .get_mut(symbol_index)
             .unwrap()
             .add_reference(binder.path, entry_2.ident().unwrap().span);
@@ -250,7 +250,7 @@ mod bind_utils {
     /// Check if a symbol has been jumped to already.
     pub fn maybe_bound(
         binder: &Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         entry: &ScopeEntry,
         should_cause_error: bool,
@@ -259,7 +259,7 @@ mod bind_utils {
         let span = entry.ident()?.span;
         // Value has already been added to symbol table before its declaration was encountered,
         if let Some(symbolindex) = binder.known_values.get(&span) {
-            let symbol = symbol_table.get(*symbolindex).unwrap();
+            let symbol = symbol_library.get(*symbolindex).unwrap();
             if should_cause_error {
                 symbol
                     .references
@@ -278,7 +278,7 @@ mod bind_utils {
                         )
                     });
             }
-            let symbol = symbol_table.get_mut(*symbolindex).unwrap();
+            let symbol = symbol_library.get_mut(*symbolindex).unwrap();
             // Mark new found declaration range.
             symbol.origin_span = declaration_range;
             return Some(*symbolindex);
@@ -289,7 +289,7 @@ mod bind_utils {
     /// Create a binding for a signature from a scope entry.
     pub fn bind_signature(
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         ambience: &ModuleAmbience,
         origin_scope_id: Option<ScopeId>,
@@ -304,7 +304,7 @@ mod bind_utils {
                     origin_span,
                     origin_scope_id,
                 );
-                let index = symbol_table.add_to_table(binder.path, symbol);
+                let index = symbol_library.add_to_table(binder.path, symbol);
                 let span = function.name.span;
                 binder.known_values.insert(span, index);
                 // Return type, parameters and generic parameters are bound at declaration to prevent recursive loops.
@@ -313,7 +313,7 @@ mod bind_utils {
             ScopeEntry::Type(_type) => {
                 let symbol =
                     SemanticSymbol::from_type(_type, binder.path, origin_span, origin_scope_id);
-                let index = symbol_table.add_to_table(binder.path, symbol);
+                let index = symbol_library.add_to_table(binder.path, symbol);
                 let span = _type.name.span;
                 binder.known_values.insert(span, index);
                 // Type value and generic parameters are bound at declaration to prevent recursive loops.
@@ -344,7 +344,7 @@ mod bind_utils {
                     origin_span,
                     origin_scope_id,
                 };
-                let index = symbol_table.add_to_table(binder.path, symbol);
+                let index = symbol_library.add_to_table(binder.path, symbol);
                 let span = model.name.span;
                 binder.known_values.insert(span, index);
                 index
@@ -352,7 +352,7 @@ mod bind_utils {
             ScopeEntry::Enum(_enum) => {
                 let symbol =
                     SemanticSymbol::from_enum(_enum, binder.path, origin_span, origin_scope_id);
-                let index = symbol_table.add_to_table(binder.path, symbol);
+                let index = symbol_library.add_to_table(binder.path, symbol);
                 let span = _enum.name.span;
                 binder.known_values.insert(span, index);
                 index
@@ -364,15 +364,15 @@ mod bind_utils {
                     origin_span,
                     origin_scope_id,
                 );
-                let index = symbol_table.add_to_table(binder.path, symbol);
+                let index = symbol_library.add_to_table(binder.path, symbol);
                 let span = variable.name.span;
                 binder.known_values.insert(span, index);
                 // Add type. Hackery to prevent recursive real-name-is-also-type-name loops.
                 let declared_type_idx = variable.var_type.as_ref().map(|type_expr| {
-                    types::bind_type_expression(type_expr, binder, symbol_table, errors, ambience)
+                    types::bind_type_expression(type_expr, binder, symbol_library, errors, ambience)
                 });
                 if let SemanticSymbolKind::Variable { declared_type, .. } =
-                    &mut symbol_table.get_mut(index).unwrap().kind
+                    &mut symbol_library.get_mut(index).unwrap().kind
                 {
                     *declared_type = declared_type_idx;
                 }
@@ -397,7 +397,7 @@ mod bind_utils {
                     origin_span,
                     origin_scope_id,
                 };
-                let index = symbol_table.add_to_table(binder.path, symbol);
+                let index = symbol_library.add_to_table(binder.path, symbol);
                 let span = _trait.name.span;
                 binder.known_values.insert(span, index);
                 index
@@ -410,7 +410,7 @@ mod bind_utils {
                     origin_span,
                     origin_scope_id,
                 );
-                let index = symbol_table.add_to_table(binder.path, symbol);
+                let index = symbol_library.add_to_table(binder.path, symbol);
                 let span = use_signature.name.span;
                 binder.known_values.insert(span, index);
                 index
@@ -428,19 +428,19 @@ mod bind_utils {
                     origin_span,
                     origin_scope_id,
                 );
-                let index = symbol_table.add_to_table(binder.path, symbol);
+                let index = symbol_library.add_to_table(binder.path, symbol);
                 let span = constant.name.span;
                 binder.known_values.insert(span, index);
                 let declared_const_type = types::bind_type_expression(
                     &constant.var_type,
                     binder,
-                    symbol_table,
+                    symbol_library,
                     errors,
                     ambience,
                 );
                 // Add type. Hackery to prevent recursive real-name-is-also-type-name loops.
                 if let SemanticSymbolKind::Constant { declared_type, .. } =
-                    &mut symbol_table.get_mut(index).unwrap().kind
+                    &mut symbol_library.get_mut(index).unwrap().kind
                 {
                     *declared_type = declared_const_type;
                 }
@@ -482,7 +482,7 @@ mod bind_utils {
                             origin_scope_id,
                         };
                         property_symbol.add_reference(binder.path, real_name.span);
-                        let from_property = symbol_table.add_to_table(binder.path, property_symbol);
+                        let from_property = symbol_library.add_to_table(binder.path, property_symbol);
                         let name = alias.as_ref().unwrap_or(real_name);
                         (
                             SemanticSymbol {
@@ -527,7 +527,7 @@ mod bind_utils {
                     ),
                 };
                 // Types will be resolved later.
-                let symbol_idx = symbol_table.add_to_table(binder.path, symbol);
+                let symbol_idx = symbol_library.add_to_table(binder.path, symbol);
                 binder.known_values.insert(span, symbol_idx);
                 symbol_idx
             }
@@ -537,31 +537,31 @@ mod bind_utils {
         // Account for intrinsic types.
         if entry.is_public() {
             *(match (&binder.current_module_type, entry.name()) {
-                (CurrentModuleType::String, "String") => &mut symbol_table.string,
-                (CurrentModuleType::Array, "Array") => &mut symbol_table.array,
-                (CurrentModuleType::Bool, "Bool") => &mut symbol_table.bool,
-                (CurrentModuleType::Async, "Prospect") => &mut symbol_table.prospect,
-                (CurrentModuleType::Maybe, "Maybe") => &mut symbol_table.maybe,
+                (CurrentModuleType::String, "String") => &mut symbol_library.string,
+                (CurrentModuleType::Array, "Array") => &mut symbol_library.array,
+                (CurrentModuleType::Bool, "Bool") => &mut symbol_library.bool,
+                (CurrentModuleType::Async, "Prospect") => &mut symbol_library.prospect,
+                (CurrentModuleType::Maybe, "Maybe") => &mut symbol_library.maybe,
                 (CurrentModuleType::Numeric, _) => match entry.name() {
-                    "Int" => &mut symbol_table.int,
-                    "SignedInt" => &mut symbol_table.sint,
-                    "UnsignedInt" => &mut symbol_table.uint,
-                    "Float" => &mut symbol_table.float,
-                    "UInt8" => &mut symbol_table.uint8,
-                    "UInt16" => &mut symbol_table.uint16,
-                    "UInt32" => &mut symbol_table.uint32,
-                    "UInt64" => &mut symbol_table.uint64,
-                    "Float32" => &mut symbol_table.float32,
-                    "Float64" => &mut symbol_table.float64,
+                    "Int" => &mut symbol_library.int,
+                    "SignedInt" => &mut symbol_library.sint,
+                    "UnsignedInt" => &mut symbol_library.uint,
+                    "Float" => &mut symbol_library.float,
+                    "UInt8" => &mut symbol_library.uint8,
+                    "UInt16" => &mut symbol_library.uint16,
+                    "UInt32" => &mut symbol_library.uint32,
+                    "UInt64" => &mut symbol_library.uint64,
+                    "Float32" => &mut symbol_library.float32,
+                    "Float64" => &mut symbol_library.float64,
                     _ => return index,
                 },
-                (CurrentModuleType::Internal, "never") => &mut symbol_table.never,
-                (CurrentModuleType::Internal, "Flow") => &mut symbol_table.flow,
-                (CurrentModuleType::Traits, "Try") => &mut symbol_table.try_s,
-                (CurrentModuleType::Traits, "Guaranteed") => &mut symbol_table.guaranteed,
-                (CurrentModuleType::Range, "Range") => &mut symbol_table.range,
-                (CurrentModuleType::Default, "Default") => &mut symbol_table.default,
-                (CurrentModuleType::Ops, "Addition") => &mut symbol_table.addition,
+                (CurrentModuleType::Internal, "never") => &mut symbol_library.never,
+                (CurrentModuleType::Internal, "Flow") => &mut symbol_library.flow,
+                (CurrentModuleType::Traits, "Try") => &mut symbol_library.try_s,
+                (CurrentModuleType::Traits, "Guaranteed") => &mut symbol_library.guaranteed,
+                (CurrentModuleType::Range, "Range") => &mut symbol_library.range,
+                (CurrentModuleType::Default, "Default") => &mut symbol_library.default,
+                (CurrentModuleType::Ops, "Addition") => &mut symbol_library.addition,
                 // CurrentModuleType::Iteratable => todo!(),
                 _ => return index,
             }) = Some(index);
@@ -573,7 +573,7 @@ mod bind_utils {
     /// Finds an already existing symbol or creates a new one.
     pub fn find_or_create(
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         ambience: &ModuleAmbience,
         name: &Identifier,
@@ -601,7 +601,7 @@ mod bind_utils {
                         // then this process will result in a context error (using variable before declaration) later on.
                         None => bind_signature(
                             binder,
-                            symbol_table,
+                            symbol_library,
                             errors,
                             ambience,
                             Some(ScopeId(search.scope.id as u32)),
@@ -623,14 +623,14 @@ mod bind_utils {
                     }
                     // As a last resort, check the public declarations in the prelude.
                     if let Some(idx) = binder.prelude_symbol_idx {
-                        let prelude_module_symbol = symbol_table.get(idx).expect("Something went wrong. Loaded prelude module but could not retrive it as a symbol.");
+                        let prelude_module_symbol = symbol_library.get(idx).expect("Something went wrong. Loaded prelude module but could not retrive it as a symbol.");
                         if let SemanticSymbolKind::Module {
                             global_declaration_symbols: symbols,
                             ..
                         } = &prelude_module_symbol.kind
                         {
                             for symbol_idx in symbols {
-                                let declared_symbol_in_prelude = symbol_table
+                                let declared_symbol_in_prelude = symbol_library
                                     .get(*symbol_idx)
                                     .expect("Found unresolvable symbol in module symbol list.");
                                 if declared_symbol_in_prelude.name == name.name
@@ -663,7 +663,7 @@ mod bind_utils {
                         origin_span: name.span,
                         origin_scope_id: Some(ScopeId(binder.current_scope as u32)),
                     };
-                    let index = symbol_table.add_to_table(binder.path, new_symbol);
+                    let index = symbol_library.add_to_table(binder.path, new_symbol);
                     binder
                         .unknown_values
                         .insert((name.name.to_owned(), binder.current_scope), index);
@@ -672,14 +672,14 @@ mod bind_utils {
             }
         })();
         // Add this reference.
-        let symbol = symbol_table.get_mut(index).unwrap();
+        let symbol = symbol_library.get_mut(index).unwrap();
         symbol.add_reference(binder.path, name.span);
         return index;
     }
 
     // /// Returns the reference number for the last reference added to the symbol.
-    // pub fn last_reference_no(symbol_table: &SymbolTable, symbol_idx: SymbolIndex) -> usize {
-    //     let symbol = symbol_table.get(symbol_idx).unwrap();
+    // pub fn last_reference_no(symbol_library: &SymbolTable, symbol_idx: SymbolIndex) -> usize {
+    //     let symbol = symbol_library.get(symbol_idx).unwrap();
     //     let mut ref_no = 0;
     //     for (idx, ref_list) in symbol.references.iter().enumerate() {
     //         ref_no += ref_list.starts.len();
@@ -750,7 +750,7 @@ mod statements {
     pub fn bind_statement(
         statement: Statement,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -759,7 +759,7 @@ mod statements {
             Statement::TestDeclaration(test) => TypedStmnt::TestDeclaration(bind_test_declaration(
                 test,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -767,7 +767,7 @@ mod statements {
             Statement::UseDeclaration(usedecl) => TypedStmnt::UseDeclaration(bind_use_declaration(
                 usedecl,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 ambience,
             )),
@@ -775,7 +775,7 @@ mod statements {
                 TypedStmnt::ShorthandVariableDeclaration(bind_shorthand_variable_declaration(
                     shorthand,
                     binder,
-                    symbol_table,
+                    symbol_library,
                     errors,
                     literals,
                     ambience,
@@ -785,37 +785,37 @@ mod statements {
                 TypedStmnt::ConstantDeclaration(bind_constant_declaration(
                     constant,
                     binder,
-                    symbol_table,
+                    symbol_library,
                     errors,
                     literals,
                     ambience,
                 ))
             }
             Statement::ModelDeclaration(model) => TypedStmnt::ModelDeclaration(
-                bind_model_declaration(model, binder, symbol_table, errors, literals, ambience),
+                bind_model_declaration(model, binder, symbol_library, errors, literals, ambience),
             ),
             Statement::ModuleDeclaration(module) => {
                 binder.module_decl_span = Some(module.span);
                 TypedStmnt::ModuleDeclaration(TypedModuleDeclaration { span: module.span })
             }
             Statement::FunctionDeclaration(func) => TypedStmnt::FunctionDeclaration(
-                function_declaration(func, binder, symbol_table, errors, literals, ambience),
+                function_declaration(func, binder, symbol_library, errors, literals, ambience),
             ),
             Statement::EnumDeclaration(_enum) => TypedStmnt::EnumDeclaration(enum_declaration(
                 _enum,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 &ambience,
             )),
             Statement::TypeDeclaration(typedecl) => TypedStmnt::TypeDeclaration(
-                bind_type_declaration(typedecl, binder, symbol_table, errors, ambience),
+                bind_type_declaration(typedecl, binder, symbol_library, errors, ambience),
             ),
             Statement::WhileStatement(while_statement) => {
                 TypedStmnt::WhileStatement(bind_while_statement(
                     while_statement,
                     binder,
-                    symbol_table,
+                    symbol_library,
                     errors,
                     literals,
                     ambience,
@@ -825,19 +825,19 @@ mod statements {
                 TypedStmnt::ReturnStatement(bind_return_statement(
                     returnstmnt,
                     binder,
-                    symbol_table,
+                    symbol_library,
                     errors,
                     literals,
                     ambience,
                 ))
             }
             Statement::ExpressionStatement(expression) => TypedStmnt::ExpressionStatement(
-                bind_expression(expression, binder, symbol_table, errors, literals, ambience),
+                bind_expression(expression, binder, symbol_library, errors, literals, ambience),
             ),
             Statement::FreeExpression(expression) => TypedStmnt::FreeExpression(bind_expression(
                 expression,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -845,19 +845,19 @@ mod statements {
             Statement::BreakStatement(_break) => TypedStmnt::BreakStatement(bind_break_statement(
                 _break,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 ambience,
             )),
             Statement::ContinueStatement(cont) => TypedStmnt::ContinueStatement(
-                bind_continue_statement(cont, binder, symbol_table, errors, ambience),
+                bind_continue_statement(cont, binder, symbol_library, errors, ambience),
             ),
             Statement::RecordDeclaration => todo!(),
             Statement::TraitDeclaration(trait_decl) => {
                 TypedStmnt::TraitDeclaration(bind_trait_declaration(
                     trait_decl,
                     binder,
-                    symbol_table,
+                    symbol_library,
                     errors,
                     literals,
                     ambience,
@@ -868,7 +868,7 @@ mod statements {
                 TypedStmnt::VariableDeclaration(bind_variable_declaration(
                     variable,
                     binder,
-                    symbol_table,
+                    symbol_library,
                     errors,
                     literals,
                     ambience,
@@ -881,7 +881,7 @@ mod statements {
     pub fn bind_test_declaration(
         test: TestDeclaration,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -895,7 +895,7 @@ mod statements {
                 binder.path,
                 literals,
             ),
-            body: bind_block(test.body, binder, symbol_table, errors, literals, ambience),
+            body: bind_block(test.body, binder, symbol_library, errors, literals, ambience),
             span: test.span,
         }
     }
@@ -904,7 +904,7 @@ mod statements {
     pub fn bind_use_declaration(
         usedecl: UseDeclaration,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         ambience: &mut ModuleAmbience,
     ) -> TypedUseDeclaration {
@@ -912,7 +912,7 @@ mod statements {
         for address in usedecl.addresses {
             if let Ok(symbol_idx) = handle_scope_entry(
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 ambience,
                 address,
@@ -936,14 +936,14 @@ mod statements {
     fn bind_shorthand_variable_declaration(
         shorthand: ShorthandVariableDeclaration,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedShorthandVariableDeclaration {
         let symbol_idx = match handle_scope_entry(
             binder,
-            symbol_table,
+            symbol_library,
             errors,
             ambience,
             shorthand.address,
@@ -957,7 +957,7 @@ mod statements {
             value: bind_expression(
                 shorthand.value,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -970,14 +970,14 @@ mod statements {
     fn bind_constant_declaration(
         constant: ConstantDeclaration,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedConstantDeclaration {
         let symbol_idx = match handle_scope_entry(
             binder,
-            symbol_table,
+            symbol_library,
             errors,
             ambience,
             constant.address,
@@ -991,7 +991,7 @@ mod statements {
             value: bind_expression(
                 constant.value,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -1004,14 +1004,14 @@ mod statements {
     fn bind_model_declaration(
         model: ModelDeclaration,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedModelDeclaration {
         let binding_result = handle_scope_entry(
             binder,
-            symbol_table,
+            symbol_library,
             errors,
             ambience,
             model.address,
@@ -1023,7 +1023,7 @@ mod statements {
         let generic_param_idxs = bind_generic_parameters(
             signature.generic_params.as_ref(),
             binder,
-            symbol_table,
+            symbol_library,
             errors,
             &ambience,
         );
@@ -1031,7 +1031,7 @@ mod statements {
             .implementations
             .iter()
             .map(|implementation| {
-                bind_type_expression(implementation, binder, symbol_table, errors, &ambience)
+                bind_type_expression(implementation, binder, symbol_library, errors, &ambience)
             })
             .collect();
         let binding_was_successful = binding_result.is_ok();
@@ -1047,7 +1047,7 @@ mod statements {
                             ..
                         },
                     ..
-                }) = &mut symbol_table.get_mut(symbol_idx)
+                }) = &mut symbol_library.get_mut(symbol_idx)
                 {
                     *is_constructable = model.body.constructor.is_some();
                     // Generic parameters should always be first.
@@ -1064,7 +1064,7 @@ mod statements {
             symbol_idx,
             signature.parameters.clone(), // todo:
             binder,
-            symbol_table,
+            symbol_library,
             errors,
             literals,
             ambience,
@@ -1074,7 +1074,7 @@ mod statements {
             if let SemanticSymbolKind::Model {
                 constructor_parameters,
                 ..
-            } = &mut symbol_table.get_mut(symbol_idx).unwrap().kind
+            } = &mut symbol_library.get_mut(symbol_idx).unwrap().kind
             {
                 *constructor_parameters = constructor_parameters_solved;
             }
@@ -1097,7 +1097,7 @@ mod statements {
         owner_idx: SymbolIndex,
         constructor_params: Option<Vec<Parameter>>,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -1107,7 +1107,7 @@ mod statements {
                 constructor_block,
                 constructor_params.unwrap(),
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -1127,7 +1127,7 @@ mod statements {
                             property,
                             owner_idx,
                             binder,
-                            symbol_table,
+                            symbol_library,
                             errors,
                             literals,
                             ambience,
@@ -1145,7 +1145,7 @@ mod statements {
         property: ModelProperty,
         owner: SymbolIndex,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -1157,7 +1157,7 @@ mod statements {
                 property.span,
                 owner,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 ambience,
             ),
@@ -1167,7 +1167,7 @@ mod statements {
                 owner,
                 body,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -1181,7 +1181,7 @@ mod statements {
                     trait_target.push(types::bind_discrete_type(
                         discrete_type,
                         binder,
-                        symbol_table,
+                        symbol_library,
                         errors,
                         ambience,
                     ));
@@ -1203,7 +1203,7 @@ mod statements {
                     };
                     property_symbol.add_reference(binder.path, property_type.name.span);
                     let property_symbol_idx =
-                        symbol_table.add_to_table(binder.path, property_symbol);
+                        symbol_library.add_to_table(binder.path, property_symbol);
                     // Collect generics.
                     let mut generic_args = vec![];
                     if let Some(ref arguments) = property_type.generic_args {
@@ -1211,7 +1211,7 @@ mod statements {
                             generic_args.push(bind_type_expression(
                                 argument,
                                 binder,
-                                symbol_table,
+                                symbol_library,
                                 errors,
                                 ambience,
                             ))
@@ -1231,7 +1231,7 @@ mod statements {
                     owner,
                     body,
                     binder,
-                    symbol_table,
+                    symbol_library,
                     errors,
                     literals,
                     ambience,
@@ -1254,7 +1254,7 @@ mod statements {
         span: Span,
         owner: SymbolIndex,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         ambience: &ModuleAmbience,
     ) -> TypedModelProperty {
@@ -1262,7 +1262,7 @@ mod statements {
         // find first instance of an attribute name that matches this one.
         let shadow = ambience.create_shadow(binder.current_scope);
         let address_of_owner_model = shadow
-            .lookaround(&symbol_table.get(owner).unwrap().name)
+            .lookaround(&symbol_library.get(owner).unwrap().name)
             .unwrap()
             .construct_address(binder.path.0 as usize);
         let parent_model = ambience.get_entry_unguarded(address_of_owner_model).model();
@@ -1287,7 +1287,7 @@ mod statements {
             types::bind_type_expression(
                 &attribute.var_type,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 ambience,
             );
@@ -1295,7 +1295,7 @@ mod statements {
             // the given name, then the first has already been bound,
             // add a reference to the first instance and return its index.
             let symbol_index = *binder.known_values.get(&first_instance.name.span).unwrap();
-            let symbol = symbol_table.get_mut(symbol_index).unwrap();
+            let symbol = symbol_library.get_mut(symbol_index).unwrap();
             symbol.add_reference(binder.path, attribute.name.span);
             symbol_index
             // block method and attribute clashes.
@@ -1314,12 +1314,12 @@ mod statements {
             types::bind_type_expression(
                 &attribute.var_type,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 ambience,
             );
             let symbol_index = *binder.known_values.get(&method.name.span).unwrap();
-            let symbol = symbol_table.get_mut(symbol_index).unwrap();
+            let symbol = symbol_library.get_mut(symbol_index).unwrap();
             symbol.add_reference(binder.path, attribute.name.span);
             symbol_index
         } else {
@@ -1331,7 +1331,7 @@ mod statements {
                     declared_type: bind_type_expression(
                         &attribute.var_type,
                         binder,
-                        symbol_table,
+                        symbol_library,
                         errors,
                         ambience,
                     ),
@@ -1347,12 +1347,12 @@ mod statements {
                 origin_span: span,
                 origin_scope_id: None,
             };
-            let index = symbol_table.add_to_table(binder.path, symbol);
+            let index = symbol_library.add_to_table(binder.path, symbol);
             // Add it to the list of attributes in the parent model as well.
             if let Some(SemanticSymbol {
                 kind: SemanticSymbolKind::Model { attributes, .. },
                 ..
-            }) = symbol_table.get_mut(owner)
+            }) = symbol_library.get_mut(owner)
             {
                 attributes.push(index);
             }
@@ -1373,7 +1373,7 @@ mod statements {
         owner: SymbolIndex,
         body: Block,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -1381,7 +1381,7 @@ mod statements {
         // find first instance of an attribute name that matches this one.
         let shadow = ambience.create_shadow(binder.current_scope);
         let address_of_owner_model = shadow
-            .lookaround(&symbol_table.get(owner).unwrap().name)
+            .lookaround(&symbol_library.get(owner).unwrap().name)
             .unwrap()
             .construct_address(binder.path.0 as usize);
         let parent_model = ambience
@@ -1405,7 +1405,7 @@ mod statements {
                 errors::duplicate_property(method.name.to_owned()),
             );
             let symbol_index = *binder.known_values.get(&first_instance.name.span).unwrap();
-            let symbol = symbol_table.get_mut(symbol_index).unwrap();
+            let symbol = symbol_library.get_mut(symbol_index).unwrap();
             symbol.add_reference(binder.path, method.name.span);
             symbol_index
             // block method and attribute clashes.
@@ -1421,7 +1421,7 @@ mod statements {
                 errors::duplicate_property(attribute.name.to_owned()),
             );
             let symbol_index = *binder.known_values.get(&first_instance.name.span).unwrap();
-            let symbol = symbol_table.get_mut(symbol_index).unwrap();
+            let symbol = symbol_library.get_mut(symbol_index).unwrap();
             symbol.add_reference(binder.path, method.name.span);
             symbol_index
         } else {
@@ -1446,12 +1446,12 @@ mod statements {
                 origin_span: span,
                 origin_scope_id: None,
             };
-            let index = symbol_table.add_to_table(binder.path, symbol);
+            let index = symbol_library.add_to_table(binder.path, symbol);
             // Add it to the list of methods in the parent model as well.
             if let Some(SemanticSymbol {
                 kind: SemanticSymbolKind::Model { methods, .. },
                 ..
-            }) = symbol_table.get_mut(owner)
+            }) = symbol_library.get_mut(owner)
             {
                 methods.push(index);
             }
@@ -1470,7 +1470,7 @@ mod statements {
         let generic_params_solved = bind_generic_parameters(
             method_generic_params.as_ref(),
             binder,
-            symbol_table,
+            symbol_library,
             errors,
             ambience,
         );
@@ -1478,13 +1478,13 @@ mod statements {
             body,
             method_params,
             binder,
-            symbol_table,
+            symbol_library,
             errors,
             literals,
             ambience,
         );
         let return_type_solved = return_type.as_ref().map(|rtype| {
-            types::bind_type_expression(rtype, binder, symbol_table, errors, ambience)
+            types::bind_type_expression(rtype, binder, symbol_library, errors, ambience)
         });
 
         if let SemanticSymbolKind::Method {
@@ -1492,7 +1492,7 @@ mod statements {
             generic_params,
             return_type,
             ..
-        } = &mut symbol_table.get_mut(symbol_idx).unwrap().kind
+        } = &mut symbol_library.get_mut(symbol_idx).unwrap().kind
         {
             *generic_params = generic_params_solved;
             *return_type = return_type_solved;
@@ -1511,14 +1511,14 @@ mod statements {
     fn function_declaration(
         func: ast::FunctionDeclaration,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedFunctionDeclaration {
         let binding_result = handle_scope_entry(
             binder,
-            symbol_table,
+            symbol_library,
             errors,
             &ambience,
             func.address,
@@ -1535,7 +1535,7 @@ mod statements {
         let generic_params_solved = bind_generic_parameters(
             signature_generic_params.as_ref(),
             binder,
-            symbol_table,
+            symbol_library,
             errors,
             &ambience,
         );
@@ -1543,7 +1543,7 @@ mod statements {
             func.body,
             signature_params,
             binder,
-            symbol_table,
+            symbol_library,
             errors,
             literals,
             ambience,
@@ -1551,7 +1551,7 @@ mod statements {
         let (symbol_idx, body) = match binding_result {
             Ok(idx) => {
                 let return_type_solved = return_type.as_ref().map(|type_exp| {
-                    bind_type_expression(type_exp, binder, symbol_table, errors, &ambience)
+                    bind_type_expression(type_exp, binder, symbol_library, errors, &ambience)
                 });
                 // add generic params if binding was successful.
                 let body = if let Some(SemanticSymbol {
@@ -1563,7 +1563,7 @@ mod statements {
                             ..
                         },
                     ..
-                }) = &mut symbol_table.get_mut(idx)
+                }) = &mut symbol_library.get_mut(idx)
                 {
                     *generic_params = generic_params_solved;
                     *return_type = return_type_solved;
@@ -1590,7 +1590,7 @@ mod statements {
         block: Block,
         params: Vec<Parameter>,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -1633,7 +1633,7 @@ mod statements {
                         types::bind_type_expression(
                             type_exp,
                             binder,
-                            symbol_table,
+                            symbol_library,
                             errors,
                             ambience,
                         )
@@ -1647,7 +1647,7 @@ mod statements {
             };
             symbol.add_reference(binder.path, parameter.name.span);
             // add symbol.
-            let index = symbol_table.add_to_table(binder.path, symbol);
+            let index = symbol_library.add_to_table(binder.path, symbol);
             binder.known_values.insert(parameter.name.span, index);
             // store for next param check.
             parameters.push(TemporaryParameterDetails {
@@ -1662,7 +1662,7 @@ mod statements {
         }
         ambience.leave_scope();
         (
-            expressions::bind_block(block, binder, symbol_table, errors, literals, ambience),
+            expressions::bind_block(block, binder, symbol_library, errors, literals, ambience),
             parameters
                 .into_iter()
                 .map(|details| details.index)
@@ -1674,13 +1674,13 @@ mod statements {
     pub fn enum_declaration(
         enumdecl: EnumDeclaration,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         ambience: &ModuleAmbience,
     ) -> TypedEnumDeclaration {
         let binding_result = handle_scope_entry(
             binder,
-            symbol_table,
+            symbol_library,
             errors,
             ambience,
             enumdecl.address,
@@ -1693,7 +1693,7 @@ mod statements {
         let generic_params_solved = bind_generic_parameters(
             signature.generic_params.as_ref(),
             binder,
-            symbol_table,
+            symbol_library,
             errors,
             ambience,
         );
@@ -1705,12 +1705,12 @@ mod statements {
                     &signature.variants,
                     symbol_idx,
                     binder,
-                    symbol_table,
+                    symbol_library,
                     errors,
                     ambience,
                 );
 
-                match &mut symbol_table.get_mut(symbol_idx) {
+                match &mut symbol_library.get_mut(symbol_idx) {
                     // Add generic parameters, if the binding to this type was successful.
                     Some(SemanticSymbol {
                         kind:
@@ -1747,7 +1747,7 @@ mod statements {
         variants: &[EnumVariant],
         symbol_idx: SymbolIndex,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         ambience: &ModuleAmbience,
     ) -> Vec<SymbolIndex> {
@@ -1778,7 +1778,7 @@ mod statements {
                             bind_type_expression(
                                 tagged_type_exp,
                                 binder,
-                                symbol_table,
+                                symbol_library,
                                 errors,
                                 ambience,
                             )
@@ -1793,7 +1793,7 @@ mod statements {
                 origin_span: variant.span,
                 origin_scope_id: None,
             };
-            let symbol_idx = symbol_table.add_to_table(binder.path, symbol);
+            let symbol_idx = symbol_library.add_to_table(binder.path, symbol);
             binder.known_values.insert(variant.name.span, symbol_idx);
             // store for next variant check.
             temp_variants.push(TemporaryVariantDetails {
@@ -1808,14 +1808,14 @@ mod statements {
     pub fn bind_trait_declaration(
         trait_decl: ast::TraitDeclaration,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedTraitDeclaration {
         let binding_result = handle_scope_entry(
             binder,
-            symbol_table,
+            symbol_library,
             errors,
             ambience,
             trait_decl.address,
@@ -1827,7 +1827,7 @@ mod statements {
         let generic_param_idxs = bind_generic_parameters(
             signature.generic_params.as_ref(),
             binder,
-            symbol_table,
+            symbol_library,
             errors,
             &ambience,
         );
@@ -1835,7 +1835,7 @@ mod statements {
             .implementations
             .iter()
             .map(|implementation| {
-                bind_type_expression(implementation, binder, symbol_table, errors, &ambience)
+                bind_type_expression(implementation, binder, symbol_library, errors, &ambience)
             })
             .collect();
         let symbol_idx = match binding_result {
@@ -1849,7 +1849,7 @@ mod statements {
                             ..
                         },
                     ..
-                }) = &mut symbol_table.get_mut(symbol_idx)
+                }) = &mut symbol_library.get_mut(symbol_idx)
                 {
                     // Generic parameters should always be first.
                     *generic_params = generic_param_idxs;
@@ -1866,7 +1866,7 @@ mod statements {
                 trait_decl.body,
                 symbol_idx,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -1883,7 +1883,7 @@ mod statements {
         body: TraitBody,
         owner_idx: SymbolIndex,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -1897,7 +1897,7 @@ mod statements {
                         property,
                         owner_idx,
                         binder,
-                        symbol_table,
+                        symbol_library,
                         errors,
                         literals,
                         ambience,
@@ -1912,7 +1912,7 @@ mod statements {
         property: ast::TraitProperty,
         owner: SymbolIndex,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -1924,7 +1924,7 @@ mod statements {
                 property.span,
                 owner,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -1935,7 +1935,7 @@ mod statements {
                 owner,
                 body,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -1948,7 +1948,7 @@ mod statements {
         span: Span,
         owner: SymbolIndex,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -1956,7 +1956,7 @@ mod statements {
         // find first instance of an attribute name that matches this one.
         let shadow = ambience.create_shadow(binder.current_scope);
         let address_of_owner_trait = shadow
-            .lookaround(&symbol_table.get(owner).unwrap().name)
+            .lookaround(&symbol_library.get(owner).unwrap().name)
             .unwrap()
             .construct_address(binder.path.0 as usize);
         let parent_trait = ambience
@@ -1980,7 +1980,7 @@ mod statements {
                 errors::duplicate_property(method.name.to_owned()),
             );
             let symbol_index = *binder.known_values.get(&first_instance.name.span).unwrap();
-            let symbol = symbol_table.get_mut(symbol_index).unwrap();
+            let symbol = symbol_library.get_mut(symbol_index).unwrap();
             symbol.add_reference(binder.path, method.name.span);
             symbol_index
         } else {
@@ -2005,7 +2005,7 @@ mod statements {
                 origin_span: span,
                 origin_scope_id: None,
             };
-            let index = symbol_table.add_to_table(binder.path, symbol);
+            let index = symbol_library.add_to_table(binder.path, symbol);
             binder.known_values.insert(method.name.span, index);
             index
         };
@@ -2021,7 +2021,7 @@ mod statements {
         let generic_params_solved = bind_generic_parameters(
             method_generic_params.as_ref(),
             binder,
-            symbol_table,
+            symbol_library,
             errors,
             ambience,
         );
@@ -2039,13 +2039,13 @@ mod statements {
             },
             method_params,
             binder,
-            symbol_table,
+            symbol_library,
             errors,
             literals,
             ambience,
         );
         let return_type_solved = return_type.as_ref().map(|rtype| {
-            types::bind_type_expression(rtype, binder, symbol_table, errors, ambience)
+            types::bind_type_expression(rtype, binder, symbol_library, errors, ambience)
         });
 
         if let SemanticSymbolKind::Method {
@@ -2053,7 +2053,7 @@ mod statements {
             generic_params,
             return_type,
             ..
-        } = &mut symbol_table.get_mut(symbol_idx).unwrap().kind
+        } = &mut symbol_library.get_mut(symbol_idx).unwrap().kind
         {
             *generic_params = generic_params_solved;
             *return_type = return_type_solved;
@@ -2063,7 +2063,7 @@ mod statements {
         if let Some(SemanticSymbol {
             kind: SemanticSymbolKind::Trait { methods, .. },
             ..
-        }) = symbol_table.get_mut(owner)
+        }) = symbol_library.get_mut(owner)
         {
             methods.push(symbol_idx);
         }
@@ -2083,7 +2083,7 @@ mod statements {
         owner: SymbolIndex,
         body: Block,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2091,7 +2091,7 @@ mod statements {
         // find first instance of an attribute name that matches this one.
         let shadow = ambience.create_shadow(binder.current_scope);
         let address_of_owner_trait = shadow
-            .lookaround(&symbol_table.get(owner).unwrap().name)
+            .lookaround(&symbol_library.get(owner).unwrap().name)
             .unwrap()
             .construct_address(binder.path.0 as usize);
         let parent_trait = ambience
@@ -2115,7 +2115,7 @@ mod statements {
                 errors::duplicate_property(method.name.to_owned()),
             );
             let symbol_index = *binder.known_values.get(&first_instance.name.span).unwrap();
-            let symbol = symbol_table.get_mut(symbol_index).unwrap();
+            let symbol = symbol_library.get_mut(symbol_index).unwrap();
             symbol.add_reference(binder.path, method.name.span);
             symbol_index
             // block method and attribute clashes.
@@ -2141,7 +2141,7 @@ mod statements {
                 origin_span: span,
                 origin_scope_id: None,
             };
-            let index = symbol_table.add_to_table(binder.path, symbol);
+            let index = symbol_library.add_to_table(binder.path, symbol);
             binder.known_values.insert(method.name.span, index);
             index
         };
@@ -2157,7 +2157,7 @@ mod statements {
         let generic_params_solved = bind_generic_parameters(
             method_generic_params.as_ref(),
             binder,
-            symbol_table,
+            symbol_library,
             errors,
             ambience,
         );
@@ -2165,13 +2165,13 @@ mod statements {
             body,
             method_params,
             binder,
-            symbol_table,
+            symbol_library,
             errors,
             literals,
             ambience,
         );
         let return_type_solved = return_type.as_ref().map(|rtype| {
-            types::bind_type_expression(rtype, binder, symbol_table, errors, ambience)
+            types::bind_type_expression(rtype, binder, symbol_library, errors, ambience)
         });
 
         if let SemanticSymbolKind::Method {
@@ -2179,7 +2179,7 @@ mod statements {
             generic_params,
             return_type,
             ..
-        } = &mut symbol_table.get_mut(symbol_idx).unwrap().kind
+        } = &mut symbol_library.get_mut(symbol_idx).unwrap().kind
         {
             *generic_params = generic_params_solved;
             *return_type = return_type_solved;
@@ -2189,7 +2189,7 @@ mod statements {
         if let Some(SemanticSymbol {
             kind: SemanticSymbolKind::Trait { methods, .. },
             ..
-        }) = symbol_table.get_mut(owner)
+        }) = symbol_library.get_mut(owner)
         {
             methods.push(symbol_idx);
         }
@@ -2206,13 +2206,13 @@ mod statements {
     pub fn bind_type_declaration(
         type_decl: TypeDeclaration,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         ambience: &ModuleAmbience,
     ) -> TypedTypeDeclaration {
         let binding_result = handle_scope_entry(
             binder,
-            symbol_table,
+            symbol_library,
             errors,
             ambience,
             type_decl.address,
@@ -2227,13 +2227,13 @@ mod statements {
                 let generic_params_solved = bind_generic_parameters(
                     signature.generic_params.as_ref(),
                     binder,
-                    symbol_table,
+                    symbol_library,
                     errors,
                     ambience,
                 );
                 let value_solved =
-                    bind_type_expression(&signature.value, binder, symbol_table, errors, ambience);
-                match &mut symbol_table.get_mut(symbol_idx).unwrap().kind {
+                    bind_type_expression(&signature.value, binder, symbol_library, errors, ambience);
+                match &mut symbol_library.get_mut(symbol_idx).unwrap().kind {
                     SemanticSymbolKind::TypeName {
                         generic_params,
                         value,
@@ -2259,7 +2259,7 @@ mod statements {
     fn bind_while_statement(
         while_statement: WhileStatement,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2268,7 +2268,7 @@ mod statements {
             condition: bind_expression(
                 while_statement.condition,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -2276,7 +2276,7 @@ mod statements {
             body: bind_block(
                 while_statement.body,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -2289,14 +2289,14 @@ mod statements {
     fn bind_return_statement(
         returnstmnt: ReturnStatement,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedReturnStatement {
         TypedReturnStatement {
             value: returnstmnt.value.map(|expression| {
-                bind_expression(expression, binder, symbol_table, errors, literals, ambience)
+                bind_expression(expression, binder, symbol_library, errors, literals, ambience)
             }),
             span: returnstmnt.span,
         }
@@ -2306,13 +2306,13 @@ mod statements {
     pub fn bind_break_statement(
         _break: ast::BreakStatement,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         ambience: &ModuleAmbience,
     ) -> TypedBreakStatement {
         TypedBreakStatement {
             label: _break.label.map(|identifier| {
-                expressions::bind_identifier(identifier, binder, symbol_table, errors, ambience)
+                expressions::bind_identifier(identifier, binder, symbol_library, errors, ambience)
             }),
             span: _break.span,
         }
@@ -2321,13 +2321,13 @@ mod statements {
     pub fn bind_continue_statement(
         cont: ast::ContinueStatement,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         ambience: &ModuleAmbience,
     ) -> TypedContinueStatement {
         TypedContinueStatement {
             label: cont.label.map(|identifier| {
-                expressions::bind_identifier(identifier, binder, symbol_table, errors, ambience)
+                expressions::bind_identifier(identifier, binder, symbol_library, errors, ambience)
             }),
             span: cont.span,
         }
@@ -2337,7 +2337,7 @@ mod statements {
     pub fn bind_variable_declaration(
         variable: ast::VariableDeclaration,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2347,7 +2347,7 @@ mod statements {
         for address in variable.addresses {
             let symbol_idx = match bind_utils::handle_scope_entry(
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 &ambience,
                 address,
@@ -2361,10 +2361,10 @@ mod statements {
             if declared_type_solved.is_none() {
                 declared_type_solved =
                     Some(entry.var_type.as_ref().map(|typ| {
-                        bind_type_expression(typ, binder, symbol_table, errors, ambience)
+                        bind_type_expression(typ, binder, symbol_library, errors, ambience)
                     }));
             }
-            let symbol = symbol_table
+            let symbol = symbol_library
                 .get_mut(symbol_idx)
                 .expect("Could not retrieve just bound variable value!!");
             if let SemanticSymbol {
@@ -2379,7 +2379,7 @@ mod statements {
         return TypedVariableDeclaration {
             names,
             value: variable.value.map(|expression| {
-                bind_expression(expression, binder, symbol_table, errors, literals, ambience)
+                bind_expression(expression, binder, symbol_library, errors, literals, ambience)
             }),
             span: variable.span,
         };
@@ -2399,7 +2399,7 @@ mod expressions {
     pub fn bind_expression(
         expression: Expression,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2408,7 +2408,7 @@ mod expressions {
             Expression::Identifier(identfier) => TypedExpression::Identifier(bind_identifier(
                 identfier,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 &ambience,
             )),
@@ -2422,22 +2422,22 @@ mod expressions {
                 TypedExpression::Literal(literals::bind_boolean(boolean, binder.path, literals))
             }
             Expression::NewExpr(new_expr) => TypedExpression::NewExpr(Box::new(
-                bind_new_expression(new_expr, binder, symbol_table, errors, literals, ambience),
+                bind_new_expression(new_expr, binder, symbol_library, errors, literals, ambience),
             )),
             Expression::ThisExpr(this) => TypedExpression::ThisExpr(this_expression(
                 this,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 ambience,
             )),
             Expression::CallExpr(call) => TypedExpression::CallExpr(Box::new(
-                bind_call_expression(call, binder, symbol_table, errors, literals, ambience),
+                bind_call_expression(call, binder, symbol_library, errors, literals, ambience),
             )),
             Expression::FnExpr(func) => TypedExpression::FnExpr(Box::new(function_expression(
                 *func,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -2445,7 +2445,7 @@ mod expressions {
             Expression::IfExpr(ifexpr) => TypedExpression::IfExpr(bind_if_expression(
                 ifexpr,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -2453,7 +2453,7 @@ mod expressions {
             Expression::ArrayExpr(array) => TypedExpression::ArrayExpr(bind_array_expression(
                 array,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -2461,7 +2461,7 @@ mod expressions {
             Expression::AccessExpr(accessexp) => TypedExpression::AccessExpr(access_expression(
                 accessexp,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -2469,7 +2469,7 @@ mod expressions {
             Expression::IndexExpr(indexexp) => TypedExpression::IndexExpr(index_expression(
                 indexexp,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -2477,7 +2477,7 @@ mod expressions {
             Expression::BinaryExpr(binexp) => TypedExpression::BinaryExpr(binary_expression(
                 binexp,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -2486,7 +2486,7 @@ mod expressions {
                 TypedExpression::AssignmentExpr(bind_assignment_expression(
                     assexp,
                     binder,
-                    symbol_table,
+                    symbol_library,
                     errors,
                     literals,
                     ambience,
@@ -2495,7 +2495,7 @@ mod expressions {
             Expression::UnaryExpr(unaryexp) => TypedExpression::UnaryExpr(bind_unary_expression(
                 unaryexp,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -2503,18 +2503,18 @@ mod expressions {
             Expression::LogicExpr(logicexp) => TypedExpression::LogicExpr(bind_logic_expression(
                 logicexp,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
             )),
             Expression::UpdateExpr(updateexp) => TypedExpression::UpdateExpr(
-                bind_update_expression(updateexp, binder, symbol_table, errors, literals, ambience),
+                bind_update_expression(updateexp, binder, symbol_library, errors, literals, ambience),
             ),
             Expression::BlockExpr(block) => TypedExpression::Block(bind_block(
                 block,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -2526,12 +2526,12 @@ mod expressions {
     pub fn bind_identifier(
         identifier: Identifier,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         ambience: &ModuleAmbience,
     ) -> TypedIdent {
         let symbol_index =
-            bind_utils::find_or_create(binder, symbol_table, errors, ambience, &identifier, false);
+            bind_utils::find_or_create(binder, symbol_library, errors, ambience, &identifier, false);
 
         TypedIdent {
             value: symbol_index,
@@ -2543,7 +2543,7 @@ mod expressions {
     pub fn bind_new_expression(
         new_expr: Box<ast::NewExpr>,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2552,7 +2552,7 @@ mod expressions {
             value: bind_expression(
                 new_expr.value,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -2566,7 +2566,7 @@ mod expressions {
     pub fn this_expression(
         this: ast::ThisExpr,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         ambience: &ModuleAmbience,
     ) -> TypedThisExpr {
@@ -2575,7 +2575,7 @@ mod expressions {
             // find the referenced model or trait.
             Some(search) => Some(bind_utils::find_or_create(
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 ambience,
                 search.entry.ident().unwrap(),
@@ -2599,13 +2599,13 @@ mod expressions {
     fn bind_call_expression(
         call: Box<ast::CallExpr>,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedCallExpr {
         let mut bind_expression = |expression| {
-            bind_expression(expression, binder, symbol_table, errors, literals, ambience)
+            bind_expression(expression, binder, symbol_library, errors, literals, ambience)
         };
         TypedCallExpr {
             caller: bind_expression(call.caller),
@@ -2622,7 +2622,7 @@ mod expressions {
     fn function_expression(
         func: FunctionExpr,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2632,12 +2632,12 @@ mod expressions {
         let generic_params = types::bind_generic_parameters(
             func.generic_params.as_ref(),
             binder,
-            symbol_table,
+            symbol_library,
             errors,
             &ambience,
         );
         let return_type = func.return_type.map(|ref rettype| {
-            types::bind_type_expression(rettype, binder, symbol_table, errors, &ambience)
+            types::bind_type_expression(rettype, binder, symbol_library, errors, &ambience)
         });
         // If the expression is a block, all well and good.
         // if the expression is anything else, it needs to be scoped to a block so that the parameter values have meaning and scope.
@@ -2647,7 +2647,7 @@ mod expressions {
                     block,
                     func.params,
                     binder,
-                    symbol_table,
+                    symbol_library,
                     errors,
                     literals,
                     ambience,
@@ -2676,7 +2676,7 @@ mod expressions {
                     fakeblock,
                     func.params,
                     binder,
-                    symbol_table,
+                    symbol_library,
                     errors,
                     literals,
                     ambience,
@@ -2705,7 +2705,7 @@ mod expressions {
     pub fn bind_block(
         block: Block,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2720,7 +2720,7 @@ mod expressions {
                     statements::bind_statement(
                         statement,
                         binder,
-                        symbol_table,
+                        symbol_library,
                         errors,
                         literals,
                         ambience,
@@ -2739,7 +2739,7 @@ mod expressions {
     fn binary_expression(
         binexp: Box<ast::BinaryExpr>,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2748,7 +2748,7 @@ mod expressions {
             left: bind_expression(
                 binexp.left,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -2757,7 +2757,7 @@ mod expressions {
             right: bind_expression(
                 binexp.right,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -2770,7 +2770,7 @@ mod expressions {
     fn bind_if_expression(
         ifexpr: Box<ast::IfExpression>,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2779,7 +2779,7 @@ mod expressions {
             condition: bind_expression(
                 ifexpr.condition,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -2787,7 +2787,7 @@ mod expressions {
             consequent: bind_block(
                 ifexpr.consequent,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -2796,7 +2796,7 @@ mod expressions {
                 expression: bind_expression(
                     _else.expression,
                     binder,
-                    symbol_table,
+                    symbol_library,
                     errors,
                     literals,
                     ambience,
@@ -2812,7 +2812,7 @@ mod expressions {
     fn bind_array_expression(
         array: ast::ArrayExpr,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2822,7 +2822,7 @@ mod expressions {
                 .elements
                 .into_iter()
                 .map(|expression| {
-                    bind_expression(expression, binder, symbol_table, errors, literals, ambience)
+                    bind_expression(expression, binder, symbol_library, errors, literals, ambience)
                 })
                 .collect(),
             inferred_type: EvaluatedType::Unknown,
@@ -2833,7 +2833,7 @@ mod expressions {
     fn index_expression(
         indexexp: Box<ast::IndexExpr>,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2842,7 +2842,7 @@ mod expressions {
             object: bind_expression(
                 indexexp.object,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -2850,7 +2850,7 @@ mod expressions {
             index: bind_expression(
                 indexexp.index,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -2863,7 +2863,7 @@ mod expressions {
     fn bind_assignment_expression(
         assexp: Box<ast::AssignmentExpr>,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2872,7 +2872,7 @@ mod expressions {
             left: bind_expression(
                 assexp.left,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -2881,7 +2881,7 @@ mod expressions {
             right: bind_expression(
                 assexp.right,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -2895,7 +2895,7 @@ mod expressions {
     fn access_expression(
         accessexp: Box<ast::AccessExpr>,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2903,7 +2903,7 @@ mod expressions {
         let object = bind_expression(
             accessexp.object,
             binder,
-            symbol_table,
+            symbol_library,
             errors,
             literals,
             ambience,
@@ -2929,7 +2929,7 @@ mod expressions {
             origin_scope_id: None,
         };
         property_symbol.add_reference(binder.path, property_ident.span);
-        let symbol_idx = symbol_table.add_to_table(binder.path, property_symbol);
+        let symbol_idx = symbol_library.add_to_table(binder.path, property_symbol);
 
         let property = TypedExpression::Identifier(TypedIdent {
             value: symbol_idx,
@@ -2947,7 +2947,7 @@ mod expressions {
     fn bind_unary_expression(
         unaryexp: Box<ast::UnaryExpr>,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2957,7 +2957,7 @@ mod expressions {
             operand: bind_expression(
                 unaryexp.operand,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -2970,7 +2970,7 @@ mod expressions {
     fn bind_logic_expression(
         logicexp: Box<ast::LogicExpr>,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -2979,7 +2979,7 @@ mod expressions {
             left: bind_expression(
                 logicexp.left,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -2988,7 +2988,7 @@ mod expressions {
             right: bind_expression(
                 logicexp.right,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -3001,7 +3001,7 @@ mod expressions {
     fn bind_update_expression(
         updateexp: Box<ast::UpdateExpr>,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
@@ -3011,7 +3011,7 @@ mod expressions {
             operand: bind_expression(
                 updateexp.operand,
                 binder,
-                symbol_table,
+                symbol_library,
                 errors,
                 literals,
                 ambience,
@@ -3080,7 +3080,7 @@ mod types {
     pub fn bind_type_expression(
         type_exp: &TypeExpression,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         ambience: &ModuleAmbience,
     ) -> IntermediateType {
@@ -3090,7 +3090,7 @@ mod types {
                     .types
                     .iter()
                     .map(|type_exp| {
-                        bind_type_expression(type_exp, binder, symbol_table, errors, ambience)
+                        bind_type_expression(type_exp, binder, symbol_library, errors, ambience)
                     })
                     .collect(),
                 span: union_type.span,
@@ -3102,7 +3102,7 @@ mod types {
                         name: param.name.name.clone(),
                         is_optional: param.is_optional,
                         type_label: param.type_label.as_ref().map(|type_exp| {
-                            bind_type_expression(type_exp, binder, symbol_table, errors, ambience)
+                            bind_type_expression(type_exp, binder, symbol_library, errors, ambience)
                         }),
                         inferred_type: EvaluatedType::Unknown,
                     };
@@ -3114,7 +3114,7 @@ mod types {
                         Box::new(bind_type_expression(
                             type_exp,
                             binder,
-                            symbol_table,
+                            symbol_library,
                             errors,
                             ambience,
                         ))
@@ -3126,7 +3126,7 @@ mod types {
                 let object_type = bind_type_expression(
                     &member_type.namespace,
                     binder,
-                    symbol_table,
+                    symbol_library,
                     errors,
                     ambience,
                 );
@@ -3144,7 +3144,7 @@ mod types {
                         generic_args.push(bind_type_expression(
                             argument,
                             binder,
-                            symbol_table,
+                            symbol_library,
                             errors,
                             ambience,
                         ))
@@ -3163,7 +3163,7 @@ mod types {
                 }
             }
             TypeExpression::Discrete(discrete_type) => {
-                bind_discrete_type(discrete_type, binder, symbol_table, errors, ambience)
+                bind_discrete_type(discrete_type, binder, symbol_library, errors, ambience)
             }
             TypeExpression::This { span } => IntermediateType::This {
                 meaning: binder.this_type.last().copied(),
@@ -3173,7 +3173,7 @@ mod types {
                 value: Box::new(bind_type_expression(
                     &borrowedtype.value,
                     binder,
-                    symbol_table,
+                    symbol_library,
                     errors,
                     ambience,
                 )),
@@ -3186,13 +3186,13 @@ mod types {
     pub fn bind_discrete_type(
         discrete_type: &ast::DiscreteType,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         ambience: &ModuleAmbience,
     ) -> IntermediateType {
         let symbol_index = bind_utils::find_or_create(
             binder,
-            symbol_table,
+            symbol_library,
             errors,
             ambience,
             &discrete_type.name,
@@ -3204,7 +3204,7 @@ mod types {
                 generic_args.push(bind_type_expression(
                     argument,
                     binder,
-                    symbol_table,
+                    symbol_library,
                     errors,
                     ambience,
                 ))
@@ -3220,7 +3220,7 @@ mod types {
     pub fn bind_generic_parameters(
         param_list: Option<&Vec<GenericParameter>>,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         ambience: &ModuleAmbience,
     ) -> Vec<SymbolIndex> {
@@ -3229,9 +3229,9 @@ mod types {
             for parameter in params.iter() {
                 // Binds only the parameter names.
                 let binding_result =
-                    bind_generic_parameter_name(parameter, binder, symbol_table, errors);
+                    bind_generic_parameter_name(parameter, binder, symbol_library, errors);
                 let mut type_exp_binder =
-                    |typ| types::bind_type_expression(typ, binder, symbol_table, errors, ambience);
+                    |typ| types::bind_type_expression(typ, binder, symbol_library, errors, ambience);
                 // Bind the trait guards and default values.
                 let trait_guards = parameter
                     .traits
@@ -3244,7 +3244,7 @@ mod types {
                     .map(|default_value| type_exp_binder(default_value));
                 let idx = binding_result
                     .map(|idx| {
-                        match symbol_table.get_mut(idx) {
+                        match symbol_library.get_mut(idx) {
                             Some(SemanticSymbol {
                                 kind:
                                     SemanticSymbolKind::GenericParameter {
@@ -3271,7 +3271,7 @@ mod types {
     pub fn bind_generic_parameter_name(
         parameter: &GenericParameter,
         binder: &mut Binder,
-        symbol_table: &mut SymbolLibrary,
+        symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
     ) -> Result<SymbolIndex, SymbolIndex> {
         // Check if a generic parameter with this name already exists in this pool.
@@ -3281,7 +3281,7 @@ mod types {
                 errors,
                 errors::duplicate_generic_parameter(parameter.name.to_owned()),
             );
-            let symbol = symbol_table.get_mut(index).unwrap();
+            let symbol = symbol_library.get_mut(index).unwrap();
             symbol.add_reference(binder.path, parameter.span);
             return Err(index);
         }
@@ -3300,7 +3300,7 @@ mod types {
             origin_span: parameter.span,
             origin_scope_id: None,
         };
-        let index = symbol_table.add_to_table(binder.path, symbol);
+        let index = symbol_library.add_to_table(binder.path, symbol);
         binder.add_generic_parameter(&parameter.name.name, index);
         binder.known_values.insert(parameter.name.span, index);
         Ok(index)

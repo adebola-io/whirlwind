@@ -193,39 +193,23 @@ impl DocumentManager {
             if context.contains_folder(parent_folder) {
                 match Module::from_path(path_buf) {
                     Ok(module) => {
-                        let path = module.module_path.as_ref().unwrap();
-                        let message = match &module.name {
-                            Some(name) => {
-                                format!("Folder already analyzed. Adding module {name} at path {path:?}")
-                            }
-                            None => {
-                                format!("Folder already analyzed. Adding anonymous module at path {path:?}")
-                            }
-                        };
-                        msgs.inform(format!("{:?}", &module.module_path));
-                        msgs.inform(format!("{:?}", &module.name));
-
-                        msgs.inform(message);
                         match context.add_module(module) {
                             Some(p) => msgs.inform(format!(
                                 "Module added at index {p:?}. {} modules in standpoint.",
                                 context.module_map.len()
                             )),
-                            None => msgs.inform("The module was not added. Something went wrong."),
+                            None => msgs.error("The module was not added. Something went wrong."),
                         }
                         context.validate();
                     }
                     // If module cannot be added, store error in the root file.
                     Err(error) => {
-                        msgs.inform(format!("Error creating module from path, {error:?}"));
                         context.add_import_error(error);
                     }
                 }
                 return msgs;
             }
         }
-        // No context has the file. Add a new context.
-        msgs.inform(format!("Creating new module context for {path_buf:?}"));
         let mut root_folder = parent_folder;
         // Look 5 levels above to try to find the root of the project.
         for _ in 0..5 {
@@ -267,7 +251,6 @@ impl DocumentManager {
             // Check again to see if there is already a graph with this parent folder.
             for context in standpoints.iter_mut() {
                 if context.contains_folder(root_folder) {
-                    msgs.inform(format!("Found the context for {path_buf:?}"));
                     match Module::from_path(path_buf) {
                         Ok(module) => {
                             msgs.inform(format!("Module added successfully."));
@@ -280,23 +263,7 @@ impl DocumentManager {
                 }
             }
             let mut standpoint = Standpoint::new(true, self.corelib_path.clone());
-            msgs.inform(format!(
-                "New context created with {} modules. The core library path is {:?}. The prelude path is {:?}",
-                standpoint.module_map.len(),
-                standpoint
-                    .corelib_path
-                    .and_then(|path_idx| standpoint.module_map.get(path_idx))
-                    .map(|module| &module.path_buf),
-                standpoint
-                    .prelude_path
-                    .and_then(|path_idx| standpoint.module_map.get(path_idx))
-                    .map(|module| &module.path_buf)
-            ));
 
-            msgs.inform(format!(
-                "Adding main module {:?}...",
-                main_module.module_path
-            ));
             // Start at main module.
             if let Some(_) = standpoint.add_module(main_module) {
                 // now add the current module. (if it was not already automatically added.)
@@ -390,7 +357,6 @@ impl DocumentManager {
         let position = params.text_document_position.position;
         // Editor ranges are zero-based, for some reason.
         let pos = [position.line + 1, position.character + 1];
-        msgs.inform(format!("Gathering completions for {pos:?}..."));
         let time = std::time::Instant::now();
         let completion_finder =
             CompletionFinder::new(module, standpoint, pos, msgs, params.context);
@@ -402,11 +368,7 @@ impl DocumentManager {
                 return (messages, Some(completions));
             }
         }
-        completion_finder
-            .message_store
-            .borrow_mut()
-            .inform("Could not complete by traversal. Checking all symbols...");
-        let symboltable = &standpoint.symbol_table;
+        let symbollib = &standpoint.symbol_library;
         let trigger = match &completion_finder.context {
             Some(CompletionContext {
                 trigger_character, ..
@@ -430,10 +392,10 @@ impl DocumentManager {
         // Found a symbol that is directly before the completion context. Attempt to provide a completion for it.
         match trigger {
             Trigger::DotAccess => {
-                let closest = get_closest_symbol(symboltable, module, pos, trigger_is_dot);
+                let closest = get_closest_symbol(symbollib, module, pos, trigger_is_dot);
                 if closest.is_some() {
                     let (index, symbol) = closest.unwrap();
-                    let inferred_type = match symbol_to_type(symbol, index, symboltable) {
+                    let inferred_type = match symbol_to_type(symbol, index, symbollib) {
                         Ok(typ) => typ,
                         Err(_) => return (completion_finder.message_store.take(), None),
                     };
@@ -461,7 +423,7 @@ impl DocumentManager {
                         }
                         let module = standpoint.module_map.get(*module_path_index)?;
                         let symbol_idx = module.symbol_idx;
-                        let symbol = standpoint.symbol_table.get(symbol_idx)?;
+                        let symbol = standpoint.symbol_library.get(symbol_idx)?;
                         if let Some(completion) =
                             completion_finder.create_completion(&writer, symbol, symbol_idx, false)
                         {
@@ -475,10 +437,10 @@ impl DocumentManager {
             trigger => {
                 // Attempt regular autocomplete.
                 // Preventing completion in comments should be handled by the client.
-                let closest = get_closest_symbol(symboltable, module, pos, trigger_is_dot);
+                let closest = get_closest_symbol(symbollib, module, pos, trigger_is_dot);
                 let mut completions = vec![];
                 let writer = SymbolWriter::new(standpoint);
-                for (index, symbol) in symboltable.symbols().filter(|(_, sym)| {
+                for (index, symbol) in symbollib.symbols().filter(|(_, sym)| {
                     is_valid_complete_target(sym, module, standpoint, pos, closest, trigger)
                 }) {
                     if let Some(completion) =
@@ -514,7 +476,6 @@ impl DocumentManager {
         match standpoint.refresh_module(path_idx, &most_current) {
             Some(StandpointStatus::RefreshSuccessful) => {
                 msgs.inform(format!("Document refreshed in {:?}", time.elapsed()));
-                msgs.inform(format!("Symbols: {:?}", standpoint.symbol_table.len()));
             }
             _ => log_error!(msgs, "Something went wrong while refreshing user text."),
         };
@@ -599,7 +560,6 @@ impl DocumentManager {
                 let declaration = match declaration_opt {
                     Some(declaration) => declaration,
                     None => {
-                        msgs.inform("Could not retrieve symbol's first instance.");
                         return None;
                     }
                 };
@@ -803,7 +763,7 @@ impl DocumentManager {
             }
         };
         let mut hints: Vec<InlayHint> = vec![];
-        for symbol in standpoint.symbol_table.in_module(module.path_idx) {
+        for symbol in standpoint.symbol_library.in_module(module.path_idx) {
             match &symbol.kind {
                 SemanticSymbolKind::Variable {
                     declared_type,
@@ -822,7 +782,9 @@ impl DocumentManager {
                     let position = to_range(entry_span).end;
                     let label_text = format!(
                         ": {}",
-                        standpoint.symbol_table.format_evaluated_type(inferred_type)
+                        standpoint
+                            .symbol_library
+                            .format_evaluated_type(inferred_type)
                     );
                     if label_text.len() > 48 {
                         continue;
@@ -972,12 +934,12 @@ fn is_valid_complete_target(
 
 /// Returns the symbol that is closest to a completion trigger.
 fn get_closest_symbol<'a>(
-    symboltable: &'a analyzer::SymbolLibrary,
+    symbollib: &'a analyzer::SymbolLibrary,
     module: &'a TypedModule,
     pos: [u32; 2],
     trigger_is_dot: bool,
 ) -> Option<(SymbolIndex, &'a SemanticSymbol)> {
-    for (index, symbol) in symboltable.symbols() {
+    for (index, symbol) in symbollib.symbols() {
         for reference in &symbol.references {
             if reference.module_path == module.path_idx {
                 for start in &reference.starts {
@@ -985,8 +947,8 @@ fn get_closest_symbol<'a>(
                     if span.is_before(Span::at(pos)) && span.is_adjacent_to(pos)
                         || (!trigger_is_dot && span.contains(pos))
                     {
-                        let index = symboltable.forward(index);
-                        let symbol = symboltable.get_forwarded(index)?;
+                        let index = symbollib.forward(index);
+                        let symbol = symbollib.get_forwarded(index)?;
                         return Some((index, symbol));
                     }
                 }
@@ -1018,7 +980,7 @@ pub fn match_pos_to_symbol<'a>(
 ) -> Option<(SymbolIndex, &'a SemanticSymbol)> {
     // Editor ranges are zero-based, for some reason.
     let pos = [position.line + 1, position.character + 1];
-    for (symbol_idx, symbol) in standpoint.symbol_table.symbols() {
+    for (symbol_idx, symbol) in standpoint.symbol_library.symbols() {
         for reference in &symbol.references {
             if reference.module_path == path_idx {
                 for start in &reference.starts {
@@ -1031,7 +993,7 @@ pub fn match_pos_to_symbol<'a>(
                         {
                             // Import redirection.
                             let mut origin = source;
-                            let mut parent = standpoint.symbol_table.get(*source);
+                            let mut parent = standpoint.symbol_library.get(*source);
                             while let Some(SemanticSymbol {
                                 kind:
                                     SemanticSymbolKind::Import {
@@ -1042,7 +1004,7 @@ pub fn match_pos_to_symbol<'a>(
                             }) = parent
                             {
                                 origin = source;
-                                parent = standpoint.symbol_table.get(*source);
+                                parent = standpoint.symbol_library.get(*source);
                             }
                             parent.map(|symbol| (*origin, symbol))
                         } else if let SemanticSymbolKind::Property {
@@ -1055,7 +1017,7 @@ pub fn match_pos_to_symbol<'a>(
                             } else {
                                 // Property redirection.
                                 standpoint
-                                    .symbol_table
+                                    .symbol_library
                                     .get(*source)
                                     .map(|symbol| (*source, symbol))
                             }

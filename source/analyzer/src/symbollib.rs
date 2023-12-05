@@ -489,8 +489,8 @@ mod tests {
 
     #[test]
     fn test_symbol_adding() {
-        let mut symboltable = SymbolLibrary::new();
-        let symbol_index = symboltable.add_to_table(
+        let mut symbollib = SymbolLibrary::new();
+        let symbol_index = symbollib.add_to_table(
             crate::PathIndex(0),
             SemanticSymbol {
                 name: format!("newVariable"),
@@ -505,13 +505,13 @@ mod tests {
                 origin_scope_id: Some(ScopeId(0)),
             },
         );
-        assert_eq!(symboltable.get(symbol_index).unwrap().name, "newVariable")
+        assert_eq!(symbollib.get(symbol_index).unwrap().name, "newVariable")
     }
 
     #[test]
     fn test_symbol_removal() {
-        let mut symboltable = SymbolLibrary::new();
-        let symbol_index = symboltable.add_to_table(
+        let mut symbollib = SymbolLibrary::new();
+        let symbol_index = symbollib.add_to_table(
             crate::PathIndex(0),
             SemanticSymbol {
                 name: format!("newVariable"),
@@ -526,14 +526,12 @@ mod tests {
                 origin_scope_id: Some(ScopeId(0)),
             },
         );
-        assert_eq!(symboltable.len(), 1);
+        assert_eq!(symbollib.len(), 1);
 
-        symboltable
-            .remove_module_table(crate::PathIndex(0))
-            .unwrap();
+        symbollib.remove_module_table(crate::PathIndex(0)).unwrap();
 
-        assert_eq!(symboltable.len(), 0);
+        assert_eq!(symbollib.len(), 0);
 
-        assert!(symboltable.get(symbol_index).is_none(),)
+        assert!(symbollib.get(symbol_index).is_none(),)
     }
 }

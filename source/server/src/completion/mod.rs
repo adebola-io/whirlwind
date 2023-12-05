@@ -82,7 +82,7 @@ impl<'a> CompletionFinder<'a> {
         completion_type: DotCompletionType,
     ) -> Option<CompletionResponse> {
         let writer = SymbolWriter::new(&self.standpoint);
-        let symboltable = &self.standpoint.symbol_table;
+        let symbollib = &self.standpoint.symbol_library;
         let mut completions = vec![];
         match inferred_type {
             EvaluatedType::Partial { types } => {
@@ -95,11 +95,11 @@ impl<'a> CompletionFinder<'a> {
                 self.complete_model_or_trait_static_access(owner, &writer, &mut completions)?;
             }
             EvaluatedType::Enum(enum_) => {
-                let enum_symbol = self.standpoint.symbol_table.get(enum_)?;
+                let enum_symbol = self.standpoint.symbol_library.get(enum_)?;
                 match &enum_symbol.kind {
                     SemanticSymbolKind::Enum { variants, .. } => {
                         for variant in variants {
-                            let symbol = self.standpoint.symbol_table.get(*variant)?;
+                            let symbol = self.standpoint.symbol_library.get(*variant)?;
                             let documentation =
                                 Some(generate_documentation(&writer, variant, symbol));
                             let label = symbol.name.clone();
@@ -122,11 +122,11 @@ impl<'a> CompletionFinder<'a> {
                 self.complete_instance_access(completion_type, trait_, &writer, &mut completions)?
             }
             EvaluatedType::Generic { base } | EvaluatedType::HardGeneric { base } => {
-                let symbol = self.standpoint.symbol_table.get(base)?;
+                let symbol = self.standpoint.symbol_library.get(base)?;
                 match &symbol.kind {
                     SemanticSymbolKind::GenericParameter { traits, .. } => {
                         for _trait in traits {
-                            let evaled = evaluate(_trait, symboltable, None, &mut None, 0);
+                            let evaled = evaluate(_trait, symbollib, None, &mut None, 0);
                             let response = self.complete_from_dot(evaled, completion_type);
                             if let Some(response) = response {
                                 match response {
@@ -155,14 +155,14 @@ impl<'a> CompletionFinder<'a> {
                 *writer.is_opaque.borrow_mut() = true;
 
                 for method in available_methods {
-                    let symbol = symboltable.get(method)?;
+                    let symbol = symbollib.get(method)?;
                     let mut label = symbol.name.clone();
                     let mut final_eval_type = EvaluatedType::MethodInstance {
                         method,
                         generic_arguments: vec![],
                     };
                     final_eval_type = coerce(final_eval_type, &generic_arguments);
-                    let detail = Some(symboltable.format_evaluated_type(&final_eval_type));
+                    let detail = Some(symbollib.format_evaluated_type(&final_eval_type));
                     let params = match &symbol.kind {
                         SemanticSymbolKind::Method {
                             params, is_public, ..
@@ -215,8 +215,8 @@ impl<'a> CompletionFinder<'a> {
         writer: &SymbolWriter<'_>,
         completions: &mut Vec<CompletionItem>,
     ) -> Option<()> {
-        let symboltable = &self.standpoint.symbol_table;
-        let symbol = self.standpoint.symbol_table.get_forwarded(model)?;
+        let symbollib = &self.standpoint.symbol_library;
+        let symbol = self.standpoint.symbol_library.get_forwarded(model)?;
         let static_methods = match &symbol.kind {
             SemanticSymbolKind::Model {
                 methods,
@@ -228,10 +228,10 @@ impl<'a> CompletionFinder<'a> {
                 implementations
                     .iter()
                     .filter_map(|typ| {
-                        let eval_typ = evaluate(typ, symboltable, None, &mut None, 0);
+                        let eval_typ = evaluate(typ, symbollib, None, &mut None, 0);
                         match eval_typ {
                             EvaluatedType::TraitInstance { trait_, .. } => {
-                                let trait_symbol = symboltable.get(trait_)?;
+                                let trait_symbol = symbollib.get(trait_)?;
                                 match &trait_symbol.kind {
                                     SemanticSymbolKind::Trait { methods, .. } => Some(methods),
                                     _ => return None,
@@ -244,7 +244,7 @@ impl<'a> CompletionFinder<'a> {
                     .flatten()
                     .chain(methods.iter()) // normal methods.
                     .filter_map(|method_idx| {
-                        let method_symbol = self.standpoint.symbol_table.get(*method_idx);
+                        let method_symbol = self.standpoint.symbol_library.get(*method_idx);
                         if method_symbol.is_none() {
                             return None;
                         }
@@ -272,7 +272,7 @@ impl<'a> CompletionFinder<'a> {
             let documentation = Some(generate_documentation(writer, method_idx, symbol));
             let label = symbol.name.clone();
             let detail = Some(
-                symboltable.format_evaluated_type(&EvaluatedType::MethodInstance {
+                symbollib.format_evaluated_type(&EvaluatedType::MethodInstance {
                     method: *method_idx,
                     generic_arguments: vec![],
                 }),
@@ -298,8 +298,8 @@ impl<'a> CompletionFinder<'a> {
         writer: SymbolWriter<'_>,
         completions: &mut Vec<CompletionItem>,
     ) -> Option<()> {
-        let symboltable = &self.standpoint.symbol_table;
-        let module_symbol = symboltable.get_forwarded(module)?;
+        let symbollib = &self.standpoint.symbol_library;
+        let module_symbol = symbollib.get_forwarded(module)?;
         Some(
             if let SemanticSymbolKind::Module {
                 global_declaration_symbols,
@@ -308,7 +308,7 @@ impl<'a> CompletionFinder<'a> {
             {
                 for symbol_index in global_declaration_symbols {
                     // Not get_forwarded because publicity has to be checked.
-                    let symbol = match symboltable.get(*symbol_index) {
+                    let symbol = match symbollib.get(*symbol_index) {
                         Some(symbol) => symbol,
                         None => continue,
                     };
@@ -316,8 +316,8 @@ impl<'a> CompletionFinder<'a> {
                         continue;
                     }
                     // Specially complete functions.
-                    let symbol = symboltable.get_forwarded(*symbol_index).unwrap();
-                    let symbol_index = symboltable.forward(*symbol_index);
+                    let symbol = symbollib.get_forwarded(*symbol_index).unwrap();
+                    let symbol_index = symbollib.forward(*symbol_index);
                     if let Some(completionitem) = self.create_completion(
                         &writer,
                         symbol,
@@ -339,18 +339,18 @@ impl<'a> CompletionFinder<'a> {
         writer: &SymbolWriter<'_>,
         completions: &mut Vec<CompletionItem>,
     ) -> Option<()> {
-        let symboltable = &self.standpoint.symbol_table;
+        let symbollib = &self.standpoint.symbol_library;
         if matches!(completion_type, DotCompletionType::Half) {
             return None;
         }
-        let owner_symbol = symboltable.get(owner)?;
+        let owner_symbol = symbollib.get(owner)?;
         let methods = match &owner_symbol.kind {
             SemanticSymbolKind::Model { methods, .. }
             | SemanticSymbolKind::Trait { methods, .. } => methods,
             _ => return None,
         };
         for method in methods {
-            let symbol = symboltable.get(*method)?;
+            let symbol = symbollib.get(*method)?;
             // Private completions are allowed if within model itself.
             if !symbol.kind.is_public() && *self.enclosing_model_or_trait.borrow() != Some(owner) {
                 continue;
@@ -374,7 +374,7 @@ impl<'a> CompletionFinder<'a> {
             }
             let documentation = Some(generate_documentation(writer, method, symbol));
             let detail = Some(
-                symboltable.format_evaluated_type(&EvaluatedType::MethodInstance {
+                symbollib.format_evaluated_type(&EvaluatedType::MethodInstance {
                     method: *method,
                     generic_arguments: vec![],
                 }),
@@ -404,7 +404,7 @@ impl<'a> CompletionFinder<'a> {
             _ => return Some(()),
         }
         .iter()
-        .map(|int_type| evaluate(int_type, symboltable, None, &mut None, 0))
+        .map(|int_type| evaluate(int_type, symbollib, None, &mut None, 0))
         .filter(|eval_typ| eval_typ.is_trait_instance());
         for implementation in implementations {
             let owner = match implementation {
@@ -419,16 +419,16 @@ impl<'a> CompletionFinder<'a> {
         };
         let encloser = self.enclosing_model_or_trait.borrow().clone();
         for attribute in attributes {
-            let symbol = symboltable.get(*attribute)?;
+            let symbol = symbollib.get(*attribute)?;
             if !symbol.kind.is_public() && encloser != Some(owner) {
                 continue; // todo: allow private completions in appriopriate context.
             }
             let label = symbol.name.clone();
             let detail = match &symbol.kind {
                 SemanticSymbolKind::Attribute { declared_type, .. } => {
-                    Some(symboltable.format_evaluated_type(&evaluate(
+                    Some(symbollib.format_evaluated_type(&evaluate(
                         declared_type,
-                        symboltable,
+                        symbollib,
                         None,
                         &mut None,
                         0,
@@ -462,9 +462,9 @@ impl<'a> CompletionFinder<'a> {
     fn generate_function_completion(&self, name: &str, params: &[analyzer::SymbolIndex]) -> String {
         let mut string = String::from(name);
         string.push_str("(");
-        let symboltable = &self.standpoint.symbol_table;
+        let symbollib = &self.standpoint.symbol_library;
         for (index, param) in params.iter().enumerate() {
-            let param_symbol = match symboltable.get_forwarded(*param) {
+            let param_symbol = match symbollib.get_forwarded(*param) {
                 Some(symbol) => symbol,
                 None => return name.to_string(),
             };
@@ -494,10 +494,10 @@ impl<'a> CompletionFinder<'a> {
         complete_function_params: bool,
     ) -> Option<CompletionItem> {
         let label = symbol.name.clone();
-        let symbol_table = &self.standpoint.symbol_table;
-        let symbol_idx = symbol_table.forward(symbol_idx);
+        let symbol_library = &self.standpoint.symbol_library;
+        let symbol_idx = symbol_library.forward(symbol_idx);
         let documentation = Some(generate_documentation(&writer, &symbol_idx, symbol));
-        let symbol = symbol_table.get_forwarded(symbol_idx)?;
+        let symbol = symbol_library.get_forwarded(symbol_idx)?;
         let (kind, detail) = match &symbol.kind {
             SemanticSymbolKind::Module { .. } => (CompletionItemKind::MODULE, None),
             SemanticSymbolKind::Trait { .. } => (CompletionItemKind::INTERFACE, None),
@@ -505,16 +505,16 @@ impl<'a> CompletionFinder<'a> {
             SemanticSymbolKind::Enum { .. } => (CompletionItemKind::ENUM, None),
             SemanticSymbolKind::Variable { inferred_type, .. } => (
                 CompletionItemKind::VARIABLE,
-                Some(symbol_table.format_evaluated_type(inferred_type)),
+                Some(symbol_library.format_evaluated_type(inferred_type)),
             ),
             SemanticSymbolKind::Constant { inferred_type, .. } => (
                 CompletionItemKind::CONSTANT,
-                Some(symbol_table.format_evaluated_type(inferred_type)),
+                Some(symbol_library.format_evaluated_type(inferred_type)),
             ),
             SemanticSymbolKind::Function { .. } => (
                 CompletionItemKind::FUNCTION,
                 Some(
-                    symbol_table.format_evaluated_type(&EvaluatedType::FunctionInstance {
+                    symbol_library.format_evaluated_type(&EvaluatedType::FunctionInstance {
                         function: symbol_idx,
                         generic_arguments: vec![],
                     }),
@@ -579,7 +579,7 @@ fn generate_documentation(
     let mut value = format!("```wrl\n{header}\n```");
     let symbol = writer
         .standpoint
-        .symbol_table
+        .symbol_library
         .get_forwarded(*symbol_idx)
         .unwrap();
     // Documentation?
@@ -604,7 +604,7 @@ impl<'a> CompletionFinder<'a> {
     pub fn statement(&self, statement: &'a TypedStmnt) -> Option<CompletionResponse> {
         let span = span_of_typed_statement(
             statement,
-            &self.standpoint.symbol_table,
+            &self.standpoint.symbol_library,
             &self.standpoint.literals,
         );
         let next_statement_span = self.next_statement_span.borrow().clone();
@@ -659,14 +659,14 @@ impl<'a> CompletionFinder<'a> {
     }
 
     fn expr(&self, exp: &'a analyzer::TypedExpression) -> Option<CompletionResponse> {
-        let symboltable = &self.standpoint.symbol_table;
+        let symbollib = &self.standpoint.symbol_library;
         let literals = &self.standpoint.literals;
-        let expression_span = span_of_typed_expression(exp, symboltable, literals);
+        let expression_span = span_of_typed_expression(exp, symbollib, literals);
         // Position is prior, expecting an actual completion.
         // Todo: spacing?
         if expression_span.is_before(Span::at(self.pos)) {
             if self.trigger_character_is(".") && expression_span.is_adjacent_to(self.pos) {
-                let inferred_type = symboltable.get_expression_type(exp, literals)?;
+                let inferred_type = symbollib.get_expression_type(exp, literals)?;
                 let response = self.complete_from_dot(inferred_type, DotCompletionType::Full);
                 return response;
             } else {
@@ -713,7 +713,7 @@ impl<'a> CompletionFinder<'a> {
         *self.next_statement_span.borrow_mut() = statements.get(index + 1).map(|statement| {
             span_of_typed_statement(
                 statement,
-                &self.standpoint.symbol_table,
+                &self.standpoint.symbol_library,
                 &self.standpoint.literals,
             )
         });
@@ -753,16 +753,16 @@ impl<'a> CompletionFinder<'a> {
         // Account for mistakes when typing out completions.
         let property_span = span_of_typed_expression(
             &acces_expr.property,
-            &self.standpoint.symbol_table,
+            &self.standpoint.symbol_library,
             &self.standpoint.literals,
         );
         if property_span.is_adjacent_to(self.pos) || property_span.contains(self.pos) {
             let object_type = self
                 .standpoint
-                .symbol_table
+                .symbol_library
                 .get_expression_type(&acces_expr.object, &self.standpoint.literals)?;
             let property_name = &match &acces_expr.property {
-                TypedExpression::Identifier(i) => self.standpoint.symbol_table.get(i.value),
+                TypedExpression::Identifier(i) => self.standpoint.symbol_library.get(i.value),
                 _ => return None,
             }?
             .name;

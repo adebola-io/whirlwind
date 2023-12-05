@@ -153,12 +153,12 @@ pub struct TypedAssignmentExpr {
 
 pub fn span_of_typed_expression(
     expression: &TypedExpression,
-    symboltable: &SymbolLibrary,
+    symbollib: &SymbolLibrary,
     literals: &LiteralMap,
 ) -> Span {
     match expression {
         TypedExpression::Identifier(i) => {
-            let symbol = symboltable.get(i.value).unwrap();
+            let symbol = symbollib.get(i.value).unwrap();
             Span::on_line(i.start, symbol.name.len() as u32)
         }
         TypedExpression::Literal(l) => match literals.get(*l).unwrap() {

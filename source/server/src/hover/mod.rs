@@ -48,8 +48,8 @@ impl HoverInfo {
 impl From<(&Standpoint, SymbolIndex)> for HoverInfo {
     fn from(tuple: (&Standpoint, SymbolIndex)) -> Self {
         let mut contents = vec![];
-        let symbol_table = &tuple.0.symbol_table;
-        let symbol = symbol_table.get(tuple.1).unwrap();
+        let symbol_library = &tuple.0.symbol_library;
+        let symbol = symbol_library.get(tuple.1).unwrap();
         let writer = SymbolWriter::new(tuple.0);
         let string = writer.print_symbol_with_idx(tuple.1);
 
@@ -60,7 +60,7 @@ impl From<(&Standpoint, SymbolIndex)> for HoverInfo {
                 ..
             } => {
                 let mut origin = source;
-                let mut parent = symbol_table.get(*source);
+                let mut parent = symbol_library.get(*source);
                 while let Some(SemanticSymbol {
                     kind:
                         SemanticSymbolKind::Import {
@@ -71,14 +71,14 @@ impl From<(&Standpoint, SymbolIndex)> for HoverInfo {
                 }) = parent
                 {
                     origin = source;
-                    parent = symbol_table.get(*source);
+                    parent = symbol_library.get(*source);
                 }
                 (parent.unwrap(), false)
             }
             SemanticSymbolKind::Property {
                 resolved: Some(origin),
                 is_opaque,
-            } => (tuple.0.symbol_table.get(*origin).unwrap(), *is_opaque),
+            } => (tuple.0.symbol_library.get(*origin).unwrap(), *is_opaque),
             _ => (symbol, false),
         };
 
@@ -268,7 +268,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
     fn use_declaration(&self, use_decl: &analyzer::TypedUseDeclaration) -> Option<HoverInfo> {
         within!(use_decl.span, self);
         for import in &use_decl.imports {
-            let symbol = self.standpoint.symbol_table.get(*import)?;
+            let symbol = self.standpoint.symbol_library.get(*import)?;
             if symbol.ident_span().contains(self.pos) {
                 return Some(HoverInfo::from((self.standpoint, *import)));
             }
@@ -280,7 +280,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
         within!(var_decl.span, self);
         let mut type_already_checked = false;
         for name in &var_decl.names {
-            let symbol = self.standpoint.symbol_table.get(*name)?;
+            let symbol = self.standpoint.symbol_library.get(*name)?;
             // Hovering over variable name.
             if symbol.ident_span().contains(self.pos) {
                 self.message_store
@@ -309,7 +309,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
     /// Hovering over a type declaration.:
     fn type_decl(&self, type_decl: &TypedTypeDeclaration) -> Option<HoverInfo> {
         within!(type_decl.span, self);
-        let symbol = self.standpoint.symbol_table.get(type_decl.name)?;
+        let symbol = self.standpoint.symbol_library.get(type_decl.name)?;
         // Hovering over the type name.
         if symbol.ident_span().contains(self.pos) {
             self.message_store
@@ -339,7 +339,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
         var_decl: &analyzer::TypedShorthandVariableDeclaration,
     ) -> Option<HoverInfo> {
         within!(var_decl.span, self);
-        let symbol = self.standpoint.symbol_table.get(var_decl.name)?;
+        let symbol = self.standpoint.symbol_library.get(var_decl.name)?;
         // Hovering over a variable name.
         if symbol.ident_span().contains(self.pos) {
             return Some(HoverInfo::from((self.standpoint, var_decl.name)));
@@ -358,7 +358,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
     /// Hovering over a function.
     fn function(&self, function: &analyzer::TypedFunctionDeclaration) -> Option<HoverInfo> {
         within!(function.span, self);
-        let symbol = self.standpoint.symbol_table.get(function.name)?;
+        let symbol = self.standpoint.symbol_library.get(function.name)?;
         // Hovering over the function name.
         if symbol.ident_span().contains(self.pos) {
             self.message_store
@@ -382,7 +382,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
     /// Hover over an enum declaration.
     fn enum_decl(&self, enum_decl: &analyzer::TypedEnumDeclaration) -> Option<HoverInfo> {
         within!(enum_decl.span, self);
-        let symbol = self.standpoint.symbol_table.get(enum_decl.name)?;
+        let symbol = self.standpoint.symbol_library.get(enum_decl.name)?;
         // Hovering over the enum name.
         if symbol.ident_span().contains(self.pos) {
             self.message_store
@@ -404,7 +404,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
         }
         // Hovering over a variant.
         for variant in variants {
-            let symbol = self.standpoint.symbol_table.get(*variant)?;
+            let symbol = self.standpoint.symbol_library.get(*variant)?;
             // let references = symbol
             //     .references
             //     .iter()
@@ -444,7 +444,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
     /// Hovering over an identifier.
     fn identifier(&self, ident: &TypedIdent) -> Option<HoverInfo> {
         let symbol_idx = ident.value;
-        let symbol = self.standpoint.symbol_table.get(symbol_idx)?;
+        let symbol = self.standpoint.symbol_library.get(symbol_idx)?;
         let references = symbol
             .references
             .iter()
@@ -553,7 +553,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
 
     fn constant(&self, constant: &analyzer::TypedConstantDeclaration) -> Option<HoverInfo> {
         within!(constant.span, self);
-        let symbol = self.standpoint.symbol_table.get(constant.name)?;
+        let symbol = self.standpoint.symbol_library.get(constant.name)?;
         // Hovering over a variable name.
         if symbol.ident_span().contains(self.pos) {
             return Some(HoverInfo::from((self.standpoint, constant.name)));
@@ -575,7 +575,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
     fn model_decl(&self, model: &analyzer::TypedModelDeclaration) -> Option<HoverInfo> {
         within!(model.span, self);
         // hovering over a model name.
-        let model_symbol = self.standpoint.symbol_table.get(model.name)?;
+        let model_symbol = self.standpoint.symbol_library.get(model.name)?;
         if model_symbol.ident_span().contains(self.pos) {
             return Some(HoverInfo::from((self.standpoint, model.name)));
         }
@@ -610,7 +610,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
             if !property.span.contains(self.pos) {
                 continue;
             }
-            let symbol = self.standpoint.symbol_table.get(property.name)?;
+            let symbol = self.standpoint.symbol_library.get(property.name)?;
             // Hovering over the property name.
             if symbol.ident_span().contains(self.pos) {
                 return Some(HoverInfo::from((self.standpoint, property.name)));
@@ -664,7 +664,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
     fn trait_declaration(&self, trait_: &analyzer::TypedTraitDeclaration) -> Option<HoverInfo> {
         within!(trait_.span, self);
         // hovering over a trait name.
-        let model_symbol = self.standpoint.symbol_table.get(trait_.name)?;
+        let model_symbol = self.standpoint.symbol_library.get(trait_.name)?;
         if model_symbol.ident_span().contains(self.pos) {
             return Some(HoverInfo::from((self.standpoint, trait_.name)));
         }
@@ -691,7 +691,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
             if !property.span.contains(self.pos) {
                 continue;
             }
-            let symbol = self.standpoint.symbol_table.get(property.name)?;
+            let symbol = self.standpoint.symbol_library.get(property.name)?;
             // Hovering over the property name.
             if symbol.ident_span().contains(self.pos) {
                 return Some(HoverInfo::from((self.standpoint, property.name)));
@@ -792,7 +792,7 @@ impl HoverFinder<'_> {
                 span,
             } => {
                 within!(span, self);
-                let symbol = self.standpoint.symbol_table.get(*value)?;
+                let symbol = self.standpoint.symbol_library.get(*value)?;
                 // Hovering over type name.
                 // Try to get this reference.
                 // There should be a better way to do this, but for now, abeg.
@@ -896,7 +896,7 @@ impl HoverFinder<'_> {
     }
     /// Hovering over a parameter.
     fn parameter(&self, param: SymbolIndex) -> Option<HoverInfo> {
-        let symbol = self.standpoint.symbol_table.get(param)?;
+        let symbol = self.standpoint.symbol_library.get(param)?;
         let references = symbol
             .references
             .iter()
@@ -919,7 +919,7 @@ impl HoverFinder<'_> {
 
     /// Hover over a generic parameter.
     fn generic_parameter(&self, generic_param: SymbolIndex) -> Option<HoverInfo> {
-        let symbol = self.standpoint.symbol_table.get(generic_param)?;
+        let symbol = self.standpoint.symbol_library.get(generic_param)?;
         // let references = symbol
         //     .references
         //     .iter()

@@ -7,8 +7,8 @@ mod representations;
 mod resolver;
 mod standpoint;
 mod surfacearea;
+mod symbollib;
 mod symbols;
-mod symboltable;
 mod typing;
 mod visitor;
 
@@ -21,7 +21,7 @@ pub use representations::*;
 pub use resolver::*;
 pub use standpoint::*;
 pub use surfacearea::*;
+pub use symbollib::*;
 pub use symbols::*;
-pub use symboltable::*;
 pub use typing::*;
 pub use visitor::*;

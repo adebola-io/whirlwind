@@ -219,7 +219,7 @@ pub struct TypedContinueStatement {
 
 pub fn span_of_typed_statement(
     s: &TypedStmnt,
-    symboltable: &SymbolLibrary,
+    symbollib: &SymbolLibrary,
     literals: &LiteralMap,
 ) -> Span {
     match s {
@@ -236,7 +236,7 @@ pub fn span_of_typed_statement(
         TypedStmnt::WhileStatement(w) => w.span,
         TypedStmnt::ForStatement(f) => f.span,
         TypedStmnt::ExpressionStatement(e) | TypedStmnt::FreeExpression(e) => {
-            span_of_typed_expression(e, symboltable, literals)
+            span_of_typed_expression(e, symbollib, literals)
         }
         TypedStmnt::ShorthandVariableDeclaration(v) => v.span,
         TypedStmnt::ModuleDeclaration(m) => m.span,

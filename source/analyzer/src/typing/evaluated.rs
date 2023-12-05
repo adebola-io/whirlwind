@@ -310,7 +310,7 @@ impl EvaluatedType {
 /// Converts an intermediate type into an evaluation.
 pub fn evaluate(
     typ: &IntermediateType,
-    symboltable: &SymbolLibrary,
+    symbollib: &SymbolLibrary,
     // A map of the solutions for previously encountered generic types.
     solved_generics: Option<&Vec<(SymbolIndex, EvaluatedType)>>,
     // Error store from the standpoint, if it exists.
@@ -335,7 +335,7 @@ pub fn evaluate(
                     .map(|typ| {
                         evaluate(
                             typ,
-                            symboltable,
+                            symbollib,
                             solved_generics,
                             error_tracker,
                             recursion_depth,
@@ -355,7 +355,7 @@ pub fn evaluate(
                             .map(|typ| {
                                 evaluate(
                                     typ,
-                                    symboltable,
+                                    symbollib,
                                     solved_generics,
                                     &mut error_tracker,
                                     recursion_depth,
@@ -375,8 +375,8 @@ pub fn evaluate(
             generic_args,
             span,
         } => {
-            let idx = symboltable.forward(*value);
-            let typ = match symboltable.get_forwarded(idx) {
+            let idx = symbollib.forward(*value);
+            let typ = match symbollib.get_forwarded(idx) {
                 Some(value) => value,
                 None => return EvaluatedType::Unknown,
             };
@@ -387,7 +387,7 @@ pub fn evaluate(
                     error_tracker,
                     typ,
                     span,
-                    symboltable,
+                    symbollib,
                     solved_generics,
                 )
             };
@@ -413,7 +413,7 @@ pub fn evaluate(
                     let generic_arguments = get_generics(generic_params);
                     let mut value_typ = evaluate(
                         value,
-                        symboltable,
+                        symbollib,
                         Some(&generic_arguments),
                         error_tracker,
                         recursion_depth,
@@ -454,7 +454,7 @@ pub fn evaluate(
             // Generate a type that is equal to the enclosing model or trait.
             match meaning.clone() {
                 Some(value) => {
-                    let symbol = symboltable.get_forwarded(value).unwrap();
+                    let symbol = symbollib.get_forwarded(value).unwrap();
                     // Pertaining to the `This` type, traits can be solved as a unique type of generics.
                     // In the implementing model, `This` should refer to the model itself, not the trait.
                     if let Some(prior_generics) = solved_generics.as_ref() {
@@ -485,7 +485,7 @@ pub fn evaluate(
                     };
                     evaluate(
                         &intermediate_type,
-                        symboltable,
+                        symbollib,
                         solved_generics,
                         error_tracker,
                         recursion_depth,
@@ -497,7 +497,7 @@ pub fn evaluate(
         IntermediateType::BorrowedType { value, .. } => EvaluatedType::Borrowed {
             base: Box::new(evaluate(
                 &value,
-                symboltable,
+                symbollib,
                 solved_generics,
                 error_tracker,
                 recursion_depth,
@@ -511,7 +511,7 @@ pub fn evaluate(
             for typ in types {
                 let eval_type = evaluate(
                     typ,
-                    symboltable,
+                    symbollib,
                     solved_generics,
                     error_tracker,
                     recursion_depth,
@@ -528,7 +528,7 @@ pub fn evaluate(
                         let unification = unify_generic_arguments(
                             &generic_arguments,
                             &collab_generics,
-                            symboltable,
+                            symbollib,
                             UnifyOptions::None,
                             None,
                         )
@@ -561,9 +561,9 @@ pub fn evaluate(
             // And then uses the rest to filter through..
             for (index, _collaborator) in collaborators.iter().enumerate() {
                 let methods_for_this_collaborator =
-                    get_method_types_from_symbol(*_collaborator, symboltable, &generic_arguments);
+                    get_method_types_from_symbol(*_collaborator, symbollib, &generic_arguments);
                 let traits_for_this_collaborator =
-                    get_trait_types_from_symbol(*_collaborator, symboltable, &generic_arguments);
+                    get_trait_types_from_symbol(*_collaborator, symbollib, &generic_arguments);
                 if index == 0 {
                     available_methods = methods_for_this_collaborator;
                     available_traits = traits_for_this_collaborator;
@@ -576,7 +576,7 @@ pub fn evaluate(
                                     && unify_types(
                                         method_type,
                                         collab_method_type,
-                                        symboltable,
+                                        symbollib,
                                         UnifyOptions::None,
                                         None,
                                     )
@@ -602,7 +602,7 @@ pub fn evaluate(
                                         && unify_generic_arguments(
                                             left_generics,
                                             right_generics,
-                                            symboltable,
+                                            symbollib,
                                             UnifyOptions::None,
                                             None,
                                         )
@@ -639,7 +639,7 @@ fn generate_generics_from_arguments(
     mut error_tracker: &mut Option<(&mut Vec<ProgramError>, PathIndex)>,
     typ: &crate::SemanticSymbol,
     span: &Span,
-    symboltable: &SymbolLibrary,
+    symbollib: &SymbolLibrary,
     solved_generics: Option<&Vec<(SymbolIndex, EvaluatedType)>>,
 ) -> Vec<(SymbolIndex, EvaluatedType)> {
     if generic_args.len() > 0 && generic_params.len() == 0 {
@@ -673,14 +673,14 @@ fn generate_generics_from_arguments(
                 };
                 let generic_param_evaluated = evaluate(
                     &intermediate_generic_type,
-                    symboltable,
+                    symbollib,
                     solved_generics,
                     &mut error_tracker,
                     0,
                 );
                 let argument_evaluated = evaluate(
                     &generic_args[i],
-                    symboltable,
+                    symbollib,
                     solved_generics,
                     &mut error_tracker,
                     0,
@@ -688,7 +688,7 @@ fn generate_generics_from_arguments(
                 let result_evaluated_type = match unify_types(
                     &generic_param_evaluated,
                     &argument_evaluated,
-                    symboltable,
+                    symbollib,
                     UnifyOptions::HardConform,
                     None,
                 ) {
@@ -732,19 +732,19 @@ fn add_error_if_possible(
 /// Converts a set of parameter indexes into their correct inferred type.
 pub fn evaluate_parameter_idxs(
     params: &Vec<SymbolIndex>,
-    symboltable: &SymbolLibrary,
+    symbollib: &SymbolLibrary,
     generic_arguments: Vec<(SymbolIndex, EvaluatedType)>,
     checker_ctx: &mut TypecheckerContext<'_>,
 ) -> Vec<(SymbolIndex, EvaluatedType)> {
     let mut evaluated_param_types = vec![];
     for param in params {
-        let parameter_symbol = symboltable.get(*param).unwrap();
+        let parameter_symbol = symbollib.get(*param).unwrap();
         let inferred_type = match &parameter_symbol.kind {
             SemanticSymbolKind::Parameter { param_type, .. } => {
                 if let Some(declared_type) = param_type {
                     evaluate(
                         declared_type,
-                        symboltable,
+                        symbollib,
                         Some(&generic_arguments),
                         &mut checker_ctx.tracker(),
                         0,

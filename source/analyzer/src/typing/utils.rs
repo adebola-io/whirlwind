@@ -15,9 +15,9 @@ macro_rules! get_intrinsic {
 
 /// Encloses an evaluated type as a prospect.
 /// It does nothing if the intrinsic Prospect type is unreachable.
-pub fn prospectify(typ: EvaluatedType, symboltable: &SymbolLibrary) -> EvaluatedType {
-    if let Some(model) = symboltable.prospect {
-        let prospect_symbol = symboltable.get(model).unwrap();
+pub fn prospectify(typ: EvaluatedType, symbollib: &SymbolLibrary) -> EvaluatedType {
+    if let Some(model) = symbollib.prospect {
+        let prospect_symbol = symbollib.get(model).unwrap();
         let prospect_generic_parameter = match &prospect_symbol.kind {
             SemanticSymbolKind::Model { generic_params, .. } => generic_params[0],
             _ => unreachable!(),
@@ -31,56 +31,56 @@ pub fn prospectify(typ: EvaluatedType, symboltable: &SymbolLibrary) -> Evaluated
     }
 }
 
-pub fn is_boolean(evaluated_type: &EvaluatedType, symboltable: &SymbolLibrary) -> bool {
+pub fn is_boolean(evaluated_type: &EvaluatedType, symbollib: &SymbolLibrary) -> bool {
     matches!(
         evaluated_type, EvaluatedType::ModelInstance { model, .. }
-        if symboltable.bool.is_some_and(|prospect| prospect == *model)
+        if symbollib.bool.is_some_and(|prospect| prospect == *model)
     )
 }
 
 /// Returns true if an evaluated type is a prospect.
-pub fn is_prospective_type(evaluated_type: &EvaluatedType, symboltable: &SymbolLibrary) -> bool {
+pub fn is_prospective_type(evaluated_type: &EvaluatedType, symbollib: &SymbolLibrary) -> bool {
     matches!(
         evaluated_type, EvaluatedType::ModelInstance { model, .. }
-        if symboltable.prospect.is_some_and(|prospect| prospect == *model)
+        if symbollib.prospect.is_some_and(|prospect| prospect == *model)
     )
 }
 
 /// Returns true if the evaluated type is a maybe.
-pub fn is_maybe_type(evaluated_type: &EvaluatedType, symboltable: &SymbolLibrary) -> bool {
+pub fn is_maybe_type(evaluated_type: &EvaluatedType, symbollib: &SymbolLibrary) -> bool {
     matches!(
         evaluated_type, EvaluatedType::ModelInstance { model, .. }
-        if symboltable.maybe.is_some_and(|maybe| maybe == *model)
+        if symbollib.maybe.is_some_and(|maybe| maybe == *model)
     )
 }
 
 /// Returns true if an evaluated type is a number.
-pub fn is_numeric_type(evaluated_type: &EvaluatedType, symboltable: &SymbolLibrary) -> bool {
+pub fn is_numeric_type(evaluated_type: &EvaluatedType, symbollib: &SymbolLibrary) -> bool {
     matches!(
         evaluated_type, EvaluatedType::ModelInstance { model, .. }
         if [
-            symboltable.float32,
-            symboltable.float64,
-            symboltable.uint8,
-            symboltable.uint16,
-            symboltable.uint32,
-            symboltable.uint64,
+            symbollib.float32,
+            symbollib.float64,
+            symbollib.uint8,
+            symbollib.uint16,
+            symbollib.uint32,
+            symbollib.uint64,
         ].iter().filter_map(|sym| *sym).any(|sym| sym == *model)
     ) || matches!(
         evaluated_type, EvaluatedType::OpaqueTypeInstance {aliased_as, ..}
         if [
-            symboltable.float,
-            symboltable.int,
-            symboltable.uint
+            symbollib.float,
+            symbollib.int,
+            symbollib.uint
         ].iter().any(|sym| sym.as_ref() == aliased_as.as_ref())
     )
 }
 
 /// Encloses an evaluated type as a Maybe.
 /// It does nothing if the intrinsic Maybe type is unreachable.
-pub fn maybify(typ: EvaluatedType, symboltable: &SymbolLibrary) -> EvaluatedType {
-    if let Some(model) = symboltable.maybe {
-        let maybe_symbol = symboltable.get(model).unwrap();
+pub fn maybify(typ: EvaluatedType, symbollib: &SymbolLibrary) -> EvaluatedType {
+    if let Some(model) = symbollib.maybe {
+        let maybe_symbol = symbollib.get(model).unwrap();
         let maybe_generic_parameter = match &maybe_symbol.kind {
             SemanticSymbolKind::Model { generic_params, .. } => generic_params[0],
             _ => unreachable!(),
@@ -96,9 +96,9 @@ pub fn maybify(typ: EvaluatedType, symboltable: &SymbolLibrary) -> EvaluatedType
 
 /// Encloses an evaluated type in an array.
 /// It does nothing if the intrinsic Array type is unreachable.
-pub fn arrify(typ: EvaluatedType, symboltable: &SymbolLibrary) -> EvaluatedType {
-    if let Some(model) = symboltable.array {
-        let maybe_symbol = symboltable.get(model).unwrap();
+pub fn arrify(typ: EvaluatedType, symbollib: &SymbolLibrary) -> EvaluatedType {
+    if let Some(model) = symbollib.array {
+        let maybe_symbol = symbollib.get(model).unwrap();
         let maybe_generic_parameter = match &maybe_symbol.kind {
             SemanticSymbolKind::Model { generic_params, .. } => generic_params[0],
             _ => return EvaluatedType::Unknown,
@@ -113,8 +113,8 @@ pub fn arrify(typ: EvaluatedType, symboltable: &SymbolLibrary) -> EvaluatedType 
 }
 
 /// Returns true if a type is evaluated to an array.
-pub fn is_array(typ: &EvaluatedType, symboltable: &SymbolLibrary) -> bool {
-    match symboltable.array {
+pub fn is_array(typ: &EvaluatedType, symbollib: &SymbolLibrary) -> bool {
+    match symbollib.array {
         Some(array_symbol) => {
             matches!(typ, EvaluatedType::ModelInstance { model,.. } if *model == array_symbol)
         }
@@ -278,7 +278,7 @@ pub fn evaluate_generic_params(
 pub fn symbol_to_type(
     symbol: &crate::SemanticSymbol,
     name: SymbolIndex,
-    symboltable: &SymbolLibrary,
+    symbollib: &SymbolLibrary,
 ) -> Result<EvaluatedType, Result<EvaluatedType, TypeErrorType>> {
     let eval_type = match &symbol.kind {
         SemanticSymbolKind::Module { .. } => EvaluatedType::Module(name),
@@ -290,7 +290,7 @@ pub fn symbol_to_type(
             generic_arguments: {
                 // Try to create a space for unknown enum generics.
                 // todo: unify from tagged types.
-                let enum_symbol = symboltable.get_forwarded(*owner_enum).unwrap();
+                let enum_symbol = symbollib.get_forwarded(*owner_enum).unwrap();
                 match &enum_symbol.kind {
                     SemanticSymbolKind::Enum { generic_params, .. } => {
                         evaluate_generic_params(generic_params, false)
@@ -309,10 +309,10 @@ pub fn symbol_to_type(
         } => {
             let inferred_type = param_type
                 .as_ref()
-                .map(|param_type| evaluate(param_type, symboltable, None, &mut None, 0))
+                .map(|param_type| evaluate(param_type, symbollib, None, &mut None, 0))
                 .unwrap_or(inferred_type.clone());
             if *is_optional {
-                maybify(inferred_type, symboltable)
+                maybify(inferred_type, symbollib)
             } else {
                 inferred_type
             }
@@ -334,11 +334,11 @@ pub fn symbol_to_type(
 /// Extract the available methods as evaluated types from a model, trait or generic.
 pub fn get_method_types_from_symbol<'a>(
     symbol_idx: SymbolIndex,
-    symboltable: &'a SymbolLibrary,
+    symbollib: &'a SymbolLibrary,
     generic_arguments: &Vec<(SymbolIndex, EvaluatedType)>,
 ) -> Vec<(&'a String, EvaluatedType, bool)> {
     let mut method_types = vec![];
-    let symbol = symboltable.get(symbol_idx);
+    let symbol = symbollib.get(symbol_idx);
     if symbol.is_none() {
         return vec![];
     }
@@ -347,7 +347,7 @@ pub fn get_method_types_from_symbol<'a>(
         SemanticSymbolKind::Model { methods, .. } | SemanticSymbolKind::Trait { methods, .. } => {
             for method in methods {
                 let method = *method;
-                let method_symbol = symboltable.get(method);
+                let method_symbol = symbollib.get(method);
                 if method_symbol.is_none() {
                     continue;
                 }
@@ -366,14 +366,14 @@ pub fn get_method_types_from_symbol<'a>(
         }
         SemanticSymbolKind::GenericParameter { traits, .. } => {
             for int_typ in traits {
-                let evaled = evaluate(int_typ, symboltable, Some(generic_arguments), &mut None, 0);
+                let evaled = evaluate(int_typ, symbollib, Some(generic_arguments), &mut None, 0);
                 if let EvaluatedType::TraitInstance {
                     trait_,
                     generic_arguments,
                 } = evaled
                 {
                     let mut methods_from_trait =
-                        get_method_types_from_symbol(trait_, symboltable, &generic_arguments);
+                        get_method_types_from_symbol(trait_, symbollib, &generic_arguments);
                     method_types.append(&mut methods_from_trait);
                 }
             }
@@ -386,11 +386,11 @@ pub fn get_method_types_from_symbol<'a>(
 /// Extract all available traits as evaluated types from a model, trait or generic.
 pub fn get_trait_types_from_symbol(
     symbol_idx: SymbolIndex,
-    symboltable: &SymbolLibrary,
+    symbollib: &SymbolLibrary,
     generic_arguments: &Vec<(SymbolIndex, EvaluatedType)>,
 ) -> Vec<EvaluatedType> {
     let mut trait_types = vec![];
-    let symbol = symboltable.get(symbol_idx);
+    let symbol = symbollib.get(symbol_idx);
     if symbol.is_none() {
         return vec![];
     }
@@ -405,7 +405,7 @@ pub fn get_trait_types_from_symbol(
             for implementation in implementations {
                 let initial_type = evaluate(
                     implementation,
-                    symboltable,
+                    symbollib,
                     Some(generic_arguments),
                     &mut None,
                     0,
@@ -419,7 +419,7 @@ pub fn get_trait_types_from_symbol(
         }
         SemanticSymbolKind::GenericParameter { traits, .. } => {
             for int_typ in traits {
-                let evaled = evaluate(int_typ, symboltable, Some(generic_arguments), &mut None, 0);
+                let evaled = evaluate(int_typ, symbollib, Some(generic_arguments), &mut None, 0);
                 if let EvaluatedType::TraitInstance {
                     trait_,
                     generic_arguments,
@@ -427,7 +427,7 @@ pub fn get_trait_types_from_symbol(
                 {
                     trait_types.push(evaled.clone());
                     let mut traits_from_trait =
-                        get_trait_types_from_symbol(*trait_, symboltable, &generic_arguments);
+                        get_trait_types_from_symbol(*trait_, symbollib, &generic_arguments);
                     trait_types.append(&mut traits_from_trait);
                 }
             }
@@ -441,14 +441,14 @@ pub fn get_trait_types_from_symbol(
 pub fn get_implementation_of(
     target_trait: SymbolIndex,
     operand_type: &EvaluatedType,
-    symboltable: &SymbolLibrary,
+    symbollib: &SymbolLibrary,
 ) -> Option<EvaluatedType> {
     match operand_type {
         EvaluatedType::ModelInstance { model: base, .. }
         | EvaluatedType::TraitInstance { trait_: base, .. }
         | EvaluatedType::Generic { base }
         | EvaluatedType::HardGeneric { base } => {
-            let base_symbol = symboltable.get(*base)?;
+            let base_symbol = symbollib.get(*base)?;
             let implementation_list = match &base_symbol.kind {
                 SemanticSymbolKind::Model {
                     implementations, ..
@@ -463,7 +463,7 @@ pub fn get_implementation_of(
                 _ => return None,
             };
             for implementation in implementation_list {
-                let evaluated = evaluate(implementation, symboltable, None, &mut None, 0);
+                let evaluated = evaluate(implementation, symbollib, None, &mut None, 0);
                 if let EvaluatedType::TraitInstance { trait_, .. } = &evaluated {
                     if *trait_ == target_trait {
                         return Some(evaluated);
@@ -480,7 +480,7 @@ pub fn get_implementation_of(
 /// It return unknown if intrinsic symbols are absent,
 /// or there is an error in conversion.
 pub fn get_numeric_type(
-    symboltable: &SymbolLibrary,
+    symbollib: &SymbolLibrary,
     value: &ast::WhirlNumber,
     checker_ctx: Option<&mut TypecheckerContext<'_>>,
 ) -> EvaluatedType {
@@ -491,7 +491,7 @@ pub fn get_numeric_type(
                 generic_args: vec![],
                 span: ast::Span::default(),
             },
-            symboltable,
+            symbollib,
             None,
             &mut None,
             0,
@@ -519,21 +519,21 @@ pub fn get_numeric_type(
                 // Unsigned Integers.
                 if number >= 0_f64 {
                     if number <= u8::MAX as f64 {
-                        return evaluate_index(get_intrinsic!(symboltable.uint8));
+                        return evaluate_index(get_intrinsic!(symbollib.uint8));
                     } else if number <= u16::MAX as f64 {
-                        return evaluate_index(get_intrinsic!(symboltable.uint16));
+                        return evaluate_index(get_intrinsic!(symbollib.uint16));
                     } else if number <= u32::MAX as f64 {
-                        return evaluate_index(get_intrinsic!(symboltable.uint32));
+                        return evaluate_index(get_intrinsic!(symbollib.uint32));
                     } else if number <= u64::MAX as f64 {
-                        return evaluate_index(get_intrinsic!(symboltable.uint64));
+                        return evaluate_index(get_intrinsic!(symbollib.uint64));
                     }
                 }
-                return evaluate_index(get_intrinsic!(symboltable.int));
+                return evaluate_index(get_intrinsic!(symbollib.int));
             } else {
-                return evaluate_index(get_intrinsic!(symboltable.float));
+                return evaluate_index(get_intrinsic!(symbollib.float));
             }
         }
-        _ => return evaluate_index(get_intrinsic!(symboltable.int)),
+        _ => return evaluate_index(get_intrinsic!(symbollib.int)),
     }
 }
 
@@ -548,7 +548,7 @@ pub struct FunctionType<'a> {
 /// It returns None if the type passed in is not functional.
 pub fn distill_as_function_type<'a>(
     caller: &'a EvaluatedType,
-    symboltable: &SymbolLibrary,
+    symbollib: &SymbolLibrary,
 ) -> Option<FunctionType<'a>> {
     match caller {
         EvaluatedType::MethodInstance {
@@ -559,7 +559,7 @@ pub fn distill_as_function_type<'a>(
             function,
             generic_arguments,
         } => {
-            let function_symbol = symboltable.get(*function).unwrap();
+            let function_symbol = symbollib.get(*function).unwrap();
             match &function_symbol.kind {
                 SemanticSymbolKind::Method {
                     is_async,
@@ -577,7 +577,7 @@ pub fn distill_as_function_type<'a>(
                     let parameter_types = params
                         .iter()
                         .map(|param| {
-                            let parameter_symbol = symboltable.get(*param).unwrap();
+                            let parameter_symbol = symbollib.get(*param).unwrap();
                             let (is_optional, type_label) = match &parameter_symbol.kind {
                                 SemanticSymbolKind::Parameter {
                                     is_optional,
@@ -597,7 +597,7 @@ pub fn distill_as_function_type<'a>(
                                     .map(|typ| {
                                         evaluate(
                                             typ,
-                                            symboltable,
+                                            symbollib,
                                             Some(generic_arguments),
                                             &mut None,
                                             0,
@@ -609,9 +609,7 @@ pub fn distill_as_function_type<'a>(
                         .collect::<Vec<_>>();
                     let return_type = return_type
                         .as_ref()
-                        .map(|typ| {
-                            evaluate(typ, symboltable, Some(&generic_arguments), &mut None, 0)
-                        })
+                        .map(|typ| evaluate(typ, symbollib, Some(&generic_arguments), &mut None, 0))
                         .unwrap_or(EvaluatedType::Void);
                     Some(FunctionType {
                         is_async,
@@ -656,11 +654,11 @@ pub fn distill_as_function_type<'a>(
 pub fn infer_ahead(
     expression: &mut TypedExpression,
     target_type: &EvaluatedType,
-    symboltable: &mut SymbolLibrary,
+    symbollib: &mut SymbolLibrary,
 ) {
     match expression {
         TypedExpression::FnExpr(function_expr) => {
-            if let Some(functiontype) = distill_as_function_type(target_type, symboltable) {
+            if let Some(functiontype) = distill_as_function_type(target_type, symbollib) {
                 // Infer parameters.
                 for (index, param_idx) in function_expr.params.iter().enumerate() {
                     let shadow_type_is_maybe =
@@ -668,9 +666,9 @@ pub fn infer_ahead(
                             .parameter_types
                             .get(index)
                             .is_some_and(|shadow_type| {
-                                is_maybe_type(&shadow_type.inferred_type, symboltable)
+                                is_maybe_type(&shadow_type.inferred_type, symbollib)
                             });
-                    let parameter_symbol = symboltable.get_mut(*param_idx).unwrap();
+                    let parameter_symbol = symbollib.get_mut(*param_idx).unwrap();
                     if let SemanticSymbolKind::Parameter {
                         param_type,
                         is_optional,
@@ -698,7 +696,7 @@ pub fn infer_ahead(
                 infer_ahead(
                     &mut function_expr.body,
                     &functiontype.return_type,
-                    symboltable,
+                    symbollib,
                 );
             }
         }
@@ -721,12 +719,12 @@ pub fn ensure_assignment_validity(
 /// Mutates the type of an expression based on the solved generics.
 pub fn update_expression_type(
     caller: &mut TypedExpression,
-    symboltable: &mut SymbolLibrary,
+    symbollib: &mut SymbolLibrary,
     generic_arguments: &Vec<(SymbolIndex, EvaluatedType)>,
 ) {
     match caller {
         TypedExpression::Identifier(ident) => {
-            let ident_symbol = symboltable.get_mut(ident.value).unwrap();
+            let ident_symbol = symbollib.get_mut(ident.value).unwrap();
             if let SemanticSymbolKind::Variable { inferred_type, .. }
             | SemanticSymbolKind::Constant { inferred_type, .. } = &mut ident_symbol.kind
             {
@@ -744,14 +742,14 @@ pub fn update_expression_type(
             }
         }
         TypedExpression::CallExpr(call) => {
-            update_expression_type(&mut call.caller, symboltable, generic_arguments);
+            update_expression_type(&mut call.caller, symbollib, generic_arguments);
             call.arguments
                 .iter_mut()
-                .for_each(|arg| update_expression_type(arg, symboltable, generic_arguments));
+                .for_each(|arg| update_expression_type(arg, symbollib, generic_arguments));
         }
         TypedExpression::AccessExpr(access) => {
             let empty = LiteralMap::new();
-            let inferred_type = symboltable
+            let inferred_type = symbollib
                 .get_expression_type(&access.property, &empty)
                 .unwrap();
             let empty = vec![];
@@ -759,28 +757,28 @@ pub fn update_expression_type(
             let generic_args = match unify_generic_arguments(
                 prior_generics,
                 generic_arguments,
-                symboltable,
+                symbollib,
                 crate::UnifyOptions::None,
                 None,
             ) {
                 Ok(generics) => generics,
                 _ => return,
             };
-            update_expression_type(&mut access.object, symboltable, &generic_args);
+            update_expression_type(&mut access.object, symbollib, &generic_args);
         }
         TypedExpression::ArrayExpr(array) => array
             .elements
             .iter_mut()
-            .for_each(|exp| update_expression_type(exp, symboltable, generic_arguments)),
+            .for_each(|exp| update_expression_type(exp, symbollib, generic_arguments)),
         TypedExpression::IndexExpr(index) => {
-            update_expression_type(&mut index.object, symboltable, generic_arguments);
+            update_expression_type(&mut index.object, symbollib, generic_arguments);
             // todo: allow index overloading?
         }
         TypedExpression::UnaryExpr(unary) => {
-            update_expression_type(&mut unary.operand, symboltable, generic_arguments)
+            update_expression_type(&mut unary.operand, symbollib, generic_arguments)
         }
         TypedExpression::UpdateExpr(exp) => {
-            update_expression_type(&mut exp.operand, symboltable, generic_arguments)
+            update_expression_type(&mut exp.operand, symbollib, generic_arguments)
         }
         _ => {}
     }
