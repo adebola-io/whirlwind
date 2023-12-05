@@ -22,7 +22,7 @@ public function Main() {
     printMessage := fn() {
         template := Fmt("% is listening on %.");
         message := template.Add(name).Add(port).Finish();
-        Print(message);
+        Print(message)
     };
     // Register authentication.
     middleware.Use(AuthenticationHandler);

@@ -59,7 +59,7 @@ public model Eventual<T> implements Guaranteed<T> {
     var sequence: &Sequence;
     /// The final value. Until the eventual is resolved, the value remains empty.
     var value: T;
-    public function [Guaranteed.guarantee](): T {
+    public function [Guaranteed.Guarantee](): T {
         this.Unwrap()
     }
     /// Cancels the running of the eventual and discards its value.
@@ -67,11 +67,17 @@ public model Eventual<T> implements Guaranteed<T> {
         this.aborted = true;
     }
     /// Blocks the current execution thread until the eventual is resolved.
+    /// Calling Await on an already resolved eventual just returns the produced value.
     public function Await(): T {
         if this.aborted {
             Panic(Some("Called Await on an aborted Eventual."));
         };
+        if this.resolved {
+            return this.value;
+        };
         Todo()
+        this.resolved = true;
+        return this.value;
     }
     /// Forces the eventual to be resolved, and panics if it isn't.
     public function Unwrap(): T {
