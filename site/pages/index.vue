@@ -29,7 +29,7 @@
             <a
                target="_blank"
                rel="noreferrer"
-               href="http://github.com/adebola-io/whirlwind"
+               href="https://github.com/adebola-io/whirlwind"
                >here</a
             >.
          </span>
@@ -47,7 +47,7 @@ body {
 }
 @media (aspect-ratio >= 0.8) {
    body {
-      font-size: 0.9vw;
+      font-size: 0.8vw;
    }
 }
 .screen {
@@ -75,6 +75,7 @@ body {
    animation: fade-in 900ms;
 }
 .heading-and-icon {
+   position: relative;
    display: flex;
    align-items: center;
    justify-content: center;
@@ -114,6 +115,7 @@ body {
    fill: white;
 }
 p {
+   position: relative;
    width: 100%;
    transition-duration: 500ms;
    animation: fade-in 700ms;
