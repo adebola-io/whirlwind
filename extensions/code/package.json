@@ -1,14 +1,19 @@
 {
    "name": "vscode-whirlwind",
    "displayName": "Whirlwind",
-   "description": "Support for the Whirlwind Programming Language",
+   "description": "Rich Support for the Whirlwind Programming Language",
    "publisher": "adebola-io",
    "author": {
       "name": "Adebola Akomolafe",
       "email": "adebolaakomolafe@gmail.com"
    },
-   "icon": "./icons/wrl-color.svg",
-   "version": "0.0.1",
+   "icon": "./images/wrl-color.svg",
+   "galleryBanner": {
+      "color": "#000",
+      "theme": "dark"
+   },
+   "homepage": "https://whirlwind-lang.vercel.app",
+   "version": "0.0.0",
    "engines": {
       "vscode": "^1.54.0"
    },

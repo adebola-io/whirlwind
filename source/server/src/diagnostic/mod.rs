@@ -48,31 +48,27 @@ pub fn error_to_diagnostic(error: &ProgramError) -> Diagnostic {
 }
 
 /// Convert a span to a range.
-pub fn to_range(span: Span) -> Range {
+pub fn to_range(mut span: Span) -> Range {
+    if span.start[0] > 0 {
+        span.start[0] -= 1
+    }
+    if span.start[1] > 0 {
+        span.start[1] -= 1
+    }
+    if span.end[0] > 0 {
+        span.end[0] -= 1
+    }
+    if span.end[1] > 0 {
+        span.end[1] -= 1
+    }
     Range {
         start: Position {
-            line: if span.start[0] > 0 {
-                span.start[0] - 1
-            } else {
-                span.start[0]
-            },
-            character: if span.start[1] > 0 {
-                span.start[1] - 1
-            } else {
-                span.start[1]
-            },
+            line: span.start[0],
+            character: span.start[1],
         },
         end: Position {
-            line: if span.end[0] > 0 {
-                span.end[0] - 1
-            } else {
-                span.end[0]
-            },
-            character: if span.end[1] > 0 {
-                span.end[1] - 1
-            } else {
-                span.end[1]
-            },
+            line: span.end[0],
+            character: span.end[1],
         },
     }
 }

@@ -3,7 +3,7 @@
       "prefix": "imp",
       "body": "implements "
    },
-   "Class Definition": {
+   "Model Definition": {
       "prefix": "model",
       "isFileTemplate": true,
       "body": [
@@ -27,7 +27,7 @@
    },
    "Print value": {
       "prefix": "pr",
-      "body": ["Core.Io.Print($1);", "$0"],
+      "body": ["Print($1);", "$0"],
       "description": "Print value"
    },
    "Print warning": {
@@ -42,7 +42,7 @@
    },
    "Panic": {
       "prefix": "panic",
-      "body": ["Core.Process.Panic(new Error(\"$1\"));", "$0"],
+      "body": ["Panic(Some(\"$1\"));", "$0"],
       "description": "Panic expression"
    },
    "For-In Loop": {
@@ -57,7 +57,7 @@
    "Function Statement": {
       "prefix": "func",
       "body": [
-         "function ${1:Name}(${2:params}:${3:paramtype}) {",
+         "function ${1:Name}(${2:params}:${3:Paramtype}) {",
          "\t$TM_SELECTED_TEXT$0",
          "}"
       ],

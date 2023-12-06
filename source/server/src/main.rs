@@ -6,6 +6,7 @@ mod hover;
 mod message_store;
 
 use analyzer::{Module, Standpoint, CORE_LIBRARY_PATH};
+use ast::unwrap_or_continue;
 use document_manager::{uri_to_absolute_path, DocumentManager};
 use message_store::MessageStore;
 use std::path::PathBuf;
@@ -18,15 +19,6 @@ use tower_lsp::{Client, LanguageServer, LspService, Server};
 struct Backend {
     client: Client,
     docs: DocumentManager,
-}
-
-macro_rules! unwrap_or_continue {
-    ($expr: expr) => {{
-        match $expr {
-            Some(value) => value,
-            None => continue,
-        }
-    }};
 }
 
 #[tower_lsp::async_trait]

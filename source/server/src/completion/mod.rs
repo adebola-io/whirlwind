@@ -1,12 +1,11 @@
 #![allow(unused)]
-
 use crate::message_store::MessageStore;
 use analyzer::{
     evaluate, span_of_typed_expression, span_of_typed_statement, utils::coerce, EvaluatedType,
     SemanticSymbolKind, Standpoint, SymbolIndex, TypedExpression, TypedModelPropertyType,
     TypedModule, TypedStmnt,
 };
-use ast::Span;
+use ast::{maybe, Span};
 use printer::SymbolWriter;
 use serde_json::Value;
 use std::cell::RefCell;
@@ -14,16 +13,6 @@ use tower_lsp::lsp_types::{
     CompletionContext, CompletionItem, CompletionItemKind, CompletionItemLabelDetails,
     CompletionResponse, Documentation, InsertTextFormat, MarkupContent, MarkupKind,
 };
-
-/// Exits a function and returns an option value if it is Some.
-/// Basically the direct opposite of `impl Try for Option`.
-macro_rules! maybe {
-    ($exp: expr) => {
-        if let Some(exp) = $exp {
-            return Some(exp);
-        }
-    };
-}
 
 /// A visitor that traverses a typed module to determine the most suitable
 /// completion response for a completion prompt.

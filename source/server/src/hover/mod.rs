@@ -1,33 +1,12 @@
-#![allow(unused)]
 use crate::message_store::MessageStore;
 use analyzer::{
     IntermediateType, SemanticSymbol, SemanticSymbolKind, Standpoint, SymbolIndex, TypedCallExpr,
     TypedIdent, TypedModule, TypedThisExpr, TypedTypeDeclaration, TypedVisitorNoArgs,
 };
-use ast::Span;
+use ast::{maybe, within, Span};
 use printer::SymbolWriter;
 use std::cell::RefCell;
 use tower_lsp::lsp_types::{Hover, HoverContents, LanguageString, MarkedString};
-// use utils::get_parent_dir;
-
-/// Exits a function and returns an option value if it is Some.
-/// Basically the direct opposite of `impl Try for Option`.
-macro_rules! maybe {
-    ($exp: expr) => {
-        if let Some(exp) = $exp {
-            return Some(exp);
-        }
-    };
-}
-
-/// Exits a visition function if the hover position is not contained within a span.
-macro_rules! within {
-    ($span: expr, $self: expr) => {
-        if !$span.contains($self.pos) {
-            return None;
-        }
-    };
-}
 
 /// Information shown during hovering.
 pub struct HoverInfo {
@@ -59,7 +38,6 @@ impl From<(&Standpoint, SymbolIndex)> for HoverInfo {
                 source: Some(source),
                 ..
             } => {
-                let mut origin = source;
                 let mut parent = symbol_library.get(*source);
                 while let Some(SemanticSymbol {
                     kind:
@@ -70,7 +48,6 @@ impl From<(&Standpoint, SymbolIndex)> for HoverInfo {
                     ..
                 }) = parent
                 {
-                    origin = source;
                     parent = symbol_library.get(*source);
                 }
                 (parent.unwrap(), false)
@@ -133,134 +110,6 @@ impl<'a> HoverFinder<'a> {
             message_store: RefCell::new(messages),
         }
     }
-
-    // /// Create a hover over this module itself.
-    // fn create_module_self_hover(&self) -> Option<HoverInfo> {
-    //     let mut contents = vec![];
-    //     let mut string = String::new();
-    //     string.push_str("module ");
-    //     // connect dots.
-    //     let mut pathway = vec![];
-    //     self.context.draw_line_to(self.module, &mut pathway);
-    //     for (idx, module_id) in pathway.iter().enumerate() {
-    //         string.push_str(self.context.get_module_with_id(*module_id)?.name.as_ref()?);
-    //         if idx + 1 != pathway.len() {
-    //             string.push('.');
-    //         }
-    //     }
-    //     contents.push(MarkedString::LanguageString(LanguageString {
-    //         language: String::from("wrl"),
-    //         value: string,
-    //     }));
-    //     // Documentation?
-    //     if let Some(ref docs) = self.module.ambience.info() {
-    //         let mut documentation = String::new();
-    //         for line in docs.iter() {
-    //             documentation.push_str(line);
-    //             documentation.push('\n')
-    //         }
-    //         contents.push(MarkedString::String(documentation))
-    //     }
-    //     return Some(HoverInfo {
-    //         contents: HoverContents::Array(contents),
-    //     });
-    // }
-
-    // fn use_target_hover(&self, target: &ast::UseTarget) -> Option<HoverInfo> {
-    //     let parent_folder = get_parent_dir(self.module.module_path.as_ref()?)?;
-    //     let target_module = self
-    //         .context
-    //         .get_module_in_dir(parent_folder, &target.name.name)?;
-    //     // hover over target name.
-    //     if target.name.span.contains(self.pos) {
-    //         let hvfinder = HoverFinder::new(target_module, self.context, self.pos);
-    //         return hvfinder.create_module_self_hover();
-    //     }
-    //     // hover over any other.
-    //     match &target.path {
-    //         // same as hover over target name.
-    //         ast::UsePath::Me => return None, // technically unreachable.
-    //         ast::UsePath::Item(sub_target) => {
-    //             return self.use_sub_target_hover(target_module, sub_target)
-    //         }
-    //         ast::UsePath::List(list) => {
-    //             for sub_target in list.iter() {
-    //                 if let Some(hover) = self.use_sub_target_hover(target_module, sub_target) {
-    //                     return Some(hover);
-    //                 }
-    //             }
-    //         }
-    //     }
-
-    //     return None;
-    // }
-
-    // /// Hovering over an atom of the target.
-    // fn use_sub_target_hover(
-    //     &self,
-    //     target_module: &Module,
-    //     sub_target: &ast::UseTarget,
-    // ) -> Option<HoverInfo> {
-    // Create mock hover over the contents of the actual declaration.
-    //     let ambience = target_module.ambience.create_shadow(0);
-    //     let target_decl = ambience.lookaround(&sub_target.name.name)?;
-    //     let target_decl_ident = target_decl.entry.ident()?;
-    //     let span = target_decl_ident.span;
-    //     let original_position = [span.start[0], span.start[1]];
-    //     let hover_finder = HoverFinder::new(target_module, self.context, original_position);
-    //     let scope = target_decl.scope;
-
-    //     // hover over name.
-    //     if sub_target.name.span.contains(self.pos) {
-    //         match target_decl.entry {
-    //             ast::ScopeEntry::Function(f) => name_hover!(f, scope, hover_finder),
-    //             ast::ScopeEntry::Type(t) => name_hover!(t, scope, hover_finder),
-    //             ast::ScopeEntry::Model(m) => name_hover!(m, scope, hover_finder),
-    //             ast::ScopeEntry::Enum(e) => name_hover!(e, scope, hover_finder),
-    //             ast::ScopeEntry::ShorthandVariable(v) => {
-    //                 return Some(HoverInfo::from(&(&target_module.ambience, v)))
-    //             }
-    //             ast::ScopeEntry::Trait(t) => name_hover!(t, scope, hover_finder),
-    //             ast::ScopeEntry::Parameter(_) | ast::ScopeEntry::ReservedSpace => return None,
-    //             ast::ScopeEntry::UseImport(u) => {
-    //                 let declaration = target_module
-    //                     .statements()
-    //                     .map(|statement| statement.closest_nodes_to(u.name.span))
-    //                     .flatten()
-    //                     .next()?;
-    //                 return hover_finder.statement(declaration);
-    //             }
-    //             ast::ScopeEntry::Constant(c) => name_hover!(c, scope, hover_finder),
-    //             ast::ScopeEntry::Variable(_) => {}
-    //             _ => {} // technically unreachable
-    //         }
-    //     }
-
-    //     let parent_folder = get_parent_dir(target_module.module_path.as_ref()?)?;
-    //     let sub_target_module = self
-    //         .context
-    //         .get_module_in_dir(parent_folder, &sub_target.name.name)?;
-
-    //     // hover over any other.
-    //     match &sub_target.path {
-    //         // same as hover over target name.
-    //         ast::UsePath::Me => return None, // technically unreachable.
-    //         ast::UsePath::Item(sub_sub_target) => {
-    //             return self.use_sub_target_hover(sub_target_module, sub_sub_target);
-    //         }
-    //         ast::UsePath::List(sub_list) => {
-    //             for sub_sub_target in sub_list.iter() {
-    //                 if let Some(hover) =
-    //                     self.use_sub_target_hover(sub_target_module, sub_sub_target)
-    //                 {
-    //                     return Some(hover);
-    //                 }
-    //             }
-    //         }
-    //     }
-
-    //     return None;
-    // }
 }
 
 impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
@@ -290,11 +139,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
             };
             if !type_already_checked {
                 let typ = match &symbol.kind {
-                    SemanticSymbolKind::Variable {
-                        declared_type,
-                        inferred_type,
-                        ..
-                    } => declared_type,
+                    SemanticSymbolKind::Variable { declared_type, .. } => declared_type,
                     _ => continue,
                 };
                 if let Some(intermediate_type) = typ {
@@ -542,7 +387,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
         self.expr(&function_expr.body)
     }
 
-    fn literal(&self, literal: &analyzer::LiteralIndex) -> Option<HoverInfo> {
+    fn literal(&self, _literal: &analyzer::LiteralIndex) -> Option<HoverInfo> {
         None
     }
 
@@ -560,11 +405,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
         }
         // Hovering over variable type.
         let declared_type = match &symbol.kind {
-            SemanticSymbolKind::Constant {
-                is_public,
-                declared_type,
-                ..
-            } => declared_type,
+            SemanticSymbolKind::Constant { declared_type, .. } => declared_type,
             _ => return None,
         };
         maybe!(self.type_hover(declared_type));
@@ -735,7 +576,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
     fn for_statement(&self, forstat: &analyzer::TypedForStatement) -> Option<HoverInfo> {
         within!(forstat.span, self);
         // hovering over the loop variables.
-        for i in &forstat.items {
+        for _ in &forstat.items {
             // todo:
         }
         // hovering over label.

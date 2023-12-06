@@ -1,28 +1,43 @@
-> **THIS PROJECT IS 80% INCOMPLETE. LOOK AWAY.**
+> **THIS PROJECT IS 70% INCOMPLETE. LOOK AWAY.**
 
-# Whirlwind.
+<h1 align=center>
+   <img width="50" src="./assets/Icon.svg" alt="Whirlwind Icon"/>
+   <p style="font-style: italic">Whirlwind.</p>
+</h1>
 
-Whirlwind is a simple programming language for quickly and easily writing maintenable software.
+Whirlwind is an open-source, statically-typed programming language for quickly and easily writing maintenable software. It is designed to be practical, easy to read and efficient.
+
+## Documentation
+
+For more information about installing, using and understanding Whirlwind, check out the [Whirlwind website](http://whirlwind-lang.vercel.app).
+
+For more information relating to the source code, refer to the [docs](./docs/README.md) folder.
 
 ## Features
 
 -  First Class Functions.
--  Static Typing System.
--  Generics and Polymorphism.
+-  Static, Nominal Typing System.
+-  Support for Generic Programming and Union Types.
 -  Inbuilt Testing capabilities.
--  Support for modules.
+-  Modular organization.
 
 ## Syntax
 
-Whirlwind is inspired heavily by the syntax of languages like Rust and Typescript. An example of Whirlwind code would be:
+Whirlwind is inspired heavily by the syntax of already existing languages. An example of Whirlwind code is:
 
-```ts
+```typescript
+/// Function to add two numbers.
 function Add(a: Int, b: Int): Int {
    return a + b;
 }
 
+/// Entry to the program.
 function Main() {
-   var c = Add(2, 3);
+   c := Add(2, 3);
    Core.Io.Println(c);
 }
 ```
+
+## Roadmap and Implementation Status
+
+To view the planned and implemented features in the development of Whirlwind, please refer to the [roadmap](./docs/roadmap.md).
