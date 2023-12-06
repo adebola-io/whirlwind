@@ -4,11 +4,13 @@ mod document_manager;
 mod error;
 mod hover;
 mod message_store;
+mod requests;
 
-use analyzer::{Module, Standpoint, CORE_LIBRARY_PATH};
+use analyzer::{Module, Standpoint};
 use ast::unwrap_or_continue;
 use document_manager::{uri_to_absolute_path, DocumentManager};
 use message_store::MessageStore;
+use requests::{SavingEnd, SavingStart};
 use std::path::PathBuf;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::request::{GotoDeclarationParams, GotoDeclarationResponse};
@@ -18,6 +20,7 @@ use tower_lsp::{Client, LanguageServer, LspService, Server};
 #[derive(Debug)]
 struct Backend {
     client: Client,
+    _args: Vec<String>,
     docs: DocumentManager,
 }
 
@@ -28,7 +31,7 @@ impl LanguageServer for Backend {
         let workspace_folders = params.workspace_folders;
         if let Some(folders) = workspace_folders {
             let mut standpoints = self.docs.standpoints.lock().unwrap();
-            let mut standpoint = Standpoint::new(true, Some(PathBuf::from(CORE_LIBRARY_PATH)));
+            let mut standpoint = Standpoint::new(true, self.docs.corelib_path.clone());
             for folder in folders {
                 let root_folder_path = unwrap_or_continue!(uri_to_absolute_path(folder.uri).ok());
                 let children = unwrap_or_continue!(root_folder_path.read_dir().ok())
@@ -94,9 +97,9 @@ impl LanguageServer for Backend {
     }
 
     async fn initialized(&self, _: InitializedParams) {
-        self.client
-            .log_message(MessageType::INFO, "server initialized!")
+        self.log_message("Extension Name: Whirlwind Language Server")
             .await;
+        self.log_message("Extension Version: 0.0.0").await;
     }
 
     async fn shutdown(&self) -> Result<()> {
@@ -110,12 +113,13 @@ impl LanguageServer for Backend {
             self.log_all(messages).await;
         } else {
             self.docs.open_document(params);
-            self.log_message("Opened analyzed file.").await;
         }
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
+        let _ = self.client.send_request::<SavingStart>(()).await;
         let messages = self.docs.save_file(params);
+        let _ = self.client.send_request::<SavingEnd>(()).await;
         self.log_all(messages).await;
     }
 
@@ -204,9 +208,9 @@ impl LanguageServer for Backend {
 }
 
 impl Backend {
-    async fn log_message<T: std::fmt::Debug>(&self, message: T) {
+    async fn log_message<T: std::fmt::Display>(&self, message: T) {
         self.client
-            .log_message(MessageType::INFO, format!("{:?}", message))
+            .log_message(MessageType::INFO, format!("{}", message))
             .await
     }
     async fn log_all(&self, message_store: MessageStore) {
@@ -219,12 +223,14 @@ impl Backend {
 #[tokio::main]
 async fn main() {
     std::env::set_var("RUST_BACKTRACE", "1");
-    let core_path = Some(PathBuf::from(CORE_LIBRARY_PATH));
+    let _args: Vec<String> = std::env::args().collect();
+    let core_path = _args.get(1).map(|arg| PathBuf::from(arg));
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
 
     let (service, socket) = LspService::new(|client| Backend {
         client,
+        _args,
         docs: DocumentManager::new(core_path),
     });
     Server::new(stdin, stdout, socket).serve(service).await;

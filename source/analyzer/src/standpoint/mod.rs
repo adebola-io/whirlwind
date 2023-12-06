@@ -5,7 +5,7 @@ use super::{symbols::*, ProgramError};
 use crate::{
     bind, typecheck, CurrentModuleType, IntrinsicPaths, LiteralMap, Module, ModuleMap, PathIndex,
     ProgramErrorType::{self, Importing},
-    SurfaceAreaCalculator, SymbolLibrary, TypedModule, BASE_CORE_PATH, PRELUDE_PATH,
+    SurfaceAreaCalculator, SymbolLibrary, TypedModule,
 };
 use ast::UseTarget;
 use std::{
@@ -14,15 +14,23 @@ use std::{
 };
 use utils::get_parent_dir;
 
-/// A fully resolved representation of an entire program.
+/// The standpoint is the final and complete representation
+/// in the compiler frontend, and is responsible for tasks like
+/// resolving imports, creating and managing symbol tables,
+/// typechecking, binding declarations, etc.
 #[derive(Debug)]
 pub struct Standpoint {
     pub module_map: ModuleMap,
     pub root_folder: Option<PathBuf>,
     pub entry_module: PathIndex,
     pub directories: HashMap<PathBuf, HashMap<String, PathIndex>>,
+    /// All symbols in the program, divided by the modules in which
+    /// they are declared.
     pub symbol_library: SymbolLibrary,
+    /// All strings, numbers and booleans in the program.
     pub literals: LiteralMap,
+    /// Typing, importing, binding, parsing and lexing errors produced throughout
+    /// the analyzing of the program.
     pub errors: Vec<ProgramError>,
     /// This flag permits the standpoint to update itself automatically
     /// when operations like adding, removing and refreshing modules
@@ -36,11 +44,6 @@ pub struct Standpoint {
 }
 
 impl IntrinsicPaths for Standpoint {}
-
-pub enum StandpointStatus {
-    RefreshSuccessful,
-    Restarted,
-}
 
 impl Standpoint {
     /// Creates a new standpoint.
@@ -60,7 +63,16 @@ impl Standpoint {
         //todo: if corelib is already loaded in another standpoint.
         if let Some(path) = corelib_path {
             match Module::from_path(path) {
-                Ok(module) => standpoint.corelib_path = standpoint.add_module(module),
+                Ok(module) => {
+                    standpoint.auto_update = false;
+                    if let Some(idx) = standpoint.add_module(module) {
+                        standpoint.auto_update = should_resolve_imports;
+                        standpoint.corelib_path = Some(idx);
+                        if standpoint.auto_update {
+                            standpoint.analyze_imports(idx, ResolutionPhase::Discovery);
+                        }
+                    }
+                }
                 Err(error) => standpoint.add_import_error(error),
             }
         }
@@ -147,17 +159,6 @@ impl Standpoint {
         }
         self.errors.push(error);
     }
-    /// Clears the entire standpoint and rebuilds it again.
-    pub fn restart(&mut self) -> Option<()> {
-        let entry_path = self.module_map.get(self.entry_module)?.path_buf.clone();
-        let core_lib_path = self
-            .corelib_path
-            .and_then(|path| self.module_map.get(path))
-            .map(|module| module.path_buf.clone());
-        *self = Standpoint::new(self.auto_update, core_lib_path);
-        self.entry_module = self.add_module(Module::from_path(entry_path).ok()?)?;
-        Some(())
-    }
     /// The validate method is responsible for assessing all imports in the standpoint
     /// and building type information for every module in the program.
     pub fn validate(&mut self) {
@@ -169,6 +170,30 @@ impl Standpoint {
         });
         self.resolve_imports();
         self.check_all_modules();
+    }
+
+    pub fn restart_and_exclude(&mut self, path_idx: PathIndex) {
+        let modules = self
+            .module_map
+            .paths()
+            .filter(|(idx, _)| *idx != path_idx)
+            .map(|(_, typedmodule)| typedmodule.path_buf.clone())
+            .collect::<Vec<_>>();
+        let core_lib_path = self
+            .corelib_path
+            .and_then(|idx| self.module_map.get(idx))
+            .map(|module| module.path_buf.clone());
+        *self = Standpoint::new(true, core_lib_path);
+        for module_path in modules {
+            if self.module_map.map_path_to_index(&module_path).is_none() {
+                match Module::from_path(module_path) {
+                    Ok(module) => {
+                        self.add_module(module);
+                    }
+                    Err(_) => continue,
+                }
+            }
+        }
     }
 }
 
@@ -482,6 +507,7 @@ impl Standpoint {
         let module_path = module.module_path.as_ref()?.to_owned();
         let module_file_name = module_path.file_stem()?.to_str()?;
         let module_directory = get_parent_dir(&module_path)?;
+        let mut is_prelude = false;
 
         let directories = &mut self.directories;
         let module_ident_span = module
@@ -529,23 +555,37 @@ impl Standpoint {
             .and_then(|path| self.module_map.get(path))
             .map(|t_module| t_module.symbol_idx);
 
+        let core_path_folder = self
+            .corelib_path
+            .and_then(|core_path_idx| self.module_map.get(core_path_idx))
+            .and_then(|module| get_parent_dir(&module.path_buf))
+            .and_then(|folder| folder.to_str());
+
         // intrinsic paths.
-        let current_module_type = if let Ok(path) = module_path.strip_prefix(BASE_CORE_PATH) {
-            if let Some(path_str) = path.to_str() {
-                match path_str {
-                    Self::ARRAY => CurrentModuleType::Array,
-                    Self::ASYNC => CurrentModuleType::Async,
-                    Self::BOOL => CurrentModuleType::Bool,
-                    Self::NUMERIC => CurrentModuleType::Numeric,
-                    Self::INTERNAL => CurrentModuleType::Internal,
-                    Self::ITERATABLE => CurrentModuleType::Iteratable,
-                    Self::OPS => CurrentModuleType::Ops,
-                    Self::TRAITS => CurrentModuleType::Traits,
-                    Self::RANGE => CurrentModuleType::Range,
-                    Self::STRING => CurrentModuleType::String,
-                    Self::DEFAULT => CurrentModuleType::Default,
-                    Self::MAYBE => CurrentModuleType::Maybe,
-                    _ => CurrentModuleType::Regular,
+        let current_module_type = if let Some(folder) = core_path_folder {
+            if let Ok(path) = module_path.strip_prefix(folder) {
+                if let Some(path_str) = path.to_str() {
+                    match path_str {
+                        Self::ARRAY => CurrentModuleType::Array,
+                        Self::ASYNC => CurrentModuleType::Async,
+                        Self::BOOL => CurrentModuleType::Bool,
+                        Self::NUMERIC => CurrentModuleType::Numeric,
+                        Self::INTERNAL => CurrentModuleType::Internal,
+                        Self::ITERATABLE => CurrentModuleType::Iteratable,
+                        Self::OPS => CurrentModuleType::Ops,
+                        Self::TRAITS => CurrentModuleType::Traits,
+                        Self::RANGE => CurrentModuleType::Range,
+                        Self::STRING => CurrentModuleType::String,
+                        Self::DEFAULT => CurrentModuleType::Default,
+                        Self::MAYBE => CurrentModuleType::Maybe,
+                        Self::PRELUDE => {
+                            is_prelude = true;
+                            CurrentModuleType::Regular
+                        }
+                        _ => CurrentModuleType::Regular,
+                    }
+                } else {
+                    CurrentModuleType::Regular
                 }
             } else {
                 CurrentModuleType::Regular
@@ -582,7 +622,7 @@ impl Standpoint {
         self.module_map.add(typed_module);
 
         // Mark the prelude module.
-        if module_path.as_os_str().to_str()? == PRELUDE_PATH {
+        if is_prelude {
             self.prelude_path = Some(path_idx);
         }
 
@@ -615,20 +655,6 @@ impl Standpoint {
                 return None;
             })
             .collect::<Vec<_>>();
-        // let symbols_to_remove = self
-        //     .symbol_library
-        //     .symbols()
-        //     .filter_map(|(idx, symbol)| {
-        //         // Symbol is declared in this module.
-        //         if symbol.was_declared_in(path_idx) {
-        //             symbol.references.iter().skip(1).for_each(|referencelist| {
-        //                 other_affected_modules.push(referencelist.module_path);
-        //             });
-        //             return Some(idx);
-        //         }
-        //         return None;
-        //     })
-        //     .collect::<Vec<_>>();
         self.symbol_library.remove_module_table(path_idx);
         for literal_idx in literals_to_remove {
             self.literals.remove(literal_idx);
@@ -651,7 +677,7 @@ impl Standpoint {
     }
 
     /// Changes the content of a single module and updates the entire standpoint accordingly.
-    pub fn refresh_module(&mut self, path_idx: PathIndex, text: &str) -> Option<StandpointStatus> {
+    pub fn refresh_module(&mut self, path_idx: PathIndex, text: &str) -> Option<()> {
         let module = self.remove_module(path_idx)?;
 
         // Add updated module.
@@ -666,7 +692,7 @@ impl Standpoint {
             self.corelib_path = Some(new_path_idx);
         }
         self.check_module(path_idx);
-        Some(StandpointStatus::RefreshSuccessful)
+        Some(())
     }
 
     /// Recursively search for and add a module in a directory to the module map.

@@ -7,8 +7,10 @@
       {
          "args": [
             "--extensionDevelopmentPath=${workspaceFolder}/extensions/code",
-            "--inspect-extensions=6009"
+            "--inspect-extensions=6009",
+            "--core-path=${workspaceFolder}/source/corelib/Core/Core.wrl"
          ],
+
          "name": "Launch Whirlwind Extension",
          "outFiles": ["${workspaceFolder}/extensions/code/out/**/*.js"],
          "request": "launch",

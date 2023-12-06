@@ -1,11 +1,22 @@
 const vscode = require("vscode");
-const { LanguageClient, ErrorAction } = require("vscode-languageclient/node");
+const fs = require("fs");
+const { LanguageClient } = require("vscode-languageclient/node");
 const { provideCompletionItem } = require("./completion");
 
-/** @type {string} */
+/**
+ * @type {string}
+ * Path to the Language Server executable.
+ */
 let server_path;
+/**
+ * @type {string}
+ * Path to the entry file of the Core Library.
+ */
+let core_lib_entry_path;
 /** @type {ReturnType<typeof setTimeout>} */
 let timeout;
+let outputChannel = vscode.window.createOutputChannel("Whirlwind LS");
+let showErrorMessage = vscode.window.showErrorMessage;
 
 function getStatusBar() {
    if (this.statusBar === undefined) {
@@ -19,17 +30,19 @@ function getStatusBar() {
 
 function getLanguageClient() {
    if (this.client == undefined) {
+      /** @type {import("vscode-languageclient/node").Executable} */
+      let executable = {
+         command: server_path,
+         args: [core_lib_entry_path],
+      };
       this.client = new LanguageClient(
          "Whirlwind",
-         "Whirlwind Language Server",
          {
-            command: server_path,
-            debug: {
-               command: server_path,
-            },
+            run: executable,
+            debug: executable,
          },
          {
-            outputChannelName: "Whirlwind LS",
+            outputChannel,
             documentSelector: [{ scheme: "file", language: "wrl" }],
             middleware: {
                // todo: bounce didchange events in comments and strings.
@@ -67,7 +80,11 @@ exports.stopLanguageServer = async () => {
    const statusBar = getStatusBar();
    const client = getLanguageClient();
    statusBar.text = "Stopping server";
-   await client.stop();
+   if (!client.isRunning()) {
+      showErrorMessage("Whirlwind LS Server is not running.");
+   } else {
+      await client.stop();
+   }
    if (timeout !== undefined) {
       clearTimeout(timeout);
       timeout = undefined;
@@ -83,8 +100,6 @@ exports.activate = async (context) => {
    require("dotenv").config({
       path: context.asAbsolutePath(".env.sample"),
    });
-
-   server_path = context.asAbsolutePath(process.env.WHIRL_LS_PATH);
    vscode.commands.registerCommand(
       "whirlwind-server-start",
       exports.startLanguageServer
@@ -97,7 +112,19 @@ exports.activate = async (context) => {
       "whirlwind-server-restart",
       exports.restartServer
    );
-   exports.startLanguageServer();
+   server_path = context.asAbsolutePath(process.env.WHIRL_LS_PATH);
+   core_lib_entry_path = context.asAbsolutePath(process.env.CORE_LIBRARY_PATH);
+   outputChannel.appendLine(`Paths: ${[server_path, core_lib_entry_path]}`);
+   if (!fs.existsSync(server_path)) {
+      showErrorMessage("Server Executable not found.");
+   } else {
+      if (!fs.existsSync(core_lib_entry_path)) {
+         showErrorMessage(
+            "Core Library is either non-existent or installed incorrectly."
+         );
+      }
+      exports.startLanguageServer();
+   }
 };
 
 exports.deactivate = async () => {

@@ -7,7 +7,7 @@ use crate::{
 };
 use analyzer::{
     utils::symbol_to_type, Module, PathIndex, SemanticSymbol, SemanticSymbolDeclaration,
-    SemanticSymbolKind, Standpoint, StandpointStatus, SymbolIndex, TypedModule, TypedVisitorNoArgs,
+    SemanticSymbolKind, Standpoint, SymbolIndex, TypedModule, TypedVisitorNoArgs,
 };
 use ast::{is_keyword_or_operator, is_valid_identifier, is_valid_identifier_start, Span};
 use printer::SymbolWriter;
@@ -109,6 +109,11 @@ impl DocumentManager {
     pub fn save_file(&self, _params: DidSaveTextDocumentParams) -> MessageStore {
         let mut msgs = MessageStore::new();
         msgs.inform("Saving file...");
+        let mut standpoints = self.standpoints.lock().unwrap();
+        for standpoint in standpoints.iter_mut() {
+            standpoint.validate();
+        }
+        msgs.inform("File saved.");
         msgs
     }
 
@@ -474,7 +479,7 @@ impl DocumentManager {
         let most_current = std::mem::take(&mut params.content_changes[last].text);
         let time = std::time::Instant::now();
         match standpoint.refresh_module(path_idx, &most_current) {
-            Some(StandpointStatus::RefreshSuccessful) => {
+            Some(()) => {
                 msgs.inform(format!("Document refreshed in {:?}", time.elapsed()));
             }
             _ => log_error!(msgs, "Something went wrong while refreshing user text."),
@@ -488,30 +493,7 @@ impl DocumentManager {
         {
             msgs.inform("Threshold crossed. Refreshing standpoint.");
             // The current module should not be part of the list of modules to re-add.
-            let modules = standpoint
-                .module_map
-                .paths()
-                .filter(|(idx, _)| *idx != path_idx)
-                .map(|(_, typedmodule)| typedmodule.path_buf.clone())
-                .collect::<Vec<_>>();
-            *standpoint = Standpoint::new(true, self.corelib_path.clone());
-            for module_path in modules {
-                if standpoint
-                    .module_map
-                    .map_path_to_index(&module_path)
-                    .is_none()
-                {
-                    match Module::from_path(module_path) {
-                        Ok(module) => {
-                            standpoint.add_module(module);
-                        }
-                        Err(error) => {
-                            msgs.error(format!("Import Error: {error:?}"));
-                            continue;
-                        }
-                    }
-                }
-            }
+            standpoint.restart_and_exclude(path_idx);
             // Add current module with current text.
             let uri = params.text_document.uri;
             let mut module = Module::from_text(&most_current);

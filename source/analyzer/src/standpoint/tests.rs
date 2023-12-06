@@ -438,7 +438,8 @@ fn test_variable_binding() {
 #[test]
 fn testing_the_standard_library() {
     let time = std::time::Instant::now();
-    let mut standpoint = Standpoint::new(true, Some(PathBuf::from(CORE_LIBRARY_PATH)));
+    let corelib_path = Some(PathBuf::from(CORE_LIBRARY_PATH));
+    let mut standpoint = Standpoint::new(true, corelib_path);
     standpoint.validate();
     println!("Built Core in {:?}", time.elapsed());
     for error in standpoint.errors {
