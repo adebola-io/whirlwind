@@ -1,10 +1,9 @@
 
 use errors::{LexErrorType, ParserErrorType, TypeErrorType, ImportErrorType, ContextErrorType};
 
-use crate::SymbolWriter;
 
 /// Stringify a type error.
-pub fn stringify_type_error(error: &TypeErrorType, _writer: SymbolWriter) -> String {
+pub fn stringify_type_error(error: &TypeErrorType) -> String {
     match error {
         TypeErrorType::InvalidBinary {
             left,
@@ -95,6 +94,16 @@ Got: '{right}'.",
         TypeErrorType::UninferrableVariable => format!("Cannot infer type of variable. Consider adding type annotations."),
         TypeErrorType::InvalidSize { error } => error.clone(),
         TypeErrorType::ThisInStaticMethod => format!("The 'this' identifier cannot be used in a static method."),
+        TypeErrorType::CompositeError { main_error, sub_errors } => {
+            let mut string = stringify_type_error(&main_error);
+            for (index, error) in sub_errors.iter().enumerate() {
+                string.push_str(&stringify_type_error(error));
+                if index + 1 != sub_errors.len() {
+                    string.push('\n');
+                }
+            }
+            string
+        }, 
     }
 }
 

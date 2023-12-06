@@ -455,19 +455,15 @@ mod statements {
                 .map(|s| checker_ctx.span_of_stmnt(s, symbollib))
                 .or(return_type_span)
                 .unwrap_or_else(|| body.span);
-            for errortype in typeerrortype {
-                checker_ctx.add_error(TypeError {
-                    _type: errortype,
-                    span,
-                });
-            }
-            checker_ctx.add_error(TypeError {
-                _type: TypeErrorType::MismatchedReturnType {
-                    found: symbollib.format_evaluated_type(&block_return_type),
-                    expected: symbollib.format_evaluated_type(&return_type),
-                },
+            let main_error = TypeErrorType::MismatchedReturnType {
+                found: symbollib.format_evaluated_type(&block_return_type),
+                expected: symbollib.format_evaluated_type(&return_type),
+            };
+            checker_ctx.add_error(errors::composite_type_error(
+                main_error,
+                typeerrortype,
                 span,
-            });
+            ));
         }
     }
 

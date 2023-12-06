@@ -479,3 +479,17 @@ pub fn this_in_static_method(span: ast::Span) -> TypeError {
         span,
     }
 }
+
+pub fn composite_type_error(
+    main_error: TypeErrorType,
+    sub_errors: Vec<TypeErrorType>,
+    span: ast::Span,
+) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::CompositeError {
+            main_error: Box::new(main_error),
+            sub_errors,
+        },
+        span,
+    }
+}

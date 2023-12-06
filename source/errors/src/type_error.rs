@@ -10,6 +10,10 @@ pub struct TypeError {
 
 #[derive(Debug, PartialEq)]
 pub enum TypeErrorType {
+    CompositeError {
+        main_error: Box<TypeErrorType>,
+        sub_errors: Vec<TypeErrorType>,
+    },
     /// Performing a binary operation on incompatible types.
     InvalidBinary {
         left: String,

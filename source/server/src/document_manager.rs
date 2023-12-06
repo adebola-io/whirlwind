@@ -603,7 +603,7 @@ impl DocumentManager {
                         .errors
                         .iter()
                         .filter(|error| error.offending_file == path_idx)
-                        .map(|p| error_to_diagnostic(p, standpoint))
+                        .map(|p| error_to_diagnostic(p))
                         .collect::<Vec<Diagnostic>>(),
                 },
             })
@@ -835,7 +835,7 @@ impl DocumentManager {
                                                     .filter(|error| {
                                                         error.offending_file == path_idx
                                                     })
-                                                    .map(|p| error_to_diagnostic(p, standpoint))
+                                                    .map(|p| error_to_diagnostic(p))
                                                     .collect::<Vec<Diagnostic>>(),
                                             },
                                     },
