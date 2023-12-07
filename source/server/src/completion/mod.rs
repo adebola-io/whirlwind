@@ -23,7 +23,7 @@ pub struct CompletionFinder<'a> {
     pub context: Option<CompletionContext>,
     pub message_store: RefCell<MessageStore>,
     next_statement_span: RefCell<Option<Span>>,
-    enclosing_model_or_trait: RefCell<Option<SymbolIndex>>,
+    enclosing_model_or_interface: RefCell<Option<SymbolIndex>>,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -61,7 +61,7 @@ impl<'a> CompletionFinder<'a> {
             message_store: RefCell::new(messages),
             context: completion_context,
             next_statement_span: RefCell::new(None),
-            enclosing_model_or_trait: RefCell::new(None),
+            enclosing_model_or_interface: RefCell::new(None),
         }
     }
     /// Main complete function for dot access.
@@ -80,8 +80,8 @@ impl<'a> CompletionFinder<'a> {
             EvaluatedType::ModelInstance { model, .. } => {
                 self.complete_instance_access(completion_type, model, &writer, &mut completions)?;
             }
-            EvaluatedType::Model(owner) | EvaluatedType::Trait(owner) => {
-                self.complete_model_or_trait_static_access(owner, &writer, &mut completions)?;
+            EvaluatedType::Model(owner) | EvaluatedType::Interface(owner) => {
+                self.complete_model_or_interface_static_access(owner, &writer, &mut completions)?;
             }
             EvaluatedType::Enum(enum_) => {
                 let enum_symbol = self.standpoint.symbol_library.get(enum_)?;
@@ -107,15 +107,18 @@ impl<'a> CompletionFinder<'a> {
             EvaluatedType::Module(module) => {
                 self.complete_module_access(module, completion_type, writer, &mut completions)?;
             }
-            EvaluatedType::TraitInstance { trait_, .. } => {
-                self.complete_instance_access(completion_type, trait_, &writer, &mut completions)?
-            }
+            EvaluatedType::InterfaceInstance { interface_, .. } => self.complete_instance_access(
+                completion_type,
+                interface_,
+                &writer,
+                &mut completions,
+            )?,
             EvaluatedType::Generic { base } | EvaluatedType::HardGeneric { base } => {
                 let symbol = self.standpoint.symbol_library.get(base)?;
                 match &symbol.kind {
-                    SemanticSymbolKind::GenericParameter { traits, .. } => {
-                        for _trait in traits {
-                            let evaled = evaluate(_trait, symbollib, None, &mut None, 0);
+                    SemanticSymbolKind::GenericParameter { interfaces, .. } => {
+                        for _interface in interfaces {
+                            let evaled = evaluate(_interface, symbollib, None, &mut None, 0);
                             let response = self.complete_from_dot(evaled, completion_type);
                             if let Some(response) = response {
                                 match response {
@@ -137,7 +140,7 @@ impl<'a> CompletionFinder<'a> {
             }
             EvaluatedType::OpaqueTypeInstance {
                 available_methods,
-                available_traits,
+                available_interfaces,
                 generic_arguments,
                 ..
             } => {
@@ -178,10 +181,10 @@ impl<'a> CompletionFinder<'a> {
                         ..Default::default()
                     })
                 }
-                for implementation in available_traits {
+                for implementation in available_interfaces {
                     self.message_store.borrow_mut().inform("Writing implsss");
                     let owner = match implementation {
-                        EvaluatedType::TraitInstance { trait_, .. } => trait_,
+                        EvaluatedType::InterfaceInstance { interface_, .. } => interface_,
                         _ => continue,
                     };
                     self.complete_instance_access(
@@ -198,7 +201,7 @@ impl<'a> CompletionFinder<'a> {
         return Some(CompletionResponse::Array(completions));
     }
 
-    fn complete_model_or_trait_static_access(
+    fn complete_model_or_interface_static_access(
         &self,
         model: SymbolIndex,
         writer: &SymbolWriter<'_>,
@@ -213,16 +216,16 @@ impl<'a> CompletionFinder<'a> {
                 ..
             } => {
                 // Get completions from implementations and methods.
-                // todo: completion from super traits.
+                // todo: completion from super interfacefaces.
                 implementations
                     .iter()
                     .filter_map(|typ| {
                         let eval_typ = evaluate(typ, symbollib, None, &mut None, 0);
                         match eval_typ {
-                            EvaluatedType::TraitInstance { trait_, .. } => {
-                                let trait_symbol = symbollib.get(trait_)?;
-                                match &trait_symbol.kind {
-                                    SemanticSymbolKind::Trait { methods, .. } => Some(methods),
+                            EvaluatedType::InterfaceInstance { interface_, .. } => {
+                                let interface_symbol = symbollib.get(interface_)?;
+                                match &interface_symbol.kind {
+                                    SemanticSymbolKind::Interface { methods, .. } => Some(methods),
                                     _ => return None,
                                 }
                             }
@@ -246,7 +249,7 @@ impl<'a> CompletionFinder<'a> {
                             } => (*is_static
                                 && (*is_public
                                     || self
-                                        .enclosing_model_or_trait
+                                        .enclosing_model_or_interface
                                         .borrow()
                                         .is_some_and(|enclosing| enclosing == model)))
                             .then_some(Some((method_idx, method_symbol.unwrap(), params))), // todo: allow private access in appriopriate contexts.
@@ -320,7 +323,7 @@ impl<'a> CompletionFinder<'a> {
         )
     }
 
-    /// Complete a model or trait instance, followed by a dot.
+    /// Complete a model or interfaceface instance, followed by a dot.
     fn complete_instance_access(
         &self,
         completion_type: DotCompletionType,
@@ -335,13 +338,15 @@ impl<'a> CompletionFinder<'a> {
         let owner_symbol = symbollib.get(owner)?;
         let methods = match &owner_symbol.kind {
             SemanticSymbolKind::Model { methods, .. }
-            | SemanticSymbolKind::Trait { methods, .. } => methods,
+            | SemanticSymbolKind::Interface { methods, .. } => methods,
             _ => return None,
         };
         for method in methods {
             let symbol = symbollib.get(*method)?;
             // Private completions are allowed if within model itself.
-            if !symbol.kind.is_public() && *self.enclosing_model_or_trait.borrow() != Some(owner) {
+            if !symbol.kind.is_public()
+                && *self.enclosing_model_or_interface.borrow() != Some(owner)
+            {
                 continue;
             }
             let params = match &symbol.kind {
@@ -382,22 +387,22 @@ impl<'a> CompletionFinder<'a> {
                 ..Default::default()
             });
         }
-        // Implementations from other traits.
+        // Implementations from other interfacefaces.
         let implementations = match &owner_symbol.kind {
             SemanticSymbolKind::Model {
                 implementations, ..
             }
-            | SemanticSymbolKind::Trait {
+            | SemanticSymbolKind::Interface {
                 implementations, ..
             } => implementations,
             _ => return Some(()),
         }
         .iter()
         .map(|int_type| evaluate(int_type, symbollib, None, &mut None, 0))
-        .filter(|eval_typ| eval_typ.is_trait_instance());
+        .filter(|eval_typ| eval_typ.is_interface_instance());
         for implementation in implementations {
             let owner = match implementation {
-                EvaluatedType::TraitInstance { trait_, .. } => trait_,
+                EvaluatedType::InterfaceInstance { interface_, .. } => interface_,
                 _ => continue,
             };
             self.complete_instance_access(completion_type, owner, writer, completions);
@@ -406,7 +411,7 @@ impl<'a> CompletionFinder<'a> {
             SemanticSymbolKind::Model { attributes, .. } => attributes,
             _ => return Some(()),
         };
-        let encloser = self.enclosing_model_or_trait.borrow().clone();
+        let encloser = self.enclosing_model_or_interface.borrow().clone();
         for attribute in attributes {
             let symbol = symbollib.get(*attribute)?;
             if !symbol.kind.is_public() && encloser != Some(owner) {
@@ -489,7 +494,7 @@ impl<'a> CompletionFinder<'a> {
         let symbol = symbol_library.get_forwarded(symbol_idx)?;
         let (kind, detail) = match &symbol.kind {
             SemanticSymbolKind::Module { .. } => (CompletionItemKind::MODULE, None),
-            SemanticSymbolKind::Trait { .. } => (CompletionItemKind::INTERFACE, None),
+            SemanticSymbolKind::Interface { .. } => (CompletionItemKind::INTERFACE, None),
             SemanticSymbolKind::Model { .. } => (CompletionItemKind::CLASS, None),
             SemanticSymbolKind::Enum { .. } => (CompletionItemKind::ENUM, None),
             SemanticSymbolKind::Variable { inferred_type, .. } => (
@@ -610,7 +615,7 @@ impl<'a> CompletionFinder<'a> {
                 TypedStmnt::ShorthandVariableDeclaration(v) => self.shorthand_var_decl(v),
                 TypedStmnt::ExpressionStatement(e) => self.expr_statement(e),
                 TypedStmnt::FreeExpression(e) => self.free_expr(e),
-                TypedStmnt::TraitDeclaration(t) => self.trait_declaration(t),
+                TypedStmnt::InterfaceDeclaration(t) => self.interface_declaration(t),
                 TypedStmnt::ModuleDeclaration(m) => self.module_declaration(m),
                 TypedStmnt::ConstantDeclaration(c) => self.constant(c),
                 TypedStmnt::TestDeclaration(t) => self.test_declaration(t),
@@ -632,9 +637,9 @@ impl<'a> CompletionFinder<'a> {
         <Option<CompletionResponse>>::default()
     }
 
-    fn trait_declaration(
+    fn interface_declaration(
         &self,
-        _trait: &'a analyzer::TypedTraitDeclaration,
+        _interface: &'a analyzer::TypedInterfaceDeclaration,
     ) -> Option<CompletionResponse> {
         <Option<CompletionResponse>>::default()
     }
@@ -865,7 +870,7 @@ impl<'a> CompletionFinder<'a> {
     }
 
     fn model_decl(&self, model: &analyzer::TypedModelDeclaration) -> Option<CompletionResponse> {
-        let mut enclosing = self.enclosing_model_or_trait.borrow_mut();
+        let mut enclosing = self.enclosing_model_or_interface.borrow_mut();
         let former = enclosing.take();
         *enclosing = Some(model.name);
         std::mem::drop(enclosing);
@@ -882,7 +887,7 @@ impl<'a> CompletionFinder<'a> {
                 _ => continue,
             }
         }
-        *self.enclosing_model_or_trait.borrow_mut() = former;
+        *self.enclosing_model_or_interface.borrow_mut() = former;
         return None;
     }
 }

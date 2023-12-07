@@ -17,7 +17,7 @@ pub enum CurrentModuleType {
     Async,
     Internal,
     Ops,
-    Traits,
+    Interfaces,
     Iteratable,
     Range,
     Default,
@@ -32,7 +32,7 @@ pub trait IntrinsicPaths {
     const ASYNC: &'static str = "Async/Async.wrl";
     const INTERNAL: &'static str = "Internals/Internals.wrl";
     const OPS: &'static str = "Primitives/Ops.wrl";
-    const TRAITS: &'static str = "Prelude/Traits.wrl";
+    const TRAITS: &'static str = "Prelude/Interfaces.wrl";
     const ITERATABLE: &'static str = "Prelude/Iteratable.wrl";
     const RANGE: &'static str = "Prelude/Range.wrl";
     const DEFAULT: &'static str = "Prelude/Default.wrl";

@@ -53,7 +53,7 @@ test "Testing types." {
     ball = new Basketball();
     ball.Bounce();
 
-    trait Bounceable {
+    interface Bounceable {
         public function Bounce(): String;
     }
     function Nested<T implements Bounceable>(newBall: T) {
@@ -64,8 +64,8 @@ test "Testing types." {
         ball.Bounce();
     }
 
-    // Opaque types with traits.
-    trait TransformableTo<T> {
+    // Opaque types with interfaces.
+    interface TransformableTo<T> {
         public function Transform(): T;
     }
     model Box<T> implements TransformableTo<T> {

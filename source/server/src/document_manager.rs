@@ -901,7 +901,7 @@ fn is_valid_complete_target(
             _ => false,
         },
         Trigger::Implements => match &sym.kind {
-            SemanticSymbolKind::Trait { .. } => true,
+            SemanticSymbolKind::Interface { .. } => true,
             _ => false,
         },
         Trigger::TypeLabel => matches!(

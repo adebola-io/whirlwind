@@ -1,6 +1,6 @@
 use crate::{
     unify_generic_arguments, unify_types,
-    utils::{get_method_types_from_symbol, get_trait_types_from_symbol},
+    utils::{get_interface_types_from_symbol, get_method_types_from_symbol},
     IntermediateType, ParameterType, PathIndex, ProgramError, SemanticSymbolKind, SymbolIndex,
     SymbolLibrary, TypecheckerContext, UnifyOptions,
 };
@@ -23,8 +23,8 @@ pub enum EvaluatedType {
         model: SymbolIndex,
         generic_arguments: Vec<(SymbolIndex, EvaluatedType)>,
     },
-    TraitInstance {
-        trait_: SymbolIndex,
+    InterfaceInstance {
+        interface_: SymbolIndex,
         generic_arguments: Vec<(SymbolIndex, EvaluatedType)>,
     },
     /// An instance of an enum created by assigning a variant.
@@ -50,12 +50,12 @@ pub enum EvaluatedType {
     },
     /// A model value.
     Model(SymbolIndex),
-    Trait(SymbolIndex),
+    Interface(SymbolIndex),
     Enum(SymbolIndex),
     Module(SymbolIndex),
     OpaqueTypeInstance {
         available_methods: Vec<SymbolIndex>,
-        available_traits: Vec<EvaluatedType>,
+        available_interfaces: Vec<EvaluatedType>,
         aliased_as: Option<SymbolIndex>,
         collaborators: Vec<SymbolIndex>,
         generic_arguments: Vec<(SymbolIndex, EvaluatedType)>,
@@ -85,12 +85,12 @@ impl EvaluatedType {
         matches!(self, Self::Model(..))
     }
 
-    /// Returns `true` if the evaluated type is [`Trait`].
+    /// Returns `true` if the evaluated type is [`Interface`].
     ///
-    /// [`Trait`]: EvaluatedType::Trait
+    /// [`Interface`]: EvaluatedType::Interface
     #[must_use]
-    pub fn is_trait(&self) -> bool {
-        matches!(self, Self::Trait(..))
+    pub fn is_interface(&self) -> bool {
+        matches!(self, Self::Interface(..))
     }
 
     /// Returns `true` if the evaluated type is [`Enum`].
@@ -132,12 +132,12 @@ impl EvaluatedType {
         matches!(self, Self::Unknown)
     }
 
-    /// Returns `true` if the evaluated type is [`TraitInstance`].
+    /// Returns `true` if the evaluated type is [`InterfaceInstance`].
     ///
-    /// [`TraitInstance`]: EvaluatedType::TraitInstance
+    /// [`InterfaceInstance`]: EvaluatedType::InterfaceInstance
     #[must_use]
-    pub fn is_trait_instance(&self) -> bool {
-        matches!(self, Self::TraitInstance { .. })
+    pub fn is_interface_instance(&self) -> bool {
+        matches!(self, Self::InterfaceInstance { .. })
     }
 
     /// Returns `true` if the evaluated type is [`Generic`].
@@ -164,7 +164,7 @@ impl EvaluatedType {
                 EvaluatedType::ModelInstance {
                     generic_arguments, ..
                 }
-                | EvaluatedType::TraitInstance {
+                | EvaluatedType::InterfaceInstance {
                     generic_arguments, ..
                 }
                 | EvaluatedType::EnumInstance {
@@ -217,7 +217,7 @@ impl EvaluatedType {
             EvaluatedType::ModelInstance {
                 generic_arguments, ..
             }
-            | EvaluatedType::TraitInstance {
+            | EvaluatedType::InterfaceInstance {
                 generic_arguments, ..
             }
             | EvaluatedType::EnumInstance {
@@ -270,7 +270,7 @@ impl EvaluatedType {
                 EvaluatedType::ModelInstance {
                     generic_arguments, ..
                 }
-                | EvaluatedType::TraitInstance {
+                | EvaluatedType::InterfaceInstance {
                     generic_arguments, ..
                 }
                 | EvaluatedType::EnumInstance {
@@ -393,10 +393,12 @@ pub fn evaluate(
             };
             match &typ.kind {
                 SemanticSymbolKind::Module { .. } => EvaluatedType::Module(idx),
-                SemanticSymbolKind::Trait { generic_params, .. } => EvaluatedType::TraitInstance {
-                    trait_: idx,
-                    generic_arguments: get_generics(generic_params),
-                },
+                SemanticSymbolKind::Interface { generic_params, .. } => {
+                    EvaluatedType::InterfaceInstance {
+                        interface_: idx,
+                        generic_arguments: get_generics(generic_params),
+                    }
+                }
                 SemanticSymbolKind::Model { generic_params, .. } => EvaluatedType::ModelInstance {
                     model: idx,
                     generic_arguments: get_generics(generic_params),
@@ -451,12 +453,12 @@ pub fn evaluate(
             }
         }
         IntermediateType::This { meaning, span } => {
-            // Generate a type that is equal to the enclosing model or trait.
+            // Generate a type that is equal to the enclosing model or interface.
             match meaning.clone() {
                 Some(value) => {
                     let symbol = symbollib.get_forwarded(value).unwrap();
-                    // Pertaining to the `This` type, traits can be solved as a unique type of generics.
-                    // In the implementing model, `This` should refer to the model itself, not the trait.
+                    // Pertaining to the `This` type, interfaces can be solved as a unique type of generics.
+                    // In the implementing model, `This` should refer to the model itself, not the interface.
                     if let Some(prior_generics) = solved_generics.as_ref() {
                         if let Some(solution) = prior_generics.iter().find(|tuple| tuple.0 == value)
                         {
@@ -465,7 +467,7 @@ pub fn evaluate(
                     }
                     let generic_args = match &symbol.kind {
                         SemanticSymbolKind::Model { generic_params, .. }
-                        | SemanticSymbolKind::Trait { generic_params, .. } => generic_params
+                        | SemanticSymbolKind::Interface { generic_params, .. } => generic_params
                             .iter()
                             .map(|idx| IntermediateType::SimpleType {
                                 value: *idx,
@@ -507,7 +509,7 @@ pub fn evaluate(
             let mut collaborators = vec![];
             let mut generic_arguments = vec![];
             let mut available_methods = vec![];
-            let mut available_traits: Vec<EvaluatedType> = vec![];
+            let mut available_interfaces: Vec<EvaluatedType> = vec![];
             for typ in types {
                 let eval_type = evaluate(
                     typ,
@@ -556,17 +558,17 @@ pub fn evaluate(
                     _ => continue,
                 };
             }
-            // Gathers the methods and traits that are general to every collaborator.
-            // It starts by assuming every method and trait in the first collaborator is available
+            // Gathers the methods and interfaces that are general to every collaborator.
+            // It starts by assuming every method and interface in the first collaborator is available
             // And then uses the rest to filter through..
             for (index, _collaborator) in collaborators.iter().enumerate() {
                 let methods_for_this_collaborator =
                     get_method_types_from_symbol(*_collaborator, symbollib, &generic_arguments);
-                let traits_for_this_collaborator =
-                    get_trait_types_from_symbol(*_collaborator, symbollib, &generic_arguments);
+                let interfaces_for_this_collaborator =
+                    get_interface_types_from_symbol(*_collaborator, symbollib, &generic_arguments);
                 if index == 0 {
                     available_methods = methods_for_this_collaborator;
-                    available_traits = traits_for_this_collaborator;
+                    available_interfaces = interfaces_for_this_collaborator;
                 } else {
                     available_methods.retain(|(method_name, method_type, is_public)| {
                         methods_for_this_collaborator.iter().any(
@@ -584,31 +586,33 @@ pub fn evaluate(
                             },
                         )
                     });
-                    available_traits.retain(|trait_type| {
-                        traits_for_this_collaborator
+                    available_interfaces.retain(|interface_type| {
+                        interfaces_for_this_collaborator
                             .iter()
-                            .any(|collab_trait_type| match (&collab_trait_type, trait_type) {
-                                (
-                                    EvaluatedType::TraitInstance {
-                                        trait_: first,
-                                        generic_arguments: left_generics,
-                                    },
-                                    EvaluatedType::TraitInstance {
-                                        trait_: second,
-                                        generic_arguments: right_generics,
-                                    },
-                                ) => {
-                                    first == second
-                                        && unify_generic_arguments(
-                                            left_generics,
-                                            right_generics,
-                                            symbollib,
-                                            UnifyOptions::None,
-                                            None,
-                                        )
-                                        .is_ok()
+                            .any(|collab_interface_type| {
+                                match (&collab_interface_type, interface_type) {
+                                    (
+                                        EvaluatedType::InterfaceInstance {
+                                            interface_: first,
+                                            generic_arguments: left_generics,
+                                        },
+                                        EvaluatedType::InterfaceInstance {
+                                            interface_: second,
+                                            generic_arguments: right_generics,
+                                        },
+                                    ) => {
+                                        first == second
+                                            && unify_generic_arguments(
+                                                left_generics,
+                                                right_generics,
+                                                symbollib,
+                                                UnifyOptions::None,
+                                                None,
+                                            )
+                                            .is_ok()
+                                    }
+                                    _ => false,
                                 }
-                                _ => false,
                             })
                     });
                 }
@@ -624,7 +628,7 @@ pub fn evaluate(
                 collaborators,
                 generic_arguments,
                 available_methods,
-                available_traits,
+                available_interfaces,
                 aliased_as: None,
             };
         }

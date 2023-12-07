@@ -25,7 +25,7 @@ pub enum ContextErrorType {
     UseBeforeDeclare {
         name: String,
     },
-    /// "this" is used outside a trait or model method.
+    /// "this" is used outside a interface or model method.
     ThisOutsideMethod,
     /// Declaring two properties with the same name.
     DuplicateModelProperty {

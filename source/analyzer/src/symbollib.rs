@@ -239,15 +239,15 @@ impl SymbolLibrary {
                 model: base,
                 generic_arguments,
             }
-            | EvaluatedType::TraitInstance {
-                trait_: base,
+            | EvaluatedType::InterfaceInstance {
+                interface_: base,
                 generic_arguments,
             } => {
                 let symbol = self.get(*base).unwrap();
                 string = symbol.name.clone();
                 // Only print the arguments that are parameters to this type.
                 let generic_params = match &symbol.kind {
-                    SemanticSymbolKind::Trait { generic_params, .. }
+                    SemanticSymbolKind::Interface { generic_params, .. }
                     | SemanticSymbolKind::Model { generic_params, .. } => generic_params,
                     _ => return string,
                 };
@@ -259,7 +259,7 @@ impl SymbolLibrary {
                 );
             }
             EvaluatedType::Model(_) => string.push_str("{model}"),
-            EvaluatedType::Trait(_) => string.push_str("{trait}"),
+            EvaluatedType::Interface(_) => string.push_str("{interface}"),
             EvaluatedType::EnumInstance {
                 enum_,
                 generic_arguments,

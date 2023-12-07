@@ -27,8 +27,8 @@ pub struct TypecheckerContext<'a> {
     current_function_context: Vec<CurrentFunctionContext>,
     /// The context of the closest constructor currently being typechecked.
     current_constructor_context: Vec<CurrentConstructorContext>,
-    /// The model or trait that encloses the current statement.
-    enclosing_model_or_trait: Option<SymbolIndex>,
+    /// The model or interface that encloses the current statement.
+    enclosing_model_or_interface: Option<SymbolIndex>,
     /// A marker for static model methods, to block the use of 'this'.
     current_function_is_static: Option<bool>,
     /// List of errors from the standpoint.
@@ -108,7 +108,7 @@ pub fn typecheck(
         path_idx: module.path_idx,
         current_function_context: Vec::new(),
         current_constructor_context: Vec::new(),
-        enclosing_model_or_trait: None,
+        enclosing_model_or_interface: None,
         current_function_is_static: None,
         errors,
         literals,
@@ -172,7 +172,7 @@ mod statements {
             TypedStmnt::FunctionDeclaration(function) => {
                 typecheck_function(function, checker_ctx, symbollib)
             }
-            // TypedStmnt::TraitDeclaration(_) => todo!(),
+            // TypedStmnt::InterfaceDeclaration(_) => todo!(),
             TypedStmnt::ExpressionStatement(expression)
             | TypedStmnt::FreeExpression(expression) => {
                 expressions::typecheck_expression(expression, checker_ctx, symbollib);
@@ -203,8 +203,8 @@ mod statements {
             return;
         }
         // Signifies to the checker context that we are now in model X, so private properties can be used.
-        let former_enclosing_model_trait = checker_ctx.enclosing_model_or_trait.take();
-        checker_ctx.enclosing_model_or_trait = Some(model.name);
+        let former_enclosing_model_interface = checker_ctx.enclosing_model_or_interface.take();
+        checker_ctx.enclosing_model_or_interface = Some(model.name);
         // If the model has a constructor:
         if let Some(constructor) = &mut model.body.constructor {
             // For a model to be validly constructed, all its attributes have been definitively assigned in its constructor.
@@ -307,7 +307,7 @@ mod statements {
                 }
             }
         }
-        // Check that the method names inherited from traits do not clash with other.
+        // Check that the method names inherited from interfaces do not clash with other.
         // if let SemanticSymbolKind::Model {
         //     is_constructable,
         //     generic_params,
@@ -346,9 +346,9 @@ mod statements {
                         }
                     };
                 }
-                // todo: compare with trait definition.
+                // todo: compare with interface definition.
                 crate::TypedModelPropertyType::TypedMethod { body }
-                | crate::TypedModelPropertyType::TraitImpl { body, .. } => {
+                | crate::TypedModelPropertyType::InterfaceImpl { body, .. } => {
                     let symbol = match symbollib.get_forwarded(property.name) {
                         Some(symbol) => symbol,
                         None => continue,
@@ -408,7 +408,7 @@ mod statements {
                 }
             }
         }
-        checker_ctx.enclosing_model_or_trait = former_enclosing_model_trait;
+        checker_ctx.enclosing_model_or_interface = former_enclosing_model_interface;
     }
 
     /// Typechecks a function body.
@@ -467,17 +467,17 @@ mod statements {
         }
     }
 
-    fn show_trait_as_type_error(
+    fn show_interface_as_type_error(
         symbollib: &SymbolLibrary,
-        trait_: SymbolIndex,
+        interface_: SymbolIndex,
         checker_ctx: &mut TypecheckerContext<'_>,
         span: Span,
     ) {
-        let symbol = symbollib.get(trait_);
-        checker_ctx.add_error(errors::trait_as_type(
+        let symbol = symbollib.get(interface_);
+        checker_ctx.add_error(errors::interface_as_type(
             symbol
                 .map(|symbol| symbol.name.clone())
-                .unwrap_or(String::from("{Trait}")),
+                .unwrap_or(String::from("{Interface}")),
             span,
         ));
     }
@@ -542,13 +542,13 @@ mod statements {
         // so that the focus later will be the extraction of array and model types.
         if declared_type.is_some() && inferred_result.is_some() {
             let declared = declared_type.as_ref().unwrap();
-            // Traits are not allowed in type contexts.
-            if let EvaluatedType::TraitInstance { trait_, .. } = &declared {
-                let symbol = symbollib.get(*trait_);
-                checker_ctx.add_error(errors::trait_as_type(
+            // Interfaces are not allowed in type contexts.
+            if let EvaluatedType::InterfaceInstance { interface_, .. } = &declared {
+                let symbol = symbollib.get(*interface_);
+                checker_ctx.add_error(errors::interface_as_type(
                     symbol
                         .map(|symbol| symbol.name.clone())
-                        .unwrap_or(String::from("{Trait}")),
+                        .unwrap_or(String::from("{Interface}")),
                     variable.span,
                 ));
                 return;
@@ -772,12 +772,12 @@ mod statements {
         // else attempt unification.
         // If unification fails, then carry on with the declared type value.
         let inference_result = if let Some(declared) = declared_type {
-            if let EvaluatedType::TraitInstance { trait_, .. } = &declared {
-                let symbol = symbollib.get(*trait_);
-                checker_ctx.add_error(errors::trait_as_type(
+            if let EvaluatedType::InterfaceInstance { interface_, .. } = &declared {
+                let symbol = symbollib.get(*interface_);
+                checker_ctx.add_error(errors::interface_as_type(
                     symbol
                         .map(|symbol| symbol.name.clone())
-                        .unwrap_or(String::from("{Trait}")),
+                        .unwrap_or(String::from("{Interface}")),
                     shorthand_variable.span,
                 ));
                 return;
@@ -981,34 +981,34 @@ mod statements {
         return_type_span: Option<Span>,
         evaluated_param_types: Vec<(SymbolIndex, EvaluatedType)>,
     ) {
-        // Traits cannot be used as return types.
-        if let EvaluatedType::TraitInstance { trait_, .. } = return_type {
-            show_trait_as_type_error(
+        // Interfaces cannot be used as return types.
+        if let EvaluatedType::InterfaceInstance { interface_, .. } = return_type {
+            show_interface_as_type_error(
                 symbollib,
-                *trait_,
+                *interface_,
                 checker_ctx,
                 return_type_span.unwrap_or_default(),
             )
         }
         for (param_idx, new_type) in evaluated_param_types {
-            let mut trait_in_label = None;
+            let mut interface_in_label = None;
             if let SemanticSymbolKind::Parameter {
                 inferred_type,
                 param_type,
                 ..
             } = &mut symbollib.get_mut(param_idx).unwrap().kind
             {
-                // Traits cannot be used as parameter types.
-                if let EvaluatedType::TraitInstance { trait_, .. } = &new_type {
-                    trait_in_label = Some((
-                        *trait_,
+                // Interfaces cannot be used as parameter types.
+                if let EvaluatedType::InterfaceInstance { interface_, .. } = &new_type {
+                    interface_in_label = Some((
+                        *interface_,
                         param_type.as_ref().map(|p| p.span()).unwrap_or_default(),
                     ));
                 }
                 *inferred_type = new_type;
             }
-            if let Some((trait_, span)) = trait_in_label {
-                show_trait_as_type_error(symbollib, trait_, checker_ctx, span)
+            if let Some((interface_, span)) = interface_in_label {
+                show_interface_as_type_error(symbollib, interface_, checker_ctx, span)
             }
         }
     }
@@ -1091,11 +1091,13 @@ mod expressions {
             match updateexp.operator {
                 // the ! operator.
                 // Can only be used by models that implement Guaranteed.
-                // It evaluates to the single generic type of the trait.
+                // It evaluates to the single generic type of the interface.
                 ast::UpdateOperator::Assert => {
                     if let Some(guaranteed) = symbollib.guaranteed {
                         let guaranteed_generic = match &symbollib.get(guaranteed).unwrap().kind {
-                            SemanticSymbolKind::Trait { generic_params, .. } => generic_params[0],
+                            SemanticSymbolKind::Interface { generic_params, .. } => {
+                                generic_params[0]
+                            }
                             _ => return EvaluatedType::Unknown,
                         };
                         // Reference types of models that implement Guarantee, also implement Guarantee.
@@ -1107,7 +1109,7 @@ mod expressions {
                             get_implementation_of(guaranteed, operand_type_deref, &symbollib)
                         {
                             match implementation {
-                                EvaluatedType::TraitInstance {
+                                EvaluatedType::InterfaceInstance {
                                     generic_arguments, ..
                                 } => {
                                     let generic_solution = generic_arguments
@@ -1123,8 +1125,9 @@ mod expressions {
                                     }
                                     let evaluated_type = generic_solution.unwrap().1;
                                     let full_generic_list = match operand_type {
-                                        EvaluatedType::TraitInstance {
-                                            generic_arguments, ..
+                                        EvaluatedType::InterfaceInstance {
+                                            generic_arguments,
+                                            ..
                                         }
                                         | EvaluatedType::ModelInstance {
                                             generic_arguments, ..
@@ -1149,13 +1152,13 @@ mod expressions {
                     }
                 }
                 // the ? operator.
-                // The Try trait has two generics, one for the value to be retreived,
+                // The Try interface has two generics, one for the value to be retreived,
                 // and another for the value to be immediately returned.
                 ast::UpdateOperator::TryFrom => {
                     if let Some(try_idx) = symbollib.try_s {
                         let (first_generic, second_generic) =
                             match &symbollib.get(try_idx).unwrap().kind {
-                                SemanticSymbolKind::Trait { generic_params, .. } => {
+                                SemanticSymbolKind::Interface { generic_params, .. } => {
                                     (generic_params[0], generic_params[1])
                                 }
                                 _ => return EvaluatedType::Unknown,
@@ -1173,7 +1176,7 @@ mod expressions {
                             return EvaluatedType::Unknown;
                         }
                         let implementation = implementation.unwrap();
-                        if let EvaluatedType::TraitInstance {
+                        if let EvaluatedType::InterfaceInstance {
                             generic_arguments, ..
                         } = implementation
                         {
@@ -1194,7 +1197,7 @@ mod expressions {
                             let mut returned_type = second_generic_solution.unwrap().1;
                             let empty = vec![];
                             let full_generic_list = match &operand_type {
-                                EvaluatedType::TraitInstance {
+                                EvaluatedType::InterfaceInstance {
                                     generic_arguments, ..
                                 }
                                 | EvaluatedType::ModelInstance {
@@ -1450,9 +1453,13 @@ mod expressions {
                     let name = method_symbol.name.clone();
                     let owner = match &method_symbol.kind {
                         SemanticSymbolKind::Method {
-                            owner_model_or_trait,
+                            owner_model_or_interface,
                             ..
-                        } => symbollib.get(*owner_model_or_trait).unwrap().name.clone(),
+                        } => symbollib
+                            .get(*owner_model_or_interface)
+                            .unwrap()
+                            .name
+                            .clone(),
                         _ => String::from("[Model]"),
                     };
                     checker_ctx.add_error(errors::mutating_method(owner, name, assexp.span));
@@ -1468,9 +1475,13 @@ mod expressions {
                 let name = method_symbol.name.clone();
                 let owner = match &method_symbol.kind {
                     SemanticSymbolKind::Method {
-                        owner_model_or_trait,
+                        owner_model_or_interface,
                         ..
-                    } => symbollib.get(*owner_model_or_trait).unwrap().name.clone(),
+                    } => symbollib
+                        .get(*owner_model_or_interface)
+                        .unwrap()
+                        .name
+                        .clone(),
                     _ => String::from("[Model]"),
                 };
                 checker_ctx.add_error(errors::mutating_method(owner, name, assexp.span));
@@ -1588,8 +1599,8 @@ mod expressions {
                         }
                         _ => return None,
                     };
-                    let model_or_trait = symbollib.get(this.model_or_trait?)?;
-                    let attributes = match &model_or_trait.kind {
+                    let model_or_interface = symbollib.get(this.model_or_interface?)?;
+                    let attributes = match &model_or_interface.kind {
                         SemanticSymbolKind::Model { attributes, .. } => attributes,
                         _ => return None,
                     };
@@ -1662,11 +1673,11 @@ mod expressions {
         checker_ctx: &mut TypecheckerContext,
     ) -> EvaluatedType {
         this.inferred_type = (|| {
-            if this.model_or_trait.is_none() {
+            if this.model_or_interface.is_none() {
                 // Error is already handled.
                 return EvaluatedType::Unknown;
             }
-            let model_or_trait = this.model_or_trait.unwrap();
+            let model_or_interface = this.model_or_interface.unwrap();
             if checker_ctx
                 .current_function_is_static
                 .is_some_and(|is_static| is_static)
@@ -1675,17 +1686,19 @@ mod expressions {
                 checker_ctx.add_error(errors::this_in_static_method(Span::on_line(start, 4)));
                 return EvaluatedType::Unknown;
             }
-            let symbol = symbollib.get_forwarded(model_or_trait).unwrap();
+            let symbol = symbollib.get_forwarded(model_or_interface).unwrap();
             let base = match &symbol.kind {
                 SemanticSymbolKind::Model { generic_params, .. } => EvaluatedType::ModelInstance {
-                    model: model_or_trait,
+                    model: model_or_interface,
                     generic_arguments: evaluate_generic_params(generic_params, false),
                 },
-                SemanticSymbolKind::Trait { generic_params, .. } => EvaluatedType::TraitInstance {
-                    trait_: model_or_trait,
-                    generic_arguments: evaluate_generic_params(generic_params, false),
-                },
-                _ => unreachable!("{symbol:#?} is not a model or trait."),
+                SemanticSymbolKind::Interface { generic_params, .. } => {
+                    EvaluatedType::InterfaceInstance {
+                        interface_: model_or_interface,
+                        generic_arguments: evaluate_generic_params(generic_params, false),
+                    }
+                }
+                _ => unreachable!("{symbol:#?} is not a model or interface."),
             };
             let base = Box::new(base);
             EvaluatedType::Borrowed { base }
@@ -1806,7 +1819,7 @@ mod expressions {
                 typecheck_expression(&mut indexexp.object, checker_ctx, symbollib);
             let _type_of_indexer =
                 typecheck_expression(&mut indexexp.index, checker_ctx, symbollib);
-            // todo: handle Index trait overloading.
+            // todo: handle Index interfaceface overloading.
             if !is_array(
                 match &type_of_indexed {
                     EvaluatedType::Borrowed { base } => &*base,
@@ -2259,8 +2272,8 @@ mod expressions {
             }
             EvaluatedType::Module(_)
             | EvaluatedType::ModelInstance { .. }
-            | EvaluatedType::TraitInstance { .. }
-            | EvaluatedType::Trait(_)
+            | EvaluatedType::InterfaceInstance { .. }
+            | EvaluatedType::Interface(_)
             | EvaluatedType::Enum(_)
             | EvaluatedType::Generic { .. }
             | EvaluatedType::HardGeneric { .. }
@@ -2308,13 +2321,13 @@ mod expressions {
                     .as_ref()
                     .map(|typ| evaluate(typ, symbollib, None, &mut checker_ctx.tracker(), 0))
                     .unwrap_or(EvaluatedType::Unknown);
-                // Traits cannot be used as parameter types.
-                if let EvaluatedType::TraitInstance { trait_, .. } = &inferred_type {
-                    let symbol = symbollib.get(*trait_);
-                    checker_ctx.add_error(errors::trait_as_type(
+                // Interfaces cannot be used as parameter types.
+                if let EvaluatedType::InterfaceInstance { interface_, .. } = &inferred_type {
+                    let symbol = symbollib.get(*interface_);
+                    checker_ctx.add_error(errors::interface_as_type(
                         symbol
                             .map(|symbol| symbol.name.clone())
-                            .unwrap_or(String::from("{Trait}")),
+                            .unwrap_or(String::from("{Interface}")),
                         param_type.as_ref().map(|p| p.span()).unwrap_or_default(),
                     ));
                 }
@@ -2337,13 +2350,13 @@ mod expressions {
                     typ.span(),
                 )
             });
-            // Traits cannot be used as return types.
-            if let Some((EvaluatedType::TraitInstance { trait_, .. }, _)) = &return_type {
-                let symbol = symbollib.get(*trait_);
-                checker_ctx.add_error(errors::trait_as_type(
+            // Interfaces cannot be used as return types.
+            if let Some((EvaluatedType::InterfaceInstance { interface_, .. }, _)) = &return_type {
+                let symbol = symbollib.get(*interface_);
+                checker_ctx.add_error(errors::interface_as_type(
                     symbol
                         .map(|symbol| symbol.name.clone())
-                        .unwrap_or(String::from("{Trait}")),
+                        .unwrap_or(String::from("{Interface}")),
                     f.return_type.as_ref().unwrap().span(),
                 ));
             }
@@ -2495,7 +2508,7 @@ mod expressions {
                     property_span,
                 )
             }
-            // EvaluatedType::Trait(_) => todo!(),
+            // EvaluatedType::Interface(_) => todo!(),
             // EvaluatedType::Enum(_) => todo!(),
             EvaluatedType::Module(module) => {
                 let module = symbollib.get_forwarded(module).unwrap();
@@ -2553,28 +2566,28 @@ mod expressions {
             EvaluatedType::OpaqueTypeInstance {
                 ref available_methods,
                 ref generic_arguments,
-                ref available_traits,
+                ref available_interfaces,
                 ..
             } => {
                 let mut generic_arguments = generic_arguments.clone();
                 // Gather methods from all the implementations.
-                let implementation_methods = available_traits
+                let implementation_methods = available_interfaces
                     .iter()
                     .filter_map(|implementation| {
                         match implementation {
-                            EvaluatedType::TraitInstance {
-                                trait_,
-                                generic_arguments: trait_generics,
+                            EvaluatedType::InterfaceInstance {
+                                interface_,
+                                generic_arguments: interface_generics,
                             } => {
-                                let trait_ = *trait_;
-                                // Update the solutions of the traits generics.
-                                generic_arguments.append(&mut (trait_generics.clone()));
-                                // Here a trait is treated as a generic argument and given a solution.
-                                // This allows the `This` marker to refer to the implementing model, rather than the trait.
-                                generic_arguments.push((trait_, object_type.clone()));
-                                let trait_symbol = symbollib.get_forwarded(trait_)?;
-                                match &trait_symbol.kind {
-                                    SemanticSymbolKind::Trait { methods, .. } => Some(methods),
+                                let interface_ = *interface_;
+                                // Update the solutions of the interfaces generics.
+                                generic_arguments.append(&mut (interface_generics.clone()));
+                                // Here a interface is treated as a generic argument and given a solution.
+                                // This allows the `This` marker to refer to the implementing model, rather than the interface.
+                                generic_arguments.push((interface_, object_type.clone()));
+                                let interface_symbol = symbollib.get_forwarded(interface_)?;
+                                match &interface_symbol.kind {
+                                    SemanticSymbolKind::Interface { methods, .. } => Some(methods),
                                     _ => return None,
                                 }
                             }
@@ -2680,7 +2693,7 @@ mod expressions {
                 implementations, ..
             }
             | SemanticSymbolKind::GenericParameter {
-                traits: implementations,
+                interfaces: implementations,
                 ..
             } => implementations,
             _ => return None,
@@ -2700,24 +2713,24 @@ mod expressions {
                 let implementation =
                     evaluate(int_typ, symbollib, Some(&generic_arguments), &mut None, 0);
                 match implementation {
-                    EvaluatedType::TraitInstance {
-                        trait_,
-                        generic_arguments: mut trait_generics,
+                    EvaluatedType::InterfaceInstance {
+                        interface_,
+                        generic_arguments: mut interface_generics,
                     } => {
-                        // Update the solutions of the traits generics.
-                        generic_arguments.append(&mut trait_generics);
-                        // Here a trait is treated as a generic argument and given a solution.
-                        // This allows the `This` marker to refer to the implementing model, rather than the trait.
+                        // Update the solutions of the interfaces generics.
+                        generic_arguments.append(&mut interface_generics);
+                        // Here a interface is treated as a generic argument and given a solution.
+                        // This allows the `This` marker to refer to the implementing model, rather than the interface.
                         generic_arguments.push((
-                            trait_,
+                            interface_,
                             EvaluatedType::ModelInstance {
                                 model,
                                 generic_arguments: generic_arguments.clone(),
                             },
                         ));
-                        let trait_symbol = symbollib.get_forwarded(trait_)?;
-                        match &trait_symbol.kind {
-                            SemanticSymbolKind::Trait { methods, .. } => Some(methods),
+                        let interface_symbol = symbollib.get_forwarded(interface_)?;
+                        match &interface_symbol.kind {
+                            SemanticSymbolKind::Interface { methods, .. } => Some(methods),
                             _ => return None,
                         }
                     }
@@ -2766,7 +2779,7 @@ mod expressions {
                 method_symbol.add_reference(checker_ctx.path_idx, property_span);
                 // Block non-public access.
                 if !method_symbol.kind.is_public()
-                    && checker_ctx.enclosing_model_or_trait != Some(model)
+                    && checker_ctx.enclosing_model_or_interface != Some(model)
                 {
                     checker_ctx.add_error(errors::private_property_leak(
                         method_symbol.name.clone(),
@@ -2806,7 +2819,7 @@ mod expressions {
                     let attribute_symbol = symbollib.get_mut(attribute).unwrap();
                     attribute_symbol.add_reference(checker_ctx.path_idx, property_span);
                     if !attribute_symbol.kind.is_public()
-                        && checker_ctx.enclosing_model_or_trait != Some(model)
+                        && checker_ctx.enclosing_model_or_interface != Some(model)
                     {
                         checker_ctx.add_error(errors::private_property_leak(
                             attribute_symbol.name.clone(),

@@ -3,14 +3,14 @@ use ast::{
     Bracket::*, BreakStatement, CallExpr, Comment, ConstantDeclaration, ConstantSignature,
     ContinueStatement, DiscreteType, EnumDeclaration, EnumSignature, EnumVariant, Expression,
     ExpressionPrecedence, ForStatement, FunctionDeclaration, FunctionExpr, FunctionSignature,
-    FunctionalType, GenericParameter, Identifier, IfExpression, IndexExpr, Keyword::*, LogicExpr,
-    LoopLabel, LoopVariable, MemberType, MethodSignature, ModelBody, ModelDeclaration,
+    FunctionalType, GenericParameter, Identifier, IfExpression, IndexExpr, InterfaceBody,
+    InterfaceDeclaration, InterfaceProperty, InterfacePropertyType, InterfaceSignature, Keyword::*,
+    LogicExpr, LoopLabel, LoopVariable, MemberType, MethodSignature, ModelBody, ModelDeclaration,
     ModelProperty, ModelPropertyType, ModelSignature, ModuleAmbience, ModuleDeclaration, NewExpr,
     Operator::*, Parameter, ReturnStatement, ScopeAddress, ScopeEntry, ScopeType,
     ShorthandVariableDeclaration, ShorthandVariableSignature, Span, Spannable, Statement,
-    TestDeclaration, ThisExpr, Token, TokenType, TraitBody, TraitDeclaration, TraitProperty,
-    TraitPropertyType, TraitSignature, TypeDeclaration, TypeExpression, TypeSignature, UnaryExpr,
-    UnionType, UpdateExpr, UseDeclaration, UsePath, UseTarget, UseTargetSignature,
+    TestDeclaration, ThisExpr, Token, TokenType, TypeDeclaration, TypeExpression, TypeSignature,
+    UnaryExpr, UnionType, UpdateExpr, UseDeclaration, UsePath, UseTarget, UseTargetSignature,
     VariableDeclaration, VariablePattern, VariableSignature, WhileStatement, WhirlBoolean,
     WhirlNumber, WhirlString,
 };
@@ -939,10 +939,10 @@ impl<L: Lexer> Parser<L> {
             TokenType::Keyword(Var) => self
                 .variable_declaration(false)
                 .map(|v| Statement::VariableDeclaration(v)),
-            // // trait...
-            TokenType::Keyword(Trait) => self
-                .trait_declaration(false)
-                .map(|t| Statement::TraitDeclaration(t)),
+            // // interface...
+            TokenType::Keyword(Interface) => self
+                .interface_declaration(false)
+                .map(|t| Statement::InterfaceDeclaration(t)),
             // // const..
             TokenType::Keyword(Const) => self
                 .constant_declaration(false)
@@ -1120,9 +1120,9 @@ impl<L: Lexer> Parser<L> {
             TokenType::Keyword(Var) => self
                 .variable_declaration(true)
                 .map(|v| Statement::VariableDeclaration(v)),
-            TokenType::Keyword(Trait) => self
-                .trait_declaration(true)
-                .map(|t| Statement::TraitDeclaration(t)),
+            TokenType::Keyword(Interface) => self
+                .interface_declaration(true)
+                .map(|t| Statement::InterfaceDeclaration(t)),
             TokenType::Keyword(Const) => self
                 .constant_declaration(true)
                 .map(|c| Statement::ConstantDeclaration(c)),
@@ -1564,7 +1564,7 @@ impl<L: Lexer> Parser<L> {
             errors::expected(TokenType::Bracket(LCurly), self.last_token_end(),),
             self
         );
-        let implementations = check!(self.maybe_trait_implementations());
+        let implementations = check!(self.maybe_interface_implementations());
         expect_or_return!(TokenType::Bracket(LCurly), self);
         let entry_no = self.module_ambience().reserve_entry_space();
         let address = ScopeAddress {
@@ -1602,26 +1602,26 @@ impl<L: Lexer> Parser<L> {
         }
     }
 
-    /// Maybe parses a list of trait implementations.
-    fn maybe_trait_implementations(&self) -> Fallible<Vec<TypeExpression>> {
-        let mut traits = vec![];
+    /// Maybe parses a list of interface implementations.
+    fn maybe_interface_implementations(&self) -> Fallible<Vec<TypeExpression>> {
+        let mut interfaces = vec![];
         self.ended(expected(TokenType::Bracket(LCurly), self.last_token_end()))?;
         let token = self.token().unwrap();
-        // Parse trait impls if they exist.
+        // Parse interface impls if they exist.
         if let TokenType::Keyword(Implements) = token._type {
             self.advance(); // Move past implements.
             loop {
-                let trait_ = self.type_expression()?;
-                match trait_ {
+                let interface_ = self.type_expression()?;
+                match interface_ {
                     TypeExpression::Union(_)
                     | TypeExpression::Functional(_)
                     | TypeExpression::This { .. }
                     | TypeExpression::Invalid => {
-                        return Err(errors::type_in_trait_position(trait_))
+                        return Err(errors::type_in_interface_position(interface_))
                     }
                     _ => {}
                 }
-                traits.push(trait_);
+                interfaces.push(interface_);
                 if self
                     .token()
                     .is_some_and(|t| t._type == TokenType::Operator(Plus))
@@ -1632,7 +1632,7 @@ impl<L: Lexer> Parser<L> {
                 break;
             }
         }
-        Ok(traits)
+        Ok(interfaces)
     }
 
     /// Rambly function to parse a model body.
@@ -1904,9 +1904,9 @@ impl<L: Lexer> Parser<L> {
         let info = self.get_doc_comment();
         if_ended!(errors::identifier_expected(self.last_token_end()), self);
         let token = self.token().unwrap();
-        // If [ is the next token, parse a trait impl.
+        // If [ is the next token, parse a interface impl.
         if token._type == TokenType::Bracket(LSquare) {
-            return self.trait_impl_method(is_public, is_static, is_async, info, model_address);
+            return self.interface_impl_method(is_public, is_static, is_async, info, model_address);
         }
         // else parse normal function.
         let name = check!(self.identifier());
@@ -1939,8 +1939,8 @@ impl<L: Lexer> Parser<L> {
         }
     }
 
-    /// Parses a trait implementation.
-    fn trait_impl_method(
+    /// Parses a interface implementation.
+    fn interface_impl_method(
         &self,
         is_public: bool,
         is_static: bool,
@@ -1950,7 +1950,7 @@ impl<L: Lexer> Parser<L> {
     ) -> Imperfect<(MethodSignature, ModelPropertyType)> {
         expect_or_return!(TokenType::Bracket(LSquare), self);
         self.advance(); // Move past [
-        let mut trait_target = vec![];
+        let mut interface_target = vec![];
         let mut errors = vec![];
         while self
             .token()
@@ -1959,13 +1959,13 @@ impl<L: Lexer> Parser<L> {
             let target = check!(self.type_expression());
             match target {
                 TypeExpression::Member(membertype) => match unroll_to_discrete_types(membertype) {
-                    Ok(mut types) => trait_target.append(&mut types),
+                    Ok(mut types) => interface_target.append(&mut types),
                     Err(error) => errors.push(error),
                 },
                 TypeExpression::Discrete(discretetype) => {
-                    trait_target.push(discretetype);
+                    interface_target.push(discretetype);
                 }
-                _ => errors.push(errors::type_in_trait_position(target)),
+                _ => errors.push(errors::type_in_interface_position(target)),
             }
             if self
                 .token()
@@ -1977,11 +1977,11 @@ impl<L: Lexer> Parser<L> {
             break;
         }
         expect_or_return!(TokenType::Bracket(RSquare), self);
-        if trait_target.len() == 0 {
+        if interface_target.len() == 0 {
             errors.push(errors::identifier_expected(self.token().unwrap().span));
             return Partial::from_errors(errors);
         }
-        // println!("{:?}\n\n\n", trait_target);
+        // println!("{:?}\n\n\n", interface_target);
         self.advance(); // Move past ]
         let generic_params = check!(self.maybe_generic_params());
         let params = check!(self.parameters());
@@ -1998,7 +1998,7 @@ impl<L: Lexer> Parser<L> {
         let body = body.unwrap();
         let tuple = (
             MethodSignature {
-                name: trait_target.last().unwrap().name.clone(),
+                name: interface_target.last().unwrap().name.clone(),
                 info,
                 is_static,
                 is_async,
@@ -2007,7 +2007,10 @@ impl<L: Lexer> Parser<L> {
                 params,
                 return_type,
             },
-            ModelPropertyType::TraitImpl { trait_target, body },
+            ModelPropertyType::InterfaceImpl {
+                interface_target,
+                body,
+            },
         );
         Partial {
             value: Some(tuple),
@@ -2201,12 +2204,12 @@ impl<L: Lexer> Parser<L> {
         Ok(pattern_items)
     }
 
-    /// Parses a trait declaration. Assumes that `trait` is the current token.
-    fn trait_declaration(&self, is_public: bool) -> Imperfect<TraitDeclaration> {
-        expect_or_return!(TokenType::Keyword(Trait), self);
+    /// Parses a interface declaration. Assumes that `interface` is the current token.
+    fn interface_declaration(&self, is_public: bool) -> Imperfect<InterfaceDeclaration> {
+        expect_or_return!(TokenType::Keyword(Interface), self);
         let start = self.token().unwrap().span.start;
         let info = self.get_doc_comment();
-        self.advance(); // Move past trait.
+        self.advance(); // Move past interface.
         let name = check!(self.identifier());
         let generic_params = check!(self.maybe_generic_params());
         if_ended!(
@@ -2219,13 +2222,13 @@ impl<L: Lexer> Parser<L> {
             scope_id: self.module_ambience().current_scope(),
             entry_no,
         };
-        let implementations = check!(self.maybe_trait_implementations());
-        let (results, errors) = self.trait_body(&address).to_tuple();
+        let implementations = check!(self.maybe_interface_implementations());
+        let (results, errors) = self.interface_body(&address).to_tuple();
         if results.is_none() {
             return Partial::from_errors(errors);
         }
         let (body, methods) = results.unwrap();
-        let signature = TraitSignature {
+        let signature = InterfaceSignature {
             name,
             info,
             is_public,
@@ -2235,9 +2238,9 @@ impl<L: Lexer> Parser<L> {
         };
         let end = body.span.end;
         self.module_ambience()
-            .register_at(entry_no, ScopeEntry::Trait(signature));
+            .register_at(entry_no, ScopeEntry::Interface(signature));
         let span = Span::from([start, end]);
-        let model = TraitDeclaration {
+        let model = InterfaceDeclaration {
             address,
             body,
             span,
@@ -2248,11 +2251,11 @@ impl<L: Lexer> Parser<L> {
         }
     }
 
-    /// Parses a trait body.
-    fn trait_body(
+    /// Parses a interface body.
+    fn interface_body(
         &self,
-        trait_address: &ScopeAddress,
-    ) -> Imperfect<(TraitBody, Vec<MethodSignature>)> {
+        interface_address: &ScopeAddress,
+    ) -> Imperfect<(InterfaceBody, Vec<MethodSignature>)> {
         expect_or_return!(TokenType::Bracket(LCurly), self);
         let start = self.token().unwrap().span.start;
         self.advance(); // Move past {
@@ -2265,13 +2268,13 @@ impl<L: Lexer> Parser<L> {
         // Helper closure to quickly generate methods.
         let mut generate_method = |start, is_public, is_static, is_async| {
             expect_or_return!(TokenType::Keyword(Function), self);
-            let partial = self.trait_method(is_public, is_static, is_async, trait_address);
+            let partial = self.interface_method(is_public, is_static, is_async, interface_address);
             if partial.is_none() {
                 return partial.map(|_| ());
             };
             let (tuple, errors) = partial.to_tuple();
             let (signature, _type) = tuple.unwrap();
-            let method = TraitProperty {
+            let method = InterfaceProperty {
                 index: method_signatures.len(),
                 _type,
                 span: Span::from([start, self.last_token_span().end]),
@@ -2386,21 +2389,21 @@ impl<L: Lexer> Parser<L> {
                 .unwrap_or(start)
         };
         let span = Span::from([start, end]);
-        let body = TraitBody { properties, span };
+        let body = InterfaceBody { properties, span };
         Partial {
             value: Some((body, method_signatures)),
             errors: body_errors,
         }
     }
 
-    /// Parses a trait method.
-    fn trait_method(
+    /// Parses a interface method.
+    fn interface_method(
         &self,
         is_public: bool,
         is_static: bool,
         is_async: bool,
-        trait_address: &ScopeAddress,
-    ) -> Imperfect<(MethodSignature, TraitPropertyType)> {
+        interface_address: &ScopeAddress,
+    ) -> Imperfect<(MethodSignature, InterfacePropertyType)> {
         expect_or_return!(TokenType::Keyword(Function), self);
         self.advance(); // Move past function.
         let info = self.get_doc_comment();
@@ -2425,21 +2428,21 @@ impl<L: Lexer> Parser<L> {
         };
         // If there is no body, it is a function signature.
         if token._type == TokenType::Operator(SemiColon) {
-            let _type = TraitPropertyType::Signature;
+            let _type = InterfacePropertyType::Signature;
             self.advance(); // Move past ;
             return Partial::from_value((signature, _type));
         }
         // Else it is a method.
         let (body, errors) = self
-            .block(ScopeType::TraitMethodOf {
-                _trait: *trait_address,
+            .block(ScopeType::InterfaceMethodOf {
+                _interface: *interface_address,
             })
             .to_tuple();
         if body.is_none() {
             return Partial::from_errors(errors);
         }
         let body = body.unwrap();
-        let _type = TraitPropertyType::Method { body };
+        let _type = InterfacePropertyType::Method { body };
         Partial {
             value: Some((signature, _type)),
             errors,
@@ -2784,23 +2787,23 @@ impl<L: Lexer> Parser<L> {
     fn generic_param(&self) -> Fallible<GenericParameter> {
         let name = self.identifier()?;
         let start = name.span.start;
-        let mut traits = vec![];
-        // Parse assigned traits.
+        let mut interfaces = vec![];
+        // Parse assigned interfaces.
         if self
             .token()
             .is_some_and(|t| t._type == TokenType::Keyword(Implements))
         {
             self.advance(); // Move past implements
             loop {
-                let r#trait = self.type_expression()?;
+                let r#interface = self.type_expression()?;
                 if let TypeExpression::Union(_)
                 | TypeExpression::Functional(_)
                 | TypeExpression::This { .. }
-                | TypeExpression::Invalid = r#trait
+                | TypeExpression::Invalid = r#interface
                 {
-                    return Err(errors::type_in_trait_position(r#trait));
+                    return Err(errors::type_in_interface_position(r#interface));
                 }
-                traits.push(r#trait);
+                interfaces.push(r#interface);
                 if self
                     .token()
                     .is_some_and(|t| t._type == TokenType::Operator(Plus))
@@ -2823,16 +2826,16 @@ impl<L: Lexer> Parser<L> {
         } else {
             (
                 None,
-                traits
+                interfaces
                     .last()
-                    .map(|_trait| _trait.span().end)
+                    .map(|_interface| _interface.span().end)
                     .unwrap_or(name.span.end),
             )
         };
 
         let generic_param = GenericParameter {
             name,
-            traits,
+            interfaces,
             default,
             span: Span { start, end },
         };
@@ -3340,14 +3343,14 @@ fn unroll_to_discrete_types(membertype: MemberType) -> Result<Vec<DiscreteType>,
             types.append(&mut unroll_to_discrete_types(membertype)?)
         }
         TypeExpression::Discrete(discretetype) => types.push(discretetype),
-        type_ => return Err(errors::type_in_trait_position(type_)),
+        type_ => return Err(errors::type_in_interface_position(type_)),
     }
     match *membertype.property {
         TypeExpression::Member(membertype) => {
             types.append(&mut unroll_to_discrete_types(membertype)?)
         }
         TypeExpression::Discrete(discretetype) => types.push(discretetype),
-        type_ => return Err(errors::type_in_trait_position(type_)),
+        type_ => return Err(errors::type_in_interface_position(type_)),
     }
     Ok(types)
 }

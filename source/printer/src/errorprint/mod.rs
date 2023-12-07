@@ -23,13 +23,13 @@ pub fn stringify_type_error(error: &TypeErrorType) -> String {
             "Expected: '{left}'
 Got: '{right}'.",
         ),
-        TypeErrorType::TraitAsType { name } => {
-            format!("{name} refers to a trait, but it is being used as a type here.")
+        TypeErrorType::InterfaceAsType { name } => {
+            format!("{name} refers to a interface, but it is being used as a type here.")
         }
         TypeErrorType::EnumInModelPlace { name } => format!("{name} refers to an enum, but it is being used as a model here."),
         TypeErrorType::TypeInModelPlace => format!("Type aliases cannot be used in model instantiations."),
         TypeErrorType::InvalidNewExpression => format!("This expression is not constructable."),
-        TypeErrorType::ExpectedImplementableGotSomethingElse(name) => format!("Expected a model or a trait, got '{name}'."),
+        TypeErrorType::ExpectedImplementableGotSomethingElse(name) => format!("Expected a model or a interface, got '{name}'."),
         TypeErrorType::UnconstructableModel(name) => format!("'{name}' has no constructor, and therefore cannot be instantiated."),
         TypeErrorType::MismatchedModelArgs { name, expected, assigned } => {
             format!("'{name}' expects {expected} constructor arguments, but got {assigned}.")
@@ -39,14 +39,14 @@ Got: '{right}'.",
         TypeErrorType::AttributeAccessOnConstructor { model, attribute_name } => format!("Cannot access an attribute on a model blueprint. Did you mean (new {model}(...)).{attribute_name}?"),
         TypeErrorType::ConstructorNonStaticMethodAccess { model_name, method_name } => format!("{method_name} is not a static method on {model_name}, but it is being used in a static context."),
         TypeErrorType::PrivatePropertyLeak {  property_name } => format!("The '{property_name}' property cannot be accessed publicly."),
-        TypeErrorType::AccessingOnTrait { trait_ } => format!("{trait_} refers to a trait, thus its methods cannot be directly accessed. Consider implementing them on models instead."),
+        TypeErrorType::AccessingOnInterface { interface_ } => format!("{interface_} refers to a interface, thus its methods cannot be directly accessed. Consider implementing them on models instead."),
         TypeErrorType::TypeAsValue { type_ } => format!("{type_} refers to an abstract type, generic parameter or a type alias, but it is being used as a value here."),
         TypeErrorType::InstanceStaticMethodAccess { model_name, method_name } => format!("{method_name} refers a static function, so it cannot be called by instances of {model_name}."),
         TypeErrorType::MismatchedReturnType { expected, found } => if expected == "{void}" {
             format!("The enclosing function has no return type, but '{found}' is being returned here.")
         } else {format!("The enclosing function expects a return type of '{expected}' but found '{found}'.")},
         TypeErrorType::NoSuchProperty { base_type, property } => format!("Property '{property}' does not exist on a value of type '{base_type}'."),
-        TypeErrorType::UnimplementedTrait { offender, _trait } => format!("Assignment failed because the type '{offender}' does not implement '{_trait}'."),
+        TypeErrorType::UnimplementedInterface { offender, _interface } => format!("Assignment failed because the type '{offender}' does not implement '{_interface}'."),
         TypeErrorType::NotCallable { caller } => format!("{caller} is not a callable type."),
         TypeErrorType::IllegalModelCall { name } => format!("'{name}' refers to a model, which can be constructed, rather than called. Did you mean to contruct it with `new {name}(...)`?"),
         TypeErrorType::MismatchedFunctionArgs { expected, found, least_required } => match least_required {
@@ -66,7 +66,7 @@ Got: '{right}'.",
         TypeErrorType::InfiniteType => format!("This expression generates a recursive type that is too complex to represent."),
         TypeErrorType::NonBooleanLogic { name } => format!("{name} does not evaluate to a boolean expression."),
         TypeErrorType::InvalidAssignmentTarget => format!("Invalid assignment target."),
-        TypeErrorType::MutatingMethod {owner, name} => format!("Cannot reassign a model or trait method, or use it as a standalone value. To use a function dynamically, consider changing '{owner}.{name}' to a function expression."),
+        TypeErrorType::MutatingMethod {owner, name} => format!("Cannot reassign a model or interface method, or use it as a standalone value. To use a function dynamically, consider changing '{owner}.{name}' to a function expression."),
         TypeErrorType::AssigningToReference => format!("Cannot assign to a reference value. Consider dereferencing the value with '*' to assign to its source."),
         TypeErrorType::SeparateIfTypes {first, second} => format!("If statement control flow resolves to different types, '{first}' and '{second}'"),
         TypeErrorType::VoidAssignment => format!("Expression evaluates to void type, so it cannot be assigned to a value."),
@@ -128,8 +128,8 @@ pub fn stringify_parse_error(error: &ParserErrorType) -> String {
         ParserErrorType::UnexpectedToken => format!("Unexpected token."),
         ParserErrorType::StringExpected => format!("Expected a string."),
         ParserErrorType::ExpressionExpected => format!("Expression expected."),
-        ParserErrorType::TypeInTraitPosition(t) => format!(
-            "Expected a trait, got a {}",
+        ParserErrorType::TypeInInterfacePosition(t) => format!(
+            "Expected a interface, got a {}",
             match t {
                 ast::TypeExpression::Invalid => "invalid type.",
                 ast::TypeExpression::Functional(_) => "function type.",
@@ -213,7 +213,7 @@ pub fn stringify_context_error(error: &ContextErrorType) -> String {
         ContextErrorType::UnknownProperty { model_name, property } => format!("No property '{property}' exists on {model_name}."),
         ContextErrorType::AlreadyDeclaredInScope { name } => format!("Cannot redeclare block scoped value '{name}'."),
         ContextErrorType::UseBeforeDeclare { name } => format!("Use of block scoped value '{name}' before its declaration."),
-        ContextErrorType::ThisOutsideMethod => format!("The `this` value can only be used in model or trait methods."),
+        ContextErrorType::ThisOutsideMethod => format!("The `this` value can only be used in model or interface methods."),
         ContextErrorType::DuplicateModelProperty { name } => format!("Duplicate model property '{name}'."),
         ContextErrorType::DuplicateGenericParameter { name } => format!("Duplicate generic parameter '{name}'."),
         ContextErrorType::DuplicateParameterName { name } => format!("Duplicate parameter name '{name}'."),

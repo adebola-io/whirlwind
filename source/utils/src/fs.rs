@@ -6,7 +6,7 @@
 //     rc::{Rc, Weak},
 // };
 
-// /// Trait for a bare bones mock file system.
+// /// Interface for a bare bones mock file system.
 // pub trait FileSystem<ReadDir, DirEntry>
 // where
 //     ReadDir: Iterator<Item = io::Result<DirEntry>>,

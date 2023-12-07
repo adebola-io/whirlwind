@@ -6,7 +6,7 @@ use Super.{
     Process.{PanicOnCaller, Todo},
 }; 
 use Outcome.{ Ok, Err, Outcome }; 
-use Traits.{ Guaranteed, Try };
+use Interfaces.{ Guaranteed, Try };
 use Default.Default;
 
 /// Creates a `Maybe` with no value.
@@ -29,11 +29,11 @@ public function Some<T>(value: T): Maybe<T> {
 public model Maybe<T> implements Guaranteed<T> + Try<T, Maybe<never>> {
     var inner: MaybeVal<T>;
 
-    /// Implementation of `Guarantee` trait.
+    /// Implementation of `Guarantee` interface.
     public function [Guaranteed.Guarantee](): T {
         return this.Unwrap();
     }
-    /// Implementation of `Try` trait.
+    /// Implementation of `Try` interface.
     public function [Try.Try](): Outcome<T, Maybe<never>> {
         // this.inner => {
         //     .Some(value) => Flow.Normal(value),

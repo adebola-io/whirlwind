@@ -78,7 +78,7 @@ impl<'a> TypedVisitorNoArgs for SurfaceAreaCalculator<'a> {
             crate::TypedStmnt::ShorthandVariableDeclaration(v) => self.shorthand_var_decl(v),
             crate::TypedStmnt::ExpressionStatement(e) => self.expr_statement(e),
             crate::TypedStmnt::FreeExpression(e) => self.free_expr(e),
-            crate::TypedStmnt::TraitDeclaration(t) => self.trait_declaration(t),
+            crate::TypedStmnt::InterfaceDeclaration(t) => self.interface_declaration(t),
             crate::TypedStmnt::ModuleDeclaration(m) => self.module_declaration(m),
             crate::TypedStmnt::UseDeclaration(u) => self.use_declaration(u),
             crate::TypedStmnt::ConstantDeclaration(c) => self.constant(c),
@@ -108,16 +108,16 @@ impl<'a> TypedVisitorNoArgs for SurfaceAreaCalculator<'a> {
 
     fn module_declaration(&self, _module: &crate::TypedModuleDeclaration) {}
 
-    fn trait_declaration(&self, _trait: &crate::TypedTraitDeclaration) {
+    fn interface_declaration(&self, _interface: &crate::TypedInterfaceDeclaration) {
         let surface_area = self.surface_area();
-        surface_area.declared_in_module.push(_trait.name);
-        let symbol = unwrap_or_return!(self.symbollib.get(_trait.name));
-        if let SemanticSymbolKind::Trait { generic_params, .. } = &symbol.kind {
+        surface_area.declared_in_module.push(_interface.name);
+        let symbol = unwrap_or_return!(self.symbollib.get(_interface.name));
+        if let SemanticSymbolKind::Interface { generic_params, .. } = &symbol.kind {
             generic_params
                 .iter()
                 .for_each(|method_idx| surface_area.declared_in_module.push(*method_idx));
         }
-        for property in &_trait.body.properties {
+        for property in &_interface.body.properties {
             let method_symbol = match self.symbollib.get(property.name) {
                 Some(symbol) => symbol,
                 None => continue,
@@ -136,7 +136,7 @@ impl<'a> TypedVisitorNoArgs for SurfaceAreaCalculator<'a> {
                     .for_each(|param| surface_area.declared_in_module.push(*param));
             }
             surface_area.declared_in_module.push(property.name);
-            if let crate::TypedTraitPropertyType::Method { body } = &property._type {
+            if let crate::TypedInterfacePropertyType::Method { body } = &property._type {
                 self.block(body)
             }
         }
@@ -386,7 +386,7 @@ impl<'a> TypedVisitorNoArgs for SurfaceAreaCalculator<'a> {
                     .for_each(|param| surface_area.declared_in_module.push(*param));
             }
             match &property._type {
-                TypedModelPropertyType::TraitImpl { body, .. } => self.block(body),
+                TypedModelPropertyType::InterfaceImpl { body, .. } => self.block(body),
                 TypedModelPropertyType::TypedMethod { body } => self.block(body),
                 TypedModelPropertyType::TypedAttribute => {}
             }
@@ -412,7 +412,7 @@ mod tests {
         Print(\'Hello, world!\')
     }
 
-    trait Vehicle {}
+    interface Vehicle {}
 
     model Car implements Vehicle {
         var currentSpeed: Float;

@@ -19,7 +19,7 @@ pub enum TypedStmnt {
     ModelDeclaration(TypedModelDeclaration),
     ModuleDeclaration(TypedModuleDeclaration),
     FunctionDeclaration(TypedFunctionDeclaration),
-    TraitDeclaration(TypedTraitDeclaration),
+    InterfaceDeclaration(TypedInterfaceDeclaration),
     // Expression statements.
     ExpressionStatement(TypedExpression),
     FreeExpression(TypedExpression),
@@ -109,29 +109,29 @@ pub struct TypedFunctionDeclaration {
     pub span: Span,
 }
 
-/// A node for a trait declaration in the AST.
+/// A node for a interface declaration in the AST.
 #[derive(Debug, PartialEq)]
-pub struct TypedTraitDeclaration {
+pub struct TypedInterfaceDeclaration {
     pub name: SymbolIndex,
-    pub body: TypedTraitBody,
+    pub body: TypedInterfaceBody,
     pub span: Span,
 }
 
 #[derive(Debug, PartialEq)]
-pub struct TypedTraitBody {
-    pub properties: Vec<TypedTraitProperty>,
+pub struct TypedInterfaceBody {
+    pub properties: Vec<TypedInterfaceProperty>,
     pub span: Span,
 }
 
 #[derive(Debug, PartialEq)]
-pub struct TypedTraitProperty {
+pub struct TypedInterfaceProperty {
     pub name: SymbolIndex,
-    pub _type: TypedTraitPropertyType,
+    pub _type: TypedInterfacePropertyType,
     pub span: Span,
 }
 
 #[derive(Debug, PartialEq)]
-pub enum TypedTraitPropertyType {
+pub enum TypedInterfacePropertyType {
     /// A method that is to be implemented.
     Signature,
     /// A method with a default implementation.
@@ -172,8 +172,8 @@ pub enum TypedModelPropertyType {
     TypedMethod {
         body: TypedBlock,
     },
-    TraitImpl {
-        trait_target: Vec<IntermediateType>,
+    InterfaceImpl {
+        interface_target: Vec<IntermediateType>,
         body: TypedBlock,
     },
 }
@@ -230,7 +230,7 @@ pub fn span_of_typed_statement(
         TypedStmnt::ModelDeclaration(c) => c.span,
         TypedStmnt::FunctionDeclaration(f) => f.span,
         TypedStmnt::RecordDeclaration => todo!(),
-        TypedStmnt::TraitDeclaration(t) => t.span,
+        TypedStmnt::InterfaceDeclaration(t) => t.span,
         TypedStmnt::EnumDeclaration(e) => e.span,
         TypedStmnt::TypeDeclaration(t) => t.span,
         TypedStmnt::WhileStatement(w) => w.span,

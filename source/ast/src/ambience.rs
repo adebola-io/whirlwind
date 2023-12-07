@@ -69,7 +69,7 @@ impl ModuleAmbience {
                 scope._type,
                 ScopeType::Functional
                     | ScopeType::ModelMethodOf { .. }
-                    | ScopeType::TraitMethodOf { .. }
+                    | ScopeType::InterfaceMethodOf { .. }
             ) {
                 return true;
             } else if let Some(parent) = scope.parent_index {
@@ -79,14 +79,14 @@ impl ModuleAmbience {
             }
         }
     }
-    /// Checks up the scope tree to see if the current scope is within a method of a trait or model.
+    /// Checks up the scope tree to see if the current scope is within a method of a interface or model.
     pub fn is_in_method_context(&self) -> bool {
         let mut current_scope = self.current_scope;
         loop {
             let scope = &self.scopes[current_scope];
             if matches!(
                 scope._type,
-                ScopeType::ModelMethodOf { .. } | ScopeType::TraitMethodOf { .. }
+                ScopeType::ModelMethodOf { .. } | ScopeType::InterfaceMethodOf { .. }
             ) {
                 return true;
             } else if let Some(parent) = scope.parent_index {
@@ -262,7 +262,7 @@ impl ModuleAmbience {
         self.module_name = Some(name);
     }
     /// Checks up the scope tree to retrieve the meaning of `this`,
-    /// which could either be a trait or a model.
+    /// which could either be a interface or a model.
     pub fn get_method_context(&self) -> Option<ScopeSearch> {
         let mut current_scope = self.current_scope;
         loop {
@@ -270,7 +270,9 @@ impl ModuleAmbience {
             match scope._type {
                 ScopeType::ModelConstructorOf { model: address }
                 | ScopeType::ModelMethodOf { model: address }
-                | ScopeType::TraitMethodOf { _trait: address } => {
+                | ScopeType::InterfaceMethodOf {
+                    _interface: address,
+                } => {
                     let entry = self.get_entry_unguarded(address);
                     return Some(ScopeSearch {
                         index: address.entry_no,
@@ -377,7 +379,7 @@ impl<'a> ModuleAmbienceShadow<'a> {
         }
     }
     /// Checks up the scope tree to retrieve the meaining of `this`,
-    /// which could either be a trait or a model.
+    /// which could either be a interface or a model.
     pub fn get_method_context(&self) -> Option<ScopeSearch> {
         let mut current_scope = self.current_scope;
         loop {
@@ -385,7 +387,9 @@ impl<'a> ModuleAmbienceShadow<'a> {
             match scope._type {
                 ScopeType::ModelConstructorOf { model: address }
                 | ScopeType::ModelMethodOf { model: address }
-                | ScopeType::TraitMethodOf { _trait: address } => {
+                | ScopeType::InterfaceMethodOf {
+                    _interface: address,
+                } => {
                     let entry = self.base.get_entry_unguarded(address);
                     return Some(ScopeSearch {
                         index: address.entry_no,

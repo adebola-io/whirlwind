@@ -22,7 +22,7 @@ pub struct ModuleAddress {
 //     ModelConstructor {
 //         address: SymbolAddress,
 //     },
-//     TraitConstructor {
+//     InterfaceConstructor {
 //         address: SymbolAddress,
 //     },
 //     EnumConstructor {
@@ -124,7 +124,7 @@ impl std::fmt::Display for TypeExpression {
 #[derive(Debug, PartialEq, Clone, Hash)]
 pub struct GenericParameter {
     pub name: Identifier,
-    pub traits: Vec<TypeExpression>,
+    pub interfaces: Vec<TypeExpression>,
     pub default: Option<TypeExpression>,
     pub span: Span,
 }

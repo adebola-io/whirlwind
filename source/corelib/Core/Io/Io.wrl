@@ -50,4 +50,4 @@ public function Print<T implements Display>(message: T) {
     // Invoke(Injunction.Print(messageAsStr));
 }
 
-public trait IoError {}
+public interface IoError {}

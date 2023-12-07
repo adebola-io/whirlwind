@@ -1,9 +1,9 @@
 use crate::{
     AccessExpr, ArrayExpr, AssignmentExpr, BinaryExpr, Block, CallExpr, ConstantDeclaration,
     EnumDeclaration, Expression, ForStatement, FunctionDeclaration, FunctionExpr, Identifier,
-    IfExpression, IndexExpr, LogicExpr, ModelDeclaration, ModuleDeclaration, NewExpr, Parameter,
-    ReturnStatement, ShorthandVariableDeclaration, Statement, TestDeclaration, ThisExpr,
-    TraitDeclaration, TypeDeclaration, UnaryExpr, UpdateExpr, UseDeclaration, VariableDeclaration,
+    IfExpression, IndexExpr, InterfaceDeclaration, LogicExpr, ModelDeclaration, ModuleDeclaration,
+    NewExpr, Parameter, ReturnStatement, ShorthandVariableDeclaration, Statement, TestDeclaration,
+    ThisExpr, TypeDeclaration, UnaryExpr, UpdateExpr, UseDeclaration, VariableDeclaration,
     WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
 };
 
@@ -20,11 +20,11 @@ pub trait ASTVisitor<Arguments = (), Output: Default = ()> {
             Statement::ShorthandVariableDeclaration(v) => self.shorthand_var_decl(v, args),
             Statement::ExpressionStatement(e) => self.expr_statement(e, args),
             Statement::FreeExpression(e) => self.free_expr(e, args),
-            Statement::TraitDeclaration(t) => self.trait_declaraion(t, args),
+            Statement::InterfaceDeclaration(t) => self.interface_declaraion(t, args),
             _ => Output::default(),
         }
     }
-    fn trait_declaraion(&self, _trait: &TraitDeclaration, args: &Arguments) -> Output {
+    fn interface_declaraion(&self, _interface: &InterfaceDeclaration, args: &Arguments) -> Output {
         Output::default()
     }
     fn expr_statement(&self, exp: &Expression, args: &Arguments) -> Output {
@@ -185,7 +185,7 @@ pub trait ASTVisitorNoArgs<Output: Default = ()> {
             Statement::ShorthandVariableDeclaration(v) => self.shorthand_var_decl(v),
             Statement::ExpressionStatement(e) => self.expr_statement(e),
             Statement::FreeExpression(e) => self.free_expr(e),
-            Statement::TraitDeclaration(t) => self.trait_declaraion(t),
+            Statement::InterfaceDeclaration(t) => self.interface_declaraion(t),
             Statement::ModuleDeclaration(m) => self.module_declaration(m),
             Statement::UseDeclaration(u) => self.use_declaration(u),
             Statement::ConstantDeclaration(c) => self.constant(c),
@@ -199,7 +199,7 @@ pub trait ASTVisitorNoArgs<Output: Default = ()> {
     fn module_declaration(&self, module: &ModuleDeclaration) -> Output {
         Output::default()
     }
-    fn trait_declaraion(&self, _trait: &TraitDeclaration) -> Output {
+    fn interface_declaraion(&self, _interface: &InterfaceDeclaration) -> Output {
         Output::default()
     }
     fn expr_statement(&self, exp: &Expression) -> Output {
@@ -360,7 +360,7 @@ pub trait MutASTVisitor<Output: Default = ()> {
             Statement::FunctionDeclaration(f) => self.function_declaration(f),
             Statement::EnumDeclaration(e) => self.enum_declaration(e),
             Statement::TypeDeclaration(t) => self.type_declaration(t),
-            // Statement::TraitDeclaration(t) => self.trait_declaration(t),
+            // Statement::InterfaceDeclaration(t) => self.interface_declaration(t),
             Statement::ExpressionStatement(e) => {
                 self.expr_statement(e);
             }
@@ -372,7 +372,7 @@ pub trait MutASTVisitor<Output: Default = ()> {
             Statement::ModelDeclaration(_) => todo!(),
             Statement::ModuleDeclaration(_) => todo!(),
             Statement::RecordDeclaration => todo!(),
-            Statement::TraitDeclaration(_) => todo!(),
+            Statement::InterfaceDeclaration(_) => todo!(),
             Statement::WhileStatement(w) => self.while_statement(w),
             Statement::ReturnStatement(_) => todo!(),
             Statement::ForStatement(f) => self.for_statement(f),
@@ -457,7 +457,7 @@ pub trait ASTVisitorExprOutputNoArgs<Output: Default = ()> {
             Statement::FunctionDeclaration(f) => self.function_declaration(f),
             Statement::EnumDeclaration(e) => self.enum_declaration(e),
             Statement::TypeDeclaration(t) => self.type_declaration(t),
-            Statement::TraitDeclaration(t) => self.trait_declaration(t),
+            Statement::InterfaceDeclaration(t) => self.interface_declaration(t),
             Statement::ExpressionStatement(e) => self.expr_statement(e),
             Statement::FreeExpression(e) => self.free_expr(e),
             Statement::ModelDeclaration(m) => self.model_declaration(m),
@@ -495,7 +495,7 @@ pub trait ASTVisitorExprOutputNoArgs<Output: Default = ()> {
 
     fn module_declaration(&self, module_decl: &ModuleDeclaration) {}
 
-    fn trait_declaration(&self, trait_decl: &TraitDeclaration) {}
+    fn interface_declaration(&self, interface_decl: &InterfaceDeclaration) {}
 
     fn test_declaration(&self, test_decl: &TestDeclaration) {}
 

@@ -47,7 +47,7 @@ impl<'a> SymbolWriter<'a> {
                 string.push_str("module "); // todo: print full path.
                 string.push_str(&symbol.name);
             }
-            SemanticSymbolKind::Trait {
+            SemanticSymbolKind::Interface {
                 is_public,
                 generic_params,
                 ..
@@ -55,7 +55,7 @@ impl<'a> SymbolWriter<'a> {
                 if *is_public {
                     string.push_str("public ");
                 }
-                string.push_str("trait ");
+                string.push_str("interface ");
                 string.push_str(&symbol.name);
                 self.maybe_print_generic_params_into_string(&mut string, generic_params);
             }
@@ -184,14 +184,14 @@ impl<'a> SymbolWriter<'a> {
                 is_public,
                 is_static,
                 is_async,
-                owner_model_or_trait,
+                owner_model_or_interface,
                 params,
                 generic_params,
                 return_type,
                 ..
             } => {
                 if !*self.is_opaque.borrow() {
-                    string = self.print_symbol_with_idx(*owner_model_or_trait);
+                    string = self.print_symbol_with_idx(*owner_model_or_interface);
                     string.push('\n');
                 }
                 if *is_public {
@@ -231,16 +231,16 @@ impl<'a> SymbolWriter<'a> {
                 }
             }
             SemanticSymbolKind::GenericParameter {
-                traits,
+                interfaces,
                 default_value,
                 ..
             } => {
                 string.push_str(&symbol.name);
-                if traits.len() > 0 {
+                if interfaces.len() > 0 {
                     string.push_str(" implements ");
-                    for (i, trait_) in traits.iter().enumerate() {
-                        string.push_str(&self.print_intermediate_type(trait_));
-                        if i + 1 != traits.len() {
+                    for (i, interface_) in interfaces.iter().enumerate() {
+                        string.push_str(&self.print_intermediate_type(interface_));
+                        if i + 1 != interfaces.len() {
                             string.push_str(" + ");
                         }
                     }

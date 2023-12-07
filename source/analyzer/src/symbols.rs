@@ -80,7 +80,7 @@ pub enum SemanticSymbolKind {
         /// The declarations in the global scope of this module.
         global_declaration_symbols: Vec<SymbolIndex>,
     },
-    Trait {
+    Interface {
         is_public: bool,
         implementations: Vec<IntermediateType>,
         generic_params: Vec<SymbolIndex>,
@@ -125,12 +125,12 @@ pub enum SemanticSymbolKind {
         property_index: usize,
         declared_type: IntermediateType,
     },
-    /// A method of a trait or model.
+    /// A method of a interface or model.
     Method {
         is_public: bool,
         is_static: bool,
         is_async: bool,
-        owner_model_or_trait: SymbolIndex,
+        owner_model_or_interface: SymbolIndex,
         property_index: usize,
         params: Vec<SymbolIndex>,
         generic_params: Vec<SymbolIndex>,
@@ -143,7 +143,7 @@ pub enum SemanticSymbolKind {
         inferred_type: EvaluatedType,
     },
     GenericParameter {
-        traits: Vec<IntermediateType>,
+        interfaces: Vec<IntermediateType>,
         default_value: Option<IntermediateType>,
     },
     Function {
@@ -175,7 +175,7 @@ pub enum SemanticSymbolKind {
 impl SemanticSymbolKind {
     pub fn is_public(&self) -> bool {
         match self {
-            SemanticSymbolKind::Trait { is_public, .. }
+            SemanticSymbolKind::Interface { is_public, .. }
             | SemanticSymbolKind::Model { is_public, .. }
             | SemanticSymbolKind::Enum { is_public, .. }
             | SemanticSymbolKind::Variable { is_public, .. }

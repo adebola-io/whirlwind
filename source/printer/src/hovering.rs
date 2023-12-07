@@ -1,11 +1,11 @@
 // use ast::{
 //     ConstantSignature, EnumSignature, EnumVariant, FunctionSignature, GenericParameter, Identifier,
 //     MethodSignature, ModelSignature, ModuleAmbience, Parameter, PublicSignatureContext,
-//     ShorthandVariableSignature, Signature, ThreeTierContext, TraitSignature, TypeExpression,
+//     ShorthandVariableSignature, Signature, ThreeTierContext, InterfaceSignature, TypeExpression,
 //     TypeSignature,
 // };
 
-// /// Generator trait for how symbols are illustrated in a hover card.
+// /// Generator interface for how symbols are illustrated in a hover card.
 // pub trait HoverFormatter {
 //     fn to_formatted(&self) -> String;
 // }
@@ -111,11 +111,11 @@
 //     }
 // }
 
-// impl HoverFormatter for TraitSignature {
+// impl HoverFormatter for InterfaceSignature {
 //     fn to_formatted(&self) -> String {
 //         let mut string = String::new();
 //         maybe_print_public(&mut string, self);
-//         string.push_str("trait ");
+//         string.push_str("interface ");
 //         string.push_str(&self.name.name);
 //         maybe_print_generic_params(&mut string, self.generic_params.as_ref());
 //         for _implementation in &self.implementations {
@@ -148,11 +148,11 @@
 //     fn to_formatted(&self) -> String {
 //         let mut string = String::new();
 //         string.push_str(&self.name.name);
-//         if self.traits.len() > 0 {
+//         if self.interfaces.len() > 0 {
 //             string.push_str(": ");
-//             for (idx, trait_) in self.traits.iter().enumerate() {
-//                 string.push_str(&trait_.to_formatted());
-//                 if idx + 1 != self.traits.len() {
+//             for (idx, interface_) in self.interfaces.iter().enumerate() {
+//                 string.push_str(&interface_.to_formatted());
+//                 if idx + 1 != self.interfaces.len() {
 //                     string.push_str(" + ");
 //                 }
 //             }

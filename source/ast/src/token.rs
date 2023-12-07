@@ -230,7 +230,7 @@ pub enum Keyword {
     This,
     #[allow(non_camel_case_types)]
     _this,
-    Trait,
+    Interface,
     True,
     Type,
     Use,
@@ -241,9 +241,10 @@ pub enum Keyword {
 pub fn is_keyword_or_operator(text: &str) -> bool {
     match text {
         "as" | "and" | "async" | "break" | "case" | "const" | "model" | "continue" | "else"
-        | "enum" | "false" | "for" | "fn" | "function" | "if" | "in" | "is" | "implements"
-        | "new" | "not" | "or" | "public" | "record" | "return" | "static" | "switch" | "test"
-        | "This" | "this" | "trait" | "true" | "type" | "use" | "var" | "while" | "module" => true,
+        | "enum" | "false" | "for" | "fn" | "function" | "if" | "in" | "interface" | "is"
+        | "implements" | "new" | "not" | "or" | "public" | "record" | "return" | "static"
+        | "switch" | "test" | "This" | "this" | "true" | "type" | "use" | "var" | "while"
+        | "module" => true,
         _ => false,
     }
 }

@@ -39,8 +39,8 @@ pub enum TypeErrorType {
         left: String,
         right: String,
     },
-    /// Using a trait in a type expression.
-    TraitAsType {
+    /// Using a interface in a type expression.
+    InterfaceAsType {
         name: String,
     },
 
@@ -69,8 +69,8 @@ pub enum TypeErrorType {
     PrivatePropertyLeak {
         property_name: String,
     },
-    AccessingOnTrait {
-        trait_: String,
+    AccessingOnInterface {
+        interface_: String,
     },
     TypeAsValue {
         type_: String,
@@ -87,9 +87,9 @@ pub enum TypeErrorType {
         base_type: String,
         property: String,
     },
-    UnimplementedTrait {
+    UnimplementedInterface {
         offender: String,
-        _trait: String,
+        _interface: String,
     },
     /// Calling a non-callable type.
     NotCallable {
@@ -272,9 +272,9 @@ pub fn mismatched_assignment(left: String, right: String, span: Span) -> TypeErr
     }
 }
 
-pub fn trait_as_type(name: String, span: ast::Span) -> TypeError {
+pub fn interface_as_type(name: String, span: ast::Span) -> TypeError {
     TypeError {
-        _type: TypeErrorType::TraitAsType { name },
+        _type: TypeErrorType::InterfaceAsType { name },
         span,
     }
 }
@@ -379,9 +379,9 @@ pub fn private_property_leak(property_name: String, span: Span) -> TypeError {
     }
 }
 
-pub fn accessing_on_trait(trait_: String, span: Span) -> TypeError {
+pub fn accessing_on_interface(interface_: String, span: Span) -> TypeError {
     TypeError {
-        _type: TypeErrorType::AccessingOnTrait { trait_ },
+        _type: TypeErrorType::AccessingOnInterface { interface_ },
         span,
     }
 }

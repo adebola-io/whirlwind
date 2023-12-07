@@ -181,22 +181,27 @@ mod bind_utils {
                 // There is no other scope-bound instance of this name that is not equal to this signature.
                 // If the symbol has already been used before, equate the instances.
                 // If the symbol cannot be hoisted, e.g. a constant or a variable, cause an error.
-                Ok(
-                    maybe_bound(&binder, symbol_library, errors, entry, !allow_hoisting, span)
-                        // No clashes in the current scope, and no previous usage.
-                        // create new symbol for this constant.
-                        .unwrap_or_else(|| {
-                            bind_signature(
-                                binder,
-                                symbol_library,
-                                errors,
-                                ambience,
-                                Some(ScopeId(search.scope.id as u32)),
-                                entry,
-                                span,
-                            )
-                        }),
+                Ok(maybe_bound(
+                    &binder,
+                    symbol_library,
+                    errors,
+                    entry,
+                    !allow_hoisting,
+                    span,
                 )
+                // No clashes in the current scope, and no previous usage.
+                // create new symbol for this constant.
+                .unwrap_or_else(|| {
+                    bind_signature(
+                        binder,
+                        symbol_library,
+                        errors,
+                        ambience,
+                        Some(ScopeId(search.scope.id as u32)),
+                        entry,
+                        span,
+                    )
+                }))
             }
         } else {
             Err(SymbolIndex(binder.path, 0))
@@ -378,27 +383,27 @@ mod bind_utils {
                 }
                 index
             }
-            ScopeEntry::Trait(_trait) => {
+            ScopeEntry::Interface(_interface) => {
                 let symbol = SemanticSymbol {
-                    name: _trait.name.name.to_owned(),
-                    kind: SemanticSymbolKind::Trait {
-                        is_public: _trait.is_public,
+                    name: _interface.name.name.to_owned(),
+                    kind: SemanticSymbolKind::Interface {
+                        is_public: _interface.is_public,
                         // The values after are written later and not now
-                        // to prevent trait-implements-itself recursive loops.
+                        // to prevent interface-implements-itself recursive loops.
                         generic_params: vec![],
                         implementations: vec![],
                         methods: vec![],
                     },
                     references: vec![SymbolReferenceList {
                         module_path: binder.path,
-                        starts: vec![_trait.name.span.start],
+                        starts: vec![_interface.name.span.start],
                     }],
-                    doc_info: _trait.info.clone(), // todo.
+                    doc_info: _interface.info.clone(), // todo.
                     origin_span,
                     origin_scope_id,
                 };
                 let index = symbol_library.add_to_table(binder.path, symbol);
-                let span = _trait.name.span;
+                let span = _interface.name.span;
                 binder.known_values.insert(span, index);
                 index
             }
@@ -482,7 +487,8 @@ mod bind_utils {
                             origin_scope_id,
                         };
                         property_symbol.add_reference(binder.path, real_name.span);
-                        let from_property = symbol_library.add_to_table(binder.path, property_symbol);
+                        let from_property =
+                            symbol_library.add_to_table(binder.path, property_symbol);
                         let name = alias.as_ref().unwrap_or(real_name);
                         (
                             SemanticSymbol {
@@ -557,8 +563,8 @@ mod bind_utils {
                 },
                 (CurrentModuleType::Internal, "never") => &mut symbol_library.never,
                 (CurrentModuleType::Internal, "Flow") => &mut symbol_library.flow,
-                (CurrentModuleType::Traits, "Try") => &mut symbol_library.try_s,
-                (CurrentModuleType::Traits, "Guaranteed") => &mut symbol_library.guaranteed,
+                (CurrentModuleType::Interfaces, "Try") => &mut symbol_library.try_s,
+                (CurrentModuleType::Interfaces, "Guaranteed") => &mut symbol_library.guaranteed,
                 (CurrentModuleType::Range, "Range") => &mut symbol_library.range,
                 (CurrentModuleType::Default, "Default") => &mut symbol_library.default,
                 (CurrentModuleType::Ops, "Addition") => &mut symbol_library.addition,
@@ -734,7 +740,7 @@ mod bind_utils {
 
 /// Statements
 mod statements {
-    use ast::{TraitBody, TraitPropertyType};
+    use ast::{InterfaceBody, InterfacePropertyType};
 
     use crate::{EvaluatedType, ScopeId};
 
@@ -831,9 +837,16 @@ mod statements {
                     ambience,
                 ))
             }
-            Statement::ExpressionStatement(expression) => TypedStmnt::ExpressionStatement(
-                bind_expression(expression, binder, symbol_library, errors, literals, ambience),
-            ),
+            Statement::ExpressionStatement(expression) => {
+                TypedStmnt::ExpressionStatement(bind_expression(
+                    expression,
+                    binder,
+                    symbol_library,
+                    errors,
+                    literals,
+                    ambience,
+                ))
+            }
             Statement::FreeExpression(expression) => TypedStmnt::FreeExpression(bind_expression(
                 expression,
                 binder,
@@ -853,9 +866,9 @@ mod statements {
                 bind_continue_statement(cont, binder, symbol_library, errors, ambience),
             ),
             Statement::RecordDeclaration => todo!(),
-            Statement::TraitDeclaration(trait_decl) => {
-                TypedStmnt::TraitDeclaration(bind_trait_declaration(
-                    trait_decl,
+            Statement::InterfaceDeclaration(interface_decl) => {
+                TypedStmnt::InterfaceDeclaration(bind_interface_declaration(
+                    interface_decl,
                     binder,
                     symbol_library,
                     errors,
@@ -895,7 +908,14 @@ mod statements {
                 binder.path,
                 literals,
             ),
-            body: bind_block(test.body, binder, symbol_library, errors, literals, ambience),
+            body: bind_block(
+                test.body,
+                binder,
+                symbol_library,
+                errors,
+                literals,
+                ambience,
+            ),
             span: test.span,
         }
     }
@@ -1172,13 +1192,13 @@ mod statements {
                 literals,
                 ambience,
             ),
-            ModelPropertyType::TraitImpl {
-                trait_target: trait_target_prior,
+            ModelPropertyType::InterfaceImpl {
+                interface_target: interface_target_prior,
                 body,
             } => {
-                let mut trait_target = vec![];
-                if let Some(discrete_type) = trait_target_prior.first() {
-                    trait_target.push(types::bind_discrete_type(
+                let mut interface_target = vec![];
+                if let Some(discrete_type) = interface_target_prior.first() {
+                    interface_target.push(types::bind_discrete_type(
                         discrete_type,
                         binder,
                         symbol_library,
@@ -1186,7 +1206,7 @@ mod statements {
                         ambience,
                     ));
                 }
-                for property_type in trait_target_prior.iter().skip(1) {
+                for property_type in interface_target_prior.iter().skip(1) {
                     // Same as in access expressions, properties cannot be bound
                     // until imports are resolved and types are inferred.
                     // So, a placeholder is used.
@@ -1223,7 +1243,7 @@ mod statements {
                         generic_args,
                         span: property_type.span,
                     };
-                    trait_target.push(final_property_type);
+                    interface_target.push(final_property_type);
                 }
                 let mut property = bind_model_method(
                     property.index,
@@ -1236,10 +1256,13 @@ mod statements {
                     literals,
                     ambience,
                 );
-                // convert method property to trait property.
+                // convert method property to interface property.
                 property._type = match property._type {
                     TypedModelPropertyType::TypedMethod { body } => {
-                        TypedModelPropertyType::TraitImpl { trait_target, body }
+                        TypedModelPropertyType::InterfaceImpl {
+                            interface_target,
+                            body,
+                        }
                     }
                     _ => unreachable!("Bound method as something else."),
                 };
@@ -1432,7 +1455,7 @@ mod statements {
                     is_public: method.is_public,
                     is_static: method.is_static,
                     is_async: method.is_async,
-                    owner_model_or_trait: owner,
+                    owner_model_or_interface: owner,
                     property_index: index,
                     params: vec![],
                     generic_params: vec![],
@@ -1804,25 +1827,27 @@ mod statements {
         temp_variants.into_iter().map(|temp| temp.index).collect()
     }
 
-    /// Binds a trait declaration.
-    pub fn bind_trait_declaration(
-        trait_decl: ast::TraitDeclaration,
+    /// Binds a interface declaration.
+    pub fn bind_interface_declaration(
+        interface_decl: ast::InterfaceDeclaration,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
-    ) -> TypedTraitDeclaration {
+    ) -> TypedInterfaceDeclaration {
         let binding_result = handle_scope_entry(
             binder,
             symbol_library,
             errors,
             ambience,
-            trait_decl.address,
-            trait_decl.span,
-            true, // traits can be hoisted.
+            interface_decl.address,
+            interface_decl.span,
+            true, // interfaces can be hoisted.
         );
-        let signature = ambience.get_entry_unguarded(trait_decl.address)._trait();
+        let signature = ambience
+            .get_entry_unguarded(interface_decl.address)
+            ._interface();
         binder.push_generic_pool(); // List of parameters.
         let generic_param_idxs = bind_generic_parameters(
             signature.generic_params.as_ref(),
@@ -1843,7 +1868,7 @@ mod statements {
                 // Add generic parameters, if the binding to this type was successful.
                 if let Some(SemanticSymbol {
                     kind:
-                        SemanticSymbolKind::Trait {
+                        SemanticSymbolKind::Interface {
                             implementations,
                             generic_params,
                             ..
@@ -1860,10 +1885,10 @@ mod statements {
             Err(idx) => idx,
         };
         binder.this_type.push(symbol_idx); // Set meaning of `This`.
-        let typed_trait_declaration = TypedTraitDeclaration {
+        let typed_interface_declaration = TypedInterfaceDeclaration {
             name: symbol_idx,
-            body: trait_body(
-                trait_decl.body,
+            body: interface_body(
+                interface_decl.body,
                 symbol_idx,
                 binder,
                 symbol_library,
@@ -1871,29 +1896,29 @@ mod statements {
                 literals,
                 ambience,
             ),
-            span: trait_decl.span,
+            span: interface_decl.span,
         };
         binder.pop_generic_pool();
         binder.this_type.pop(); // Remove meaning of This.
-        return typed_trait_declaration;
+        return typed_interface_declaration;
     }
 
     /// Bind a model body.
-    fn trait_body(
-        body: TraitBody,
+    fn interface_body(
+        body: InterfaceBody,
         owner_idx: SymbolIndex,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
-    ) -> TypedTraitBody {
-        TypedTraitBody {
+    ) -> TypedInterfaceBody {
+        TypedInterfaceBody {
             properties: body
                 .properties
                 .into_iter()
                 .map(|property| {
-                    bind_trait_property(
+                    bind_interface_property(
                         property,
                         owner_idx,
                         binder,
@@ -1908,18 +1933,18 @@ mod statements {
         }
     }
 
-    fn bind_trait_property(
-        property: ast::TraitProperty,
+    fn bind_interface_property(
+        property: ast::InterfaceProperty,
         owner: SymbolIndex,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
-    ) -> TypedTraitProperty {
+    ) -> TypedInterfaceProperty {
         match property._type {
             // bind a model attribute.
-            TraitPropertyType::Signature => bind_trait_signature(
+            InterfacePropertyType::Signature => bind_interface_signature(
                 property.index,
                 property.span,
                 owner,
@@ -1929,7 +1954,7 @@ mod statements {
                 literals,
                 ambience,
             ),
-            TraitPropertyType::Method { body } => bind_trait_method(
+            InterfacePropertyType::Method { body } => bind_interface_method(
                 property.index,
                 property.span,
                 owner,
@@ -1943,7 +1968,7 @@ mod statements {
         }
     }
 
-    fn bind_trait_signature(
+    fn bind_interface_signature(
         index: usize,
         span: Span,
         owner: SymbolIndex,
@@ -1952,22 +1977,22 @@ mod statements {
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
-    ) -> TypedTraitProperty {
+    ) -> TypedInterfaceProperty {
         // find first instance of an attribute name that matches this one.
         let shadow = ambience.create_shadow(binder.current_scope);
-        let address_of_owner_trait = shadow
+        let address_of_owner_interface = shadow
             .lookaround(&symbol_library.get(owner).unwrap().name)
             .unwrap()
             .construct_address(binder.path.0 as usize);
-        let parent_trait = ambience
-            .get_entry_unguarded_mut(address_of_owner_trait)
-            ._trait_mut();
+        let parent_interface = ambience
+            .get_entry_unguarded_mut(address_of_owner_interface)
+            ._interface_mut();
         binder.push_generic_pool(); // Add a list of reachable generic parameters.
-        let method = parent_trait
+        let method = parent_interface
             .methods
             .get(index)
             .expect("Could not find method with correct index.");
-        let first_instance = parent_trait
+        let first_instance = parent_interface
             .methods
             .iter()
             .find(|meth| meth.name.name == method.name.name)
@@ -1991,7 +2016,7 @@ mod statements {
                     is_public: method.is_public,
                     is_static: method.is_static,
                     is_async: method.is_async,
-                    owner_model_or_trait: owner,
+                    owner_model_or_interface: owner,
                     property_index: index,
                     params: vec![],
                     generic_params: vec![],
@@ -2010,7 +2035,7 @@ mod statements {
             index
         };
 
-        let method = parent_trait
+        let method = parent_interface
             .methods
             .get_mut(index)
             .expect("Could not find method with correct index.");
@@ -2059,25 +2084,25 @@ mod statements {
             *return_type = return_type_solved;
             *params = parameters;
         }
-        // Add to owner trait's method list.
+        // Add to owner interfaceface's method list.
         if let Some(SemanticSymbol {
-            kind: SemanticSymbolKind::Trait { methods, .. },
+            kind: SemanticSymbolKind::Interface { methods, .. },
             ..
         }) = symbol_library.get_mut(owner)
         {
             methods.push(symbol_idx);
         }
-        let method = TypedTraitProperty {
+        let method = TypedInterfaceProperty {
             name: symbol_idx,
-            _type: TypedTraitPropertyType::Signature,
+            _type: TypedInterfacePropertyType::Signature,
             span,
         };
         binder.pop_generic_pool(); // Remove list of reachable generic parameters.
         return method;
     }
 
-    /// Binds a trait method.
-    fn bind_trait_method(
+    /// Binds a interfaceface method.
+    fn bind_interface_method(
         index: usize,
         span: Span,
         owner: SymbolIndex,
@@ -2087,22 +2112,22 @@ mod statements {
         errors: &mut Vec<ProgramError>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
-    ) -> TypedTraitProperty {
+    ) -> TypedInterfaceProperty {
         // find first instance of an attribute name that matches this one.
         let shadow = ambience.create_shadow(binder.current_scope);
-        let address_of_owner_trait = shadow
+        let address_of_owner_interface = shadow
             .lookaround(&symbol_library.get(owner).unwrap().name)
             .unwrap()
             .construct_address(binder.path.0 as usize);
-        let parent_trait = ambience
-            .get_entry_unguarded_mut(address_of_owner_trait)
-            ._trait_mut();
+        let parent_interface = ambience
+            .get_entry_unguarded_mut(address_of_owner_interface)
+            ._interface_mut();
         binder.push_generic_pool(); // Add a list of reachable generic parameters.
-        let method = parent_trait
+        let method = parent_interface
             .methods
             .get(index)
             .expect("Could not find method with correct index.");
-        let first_instance = parent_trait
+        let first_instance = parent_interface
             .methods
             .iter()
             .find(|meth| meth.name.name == method.name.name)
@@ -2127,7 +2152,7 @@ mod statements {
                     is_public: method.is_public,
                     is_static: method.is_static,
                     is_async: method.is_async,
-                    owner_model_or_trait: owner,
+                    owner_model_or_interface: owner,
                     property_index: index,
                     params: vec![],
                     generic_params: vec![],
@@ -2146,7 +2171,7 @@ mod statements {
             index
         };
 
-        let method = parent_trait
+        let method = parent_interface
             .methods
             .get_mut(index)
             .expect("Could not find method with correct index.");
@@ -2185,17 +2210,17 @@ mod statements {
             *return_type = return_type_solved;
             *params = parameters;
         }
-        // Add to owner trait's method list.
+        // Add to owner interface's method list.
         if let Some(SemanticSymbol {
-            kind: SemanticSymbolKind::Trait { methods, .. },
+            kind: SemanticSymbolKind::Interface { methods, .. },
             ..
         }) = symbol_library.get_mut(owner)
         {
             methods.push(symbol_idx);
         }
-        let method = TypedTraitProperty {
+        let method = TypedInterfaceProperty {
             name: symbol_idx,
-            _type: TypedTraitPropertyType::Method { body },
+            _type: TypedInterfacePropertyType::Method { body },
             span,
         };
         binder.pop_generic_pool(); // Remove list of reachable generic parameters.
@@ -2231,8 +2256,13 @@ mod statements {
                     errors,
                     ambience,
                 );
-                let value_solved =
-                    bind_type_expression(&signature.value, binder, symbol_library, errors, ambience);
+                let value_solved = bind_type_expression(
+                    &signature.value,
+                    binder,
+                    symbol_library,
+                    errors,
+                    ambience,
+                );
                 match &mut symbol_library.get_mut(symbol_idx).unwrap().kind {
                     SemanticSymbolKind::TypeName {
                         generic_params,
@@ -2296,7 +2326,14 @@ mod statements {
     ) -> TypedReturnStatement {
         TypedReturnStatement {
             value: returnstmnt.value.map(|expression| {
-                bind_expression(expression, binder, symbol_library, errors, literals, ambience)
+                bind_expression(
+                    expression,
+                    binder,
+                    symbol_library,
+                    errors,
+                    literals,
+                    ambience,
+                )
             }),
             span: returnstmnt.span,
         }
@@ -2359,10 +2396,9 @@ mod statements {
             // Bind type expression.
             let entry = ambience.get_entry_unguarded(address).var();
             if declared_type_solved.is_none() {
-                declared_type_solved =
-                    Some(entry.var_type.as_ref().map(|typ| {
-                        bind_type_expression(typ, binder, symbol_library, errors, ambience)
-                    }));
+                declared_type_solved = Some(entry.var_type.as_ref().map(|typ| {
+                    bind_type_expression(typ, binder, symbol_library, errors, ambience)
+                }));
             }
             let symbol = symbol_library
                 .get_mut(symbol_idx)
@@ -2379,7 +2415,14 @@ mod statements {
         return TypedVariableDeclaration {
             names,
             value: variable.value.map(|expression| {
-                bind_expression(expression, binder, symbol_library, errors, literals, ambience)
+                bind_expression(
+                    expression,
+                    binder,
+                    symbol_library,
+                    errors,
+                    literals,
+                    ambience,
+                )
             }),
             span: variable.span,
         };
@@ -2508,9 +2551,16 @@ mod expressions {
                 literals,
                 ambience,
             )),
-            Expression::UpdateExpr(updateexp) => TypedExpression::UpdateExpr(
-                bind_update_expression(updateexp, binder, symbol_library, errors, literals, ambience),
-            ),
+            Expression::UpdateExpr(updateexp) => {
+                TypedExpression::UpdateExpr(bind_update_expression(
+                    updateexp,
+                    binder,
+                    symbol_library,
+                    errors,
+                    literals,
+                    ambience,
+                ))
+            }
             Expression::BlockExpr(block) => TypedExpression::Block(bind_block(
                 block,
                 binder,
@@ -2530,8 +2580,14 @@ mod expressions {
         errors: &mut Vec<ProgramError>,
         ambience: &ModuleAmbience,
     ) -> TypedIdent {
-        let symbol_index =
-            bind_utils::find_or_create(binder, symbol_library, errors, ambience, &identifier, false);
+        let symbol_index = bind_utils::find_or_create(
+            binder,
+            symbol_library,
+            errors,
+            ambience,
+            &identifier,
+            false,
+        );
 
         TypedIdent {
             value: symbol_index,
@@ -2572,7 +2628,7 @@ mod expressions {
     ) -> TypedThisExpr {
         let shadow = ambience.create_shadow(binder.current_scope);
         let symbol_index = match shadow.get_method_context() {
-            // find the referenced model or trait.
+            // find the referenced model or interfaceface.
             Some(search) => Some(bind_utils::find_or_create(
                 binder,
                 symbol_library,
@@ -2581,14 +2637,14 @@ mod expressions {
                 search.entry.ident().unwrap(),
                 false,
             )),
-            // 'this' is being used outside of a model or trait.
+            // 'this' is being used outside of a model or interface.
             None => {
                 bind_utils::add_ctx_error(binder, errors, errors::this_outside_method(this.span));
                 None
             }
         };
         TypedThisExpr {
-            model_or_trait: symbol_index,
+            model_or_interface: symbol_index,
             start_line: this.span.start[0],
             start_character: this.span.start[1],
             inferred_type: EvaluatedType::Unknown,
@@ -2605,7 +2661,14 @@ mod expressions {
         ambience: &mut ModuleAmbience,
     ) -> TypedCallExpr {
         let mut bind_expression = |expression| {
-            bind_expression(expression, binder, symbol_library, errors, literals, ambience)
+            bind_expression(
+                expression,
+                binder,
+                symbol_library,
+                errors,
+                literals,
+                ambience,
+            )
         };
         TypedCallExpr {
             caller: bind_expression(call.caller),
@@ -2822,7 +2885,14 @@ mod expressions {
                 .elements
                 .into_iter()
                 .map(|expression| {
-                    bind_expression(expression, binder, symbol_library, errors, literals, ambience)
+                    bind_expression(
+                        expression,
+                        binder,
+                        symbol_library,
+                        errors,
+                        literals,
+                        ambience,
+                    )
                 })
                 .collect(),
             inferred_type: EvaluatedType::Unknown,
@@ -3230,13 +3300,14 @@ mod types {
                 // Binds only the parameter names.
                 let binding_result =
                     bind_generic_parameter_name(parameter, binder, symbol_library, errors);
-                let mut type_exp_binder =
-                    |typ| types::bind_type_expression(typ, binder, symbol_library, errors, ambience);
-                // Bind the trait guards and default values.
-                let trait_guards = parameter
-                    .traits
+                let mut type_exp_binder = |typ| {
+                    types::bind_type_expression(typ, binder, symbol_library, errors, ambience)
+                };
+                // Bind the interface guards and default values.
+                let interface_guards = parameter
+                    .interfaces
                     .iter()
-                    .map(|_trait| type_exp_binder(_trait))
+                    .map(|_interface| type_exp_binder(_interface))
                     .collect();
                 let param_default_value = parameter
                     .default
@@ -3248,13 +3319,13 @@ mod types {
                             Some(SemanticSymbol {
                                 kind:
                                     SemanticSymbolKind::GenericParameter {
-                                        traits,
+                                        interfaces,
                                         default_value,
                                         ..
                                     },
                                 ..
                             }) => {
-                                *traits = trait_guards;
+                                *interfaces = interface_guards;
                                 *default_value = param_default_value;
                             }
                             _ => unreachable!("Could not retrieve bound generic parameter."),
@@ -3288,8 +3359,8 @@ mod types {
         let symbol = SemanticSymbol {
             name: parameter.name.name.to_owned(),
             kind: SemanticSymbolKind::GenericParameter {
-                // traits and default values are bound later.
-                traits: vec![],
+                // interfacefaces and default values are bound later.
+                interfaces: vec![],
                 default_value: None,
             },
             references: vec![SymbolReferenceList {

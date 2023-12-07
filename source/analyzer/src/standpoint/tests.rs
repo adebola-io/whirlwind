@@ -98,11 +98,11 @@ fn bind_models() {
 }
 
 #[test]
-fn bind_traits() {
+fn bind_interfaces() {
     let text = "
             module Test;
 
-            public trait Vehicle {
+            public interface Vehicle {
                 public function Start(): This;
             }
         ";

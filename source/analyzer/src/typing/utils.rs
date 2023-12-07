@@ -122,7 +122,7 @@ pub fn is_array(typ: &EvaluatedType, symbollib: &SymbolLibrary) -> bool {
     }
 }
 
-/// Coerce generics (and possibly trait types) in a type according to a generic list.
+/// Coerce generics (and possibly interface types) in a type according to a generic list.
 pub fn coerce(typ: EvaluatedType, args: &Vec<(SymbolIndex, EvaluatedType)>) -> EvaluatedType {
     match typ {
         EvaluatedType::ModelInstance {
@@ -138,20 +138,20 @@ pub fn coerce(typ: EvaluatedType, args: &Vec<(SymbolIndex, EvaluatedType)>) -> E
                 generic_arguments,
             }
         }
-        EvaluatedType::TraitInstance {
-            trait_,
+        EvaluatedType::InterfaceInstance {
+            interface_,
             generic_arguments: old_generic_arguments,
         } => {
             let mut generic_arguments = vec![];
-            // Traits are coercible too because of the "This" type.
-            if let Some(newtype) = args.iter().find(|(a, _)| *a == trait_) {
+            // Interfaces are coercible too because of the "This" type.
+            if let Some(newtype) = args.iter().find(|(a, _)| *a == interface_) {
                 return newtype.1.clone();
             }
             for (argument, old_type) in old_generic_arguments {
                 generic_arguments.push((argument, coerce(old_type, args)));
             }
-            EvaluatedType::TraitInstance {
-                trait_,
+            EvaluatedType::InterfaceInstance {
+                interface_,
                 generic_arguments,
             }
         }
@@ -282,7 +282,7 @@ pub fn symbol_to_type(
 ) -> Result<EvaluatedType, Result<EvaluatedType, TypeErrorType>> {
     let eval_type = match &symbol.kind {
         SemanticSymbolKind::Module { .. } => EvaluatedType::Module(name),
-        SemanticSymbolKind::Trait { .. } => EvaluatedType::Trait(name),
+        SemanticSymbolKind::Interface { .. } => EvaluatedType::Interface(name),
         SemanticSymbolKind::Model { .. } => EvaluatedType::Model(name),
         SemanticSymbolKind::Enum { .. } => EvaluatedType::Enum(name),
         SemanticSymbolKind::Variant { owner_enum, .. } => EvaluatedType::EnumInstance {
@@ -331,7 +331,7 @@ pub fn symbol_to_type(
     Ok(eval_type)
 }
 
-/// Extract the available methods as evaluated types from a model, trait or generic.
+/// Extract the available methods as evaluated types from a model, interface or generic.
 pub fn get_method_types_from_symbol<'a>(
     symbol_idx: SymbolIndex,
     symbollib: &'a SymbolLibrary,
@@ -344,7 +344,8 @@ pub fn get_method_types_from_symbol<'a>(
     }
     let symbol = symbol.unwrap();
     match &symbol.kind {
-        SemanticSymbolKind::Model { methods, .. } | SemanticSymbolKind::Trait { methods, .. } => {
+        SemanticSymbolKind::Model { methods, .. }
+        | SemanticSymbolKind::Interface { methods, .. } => {
             for method in methods {
                 let method = *method;
                 let method_symbol = symbollib.get(method);
@@ -364,17 +365,17 @@ pub fn get_method_types_from_symbol<'a>(
                 method_types.push((&method_symbol.name, coerced, method_symbol.kind.is_public()));
             }
         }
-        SemanticSymbolKind::GenericParameter { traits, .. } => {
-            for int_typ in traits {
+        SemanticSymbolKind::GenericParameter { interfaces, .. } => {
+            for int_typ in interfaces {
                 let evaled = evaluate(int_typ, symbollib, Some(generic_arguments), &mut None, 0);
-                if let EvaluatedType::TraitInstance {
-                    trait_,
+                if let EvaluatedType::InterfaceInstance {
+                    interface_,
                     generic_arguments,
                 } = evaled
                 {
-                    let mut methods_from_trait =
-                        get_method_types_from_symbol(trait_, symbollib, &generic_arguments);
-                    method_types.append(&mut methods_from_trait);
+                    let mut methods_from_interface =
+                        get_method_types_from_symbol(interface_, symbollib, &generic_arguments);
+                    method_types.append(&mut methods_from_interface);
                 }
             }
         }
@@ -383,13 +384,13 @@ pub fn get_method_types_from_symbol<'a>(
     return method_types;
 }
 
-/// Extract all available traits as evaluated types from a model, trait or generic.
-pub fn get_trait_types_from_symbol(
+/// Extract all available interfaces as evaluated types from a model, interface or generic.
+pub fn get_interface_types_from_symbol(
     symbol_idx: SymbolIndex,
     symbollib: &SymbolLibrary,
     generic_arguments: &Vec<(SymbolIndex, EvaluatedType)>,
 ) -> Vec<EvaluatedType> {
-    let mut trait_types = vec![];
+    let mut interface_types = vec![];
     let symbol = symbollib.get(symbol_idx);
     if symbol.is_none() {
         return vec![];
@@ -399,7 +400,7 @@ pub fn get_trait_types_from_symbol(
         SemanticSymbolKind::Model {
             implementations, ..
         }
-        | SemanticSymbolKind::Trait {
+        | SemanticSymbolKind::Interface {
             implementations, ..
         } => {
             for implementation in implementations {
@@ -410,42 +411,44 @@ pub fn get_trait_types_from_symbol(
                     &mut None,
                     0,
                 );
-                if !initial_type.is_trait_instance() {
+                if !initial_type.is_interface_instance() {
                     continue;
                 }
                 let coerced = coerce(initial_type, generic_arguments); // todo: is coercion still necessary?
-                trait_types.push(coerced);
+                interface_types.push(coerced);
             }
         }
-        SemanticSymbolKind::GenericParameter { traits, .. } => {
-            for int_typ in traits {
+        SemanticSymbolKind::GenericParameter { interfaces, .. } => {
+            for int_typ in interfaces {
                 let evaled = evaluate(int_typ, symbollib, Some(generic_arguments), &mut None, 0);
-                if let EvaluatedType::TraitInstance {
-                    trait_,
+                if let EvaluatedType::InterfaceInstance {
+                    interface_,
                     generic_arguments,
                 } = &evaled
                 {
-                    trait_types.push(evaled.clone());
-                    let mut traits_from_trait =
-                        get_trait_types_from_symbol(*trait_, symbollib, &generic_arguments);
-                    trait_types.append(&mut traits_from_trait);
+                    interface_types.push(evaled.clone());
+                    let mut interfaces_from_interface =
+                        get_interface_types_from_symbol(*interface_, symbollib, &generic_arguments);
+                    interface_types.append(&mut interfaces_from_interface);
                 }
             }
         }
         _ => {}
     }
-    return trait_types;
+    return interface_types;
 }
 
-/// Get an implementation of a trait from an evaluated type, if it exists.
+/// Get an implementation of a interface from an evaluated type, if it exists.
 pub fn get_implementation_of(
-    target_trait: SymbolIndex,
+    target_interface: SymbolIndex,
     operand_type: &EvaluatedType,
     symbollib: &SymbolLibrary,
 ) -> Option<EvaluatedType> {
     match operand_type {
         EvaluatedType::ModelInstance { model: base, .. }
-        | EvaluatedType::TraitInstance { trait_: base, .. }
+        | EvaluatedType::InterfaceInstance {
+            interface_: base, ..
+        }
         | EvaluatedType::Generic { base }
         | EvaluatedType::HardGeneric { base } => {
             let base_symbol = symbollib.get(*base)?;
@@ -453,19 +456,19 @@ pub fn get_implementation_of(
                 SemanticSymbolKind::Model {
                     implementations, ..
                 }
-                | SemanticSymbolKind::Trait {
+                | SemanticSymbolKind::Interface {
                     implementations, ..
                 }
                 | SemanticSymbolKind::GenericParameter {
-                    traits: implementations,
+                    interfaces: implementations,
                     ..
                 } => implementations,
                 _ => return None,
             };
             for implementation in implementation_list {
                 let evaluated = evaluate(implementation, symbollib, None, &mut None, 0);
-                if let EvaluatedType::TraitInstance { trait_, .. } = &evaluated {
-                    if *trait_ == target_trait {
+                if let EvaluatedType::InterfaceInstance { interface_, .. } = &evaluated {
+                    if *interface_ == target_interface {
                         return Some(evaluated);
                     }
                 }
@@ -793,7 +796,7 @@ pub fn get_type_generics<'a>(
         EvaluatedType::ModelInstance {
             generic_arguments, ..
         }
-        | EvaluatedType::TraitInstance {
+        | EvaluatedType::InterfaceInstance {
             generic_arguments, ..
         }
         | EvaluatedType::EnumInstance {
@@ -825,7 +828,7 @@ pub fn get_type_generics_mut<'a>(
         EvaluatedType::ModelInstance {
             generic_arguments, ..
         }
-        | EvaluatedType::TraitInstance {
+        | EvaluatedType::InterfaceInstance {
             generic_arguments, ..
         }
         | EvaluatedType::EnumInstance {

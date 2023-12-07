@@ -281,7 +281,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
         let span_start = [_this.start_line, _this.start_character];
         let span = Span::on_line(span_start, 4);
         within!(span, self);
-        match _this.model_or_trait {
+        match _this.model_or_interface {
             Some(meaning) => Some(HoverInfo::from((self.standpoint, meaning))),
             None => Some(HoverInfo::from_str("this: {unknown}")),
         }
@@ -476,9 +476,12 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
                     }
                     _ => return None,
                 },
-                analyzer::TypedModelPropertyType::TraitImpl { trait_target, body } => {
-                    for trait_target_unit in trait_target {
-                        maybe!(self.type_hover(trait_target_unit))
+                analyzer::TypedModelPropertyType::InterfaceImpl {
+                    interface_target,
+                    body,
+                } => {
+                    for interface_target_unit in interface_target {
+                        maybe!(self.type_hover(interface_target_unit))
                     }
                     match &symbol.kind {
                         SemanticSymbolKind::Method {
@@ -502,16 +505,19 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
         None
     }
 
-    fn trait_declaration(&self, trait_: &analyzer::TypedTraitDeclaration) -> Option<HoverInfo> {
-        within!(trait_.span, self);
-        // hovering over a trait name.
-        let model_symbol = self.standpoint.symbol_library.get(trait_.name)?;
+    fn interface_declaration(
+        &self,
+        interface_: &analyzer::TypedInterfaceDeclaration,
+    ) -> Option<HoverInfo> {
+        within!(interface_.span, self);
+        // hovering over a interface name.
+        let model_symbol = self.standpoint.symbol_library.get(interface_.name)?;
         if model_symbol.ident_span().contains(self.pos) {
-            return Some(HoverInfo::from((self.standpoint, trait_.name)));
+            return Some(HoverInfo::from((self.standpoint, interface_.name)));
         }
         // hovering over a generic parameter.
         let (generic_params, impls) = match &model_symbol.kind {
-            SemanticSymbolKind::Trait {
+            SemanticSymbolKind::Interface {
                 generic_params,
                 implementations,
                 ..
@@ -525,10 +531,10 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
         for _impl in impls {
             maybe!(self.type_hover(_impl))
         }
-        // hovering over the trait body.
-        within!(trait_.body.span, self);
+        // hovering over the interface body.
+        within!(interface_.body.span, self);
         // hovering in a property.
-        for property in trait_.body.properties.iter() {
+        for property in interface_.body.properties.iter() {
             if !property.span.contains(self.pos) {
                 continue;
             }
@@ -538,7 +544,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
                 return Some(HoverInfo::from((self.standpoint, property.name)));
             }
             match &property._type {
-                analyzer::TypedTraitPropertyType::Method { body } => match &symbol.kind {
+                analyzer::TypedInterfacePropertyType::Method { body } => match &symbol.kind {
                     SemanticSymbolKind::Method {
                         params,
                         generic_params,
@@ -549,7 +555,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
                     }
                     _ => return None,
                 },
-                analyzer::TypedTraitPropertyType::Signature => match &symbol.kind {
+                analyzer::TypedInterfacePropertyType::Signature => match &symbol.kind {
                     SemanticSymbolKind::Method {
                         params,
                         generic_params,
@@ -774,16 +780,16 @@ impl HoverFinder<'_> {
             return Some(HoverInfo::from((self.standpoint, generic_param)));
             // }
         }
-        let (traits, default) = match &symbol.kind {
+        let (interfaces, default) = match &symbol.kind {
             SemanticSymbolKind::GenericParameter {
-                traits,
+                interfaces,
                 default_value,
                 ..
-            } => (traits, default_value),
+            } => (interfaces, default_value),
             _ => return None,
         };
-        for _trait in traits {
-            if let Some(hvinfo) = self.type_hover(_trait) {
+        for _interface in interfaces {
+            if let Some(hvinfo) = self.type_hover(_interface) {
                 return Some(hvinfo);
             }
         }

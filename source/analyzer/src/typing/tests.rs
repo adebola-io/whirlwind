@@ -65,7 +65,7 @@ macro_rules! check_types {
 fn it_solves_generics() {}
 
 #[test]
-fn it_solves_trait_impls_for_generics() {}
+fn it_solves_interface_impls_for_generics() {}
 
 #[test]
 fn it_solves_assignment() {}
@@ -97,13 +97,13 @@ fn it_blocks_value_as_types() {}
 fn it_blocks_method_mutation() {}
 
 #[test]
-fn it_errors_for_incomplete_trait_impls() {}
+fn it_errors_for_incomplete_interface_impls() {}
 
 #[test]
-fn it_allows_trait_method_overriding() {
+fn it_allows_interface_method_overriding() {
     // in a model.
 
-    // in another trait.
+    // in another interface.
 }
 
 #[test]

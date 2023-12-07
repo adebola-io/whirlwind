@@ -28,7 +28,7 @@ pub struct ModelSignature {
     pub generic_params: Option<Vec<GenericParameter>>,
     /// The constructor parameters, if there is a constructor.
     pub parameters: Option<Vec<Parameter>>,
-    /// Implemented Traits.
+    /// Implemented Interfaces.
     pub implementations: Vec<TypeExpression>,
     /// The properties of the model.
     pub attributes: Vec<AttributeSignature>,
@@ -163,10 +163,10 @@ pub struct FunctionSignature {
     pub return_type: Option<TypeExpression>,
 }
 
-/// An entry to mark a trait declaration.
+/// An entry to mark a interface declaration.
 #[derive(Debug, Signature, Hash)]
-pub struct TraitSignature {
-    /// Name of the trait.
+pub struct InterfaceSignature {
+    /// Name of the interface.
     pub name: Identifier,
     /// Doc comments annotating the function, if any.
     pub info: Option<Vec<String>>,
@@ -174,9 +174,9 @@ pub struct TraitSignature {
     pub is_public: bool,
     /// Generic Parameters of the function, if any.
     pub generic_params: Option<Vec<GenericParameter>>,
-    /// Methods on the trait.
+    /// Methods on the interface.
     pub methods: Vec<MethodSignature>,
-    /// Implemented Traits.
+    /// Implemented Interfaces.
     pub implementations: Vec<TypeExpression>,
 }
 

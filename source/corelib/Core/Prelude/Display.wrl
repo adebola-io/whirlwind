@@ -2,7 +2,7 @@ module Display;
 
 use Super.Primitives.String;
 
-/// The `Display` trait defines a contract for the conversion of models into string representations.
+/// The `Display` interface defines a contract for the conversion of models into string representations.
 /// This allows objects of different types to be seamlessly integrated into textual contexts,
 /// particularly for user-facing interfaces.
 /// 
@@ -30,7 +30,7 @@ use Super.Primitives.String;
 /// Core.Io.Print(new Rectangle(4, 6)) // Will print out "Rectangle {length: 4, breadth: 6}"".
 /// ```
 /// 
-public trait Display {
+public interface Display {
     /// Converts the implementing type to a string.
     public function ToStr(): String;
 }

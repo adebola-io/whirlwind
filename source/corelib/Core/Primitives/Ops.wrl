@@ -3,9 +3,9 @@ module Ops;
 use Bool.Bool;
 use Super.Prelude.Maybe;
 
-/// This trait allows the definition of models that can be added together 
+/// This interface allows the definition of models that can be added together 
 /// by overloading the `+` operator, such as strings and numbers.
-public trait Addition {
+public interface Addition {
     /// Adds two items together.
     public function Add(other: This): This;
 }
@@ -16,28 +16,28 @@ enum Ordering {
     Equal,
 }
 
-/// This trait is implemented by models that can be compared in a sequence
+/// This interface is implemented by models that can be compared in a sequence
 /// to other models of the same type.
-public trait Orderable {
+public interface Orderable {
     /// Compares two values together.
     public function Compare(other: &This): Ordering;
 }
 
-/// This trait concerns all items that can exist in a sequence,
+/// This interface concerns all items that can exist in a sequence,
 /// most notably letters and numbers.
-public trait Sequenced {
+public interface Sequenced {
     /// Returns the next item in a sequence.
     public function NextItem(): Maybe<This>;
 }
 
-public trait Subtraction {
+public interface Subtraction {
     function Subtract(other: &This): This;
 }
 
-public trait Multiplication {
+public interface Multiplication {
     function Multiply(other: &This): This;
 }
 
-public trait Division {
+public interface Division {
     function Divide(other: &This): This;
 }

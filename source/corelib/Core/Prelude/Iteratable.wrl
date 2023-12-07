@@ -5,24 +5,24 @@ use Prelude.Bool;
 use Prelude.Todo;
 use Maybe.Maybe;
 
-/// ## The Iteratable trait
-/// The Iteratable trait is a common abstraction that allows different types of collections to be traversed in a uniform way. 
+/// ## The Iteratable interface
+/// The Iteratable interface is a common abstraction that allows different types of collections to be traversed in a uniform way. 
 /// It defines a set of methods that can be used to access and manipulate the elements of a collection, such as arrays, lists, sets, maps, etc.
 ///
 /// It is usually specified as a generic parameter or an associated type. 
 /// The `Next()` method is the core method that moves the iterator forward and returns the next element, 
 /// or `None` if there are no more elements. 
 /// 
-/// The Iteratable trait also provides many other methods that are implemented based on the next method. 
+/// The Iteratable interface also provides many other methods that are implemented based on the next method. 
 /// These methods can perform various operations on the elements of the iterator, 
 /// such as filtering, mapping, folding, counting, etc.
 ///  
 /// Some of these methods consume the iterator and return a single value, 
 /// while others return another iterator that can be chained with further methods.
-/// The Iteratable trait can be implemented for any type that represents a sequence of values. 
+/// The Iteratable interface can be implemented for any type that represents a sequence of values. 
 /// 
 /// Optionally, one can also override some of the default methods to provide more efficient or customized behavior.
-public trait Iteratable<I> {
+public interface Iteratable<I> {
     /// Returns the next item in the iteration.
     public function Next(): Maybe<I>;
     /// Gathers all the items left in the iterator into an array.
@@ -61,8 +61,8 @@ public trait Iteratable<I> {
     }
 }
 
-/// This trait specifies that a model can be made into an iterator.
-public trait AsIterator<I, T implements Iteratable<I>> {
+/// This interface specifies that a model can be made into an iterator.
+public interface AsIterator<I, T implements Iteratable<I>> {
     /// Turn a model into an iterator.
     public function IntoIter(): T;
 }

@@ -20,7 +20,7 @@ pub enum ParserErrorType {
     UnexpectedToken,
     StringExpected,
     ExpressionExpected,
-    TypeInTraitPosition(ast::TypeExpression),
+    TypeInInterfacePosition(ast::TypeExpression),
     ExpectedAttribute,
     PublicAccessTypeOnConstructor,
     DuplicateModuleName,
@@ -118,10 +118,10 @@ pub fn expression_expected(span: Span) -> ParseError {
     }
 }
 
-pub fn type_in_trait_position(r#trait: ast::TypeExpression) -> ParseError {
+pub fn type_in_interface_position(r#interface: ast::TypeExpression) -> ParseError {
     ParseError {
-        span: r#trait.span(),
-        _type: ParserErrorType::TypeInTraitPosition(r#trait),
+        span: r#interface.span(),
+        _type: ParserErrorType::TypeInInterfacePosition(r#interface),
     }
 }
 

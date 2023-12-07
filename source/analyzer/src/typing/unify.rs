@@ -376,7 +376,7 @@ pub fn unify_types(
                 generic_arguments: opaque_generics,
                 aliased_as,
                 available_methods: methods,
-                available_traits: traits
+                available_interfaces: interfaces
             },
             ModelInstance {
                 model: child,
@@ -417,7 +417,7 @@ pub fn unify_types(
                 collaborators: collaborators.clone(),
                 generic_arguments,
                 available_methods: methods.clone(),
-                available_traits: traits.clone()
+                available_interfaces: interfaces.clone()
             });
         }
         // Left type is opaque and right type is generic.
@@ -443,7 +443,7 @@ pub fn unify_types(
                 collaborators: left_collaborators,
                 generic_arguments: left_generics,
                 available_methods: methods,
-                available_traits: traits,
+                available_interfaces: interfaces,
                 ..
             },
             OpaqueTypeInstance {
@@ -482,7 +482,7 @@ pub fn unify_types(
                 generic_arguments,
                 aliased_as: *aliased_as,
                 available_methods: methods.clone(),
-                available_traits: traits.clone()
+                available_interfaces: interfaces.clone()
             });
         }
         // Otherwise, both types cannot be unified.
@@ -529,7 +529,7 @@ fn solve_generic_type(
     let base_parameter = symbollib.get_forwarded(*base).unwrap();
     match &base_parameter.kind {
         SemanticSymbolKind::GenericParameter {
-            traits,
+            interfaces,
             default_value,
         } => {
             // Default generic type if other is unknown.
@@ -547,24 +547,24 @@ fn solve_generic_type(
                     ));
                 }
             }
-            for _trait in traits {
-                let trait_evaluated = evaluate(_trait, symbollib, None, &mut None, 0);
-                // The trait guard does not refer to a trait.
+            for _interface in interfaces {
+                let interface_evaluated = evaluate(_interface, symbollib, None, &mut None, 0);
+                // The interface guard does not refer to a interface.
                 // Unification cannot continue, but it is not the problem of this process.
-                if !trait_evaluated.is_trait_instance() {
+                if !interface_evaluated.is_interface_instance() {
                     return Ok(Unknown);
                 }
                 let implementations = match free_type {
                     ModelInstance { model: base, .. }
-                    | TraitInstance { trait_: base,.. }
+                    | InterfaceInstance { interface_: base,.. }
                     | Generic { base }
                     | HardGeneric { base } => match &symbollib.get_forwarded(*base).unwrap().kind
                     {
                         SemanticSymbolKind::GenericParameter {
-                            traits: implementations,
+                            interfaces: implementations,
                             ..
                         }
-                        | SemanticSymbolKind::Trait {
+                        | SemanticSymbolKind::Interface {
                             implementations, ..
                         }
                         | SemanticSymbolKind::Model {
@@ -576,31 +576,31 @@ fn solve_generic_type(
                 };
                 let free_type_generics = match free_type {
                     ModelInstance { generic_arguments,.. }
-                    | TraitInstance { generic_arguments,.. }
+                    | InterfaceInstance { generic_arguments,.. }
                      => Some(generic_arguments),
                     _ => None,
                 };
-                let trait_is_implemented = implementations.is_some_and(|implementations| {
+                let interface_is_implemented = implementations.is_some_and(|implementations| {
                     implementations
                         .iter()
                         .find(|implementation| {
                             // todo: block infinite types.
                             evaluate(implementation, symbollib, free_type_generics, &mut None, 0)
-                                == trait_evaluated
+                                == interface_evaluated
                         })
                         .is_some()
                 }) || match free_type {
-                    OpaqueTypeInstance {available_traits, ..} => {
-                        available_traits.iter().find(|trait_| trait_ == &&trait_evaluated).is_some()
+                    OpaqueTypeInstance {available_interfaces, ..} => {
+                        available_interfaces.iter().find(|interface_| interface_ == &&interface_evaluated).is_some()
                     }
                     _=> false
                 };
-                if !trait_is_implemented {
+                if !interface_is_implemented {
                     return Err(vec![
                         default_error(),
-                        TypeErrorType::UnimplementedTrait {
+                        TypeErrorType::UnimplementedInterface {
                             offender: symbollib.format_evaluated_type(free_type),
-                            _trait: symbollib.format_evaluated_type(&trait_evaluated),
+                            _interface: symbollib.format_evaluated_type(&interface_evaluated),
                         },
                     ]);
                 }

@@ -1,5 +1,5 @@
 // use ast::{
-//     EnumSignature, ModelSignature, ModuleAmbience, TraitSignature, TypeEval, TypeSignature,
+//     EnumSignature, ModelSignature, ModuleAmbience, InterfaceSignature, TypeEval, TypeSignature,
 // };
 
 // /// Stringify a type evaluation.
@@ -51,14 +51,14 @@
 //             string.push_str(entry.name());
 //             string
 //         }
-//         TypeEval::TraitConstructor { address } => {
+//         TypeEval::InterfaceConstructor { address } => {
 //             let mut string = String::new();
 //             let entry = module_ambience
 //                 .get_scope(address.scope_id)
 //                 .unwrap()
 //                 .get_entry(address.entry_no)
 //                 .unwrap();
-//             string.push_str("trait ");
+//             string.push_str("interface ");
 //             string.push_str(entry.name());
 //             string
 //         }
@@ -75,7 +75,7 @@
 //                 ast::ScopeEntry::Type(TypeSignature { generic_params, .. })
 //                 | ast::ScopeEntry::Model(ModelSignature { generic_params, .. })
 //                 | ast::ScopeEntry::Enum(EnumSignature { generic_params, .. })
-//                 | ast::ScopeEntry::Trait(TraitSignature { generic_params, .. }) => {
+//                 | ast::ScopeEntry::Interface(InterfaceSignature { generic_params, .. }) => {
 //                     if let Some(params) = generic_params {
 //                         string.push('<');
 //                         for (index, param) in params.iter().enumerate() {

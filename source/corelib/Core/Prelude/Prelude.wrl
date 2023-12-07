@@ -4,7 +4,7 @@ module Prelude;
 public use Core;
 public use Iteratable.{Iteratable, AsIterator};
 public use Default.Default;
-public use Traits.{Guaranteed, Try};
+public use Interfaces.{Guaranteed, Try};
 public use Outcome.{Ok, Err, Outcome};
 public use Maybe.{None, Some, Maybe};
 public use Range.Range;

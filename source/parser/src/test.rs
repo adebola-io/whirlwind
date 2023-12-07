@@ -5,9 +5,9 @@ use ast::{
     AccessExpr, ArrayExpr, AssignmentExpr, BinaryExpr, Block, BreakStatement, CallExpr,
     ConstantDeclaration, ContinueStatement, DiscreteType, Else, EnumDeclaration, Expression,
     ForStatement, FunctionDeclaration, FunctionExpr, Identifier, IfExpression, IndexExpr,
-    LogicExpr, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType, ModuleDeclaration,
-    NewExpr, Parameter, ReturnStatement, ScopeAddress, ScopeEntry, Span, Statement,
-    TestDeclaration, ThisExpr, TraitBody, TraitDeclaration, TraitProperty, TypeDeclaration,
+    InterfaceBody, InterfaceDeclaration, InterfaceProperty, LogicExpr, ModelBody, ModelDeclaration,
+    ModelProperty, ModelPropertyType, ModuleDeclaration, NewExpr, Parameter, ReturnStatement,
+    ScopeAddress, ScopeEntry, Span, Statement, TestDeclaration, ThisExpr, TypeDeclaration,
     TypeExpression, UnaryExpr, UpdateExpr, UpdateOperator, UseDeclaration, UsePath, UseTarget,
     VariableDeclaration, WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
 };
@@ -1706,7 +1706,7 @@ fn parse_generic_params() {
         })
     );
 
-    // With trait guards.
+    // With interface guards.
     parser = parse_text(
         "
     enum Result<T, E implements Error> {
@@ -1723,7 +1723,7 @@ fn parse_generic_params() {
         ScopeEntry::Enum(e) if {
             let param = &e.generic_params.as_ref().unwrap()[1];
             param.name.name == "E" && matches!(
-                param.traits[0],
+                param.interfaces[0],
                 TypeExpression::Discrete(ref d) if d.name.name == "Error"
             )
         }
@@ -1752,7 +1752,7 @@ fn parse_generic_params() {
         module_ambience.lookaround("Stack").unwrap().entry,
         ScopeEntry::Model(m) if {
             let param = &m.generic_params.as_ref().unwrap()[0];
-            param.name.name == "T" && param.traits.len() == 2 && matches!(
+            param.name.name == "T" && param.interfaces.len() == 2 && matches!(
                 param.default.as_ref().unwrap(),
                 TypeExpression::Discrete(ref d) if d.name.name == "Int"
             )
@@ -1774,33 +1774,33 @@ fn parse_generic_params() {
 }
 
 #[test]
-fn parse_trait_declarations() {
+fn parse_interface_declarations() {
     // Simple.
-    let mut parser = parse_text("trait TraitName {}");
+    let mut parser = parse_text("interface InterfaceName {}");
     let statement = parser.next().unwrap().unwrap();
     let mut module_ambience = parser.module_ambience();
 
     assert!(matches!(
-        module_ambience.lookaround("TraitName").unwrap().entry,
-        ScopeEntry::Trait(_)
+        module_ambience.lookaround("InterfaceName").unwrap().entry,
+        ScopeEntry::Interface(_)
     ));
 
     assert_eq!(
         statement,
-        Statement::TraitDeclaration(TraitDeclaration {
+        Statement::InterfaceDeclaration(InterfaceDeclaration {
             address: [0, 0, 0].into(),
-            body: TraitBody {
+            body: InterfaceBody {
                 properties: vec![],
-                span: [1, 17, 1, 19].into()
+                span: [1, 25, 1, 27].into()
             },
-            span: [1, 1, 1, 19].into()
+            span: [1, 1, 1, 27].into()
         })
     );
 
     // With one method signature.
     parser = parse_text(
         "
-    public trait Addition {
+    public interface Addition {
         function Add(other: This): This;
     }
     ",
@@ -1810,20 +1810,20 @@ fn parse_trait_declarations() {
 
     assert!(matches!(
         module_ambience.lookaround("Addition").unwrap().entry,
-        ScopeEntry::Trait(t) if t.is_public && t.methods[0].name.name == "Add"
+        ScopeEntry::Interface(t) if t.is_public && t.methods[0].name.name == "Add"
     ));
 
     assert_eq!(
         statement,
-        Statement::TraitDeclaration(TraitDeclaration {
+        Statement::InterfaceDeclaration(InterfaceDeclaration {
             address: [0, 0, 0].into(),
-            body: TraitBody {
-                properties: vec![TraitProperty {
+            body: InterfaceBody {
+                properties: vec![InterfaceProperty {
                     index: 0,
-                    _type: ast::TraitPropertyType::Signature,
+                    _type: ast::InterfacePropertyType::Signature,
                     span: [3, 9, 3, 41].into()
                 }],
-                span: [2, 27, 4, 6].into()
+                span: [2, 31, 4, 6].into()
             },
             span: [2, 5, 4, 6].into()
         })
@@ -1832,7 +1832,7 @@ fn parse_trait_declarations() {
     // With a method signature and a method.
     parser = parse_text(
         "
-    public trait Addition implements Core.General {
+    public interface Addition implements Core.General {
         function Add(other: This): This;
         function Add2(other: This) : This {
             // Stuff.
@@ -1845,25 +1845,25 @@ fn parse_trait_declarations() {
 
     assert!(matches!(
         module_ambience.lookaround("Addition").unwrap().entry,
-        ScopeEntry::Trait(t) if t.is_public
+        ScopeEntry::Interface(t) if t.is_public
         && t.implementations.len() == 1
         && t.methods.len() == 2
     ));
 
     assert_eq!(
         statement,
-        Statement::TraitDeclaration(TraitDeclaration {
+        Statement::InterfaceDeclaration(InterfaceDeclaration {
             address: [0, 0, 0].into(),
-            body: TraitBody {
+            body: InterfaceBody {
                 properties: vec![
-                    TraitProperty {
+                    InterfaceProperty {
                         index: 0,
-                        _type: ast::TraitPropertyType::Signature,
+                        _type: ast::InterfacePropertyType::Signature,
                         span: [3, 9, 3, 41].into()
                     },
-                    TraitProperty {
+                    InterfaceProperty {
                         index: 1,
-                        _type: ast::TraitPropertyType::Method {
+                        _type: ast::InterfacePropertyType::Method {
                             body: Block {
                                 scope_id: 1,
                                 statements: vec![],
@@ -1873,7 +1873,7 @@ fn parse_trait_declarations() {
                         span: [4, 9, 6, 10].into()
                     }
                 ],
-                span: [2, 51, 7, 6].into()
+                span: [2, 55, 7, 6].into()
             },
             span: [2, 5, 7, 6].into()
         })
@@ -2011,7 +2011,7 @@ fn parse_return_statement() {
 }
 
 #[test]
-fn parse_model_with_trait_impl() {
+fn parse_model_with_interface_impl() {
     let mut parser = parse_text(
         "
     public model Person implements Greeting {
@@ -2027,8 +2027,8 @@ fn parse_model_with_trait_impl() {
             body: ModelBody {
                 properties: vec![ModelProperty {
                     index: 0,
-                    _type: ModelPropertyType::TraitImpl {
-                        trait_target: vec![
+                    _type: ModelPropertyType::InterfaceImpl {
+                        interface_target: vec![
                             DiscreteType {
                                 name: Identifier {
                                     name: format!("Greeting"),

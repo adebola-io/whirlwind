@@ -15,7 +15,7 @@ pub enum Statement {
     ModelDeclaration(ModelDeclaration),
     ModuleDeclaration(ModuleDeclaration),
     FunctionDeclaration(FunctionDeclaration),
-    TraitDeclaration(TraitDeclaration),
+    InterfaceDeclaration(InterfaceDeclaration),
     EnumDeclaration(EnumDeclaration),
     TypeDeclaration(TypeDeclaration),
     // Control Statements.
@@ -171,9 +171,9 @@ pub enum ModelPropertyType {
     Attribute,
     /// Node for a method.
     Method { body: Block },
-    /// Node for a trait implementation.
-    TraitImpl {
-        trait_target: Vec<DiscreteType>,
+    /// Node for a interface implementation.
+    InterfaceImpl {
+        interface_target: Vec<DiscreteType>,
         body: Block,
     },
 }
@@ -196,29 +196,29 @@ pub struct FunctionDeclaration {
     pub span: Span,
 }
 
-/// A node for a trait declaration in the AST.
+/// A node for a interface declaration in the AST.
 #[derive(Debug, PartialEq)]
-pub struct TraitDeclaration {
+pub struct InterfaceDeclaration {
     pub address: ScopeAddress,
-    pub body: TraitBody,
+    pub body: InterfaceBody,
     pub span: Span,
 }
 
 #[derive(Debug, PartialEq)]
-pub struct TraitBody {
-    pub properties: Vec<TraitProperty>,
+pub struct InterfaceBody {
+    pub properties: Vec<InterfaceProperty>,
     pub span: Span,
 }
 
 #[derive(Debug, PartialEq)]
-pub struct TraitProperty {
+pub struct InterfaceProperty {
     pub index: usize,
-    pub _type: TraitPropertyType,
+    pub _type: InterfacePropertyType,
     pub span: Span,
 }
 
 #[derive(Debug, PartialEq)]
-pub enum TraitPropertyType {
+pub enum InterfacePropertyType {
     /// A method that is to be implemented.
     Signature,
     /// A method with a default implementation.
@@ -346,15 +346,15 @@ impl Positioning for Statement {
                         nodes.append(&mut collect_closest_within_block(self, body, span));
                     }
                 }
-                // Within a trait declaration.
-                Statement::TraitDeclaration(decl) => {
+                // Within a interface declaration.
+                Statement::InterfaceDeclaration(decl) => {
                     for prop in &decl.body.properties {
                         if prop.span.is_in_vicinity(span) {
                             match &prop._type {
-                                TraitPropertyType::Signature => nodes.push(self),
-                                TraitPropertyType::Method { body } => {
+                                InterfacePropertyType::Signature => nodes.push(self),
+                                InterfacePropertyType::Method { body } => {
                                     if body.span.encloses(span) {
-                                        // The span is within the body of a method, not just the trait itself.
+                                        // The span is within the body of a method, not just the interface itself.
                                         nodes.append(&mut collect_closest_within_block(
                                             self, body, span,
                                         ));
@@ -370,7 +370,7 @@ impl Positioning for Statement {
                         if prop.span.is_in_vicinity(span) {
                             match &prop._type {
                                 ModelPropertyType::Attribute => nodes.push(self),
-                                ModelPropertyType::TraitImpl { body, .. }
+                                ModelPropertyType::InterfaceImpl { body, .. }
                                 | ModelPropertyType::Method { body } => {
                                     if body.span.encloses(span) {
                                         // The span is within the body of a method, not just the model itself.
@@ -435,7 +435,7 @@ impl Spannable for Statement {
             Statement::ModelDeclaration(c) => c.span,
             Statement::FunctionDeclaration(f) => f.span,
             Statement::RecordDeclaration => todo!(),
-            Statement::TraitDeclaration(t) => t.span,
+            Statement::InterfaceDeclaration(t) => t.span,
             Statement::EnumDeclaration(e) => e.span,
             Statement::TypeDeclaration(t) => t.span,
             Statement::WhileStatement(w) => w.span,
@@ -457,7 +457,7 @@ impl Spannable for Statement {
             Statement::ModelDeclaration(c) => c.span.start = start,
             Statement::FunctionDeclaration(f) => f.span.start = start,
             Statement::RecordDeclaration => todo!(),
-            Statement::TraitDeclaration(t) => t.span.start = start,
+            Statement::InterfaceDeclaration(t) => t.span.start = start,
             Statement::EnumDeclaration(e) => e.span.start = start,
             Statement::TypeDeclaration(t) => t.span.start = start,
             Statement::WhileStatement(w) => w.span.start = start,
@@ -479,7 +479,7 @@ impl Spannable for Statement {
                 nested.push(body.scope_id);
             }
             Statement::ModelDeclaration(_) => todo!(),
-            Statement::TraitDeclaration(_) => todo!(),
+            Statement::InterfaceDeclaration(_) => todo!(),
             Statement::ShorthandVariableDeclaration(ShorthandVariableDeclaration {
                 value: expression,
                 ..

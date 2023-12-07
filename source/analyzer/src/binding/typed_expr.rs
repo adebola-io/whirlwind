@@ -44,7 +44,7 @@ pub struct TypedNewExpr {
 
 #[derive(Debug, PartialEq)]
 pub struct TypedThisExpr {
-    pub model_or_trait: Option<SymbolIndex>,
+    pub model_or_interface: Option<SymbolIndex>,
     pub start_line: u32,
     pub start_character: u32,
     pub inferred_type: EvaluatedType,

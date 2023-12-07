@@ -1,9 +1,9 @@
 use std::hash::Hash;
 
 use crate::{
-    ConstantSignature, EnumSignature, FunctionSignature, LoopLabel, LoopVariable, ModelSignature,
-    Parameter, ShorthandVariableSignature, TraitSignature, TypeSignature, UseTargetSignature,
-    VariablePattern, VariableSignature,
+    ConstantSignature, EnumSignature, FunctionSignature, InterfaceSignature, LoopLabel,
+    LoopVariable, ModelSignature, Parameter, ShorthandVariableSignature, TypeSignature,
+    UseTargetSignature, VariablePattern, VariableSignature,
 };
 
 /// An id for the scope containing the declaration of a symbol in a module.
@@ -19,7 +19,7 @@ pub enum ScopeEntry {
     Enum(EnumSignature),
     ShorthandVariable(ShorthandVariableSignature),
     Variable(VariableSignature),
-    Trait(TraitSignature),
+    Interface(InterfaceSignature),
     Parameter(Parameter),
     UseImport(UseTargetSignature),
     LoopVariable(LoopVariable),
@@ -44,8 +44,8 @@ pub enum ScopeType {
     ModelMethodOf {
         model: ScopeAddress,
     },
-    TraitMethodOf {
-        _trait: ScopeAddress,
+    InterfaceMethodOf {
+        _interface: ScopeAddress,
     },
     Global,
     /// A placeholder scope.
@@ -111,7 +111,7 @@ impl ScopeEntry {
             | ScopeEntry::Model(ModelSignature { name, .. })
             | ScopeEntry::Enum(EnumSignature { name, .. })
             | ScopeEntry::ShorthandVariable(ShorthandVariableSignature { name, .. })
-            | ScopeEntry::Trait(TraitSignature { name, .. })
+            | ScopeEntry::Interface(InterfaceSignature { name, .. })
             | ScopeEntry::Parameter(Parameter { name, .. })
             | ScopeEntry::UseImport(UseTargetSignature { name, .. })
             | ScopeEntry::Constant(ConstantSignature { name, .. })
@@ -166,7 +166,7 @@ impl ScopeEntry {
             | ScopeEntry::Model(ModelSignature { name, .. })
             | ScopeEntry::Enum(EnumSignature { name, .. })
             | ScopeEntry::ShorthandVariable(ShorthandVariableSignature { name, .. })
-            | ScopeEntry::Trait(TraitSignature { name, .. })
+            | ScopeEntry::Interface(InterfaceSignature { name, .. })
             | ScopeEntry::Parameter(Parameter { name, .. })
             | ScopeEntry::UseImport(UseTargetSignature { name, .. })
             | ScopeEntry::Constant(ConstantSignature { name, .. })
@@ -217,7 +217,7 @@ impl ScopeEntry {
             ScopeEntry::Type(t) => t.is_public,
             ScopeEntry::Model(m) => m.is_public,
             ScopeEntry::Enum(e) => e.is_public,
-            ScopeEntry::Trait(t) => t.is_public,
+            ScopeEntry::Interface(t) => t.is_public,
             ScopeEntry::UseImport(u) => u.is_public,
             ScopeEntry::Constant(c) => c.is_public,
             ScopeEntry::Variable(v) => v.is_public,
@@ -316,17 +316,17 @@ impl ScopeEntry {
         }
     }
 
-    pub fn _trait(&self) -> &TraitSignature {
+    pub fn _interface(&self) -> &InterfaceSignature {
         match self {
-            ScopeEntry::Trait(t) => t,
-            _ => panic!("{} is not a trait!", self.name()),
+            ScopeEntry::Interface(t) => t,
+            _ => panic!("{} is not a interface!", self.name()),
         }
     }
 
-    pub fn _trait_mut(&mut self) -> &mut TraitSignature {
+    pub fn _interface_mut(&mut self) -> &mut InterfaceSignature {
         match self {
-            ScopeEntry::Trait(t) => t,
-            _ => panic!("{} is not a trait!", self.name()),
+            ScopeEntry::Interface(t) => t,
+            _ => panic!("{} is not a interface!", self.name()),
         }
     }
 
@@ -489,12 +489,12 @@ impl Scope {
             })
             .flatten()
     }
-    /// Get a trait entry by its index.
-    pub fn get_trait(&self, entry_no: usize) -> Option<&TraitSignature> {
+    /// Get a interface entry by its index.
+    pub fn get_interface(&self, entry_no: usize) -> Option<&InterfaceSignature> {
         self.entries
             .get(entry_no)
             .map(|entry| match entry {
-                ScopeEntry::Trait(t) => Some(t),
+                ScopeEntry::Interface(t) => Some(t),
                 _ => None,
             })
             .flatten()

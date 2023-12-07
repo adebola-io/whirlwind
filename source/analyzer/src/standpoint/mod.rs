@@ -573,7 +573,7 @@ impl Standpoint {
                         Self::INTERNAL => CurrentModuleType::Internal,
                         Self::ITERATABLE => CurrentModuleType::Iteratable,
                         Self::OPS => CurrentModuleType::Ops,
-                        Self::TRAITS => CurrentModuleType::Traits,
+                        Self::TRAITS => CurrentModuleType::Interfaces,
                         Self::RANGE => CurrentModuleType::Range,
                         Self::STRING => CurrentModuleType::String,
                         Self::DEFAULT => CurrentModuleType::Default,

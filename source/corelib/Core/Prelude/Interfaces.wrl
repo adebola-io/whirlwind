@@ -1,13 +1,13 @@
-module Traits;
+module Interfaces;
 
 use Core.Internals.Flow;
 use Outcome.Outcome;
 
-public trait Guaranteed<T> {
+public interface Guaranteed<T> {
     public function Guarantee(): T;
 }
 
-public trait Try<T, U> {
+public interface Try<T, U> {
     public function Try(): Outcome<T, U>;
 }
 
