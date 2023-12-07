@@ -1,8 +1,8 @@
 > **THIS PROJECT IS 70% INCOMPLETE. LOOK AWAY.**
 
 <h1 align=center>
-   <img width="50" src="./assets/Icon.svg" alt="Whirlwind Icon"/>
-   <p style="font-style: italic">Whirlwind.</p>
+   <img width="80" src="./assets/Icon.svg" alt="Whirlwind Icon"/>
+   <p><i>Whirlwind.</i></p>
 </h1>
 
 Whirlwind is an open-source, statically-typed programming language for quickly and easily writing maintenable software. It is designed to be practical, easy to read and efficient.
