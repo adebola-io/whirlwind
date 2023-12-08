@@ -2,6 +2,7 @@ use crate::{
     completion::{sort_completions, CompletionFinder, DotCompletionType, Trigger},
     diagnostic::{error_to_diagnostic, to_range},
     error::DocumentError,
+    folding_range::FoldingRangeFinder,
     hover::{HoverFinder, HoverInfo},
     message_store::{MessageStore, WithMessages},
 };
@@ -22,11 +23,12 @@ use tower_lsp::{
         request::{GotoDeclarationParams, GotoDeclarationResponse},
         CompletionContext, CompletionParams, CompletionResponse, Diagnostic,
         DidChangeTextDocumentParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams,
-        DocumentDiagnosticParams, DocumentDiagnosticReport, FullDocumentDiagnosticReport,
-        HoverParams, InlayHint, InlayHintKind, InlayHintLabel, InlayHintParams, Location, Position,
-        ReferenceParams, RelatedFullDocumentDiagnosticReport, RenameParams, TextEdit, Url,
-        WorkspaceDiagnosticParams, WorkspaceDiagnosticReport, WorkspaceDiagnosticReportResult,
-        WorkspaceDocumentDiagnosticReport, WorkspaceEdit, WorkspaceFullDocumentDiagnosticReport,
+        DocumentDiagnosticParams, DocumentDiagnosticReport, FoldingRange, FoldingRangeParams,
+        FullDocumentDiagnosticReport, HoverParams, InlayHint, InlayHintKind, InlayHintLabel,
+        InlayHintParams, Location, Position, ReferenceParams, RelatedFullDocumentDiagnosticReport,
+        RenameParams, TextEdit, Url, WorkspaceDiagnosticParams, WorkspaceDiagnosticReport,
+        WorkspaceDiagnosticReportResult, WorkspaceDocumentDiagnosticReport, WorkspaceEdit,
+        WorkspaceFullDocumentDiagnosticReport,
     },
 };
 use utils::get_parent_dir;
@@ -831,6 +833,26 @@ impl DocumentManager {
             *was_updated = false;
         }
         diagnostic_report.clone()
+    }
+
+    /// Returns the folding ranges for the document.
+    pub fn get_folding_ranges(
+        &self,
+        params: FoldingRangeParams,
+    ) -> WithMessages<Option<Vec<FoldingRange>>> {
+        let mut messages = self.remember(params.text_document.uri);
+        let standpoints = self.standpoints.lock().unwrap();
+        let module = match self.get_cached(&standpoints) {
+            Some((_, module)) => module,
+            None => {
+                messages.error("Could not return the module.");
+                return (messages, None);
+            }
+        };
+        let folding_range_finder = FoldingRangeFinder::new(module);
+        folding_range_finder.gather();
+        let ranges = folding_range_finder.ranges.take();
+        (messages, Some(ranges))
     }
 }
 

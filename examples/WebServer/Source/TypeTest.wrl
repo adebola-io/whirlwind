@@ -81,12 +81,12 @@ test "Testing types." {
         }
     }
     type Transformable<T> = Box<T> | Sphere<T>;
-    entity: Transformable<Transformable<String>> := new Box(new Sphere("hello"));
+    entity := new Box(new Sphere("hello"));
 
     // Numeric types.
     number := 90;
     number = 12;
-    array := [1, 2, 3, 4, number];
+    array := [1, 2, 3, 4, number, 255];
 
     // function type coercion.
     strArray := ["hello", "world"];
@@ -100,7 +100,7 @@ test "Testing types." {
     arr2.Push(Some(true)); // arr2 should infer type Array<Maybe<Bool>>.
     arr3 := [];
     num: Number := 99;
-    arr3[0] = num; // arr3 should infer type Array<Number>
+    arr3[0] = num; // arr3 should infer type Array<Number> 
 
     // Destructuring.
     model Person implements Default {

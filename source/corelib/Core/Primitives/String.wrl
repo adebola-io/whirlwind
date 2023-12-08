@@ -17,6 +17,7 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     public function [Sequenced.NextItem](): Maybe<String> {
         return Invoke(Injunction.NextChar(this));
     }
+    /// Implementation of the Display trait.
     public function [Display.ToStr](): String {
         return this + "";
     }

@@ -6,12 +6,12 @@
       { "include": "#string_literal" },
       { "include": "#type_declaration" },
       { "include": "#model_header" },
-      { "include": "#trait_header" },
+      { "include": "#interface_header" },
       { "include": "#module_declaration" },
       { "include": "#use_declaration" },
       { "include": "#enum_declaration" },
       { "include": "#enum_variant_hover" },
-      { "include": "#trait_implementation" },
+      { "include": "#interface_implementation" },
       { "include": "#function" },
       { "include": "#boolean_literal" },
       { "include": "#keyword" },
@@ -30,7 +30,7 @@
       },
       "injunction": {
          "name": "meta.injunction keyword.storage.injunction",
-         "match": "\\b(use|module|enum|public|static|test|var|new|const|model|async|record|trait|type|implements|not|and|or|is|Package|Super)\\b"
+         "match": "\\b(use|module|enum|public|static|test|var|new|const|model|async|record|interface|type|implements|not|and|or|is|Package|Super)\\b"
       },
       "comment": {
          "patterns": [
@@ -180,8 +180,8 @@
          ],
          "end": "(?={)"
       },
-      "trait_header": {
-         "begin": "(\\btrait\\s+)",
+      "interface_header": {
+         "begin": "(\\binterface\\s+)",
          "beginCaptures": {
             "1": {
                "name": "keyword"
@@ -190,7 +190,7 @@
          "patterns": [
             { "include": "#comment" },
             {
-               "begin": "(?<=trait\\s+)",
+               "begin": "(?<=interface\\s+)",
                "contentName": "meta.class class entity.name.class",
                "end": "(?=[^[A-Za-z0-9]])"
             },
@@ -294,7 +294,7 @@
          ],
          "end": "(?=\\s*\\))"
       },
-      "trait_implementation": {
+      "interface_implementation": {
          "name": "entity.name.function support.function",
          "match": "\\b(function)\\s+(\\[(\\s*[A-Za-z0-9]+\\s*(\\<.*\\>)?\\s*\\.)+\\s*)[A-Za-z0-9]+(?=\\s*\\]\\s*(\\<.*\\>)?\\s*\\()",
          "captures": {

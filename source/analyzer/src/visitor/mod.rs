@@ -3,10 +3,10 @@ use crate::{
     TypedBreakStatement, TypedCallExpr, TypedConstantDeclaration, TypedContinueStatement,
     TypedEnumDeclaration, TypedExpression, TypedFnExpr, TypedForStatement,
     TypedFunctionDeclaration, TypedIdent, TypedIfExpr, TypedIndexExpr, TypedInterfaceDeclaration,
-    TypedLogicExpr, TypedModelDeclaration, TypedModuleDeclaration, TypedNewExpr,
-    TypedReturnStatement, TypedShorthandVariableDeclaration, TypedStmnt, TypedTestDeclaration,
-    TypedThisExpr, TypedTypeDeclaration, TypedUnaryExpr, TypedUpdateExpr, TypedUseDeclaration,
-    TypedVariableDeclaration, TypedWhileStatement,
+    TypedLogicExpr, TypedModelDeclaration, TypedModelPropertyType, TypedModuleDeclaration,
+    TypedNewExpr, TypedReturnStatement, TypedShorthandVariableDeclaration, TypedStmnt,
+    TypedTestDeclaration, TypedThisExpr, TypedTypeDeclaration, TypedUnaryExpr, TypedUpdateExpr,
+    TypedUseDeclaration, TypedVariableDeclaration, TypedWhileStatement,
 };
 
 #[allow(unused_variables)]
@@ -317,11 +317,11 @@ pub trait TypedVisitorNoArgs<Output: Default = ()> {
     //     Output::default()
     // }
     fn constant(&self, constant: &TypedConstantDeclaration) -> Output {
-        Output::default()
+        self.expr(&constant.value)
     }
 
     fn test_declaration(&self, test: &TypedTestDeclaration) -> Output {
-        Output::default()
+        self.block(&test.body)
     }
 
     fn break_statement(&self, brk: &TypedBreakStatement) -> Output {
@@ -333,7 +333,8 @@ pub trait TypedVisitorNoArgs<Output: Default = ()> {
     }
 
     fn while_statement(&self, _while: &TypedWhileStatement) -> Output {
-        Output::default()
+        self.expr(&_while.condition);
+        self.block(&_while.body)
     }
 
     fn continue_statement(&self, cont: &TypedContinueStatement) -> Output {
@@ -341,14 +342,15 @@ pub trait TypedVisitorNoArgs<Output: Default = ()> {
     }
 
     fn return_statement(&self, rettye: &TypedReturnStatement) -> Output {
-        Output::default()
+        if let Some(expr) = &rettye.value {
+            self.expr(expr)
+        } else {
+            Output::default()
+        }
     }
     /// Visit a function node.
     fn function(&self, function: &TypedFunctionDeclaration) -> Output {
-        let body = &function.body;
-        for statement in &body.statements {
-            self.statement(statement);
-        }
+        self.block(&function.body);
         Output::default()
     }
     /// Visit an enum node.
@@ -357,6 +359,16 @@ pub trait TypedVisitorNoArgs<Output: Default = ()> {
     }
     /// Visit a model node.
     fn model_decl(&self, model: &TypedModelDeclaration) -> Output {
+        if let Some(constructor) = &model.body.constructor {
+            self.block(constructor);
+        }
+        for property in &model.body.properties {
+            match &property._type {
+                TypedModelPropertyType::TypedMethod { body } => self.block(&body),
+                TypedModelPropertyType::InterfaceImpl { body, .. } => self.block(&body),
+                _ => Output::default(),
+            };
+        }
         Output::default()
     }
 }

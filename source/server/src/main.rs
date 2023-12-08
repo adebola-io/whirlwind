@@ -2,6 +2,7 @@ mod completion;
 mod diagnostic;
 mod document_manager;
 mod error;
+mod folding_range;
 mod hover;
 mod message_store;
 mod requests;
@@ -174,6 +175,12 @@ impl LanguageServer for Backend {
         let (messages, completion) = self.docs.completion(params);
         self.log_all(messages).await;
         Ok(completion)
+    }
+
+    async fn folding_range(&self, params: FoldingRangeParams) -> Result<Option<Vec<FoldingRange>>> {
+        let (messages, ranges) = self.docs.get_folding_ranges(params);
+        self.log_all(messages).await;
+        Ok(ranges)
     }
 
     async fn completion_resolve(&self, params: CompletionItem) -> Result<CompletionItem> {
