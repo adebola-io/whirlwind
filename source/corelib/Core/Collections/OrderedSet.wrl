@@ -3,7 +3,7 @@ module OrderedSet;
 use Super.Prelude.Todo;
 
 
-/// A pair of items of individual types.
+/// A simple pair of items.
 public model Tuple<T, U> {
     public var first: T;
     public var second: U;

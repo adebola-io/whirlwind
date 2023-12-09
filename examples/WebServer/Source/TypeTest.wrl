@@ -20,10 +20,10 @@ test "Testing types." {
  
     // Coercion.
     stringItself := Identity("String"); // Should have type String.
-    maybe := Err(true);
-    maybe = Ok(None());
-    maybe = Ok(Some("hello, world"));
-    // maybe should have type Outcome<Maybe<String>, Bool>;
+    result := Err(true);
+    result = Ok(None());
+    result = Ok(Some("hello, world"));
+    // result should coerce to type Outcome<Maybe<String>, Bool>;
 
     // Opaque types.
     model Football {

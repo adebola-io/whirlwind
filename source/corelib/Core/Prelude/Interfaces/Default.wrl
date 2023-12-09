@@ -43,5 +43,5 @@ module Default;
 /// ```
 public interface Default {
     /// Returns the default instance of the implementing model.
-    public static function Init(): This;
+    static function Init(): This;
 }

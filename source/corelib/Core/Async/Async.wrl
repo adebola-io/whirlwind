@@ -9,20 +9,21 @@ use Super.Process.Panic;
 use Super.Internals.{Injunction, Invoke, Sequence};
 use Super.Primitives.UnsignedInt;
 
-/// Asynchronous functions do not run automatically in Whirlwind. Instead, calling an
-/// async function produces a `Prospect`, which is essentially a lazy execution 
-/// context for the called function.
+/// Asynchronous functions do not run automatically in Whirlwind. 
 /// 
-/// A prospect provides an interface for specifying how and when the function should run,
-/// the manner in which the values should be produced, the callbacks to be invoked,
-/// interaction with other prospects, etc.
+/// Instead, calling an async function produces a _`Prospect`_, 
+/// which is essentially a lazy execution context for the called function.
+/// 
+/// A prospect provides an interface for specifying:
+/// - how and when the function should run,
+/// - the manner in which the values should be produced, 
+/// - the callbacks to be invoked,
+/// - interaction with other prospects, etc.
 /// 
 /// ## Usage
 /// ```
-/// use Core.Io.Print;
-/// 
 /// async function DoStuff(): UnsignedInt {
-///     Println("Hello from a prospect!");
+///     Print("Hello from a prospect!");
 ///     Core.Time.Sleep(5000); // Sleep for 5 seconds.
 ///     return 0;
 /// }
@@ -34,50 +35,179 @@ use Super.Primitives.UnsignedInt;
 /// }
 /// ```
 public model Prospect<T> {
-    public function Then<U>(next: fn (prior?: T): U): Prospect<U> {
-        Todo()
-    }
-    /// Runs the prospect.
-    public function Run(): Eventual<T> {
-        Todo()
-    }
+    /// The prospect has been executed.
+    var consumed: Bool;
+    /// Chains a callback to be run when the prospect completes.
     /// 
+    /// It returns a new Prospect which resolves to the value returned 
+    /// by the callback.
+    /// ### Usage
+    /// ```
+    /// squared := async fn(a: Int) a * a;
+    /// doubled := fn(a: Number) a * 2;
+    /// 
+    /// num := squared(2).Then(doubled).Run().Await();
+    /// Assert(num).Equals(12); // (2 * 2) * 3
+    /// ```
+    /// Callbacks can be joined consecutively, and they will run in the
+    /// order in which they are chained.
+    /// ```
+    /// prospect := async fn() Print("Hello!");
+    /// prospect
+    ///   .Then(fn() Print("Good day!"))
+    ///   .Then(fn() Print("How do you do?"))
+    ///   .Run()
+    /// ```
+    public function Then<U>(next: fn (prior?: T): U): Prospect<U> {
+        if this.consumed {
+            Panic(Some("Cannot chain callback to a consumed prospect."))
+        };
+        Todo()
+    }
+    /// Executes a prospect.
+    /// 
+    /// Running a prospect produces a model called an `Eventual`, 
+    /// which is a representation of the future value expected to be 
+    /// produced by the asynchronous operation. 
+    /// 
+    /// The operation runs in a new sequence produced by the runtime, 
+    /// meaning that other operations can continue and the execution is non-blocking.
+    /// 
+    /// ### Usage
+    /// ```
+    /// async function AFunc() {
+    ///     Print("Hello from prospect!");
+    /// }
+    /// prospect := AFunc(); // Nothing happens yet.
+    /// prospect.Run(); // AFunc runs and print "Hello from prospect!".
+    /// ```
+    /// After the prospect completes, the callback chain is invoked in the order,
+    /// in which the callbacks are defined with `.Then()`.
+    /// ```
+    /// async function AFunc() {
+    ///     Print("Hello 1");
+    /// }
+    /// prospect := AFunc();
+    /// prospect.Then(fn() Print("Hello 2"));
+    /// prospect.Run(); // Prints "Hello 1", then prints "Hello 2".
+    /// ```
+    /// **Once a prospect is run, the prospect, (and all component
+    /// prospects within it), are effectively _consumed_, meaning they cannot be altered,
+    /// re-run or used in interaction with other prospects.**
+    /// 
+    /// This means that the following code will cause an error.
+    /// ```
+    /// prospect2 := AFunc();
+    /// prospect2.Run();
+    /// prospect2.Then(fn() Print("Something else.")); // Will cause an error.
+    /// ```
+    public function Run(): Eventual<T> {
+        this.consumed = true;
+        return Invoke(Injunction.EventCreate(this));
+    }
+    /// Races a prospect against another.
+    /// 
+    /// It returns a prospect that, when executed, returns the first value to
+    /// be produced by either of the two component prospects.
+    /// ### Usage
+    /// ```
+    /// 
+    /// ```
     public function Race(other: Prospect<T>): Prospect<T> {
         Todo()
+    }
+    /// Creates a prospect that produces the fastest resolved value from
+    /// a list of other prospects of the same type.
+    /// ### Usage
+    /// ```
+    /// ```
+    public static function RaceAll(prospects: Array<Prospect<T>>): Prospect<T> {
+        return Todo();
     }
 }
 
 
 /// An eventual is an asynchronously running operation,
 /// produced by calling `.Run()` on a `Prospect`.
+/// 
+/// It is a wrapper for the value that will _eventually_ be produced
+/// when the operation ends.
 public model Eventual<T> implements Guaranteed<T> {
     /// Whether or not the eventual is resolved.
-    public var resolved: Bool;
+    var resolved: Bool;
     /// Whether or not the eventual has been aborted.
-    public var aborted: Bool;
-    /// The sequence running this eventual.
+    var aborted: Bool;
+    /// A reference to the parent sequence in charge of this eventual.
     var sequence: &Sequence;
-    /// The final value. Until the eventual is resolved, the value remains empty.
+    /// The final value to be produced. 
+    /// Until the eventual is resolved, the value remains empty (points to Nullptr).
     var value: T;
-    public function [Guaranteed.Guarantee](): T {
+    /// Returns true if the eventual has been resolved to a value.
+    public function IsResolved(): Bool {
+        return this.resolved;
+    }
+    /// Returns true if the eventual was aborted before it could finish execution.
+    public function WasAborted(): Bool {
+        return this.aborted;
+    }
+    function [Guaranteed.Guarantee](): T {
         this.Unwrap()
     }
+    /// It attempts to abort the eventual's execution and returns true if it is 
+    /// successful.
+    /// 
+    /// For already aborted eventuals, it will always return true. For already 
+    /// resolved eventuals, it will always return false.
+    public function TryAbort(): Bool {
+        if this.aborted {
+            return true;
+        }
+        if this.resolved {
+            return false;
+        };
+        Invoke(Injunction.EventAbort(this.sequence));
+        return false;
+    }
     /// Cancels the running of the eventual and discards its value.
+    /// 
+    /// If the eventual was already aborted, then the function does nothing.
+    /// 
+    /// **However, the function will crash the program if it is called
+    /// on an eventual that has already been resolved. For a safer version,
+    /// use `.TryAbort()`**
     public function Abort() {
+        if this.aborted {
+            return;
+        };
+        Invoke(Injunction.EventAbort(this.sequence));
         this.aborted = true;
     }
-    /// Blocks the current execution thread until the eventual is resolved.
-    /// Calling Await on an already resolved eventual just returns the produced value.
+    /// Blocks other operations in the enclosing sequence until the eventual is resolved.
+    /// Using Await can be tricky, because it does not pause _all_ execution.
+    /// 
+    /// It only pauses the parent execution sequence, which could be the main sequence, or
+    /// another, depending on whether it was called inside another asynchronous context or not.
+    /// 
+    /// It is a valid alternative to using callbacks on the source prospect, especially
+    /// in situations where the value to be produced is needed before operations can
+    /// continue.
+    /// ### Usage
+    /// ```
+    /// ```
+    /// Calling `.Await()` on an already resolved eventual just returns the previously produced value.
+    /// ```
+    /// 
+    /// ```
     public function Await(): T {
         if this.aborted {
-            Panic(Some("Called Await on an aborted Eventual."));
+            Panic(Some("Cannot call Await on an aborted Eventual."));
         };
         if this.resolved {
             return this.value;
         };
-        Todo()
+        this.value = Invoke(Injunction.EventAwait(this.sequence));
         this.resolved = true;
-        return this.value;
+        return this.value; 
     }
     /// Forces the eventual to be resolved, and panics if it isn't.
     public function Unwrap(): T {

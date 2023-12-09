@@ -2,7 +2,11 @@ module HashMap;
 
 use Super.Prelude.Todo;
 
-public model HashMap<K, V> {
+public interface Hash {
+    
+}
+
+public model HashMap<K implements Hash, V> {
     new(){}
     /// Inserts a key-value pair into the hashmap.
     /// 

@@ -43,7 +43,7 @@ public model HttpServer {
     }
     /// Registers a route for a request with a `GET` method. 
     public function Get(
-        route: String, 
+        route: String,
         handler: fn(request: HttpRequest): Prospect<ServerOutcome>
     ): &This {
         this.AssertInert();

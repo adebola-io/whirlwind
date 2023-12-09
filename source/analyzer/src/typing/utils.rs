@@ -669,6 +669,7 @@ pub fn infer_ahead(
                             .parameter_types
                             .get(index)
                             .is_some_and(|shadow_type| {
+                                shadow_type.is_optional ||
                                 is_maybe_type(&shadow_type.inferred_type, symbollib)
                             });
                     let parameter_symbol = symbollib.get_mut(*param_idx).unwrap();
@@ -685,7 +686,7 @@ pub fn infer_ahead(
                         };
                         let is_optional = *is_optional;
                         let optionality_is_equal = (shadow_type.is_optional == is_optional)
-                            || (is_optional && shadow_type_is_maybe);
+                            || (shadow_type_is_maybe);
 
                         if param_type.is_none() && optionality_is_equal {
                             *inferred_type = match functiontype.parameter_types.get(index) {

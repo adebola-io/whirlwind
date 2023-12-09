@@ -3,8 +3,7 @@ use crate::EvaluatedType;
 /// The path to the entry file.
 /// This is only used in testing.
 /// Its value in production is dependent on the environment.
-pub const CORE_LIBRARY_PATH: &'static str = "/../corelib/Core/Core.wrl";
-
+pub const CORE_LIBRARY_PATH: &'static str = "../corelib/Core/Core.wrl";
 /// Signifies the file being parsed.
 /// Useful to pinpoint primitive types without too much build-in into
 /// the compiler.
@@ -18,6 +17,8 @@ pub enum CurrentModuleType {
     Internal,
     Ops,
     Interfaces,
+    Guaranteed,
+    Try,
     Iteratable,
     Range,
     Default,
@@ -32,10 +33,12 @@ pub trait IntrinsicPaths {
     const ASYNC: &'static str = "Async/Async.wrl";
     const INTERNAL: &'static str = "Internals/Internals.wrl";
     const OPS: &'static str = "Primitives/Ops.wrl";
-    const TRAITS: &'static str = "Prelude/Interfaces.wrl";
-    const ITERATABLE: &'static str = "Prelude/Iteratable.wrl";
+    const INTERFACES: &'static str = "Prelude/Interfaces.wrl";
     const RANGE: &'static str = "Prelude/Range.wrl";
-    const DEFAULT: &'static str = "Prelude/Default.wrl";
+    const ITERATABLE: &'static str = "Prelude/Interfaces/Iteratable.wrl";
+    const TRY: &'static str = "Prelude/Interfaces/Try.wrl";
+    const GUARANTEED: &'static str = "Prelude/Interfaces/Guaranteed.wrl";
+    const DEFAULT: &'static str = "Prelude/Interfaces/Default.wrl";
     const MAYBE: &'static str = "Prelude/Maybe.wrl";
 }
 

@@ -1954,25 +1954,28 @@ mod expressions {
         checker_ctx: &mut TypecheckerContext,
         symbollib: &mut SymbolLibrary,
     ) -> EvaluatedType {
-        match &checker_ctx.literals.get(*l).unwrap() {
-            Literal::StringLiteral { value, .. } => {
-                typecheck_string_literal(value, checker_ctx, symbollib)
-            }
-            Literal::NumericLiteral { value, .. } => {
-                typecheck_numeric_literal(value, checker_ctx, symbollib)
-            } // todo.
-            Literal::BooleanLiteral {
-                value,
-                start_line,
-                start_character,
-                ..
-            } => typecheck_boolean_literal(
-                symbollib,
-                checker_ctx,
-                start_line,
-                start_character,
-                value,
-            ),
+        match &checker_ctx.literals.get(*l) {
+            Some(l) => match l {
+                Literal::StringLiteral { value, .. } => {
+                    typecheck_string_literal(value, checker_ctx, symbollib)
+                }
+                Literal::NumericLiteral { value, .. } => {
+                    typecheck_numeric_literal(value, checker_ctx, symbollib)
+                } // todo.
+                Literal::BooleanLiteral {
+                    value,
+                    start_line,
+                    start_character,
+                    ..
+                } => typecheck_boolean_literal(
+                    symbollib,
+                    checker_ctx,
+                    start_line,
+                    start_character,
+                    value,
+                ),
+            },
+            None => EvaluatedType::Unknown,
         }
     }
 
@@ -2653,10 +2656,14 @@ mod expressions {
             _ => None,
         }
         .unwrap_or_else(|| {
-            let property_symbol = symbollib.get_forwarded(property_symbol_idx).unwrap();
+            let property_symbol = symbollib.get_mut(property_symbol_idx).unwrap();
+            if let SemanticSymbolKind::Property { resolved, .. } = &mut property_symbol.kind {
+                *resolved = None; // Just in case.
+            }
+            let property = property_symbol.name.clone();
             let error = TypeErrorType::NoSuchProperty {
                 base_type: symbollib.format_evaluated_type(&object_type),
-                property: property_symbol.name.clone(),
+                property,
             };
             checker_ctx.add_error(TypeError {
                 _type: error,
@@ -2687,7 +2694,7 @@ mod expressions {
     ) -> Option<EvaluatedType> {
         // The base type of the model or generic.
         let base_symbol = symbollib.get_forwarded(model).unwrap();
-        let property_symbol = symbollib.get_forwarded(property_symbol_idx).unwrap();
+        let property_symbol = symbollib.get(property_symbol_idx).unwrap();
         let impls = match &base_symbol.kind {
             SemanticSymbolKind::Model {
                 implementations, ..

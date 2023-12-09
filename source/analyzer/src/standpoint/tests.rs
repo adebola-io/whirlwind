@@ -430,7 +430,7 @@ fn test_variable_binding() {
             }
         ";
     let mut module = Module::from_text(text);
-    module.module_path = Some(PathBuf::from("testing:://Test.wrl"));
+    module.module_path = Some(PathBuf::from("testing://Test.wrl"));
     let standpoint = Standpoint::build_from_module(module, false).unwrap();
     println!("{:#?}", standpoint.symbol_library);
 }
@@ -470,7 +470,7 @@ fn refreshing() {
     ",
     );
     let mut module = Module::from_text(&text);
-    module.module_path = Some(PathBuf::from("testing:://Test.wrl"));
+    module.module_path = Some(PathBuf::from("testing://Test.wrl"));
     let mut standpoint = Standpoint::new(true, Some(PathBuf::from(CORE_LIBRARY_PATH)));
     let idx = standpoint.add_module(module).unwrap();
     standpoint.validate();
@@ -480,4 +480,56 @@ fn refreshing() {
         standpoint.refresh_module(idx, &text);
         println!("{:?}", time.elapsed())
     }
+}
+
+#[test]
+fn syncing_between_modules() {
+    let module1_text = String::from(
+        "
+    module Add;
+
+    public model Person {
+        new(name: String) {
+            this.name = name;
+        }
+        public var name: String;
+    }
+    ",
+    );
+    let mut module_1 = Module::from_text(&module1_text);
+    module_1.module_path = Some(PathBuf::from("testing://Add.wrl"));
+    let module2_text = String::from(
+        "
+    module Main;
+    use Add.Person;
+
+    public function Main() {
+        person := new Person(\"John\");
+        person.name.Clear();
+    }
+    ",
+    );
+    let mut module_2 = Module::from_text(&module2_text);
+    module_2.module_path = Some(PathBuf::from("testing://Main.wrl"));
+    let mut standpoint = Standpoint::new(true, Some(PathBuf::from(CORE_LIBRARY_PATH)));
+    println!("{:?}", standpoint.module_map.len());
+    let add_module_idx = standpoint.add_module(module_1).unwrap();
+    standpoint.add_module(module_2).unwrap();
+    standpoint.validate();
+    println!("{:#?}", standpoint.errors);
+    assert!(standpoint.errors.len() == 0);
+    standpoint.refresh_module(
+        add_module_idx,
+        "
+    module Add;
+
+    public model Person {
+        new(name: String) {
+            // this.name = name;
+        }
+        // public var name: Int;
+    } 
+    ",
+    );
+    assert!(standpoint.errors.len() == 1);
 }

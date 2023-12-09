@@ -6,8 +6,7 @@ use Super.{
     Process.{PanicOnCaller, Todo},
 }; 
 use Outcome.{ Ok, Err, Outcome }; 
-use Interfaces.{ Guaranteed, Try };
-use Default.Default;
+use Interfaces.{ Guaranteed, Try.Try, Default.Default };
 
 /// Creates a `Maybe` with no value.
 public function None<T>(): Maybe<T> {
@@ -30,11 +29,11 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, Maybe<never>> {
     var inner: MaybeVal<T>;
 
     /// Implementation of `Guarantee` interface.
-    public function [Guaranteed.Guarantee](): T {
+    function [Guaranteed.Guarantee](): T {
         return this.Unwrap();
     }
     /// Implementation of `Try` interface.
-    public function [Try.Try](): Outcome<T, Maybe<never>> {
+    function [Try.Try](): Outcome<T, Maybe<never>> {
         // this.inner => {
         //     .Some(value) => Flow.Normal(value),
         //     .None => Flow.ReturnWithValue(None())

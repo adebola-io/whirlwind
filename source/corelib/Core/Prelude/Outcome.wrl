@@ -25,12 +25,12 @@ public model Outcome<T, E> implements Guaranteed<T> + Try<T, Outcome<never, E>> 
     var inner: OutcomeVal<T, E>;
 
     /// Implementation of the Guarantee interface.
-    public function [Guaranteed.Guarantee](): T {
+    function [Guaranteed.Guarantee](): T {
         this.Unwrap()
     }
 
     /// Implementation of the `Try` interface.
-    public function [Try.Try](): Outcome<T, Outcome<never, E>> {
+    function [Try.Try](): Outcome<T, Outcome<never, E>> {
         // this.inner => {
         //     .Ok(value) => Ok(Flow.Normal(value)),
         //     .Err(error) => Err(Flow.ReturnWithValue(Err(error)))

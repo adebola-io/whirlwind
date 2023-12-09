@@ -38,13 +38,12 @@ pub struct SymbolLibrary {
     pub guaranteed: Option<SymbolIndex>,
     pub maybe: Option<SymbolIndex>,
     pub range: Option<SymbolIndex>,
-    pub flow: Option<SymbolIndex>,
     pub default: Option<SymbolIndex>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct SymbolTable {
-    symbols: Vec<SemanticSymbol>,
+    pub symbols: Vec<SemanticSymbol>,
 }
 
 impl SymbolTable {
@@ -69,18 +68,6 @@ impl SymbolLibrary {
         let table = self.tables.get_mut(&module).unwrap();
         let id = table.symbols.len();
         table.symbols.push(symbol);
-        // // Fill any holes by removed symbols.
-        // let index = match self.holes.pop() {
-        //     Some(void_idx) => {
-        //         self.symbols[void_idx] = SymbolEntry::Symbol(symbol);
-        //         void_idx
-        //     }
-        //     None => {
-        //         let id = self.symbols.len();
-        //         self.symbols.push(SymbolEntry::Symbol(symbol));
-        //         id
-        //     }
-        // };
         SymbolIndex(module, id as u32)
     }
     /// Returns an iterator over all the symbols in the table.
@@ -198,7 +185,7 @@ impl SymbolLibrary {
     }
     /// Remove a symbol table using its index.
     pub fn remove_module_table(&mut self, module_path: PathIndex) -> Option<SymbolTable> {
-        self.tables.remove(&module_path)
+        Some(std::mem::take(self.tables.get_mut(&module_path).unwrap()))
     }
     /// Get a list of at most five related symbols for a symbol at an index.
     pub fn get_relations(&self, _index: SymbolIndex) -> Option<Vec<&SemanticSymbol>> {

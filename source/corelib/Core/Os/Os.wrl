@@ -1,1 +1,33 @@
 module Os;
+
+use Super.Prelude.String;
+use Super.Prelude.{Array, UInt8, Display};
+use Super.Prelude.Outcome;
+use Super.Io.IoError;
+use Super.Primitives.UnsignedInt;
+
+public type PathLike = String | Buffer | URL;
+public type FileHandle = UnsignedInt;
+public type ByteArray = Array<UInt8>;
+
+model Buffer implements Display {
+    var value: Array<UInt8>;
+}
+model URL implements Display {}
+
+/// Opens a file.
+public async function Open<T implements IoError>(filepath: PathLike): Outcome<FileHandle, T> {
+    return Todo();
+}
+
+
+/// Closes an open file.
+public async function Close<T implements IoError>(handle: FileHandle): Outcome<Bool, T> {
+    return Todo();
+}
+
+/// Reads a file, given its filename, and returns its contents.
+public async function ReadFile<T implements IoError>(filename: PathLike): Outcome<ByteArray, T> {
+    Todo()
+    // return Err("");
+}

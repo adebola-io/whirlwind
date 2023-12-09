@@ -1,0 +1,7 @@
+module Try;
+
+use Super.Outcome;
+
+public interface Try<T, U> {
+    function Try(): Outcome<T, U>;
+}

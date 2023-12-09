@@ -7,9 +7,7 @@ mod hover;
 mod message_store;
 mod requests;
 
-use analyzer::{Module, Standpoint};
-use ast::unwrap_or_continue;
-use document_manager::{uri_to_absolute_path, DocumentManager};
+use document_manager::DocumentManager;
 use message_store::MessageStore;
 use requests::{SavingEnd, SavingStart};
 use std::path::PathBuf;
@@ -28,35 +26,7 @@ struct Backend {
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     /// Initializes the server by setting by analyzing the workspace folders.
-    async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
-        let workspace_folders = params.workspace_folders;
-        if let Some(folders) = workspace_folders {
-            let mut standpoints = self.docs.standpoints.lock().unwrap();
-            let mut standpoint = Standpoint::new(true, self.docs.corelib_path.clone());
-            for folder in folders {
-                let root_folder_path = unwrap_or_continue!(uri_to_absolute_path(folder.uri).ok());
-                let children = unwrap_or_continue!(root_folder_path.read_dir().ok())
-                    .filter_map(|entry| entry.ok());
-                children.for_each(|entry| {
-                    let file_path = entry.path();
-                    if file_path.is_file()
-                        && file_path
-                            .extension()
-                            .and_then(|ext| ext.to_str())
-                            .map(|ext| ext == "wrl")
-                            .is_some_and(|is_wrl_file| is_wrl_file)
-                    {
-                        if !standpoint.contains_file(&file_path) {
-                            Module::from_path(file_path)
-                                .ok()
-                                .and_then(|module| standpoint.add_module(module));
-                        }
-                    }
-                });
-                standpoint.validate();
-            }
-            standpoints.push(standpoint);
-        }
+    async fn initialize(&self, _params: InitializeParams) -> Result<InitializeResult> {
         Ok(InitializeResult {
             server_info: Some(ServerInfo {
                 name: String::from("Whirlwind Language Server"),
@@ -64,8 +34,16 @@ impl LanguageServer for Backend {
             }),
             capabilities: ServerCapabilities {
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
-                text_document_sync: Some(TextDocumentSyncCapability::Kind(
-                    TextDocumentSyncKind::FULL,
+                text_document_sync: Some(TextDocumentSyncCapability::Options(
+                    TextDocumentSyncOptions {
+                        open_close: Some(true),
+                        change: Some(TextDocumentSyncKind::FULL),
+                        will_save: Some(true),
+                        will_save_wait_until: None,
+                        save: Some(TextDocumentSyncSaveOptions::SaveOptions(SaveOptions {
+                            include_text: Some(true),
+                        })),
+                    },
                 )),
                 completion_provider: Some(CompletionOptions {
                     resolve_provider: Some(true),
@@ -78,9 +56,12 @@ impl LanguageServer for Backend {
                         label_details_support: Some(true),
                     }),
                 }),
+                declaration_provider: Some(DeclarationCapability::Simple(true)),
                 definition_provider: Some(OneOf::Left(true)),
+                document_symbol_provider: Some(OneOf::Left(true)),
                 references_provider: Some(OneOf::Left(true)),
                 inlay_hint_provider: Some(OneOf::Left(true)),
+                folding_range_provider: Some(FoldingRangeProviderCapability::Simple(true)),
                 rename_provider: Some(OneOf::Left(true)),
                 diagnostic_provider: Some(DiagnosticServerCapabilities::Options(
                     DiagnosticOptions {
@@ -185,6 +166,13 @@ impl LanguageServer for Backend {
 
     async fn completion_resolve(&self, params: CompletionItem) -> Result<CompletionItem> {
         Ok(params)
+    }
+
+    async fn document_symbol(
+        &self,
+        params: DocumentSymbolParams,
+    ) -> Result<Option<DocumentSymbolResponse>> {
+        Ok(self.docs.get_symbols(params))
     }
 
     async fn diagnostic(

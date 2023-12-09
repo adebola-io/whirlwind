@@ -10,7 +10,7 @@ use Super.{
         UnsignedInt,
     }
 };
-use Internals.never;
+use Internals.{never, Sequence};
  
 /// List of variants that can be called with `Invoke()`.
 public enum Injunction {
@@ -41,7 +41,10 @@ public enum Injunction {
     StrTrimStart(String),
     StrTrimEnd(String),
     // Eventuals.
-    // Await(Eventual<T>)
+    EventAwait(&Sequence),
+    EventAbort(&Sequence),
+    /// Creates an eventual from a prospect.
+    EventCreate(&Prospect)
 }
 
 /// Compile time function to call underlying dynamic libraries.

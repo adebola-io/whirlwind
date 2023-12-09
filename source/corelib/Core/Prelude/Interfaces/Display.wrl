@@ -1,6 +1,6 @@
 module Display;
 
-use Super.Primitives.String;
+use Super.String;
 
 /// The `Display` interface defines a contract for the conversion of models into string representations.
 /// This allows objects of different types to be seamlessly integrated into textual contexts,

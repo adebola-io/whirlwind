@@ -447,4 +447,11 @@ impl SemanticSymbol {
             .first()
             .is_some_and(|reference| reference.module_path == module_path)
     }
+
+    /// Checks if the symbol has any references in a module.
+    pub fn is_referenced_in(&self, path_idx: PathIndex) -> bool {
+        self.references
+            .iter()
+            .any(|reference| reference.module_path == path_idx)
+    }
 }

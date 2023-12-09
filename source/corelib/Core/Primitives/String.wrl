@@ -5,6 +5,7 @@ use Bool.Bool;
 use Super.{ 
     Internals.{ Invoke, Injunction }, 
     Memory.{ CharSpace, Buffer }, 
+    Collections.Hash,
     Prelude.{ Maybe, AsIterator, Iteratable, Range, Display },
     Process.Todo,
 };
@@ -12,7 +13,7 @@ use Numeric.{ Int, UnsignedInt };
 use Array.Array;
  
 /// Model for creating, manipulating and formatting text sequences.
-public model String implements Addition + AsIterator<&String, Chars> + Sequenced + Display {
+public model String implements Addition + AsIterator<&String, Chars> + Sequenced + Display + Hash {
     /// Returns the next character alphabetically in a sequence.
     public function [Sequenced.NextItem](): Maybe<String> {
         return Invoke(Injunction.NextChar(this));

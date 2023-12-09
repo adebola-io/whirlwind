@@ -2,7 +2,7 @@ use crate::TypedModule;
 use utils::UnorderedMap;
 
 /// An index into the paths stored.
-#[derive(Debug, PartialEq, Clone, Copy, Hash, Eq)]
+#[derive(Debug, PartialEq, PartialOrd, Ord, Clone, Copy, Hash, Eq)]
 pub struct PathIndex(pub u32);
 
 #[derive(Debug)]

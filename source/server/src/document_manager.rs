@@ -23,18 +23,18 @@ use tower_lsp::{
         request::{GotoDeclarationParams, GotoDeclarationResponse},
         CompletionContext, CompletionParams, CompletionResponse, Diagnostic,
         DidChangeTextDocumentParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams,
-        DocumentDiagnosticParams, DocumentDiagnosticReport, FoldingRange, FoldingRangeParams,
-        FullDocumentDiagnosticReport, HoverParams, InlayHint, InlayHintKind, InlayHintLabel,
-        InlayHintParams, Location, Position, ReferenceParams, RelatedFullDocumentDiagnosticReport,
-        RenameParams, TextEdit, Url, WorkspaceDiagnosticParams, WorkspaceDiagnosticReport,
-        WorkspaceDiagnosticReportResult, WorkspaceDocumentDiagnosticReport, WorkspaceEdit,
-        WorkspaceFullDocumentDiagnosticReport,
+        DocumentDiagnosticParams, DocumentDiagnosticReport, DocumentSymbol, DocumentSymbolParams,
+        DocumentSymbolResponse, FoldingRange, FoldingRangeParams, FullDocumentDiagnosticReport,
+        HoverParams, InlayHint, InlayHintKind, InlayHintLabel, InlayHintParams, Location, Position,
+        ReferenceParams, RelatedFullDocumentDiagnosticReport, RenameParams, SymbolKind, TextEdit,
+        Url, WorkspaceDiagnosticParams, WorkspaceDiagnosticReport, WorkspaceDiagnosticReportResult,
+        WorkspaceDocumentDiagnosticReport, WorkspaceEdit, WorkspaceFullDocumentDiagnosticReport,
     },
 };
 use utils::get_parent_dir;
 
 /// Adds an error message to a message store and immediately returns the message store.
-macro_rules! log_error {
+macro_rules! error {
     ($messages: expr, $($arg:tt)*) => {{
         $messages.error((format!($($arg)*)));
         return $messages;
@@ -43,24 +43,22 @@ macro_rules! log_error {
 
 #[derive(Debug)]
 pub struct DocumentManager {
-    pub standpoints: Arc<Mutex<Vec<Standpoint>>>,
-    pub corelib_path: Option<PathBuf>,
+    pub standpoint: Arc<Mutex<Standpoint>>,
     /// Boolean stopper to prevent unnecessary workspace diagnostic refreshes.
     was_updated: Arc<Mutex<bool>>,
     /// Cached workspace diagnostic report.
-    diagnostic_report: Arc<Mutex<WorkspaceDiagnosticReportResult>>,
+    _diagnostic_report: Arc<Mutex<WorkspaceDiagnosticReportResult>>,
     /// Last opened standpoint module.
-    last_opened: Arc<Mutex<Option<(usize, PathIndex)>>>,
+    last_opened: Arc<Mutex<Option<PathIndex>>>,
 }
 
 impl DocumentManager {
     /// Creates a new document manager.
     pub fn new(corelib_path: Option<PathBuf>) -> Self {
         DocumentManager {
-            standpoints: Arc::new(Mutex::new(vec![])),
-            corelib_path,
+            standpoint: Arc::new(Mutex::new(Standpoint::new(true, corelib_path))),
             was_updated: Arc::new(Mutex::new(true)),
-            diagnostic_report: Arc::new(Mutex::new(WorkspaceDiagnosticReportResult::Report(
+            _diagnostic_report: Arc::new(Mutex::new(WorkspaceDiagnosticReportResult::Report(
                 Default::default(),
             ))),
             last_opened: Arc::new(Mutex::new(None)),
@@ -69,15 +67,13 @@ impl DocumentManager {
 
     /// Handle the opening of a document/module.
     pub fn open_document(&self, params: DidOpenTextDocumentParams) {
-        let mut standpoints = self.standpoints.lock().unwrap();
         let path_buf = match uri_to_absolute_path(params.text_document.uri.clone()) {
             Ok(path_buf) => path_buf,
             Err(_) => return,
         };
-        for standpoint in standpoints.iter_mut() {
-            if let Some(module) = standpoint.module_map.map_path_to_index(&path_buf) {
-                standpoint.refresh_module(module, &params.text_document.text);
-            }
+        let mut standpoint = self.standpoint.lock().unwrap();
+        if let Some(module) = standpoint.module_map.map_path_to_index(&path_buf) {
+            standpoint.refresh_module(module, &params.text_document.text);
         }
     }
 
@@ -87,58 +83,48 @@ impl DocumentManager {
         let path_buf = match uri_to_absolute_path(uri) {
             Ok(path_buf) => path_buf,
             Err(err) => {
-                log_error!(
+                error!(
                     msgs,
                     "Could not convert URI to an absolute file path. ERROR: {err:?}"
                 )
             }
         };
-        let standpoints = self.standpoints.lock().unwrap();
-        match self.get_cached(&standpoints) {
-            Some((_, module)) => {
+        let standpoint = self.standpoint.lock().unwrap();
+        match self.get_cached(&standpoint) {
+            Some(module) => {
                 if module.path_buf == path_buf {
                     // Document/module is already opened.
                     return msgs;
                 }
-                self.update_cached(&standpoints, path_buf, &mut msgs);
+                std::mem::drop(standpoint);
+                self.update_cached(path_buf, &mut msgs);
             }
-            None => self.update_cached(&standpoints, path_buf, &mut msgs),
+            None => {
+                std::mem::drop(standpoint);
+                self.update_cached(path_buf, &mut msgs);
+            }
         };
         msgs
     }
 
     /// Handles a file save in the editor.
-    pub fn save_file(&self, _params: DidSaveTextDocumentParams) -> MessageStore {
+    pub fn save_file(&self, _: DidSaveTextDocumentParams) -> MessageStore {
         let mut msgs = MessageStore::new();
+        let time = std::time::Instant::now();
         msgs.inform("Saving file...");
-        let mut standpoints = self.standpoints.lock().unwrap();
-        for standpoint in standpoints.iter_mut() {
-            standpoint.validate();
-        }
-        msgs.inform("File saved.");
+        let mut standpoint = self.standpoint.lock().unwrap();
+        standpoint.validate();
+        *self.was_updated.lock().unwrap() = true;
+        msgs.inform(format!(
+            "File saved. Workspace updated in {:?}",
+            time.elapsed()
+        ));
         msgs
     }
 
     /// Update the cached module.
-    fn update_cached(
-        &self,
-        standpoints: &Vec<Standpoint>,
-        path_buf: PathBuf,
-        msgs: &mut MessageStore,
-    ) {
-        let context = standpoints
-            .iter()
-            .enumerate()
-            .find(|(_, context)| context.contains_file(&path_buf));
-        let (index, standpoint) = match context {
-            Some(context) => context,
-            None => {
-                msgs.error(format!(
-                    "Could not find module with this file, and therefore no changes are handled."
-                ));
-                return;
-            }
-        };
+    fn update_cached(&self, path_buf: PathBuf, msgs: &mut MessageStore) {
+        let standpoint = self.standpoint.lock().unwrap();
         let module_idx = match standpoint.module_map.map_path_to_index(&path_buf) {
             Some(path_idx) => path_idx,
             None => {
@@ -147,173 +133,136 @@ impl DocumentManager {
             }
         };
         let mut last_opened = self.last_opened.lock().unwrap();
-        *last_opened = Some((index, module_idx));
+        *last_opened = Some(module_idx);
     }
 
     /// Return the cached module.
-    fn get_cached<'a>(
-        &self,
-        standpoints: &'a Vec<Standpoint>,
-    ) -> Option<(&'a Standpoint, &'a TypedModule)> {
+    fn get_cached<'a>(&self, standpoint: &'a Standpoint) -> Option<&'a TypedModule> {
         let last_opened = self.last_opened.lock().unwrap();
         let last_opened = last_opened.as_ref()?;
-        let last_opened_standpoint = standpoints.get(last_opened.0)?;
-        let last_opened_module = last_opened_standpoint.module_map.get(last_opened.1)?;
-        Some((last_opened_standpoint, last_opened_module))
-    }
-
-    /// Return the cached module, mutably.
-    fn get_cached_mut<'a>(
-        &self,
-        standpoints: &'a mut Vec<Standpoint>,
-    ) -> Option<(&'a mut Standpoint, PathIndex)> {
-        let last_opened = self.last_opened.lock().unwrap();
-        let last_opened = last_opened.as_ref()?;
-        let last_opened_standpoint = standpoints.get_mut(last_opened.0)?;
-        let last_opened_module = last_opened_standpoint.module_map.get_mut(last_opened.1)?;
-        let idx = last_opened_module.path_idx.clone();
-        Some((last_opened_standpoint, idx))
+        let last_opened_module = standpoint.module_map.get(*last_opened)?;
+        Some(last_opened_module)
     }
 
     /// Add a new document to be tracked.
     pub fn add_document(&self, params: DidOpenTextDocumentParams) -> MessageStore {
         let mut msgs = MessageStore::new();
-        let mut standpoints = self.standpoints.lock().unwrap();
         let uri = params.text_document.uri;
         let path_buf = match uri_to_absolute_path(uri.clone()) {
             Ok(path_buf) => path_buf,
             Err(err) => {
-                log_error!(
+                error!(
                     msgs,
                     "Could not convert URI to an absolute file path. ERROR: {err:?}"
                 )
             }
         };
-        let parent_folder = match get_parent_dir(&path_buf) {
-            Some(path) => path,
-            None => {
-                log_error!(msgs, "Could not determine parent folder for {path_buf:?}.")
-            }
-        };
-        // Containing folder is already part of a context.
-        for context in standpoints.iter_mut() {
-            if context.contains_folder(parent_folder) {
-                match Module::from_path(path_buf) {
-                    Ok(module) => {
-                        match context.add_module(module) {
-                            Some(p) => msgs.inform(format!(
-                                "Module added at index {p:?}. {} modules in standpoint.",
-                                context.module_map.len()
-                            )),
-                            None => msgs.error("The module was not added. Something went wrong."),
-                        }
-                        context.validate();
-                    }
-                    // If module cannot be added, store error in the root file.
-                    Err(error) => {
-                        context.add_import_error(error);
-                    }
-                }
-                return msgs;
-            }
+        let mut standpoint = self.standpoint.lock().unwrap();
+        if standpoint.contains_file(&path_buf) {
+            return msgs;
         }
-        let mut root_folder = parent_folder;
-        // Look 5 levels above to try to find the root of the project.
-        for _ in 0..5 {
-            let children: Vec<_> = match root_folder.read_dir() {
-                Ok(rdir) => rdir,
-                Err(error) => log_error!(msgs, "Error reading directory: {error:?}"),
-            }
-            .filter_map(|entry| entry.ok())
-            .collect();
-            // Find Main source module.
-            let main_module = children
-                .iter()
-                .filter_map(|child| {
-                    let path = child.path();
-                    match path.is_file() && path.extension().is_some_and(|ext| ext == "wrl") {
-                        true => Some(path),
-                        false => None,
+        match Module::from_path(path_buf) {
+            Ok(module) => {
+                let path_idx = match standpoint.add_module(module) {
+                    Some(path_idx) => {
+                        msgs.inform(format!(
+                            "Module added at index {path_idx:?}. {} modules in standpoint.",
+                            standpoint.module_map.len()
+                        ));
+                        path_idx
                     }
-                })
-                .filter_map(|file| Module::from_path(file).ok())
-                .find(|module| {
-                    module
-                        .name
-                        .as_ref()
-                        .is_some_and(|name| name == "Main" || name == "Lib")
-                });
-            let main_module = match main_module {
-                Some(module) => module,
-                None => {
-                    root_folder = match get_parent_dir(&root_folder) {
-                        Some(path) => path,
-                        None => {
-                            log_error!(msgs, "Could not determine parent folder during upwards traversal for {root_folder:?}.")
-                        }
-                    };
-                    continue;
-                }
-            };
-            // Check again to see if there is already a graph with this parent folder.
-            for context in standpoints.iter_mut() {
-                if context.contains_folder(root_folder) {
-                    match Module::from_path(path_buf) {
-                        Ok(module) => {
-                            msgs.inform(format!("Module added successfully."));
-                            context.add_module(module);
-                        }
-                        Err(error) => context.add_import_error(error),
+                    None => {
+                        msgs.error("The module was not added. Something went wrong.");
+                        return msgs;
                     }
-                    context.validate();
-                    return msgs;
-                }
-            }
-            let mut standpoint = Standpoint::new(true, self.corelib_path.clone());
-
-            // Start at main module.
-            if let Some(_) = standpoint.add_module(main_module) {
-                // now add the current module. (if it was not already automatically added.)
-                let path_idx = if !standpoint.contains_file(&path_buf) {
-                    match Module::from_path(path_buf) {
-                        Ok(current_module) => match standpoint.add_module(current_module) {
-                            None => {
-                                log_error!(
-                                msgs,
-                                "Could not add this module to fresh standpoint. Skipping altogether.."
-                                                        )
-                            }
-                            Some(idx) => idx,
-                        },
-                        Err(error) => {
-                            msgs.inform(format!("Error creating current module: {error:?}"));
-                            standpoints.push(standpoint);
-                            return msgs;
-                        }
-                    }
-                } else {
-                    standpoint.module_map.map_path_to_index(&path_buf).unwrap()
                 };
                 standpoint.validate();
                 standpoint.refresh_module(path_idx, &params.text_document.text);
-                msgs.inform("Module added successfully.");
-            } else {
-                // Root not found, skip project altogether.
-                log_error!(msgs, "Could not determine main module for project.")
             }
-            standpoints.push(standpoint);
-            // Todo: read whirlwind.yaml to find source module instead.
-            break;
+            // If module cannot be added, store error in the root file.
+            Err(error) => {
+                standpoint.add_import_error(error);
+            }
         }
-        msgs
+        return msgs;
+        // // Look 5 levels above to try to find the root of the project.
+        // for _ in 0..5 {
+        //     let children: Vec<_> = match root_folder.read_dir() {
+        //         Ok(rdir) => rdir,
+        //         Err(error) => error!(msgs, "Error reading directory: {error:?}"),
+        //     }
+        //     .filter_map(|entry| entry.ok())
+        //     .collect();
+        //     // Find Main source module.
+        //     let main_module = children
+        //         .iter()
+        //         .filter_map(|child| {
+        //             let path = child.path();
+        //             match path.is_file() && path.extension().is_some_and(|ext| ext == "wrl") {
+        //                 true => Some(path),
+        //                 false => None,
+        //             }
+        //         })
+        //         .filter_map(|file| Module::from_path(file).ok())
+        //         .find(|module| {
+        //             module
+        //                 .name
+        //                 .as_ref()
+        //                 .is_some_and(|name| name == "Main" || name == "Lib")
+        //         });
+        //     let main_module = match main_module {
+        //         Some(module) => module,
+        //         None => {
+        //             root_folder = match get_parent_dir(&root_folder) {
+        //                 Some(path) => path,
+        //                 None => {
+        //                     error!(msgs, "Could not determine parent folder during upwards traversal for {root_folder:?}.")
+        //                 }
+        //             };
+        //             continue;
+        //         }
+        //     };
+        //     // Start at main module.
+        //     if let Some(_) = standpoint.add_module(main_module) {
+        //         // now add the current module. (if it was not already automatically added.)
+        //         let path_idx = if !standpoint.contains_file(&path_buf) {
+        //             match Module::from_path(path_buf) {
+        //                 Ok(current_module) => match standpoint.add_module(current_module) {
+        //                     None => {
+        //                         error!(
+        //                         msgs,
+        //                         "Could not add this module to fresh standpoint. Skipping altogether.."
+        //                                                 )
+        //                     }
+        //                     Some(idx) => idx,
+        //                 },
+        //                 Err(error) => {
+        //                     msgs.inform(format!("Error creating current module: {error:?}"));
+        //                     return msgs;
+        //                 }
+        //             }
+        //         } else {
+        //             standpoint.module_map.map_path_to_index(&path_buf).unwrap()
+        //         };
+        //         standpoint.validate();
+        //         standpoint.refresh_module(path_idx, &params.text_document.text);
+        //         msgs.inform("Module added successfully.");
+        //     } else {
+        //         // Root not found, skip project altogether.
+        //         error!(msgs, "Could not determine main module for project.")
+        //     }
+        //     // Todo: read whirlwind.yaml to find source module instead.
+        //     break;
+        // }
+        // msgs
     }
 
     /// Hover over support.
     pub fn get_hover_info(&self, params: HoverParams) -> WithMessages<Option<HoverInfo>> {
         let mut messages = self.remember(params.text_document_position_params.text_document.uri);
         let time = std::time::Instant::now();
-        let standpoints = self.standpoints.lock().unwrap();
-        let (main_standpoint, module) = match self.get_cached(&standpoints) {
+        let standpoint = self.standpoint.lock().unwrap();
+        let module = match self.get_cached(&standpoint) {
             Some(t) => t,
             None => {
                 messages.error("Could not retrieve the cached module index");
@@ -323,7 +272,7 @@ impl DocumentManager {
         let position = params.text_document_position_params.position;
         // Editor ranges are zero-based, for some reason.
         let pos = [position.line + 1, position.character + 1];
-        let hover_finder = HoverFinder::new(module, main_standpoint, pos, messages);
+        let hover_finder = HoverFinder::new(module, &standpoint, pos, messages);
         for statement in module.statements.iter() {
             if let Some(hover) = hover_finder.statement(statement) {
                 let mut messages = hover_finder.message_store.take();
@@ -336,15 +285,13 @@ impl DocumentManager {
 
     /// Checks if a uri is already being tracked.
     pub fn has(&self, uri: Url) -> bool {
-        let contexts = self.standpoints.lock().unwrap();
+        let context = self.standpoint.lock().unwrap();
         let path_buf = match uri_to_absolute_path(uri) {
             Ok(path_buf) => path_buf,
             Err(_) => return false,
         };
-        for context in contexts.iter() {
-            if context.contains_file(&path_buf) {
-                return true;
-            }
+        if context.contains_file(&path_buf) {
+            return true;
         }
         return false;
     }
@@ -353,8 +300,8 @@ impl DocumentManager {
     /// TODO: This will obviously get sloooooww. Fix.
     pub fn completion(&self, params: CompletionParams) -> WithMessages<Option<CompletionResponse>> {
         let mut msgs = self.remember(params.text_document_position.text_document.uri);
-        let standpoints = self.standpoints.lock().unwrap();
-        let (standpoint, module) = match self.get_cached(&standpoints) {
+        let standpoint = self.standpoint.lock().unwrap();
+        let module = match self.get_cached(&standpoint) {
             Some(t) => t,
             None => {
                 msgs.error("Could not retrieve the cached module index");
@@ -366,7 +313,7 @@ impl DocumentManager {
         let pos = [position.line + 1, position.character + 1];
         let time = std::time::Instant::now();
         let completion_finder =
-            CompletionFinder::new(module, standpoint, pos, msgs, params.context);
+            CompletionFinder::new(module, &standpoint, pos, msgs, params.context);
         for (index, statement) in module.statements.iter().enumerate() {
             completion_finder.next_statement_is(index + 1, &module.statements);
             if let Some(completions) = completion_finder.statement(statement) {
@@ -415,7 +362,7 @@ impl DocumentManager {
                 // Suggests the list of modules in the current directory, along with the Core library.
                 // NOTE: the "use " trigger is client dependent.
                 let mut completions = vec![];
-                let writer = SymbolWriter::new(standpoint);
+                let writer = SymbolWriter::new(&standpoint);
                 let current_module_path = &module.path_buf;
                 response = (|| -> Option<CompletionResponse> {
                     let parent_directory = get_parent_dir(&current_module_path)?;
@@ -446,9 +393,9 @@ impl DocumentManager {
                 // Preventing completion in comments should be handled by the client.
                 let closest = get_closest_symbol(symbollib, module, pos, trigger_is_dot);
                 let mut completions = vec![];
-                let writer = SymbolWriter::new(standpoint);
+                let writer = SymbolWriter::new(&standpoint);
                 for (index, symbol) in symbollib.symbols().filter(|(_, sym)| {
-                    is_valid_complete_target(sym, module, standpoint, pos, closest, trigger)
+                    is_valid_complete_target(sym, module, &standpoint, pos, closest, trigger)
                 }) {
                     if let Some(completion) =
                         completion_finder.create_completion(&writer, symbol, index, true)
@@ -469,8 +416,8 @@ impl DocumentManager {
     pub fn handle_change(&self, mut params: DidChangeTextDocumentParams) -> MessageStore {
         let uri = params.text_document.uri.clone();
         let mut msgs = self.remember(uri);
-        let mut standpoints = self.standpoints.lock().unwrap();
-        let (standpoint, path_idx) = match self.get_cached_mut(&mut standpoints) {
+        let mut standpoint = self.standpoint.lock().unwrap();
+        let path_idx = match self.last_opened.lock().unwrap().clone() {
             Some(t) => t,
             None => {
                 msgs.error("Could not retrieve the cached module index");
@@ -482,13 +429,13 @@ impl DocumentManager {
         let time = std::time::Instant::now();
         match standpoint.refresh_module(path_idx, &most_current) {
             Some(()) => {
-                msgs.inform(format!("Document refreshed in {:?}", time.elapsed()));
+                msgs.inform(format!("Document refreshed in {:?}", time.elapsed(),));
             }
-            _ => log_error!(msgs, "Something went wrong while refreshing user text."),
+            _ => error!(msgs, "Something went wrong while refreshing user text."),
         };
         *self.was_updated.lock().unwrap() = true;
         // idk what to do here.
-        // todo: set threshold according to size of standpoints.
+        // todo: set threshold according to size of standpoint.
         // if handling changes becomes too slow, the entire standpoint is refreshed.
         // All modules are removed and added again, and the current module is updated with the latest text.
         if time.elapsed() > std::time::Duration::from_millis(get_time_limit(&standpoint.module_map))
@@ -518,8 +465,9 @@ impl DocumentManager {
     ) -> WithMessages<Option<GotoDeclarationResponse>> {
         let mut msgs = self.remember(params.text_document_position_params.text_document.uri);
         let position = params.text_document_position_params.position;
-        let standpoints = self.standpoints.lock().unwrap();
-        let (standpoint, module) = match self.get_cached(&standpoints) {
+        let standpoint = self.standpoint.lock().unwrap();
+        let standpoint = &standpoint;
+        let module = match self.get_cached(standpoint) {
             Some(t) => t,
             None => {
                 msgs.error("Could not retrieve the cached module index");
@@ -569,10 +517,7 @@ impl DocumentManager {
     ) -> Option<DocumentDiagnosticReport> {
         let uri = params.text_document.uri;
         let path_buf = uri_to_absolute_path(uri).ok()?;
-        let contexts = self.standpoints.lock().unwrap();
-        let standpoint = contexts
-            .iter()
-            .find(|context| context.contains_file(&path_buf))?;
+        let standpoint = self.standpoint.lock().unwrap();
         let path_idx = standpoint
             .module_map
             .paths()
@@ -613,8 +558,9 @@ impl DocumentManager {
     pub fn get_references(&self, params: ReferenceParams) -> WithMessages<Option<Vec<Location>>> {
         let mut msgs = self.remember(params.text_document_position.text_document.uri);
         let position = params.text_document_position.position;
-        let standpoints = self.standpoints.lock().unwrap();
-        let (standpoint, module) = match self.get_cached(&standpoints) {
+        let standpoint = self.standpoint.lock().unwrap();
+        let standpoint = &standpoint;
+        let module = match self.get_cached(&standpoint) {
             Some(t) => t,
             None => {
                 msgs.error("Could not retrieve the cached module index");
@@ -683,19 +629,8 @@ impl DocumentManager {
                 ))),
             );
         }
-        let mut standpoints = self.standpoints.lock().unwrap();
-        let standpoint = standpoints
-            .iter_mut()
-            .find(|context| context.contains_file(&pathbuf));
-        let standpoint = match standpoint {
-            Some(s) => s,
-            None => return (
-                msgs,
-                Err(Error::invalid_params(
-                    "Could not find module with this file, and therefore no changes are handled.",
-                )),
-            ),
-        };
+        let standpoint = self.standpoint.lock().unwrap();
+        let standpoint = &standpoint;
         let path_idx_opt = standpoint.module_map.map_path_to_index(&pathbuf);
         if path_idx_opt.is_none() {
             msgs.inform("Found standpoint, but could not map path to index");
@@ -738,8 +673,8 @@ impl DocumentManager {
     /// Support for inlay hints.
     pub fn get_hints(&self, params: InlayHintParams) -> WithMessages<Option<Vec<InlayHint>>> {
         let mut msgs = self.remember(params.text_document.uri);
-        let standpoints = self.standpoints.lock().unwrap();
-        let (standpoint, module) = match self.get_cached(&standpoints) {
+        let standpoint = self.standpoint.lock().unwrap();
+        let module = match self.get_cached(&standpoint) {
             Some(t) => t,
             None => {
                 msgs.error("Could not retrieve the cached module index");
@@ -795,44 +730,37 @@ impl DocumentManager {
 
     /// Returns the last workspace diagnostics report, or computes another one if there was a file change.
     fn get_or_compute_workspace_diagnostics(&self) -> WorkspaceDiagnosticReportResult {
-        let standpoints = self.standpoints.lock().unwrap();
-        let mut was_updated = self.was_updated.lock().unwrap();
-        let mut diagnostic_report = self.diagnostic_report.lock().unwrap();
-        if *was_updated {
-            *diagnostic_report =
-                WorkspaceDiagnosticReportResult::Report(WorkspaceDiagnosticReport {
-                    items: match standpoints.first() {
-                        Some(standpoint) => standpoint
-                            .module_map
-                            .paths()
-                            .filter_map(|(path_idx, module)| {
-                                Some(WorkspaceDocumentDiagnosticReport::Full(
-                                    WorkspaceFullDocumentDiagnosticReport {
-                                        uri: path_to_uri(&module.path_buf).ok()?,
-                                        version: None,
-                                        full_document_diagnostic_report:
-                                            FullDocumentDiagnosticReport {
-                                                result_id: None,
-                                                items: standpoint
-                                                    .errors
-                                                    .iter()
-                                                    .filter(|error| {
-                                                        error.offending_file == path_idx
-                                                    })
-                                                    .map(|p| error_to_diagnostic(p))
-                                                    .collect::<Vec<Diagnostic>>(),
-                                            },
-                                    },
-                                ))
-                            })
-                            .collect(),
-
-                        None => vec![],
-                    },
-                });
-            *was_updated = false;
-        }
-        diagnostic_report.clone()
+        let standpoint = self.standpoint.lock().unwrap();
+        // let mut was_updated = self.was_updated.lock().unwrap();
+        // let mut diagnostic_report = self.diagnostic_report.lock().unwrap();
+        // if *was_updated {
+        // *diagnostic_report =
+        WorkspaceDiagnosticReportResult::Report(WorkspaceDiagnosticReport {
+            items: standpoint
+                .module_map
+                .paths()
+                .filter_map(|(path_idx, module)| {
+                    Some(WorkspaceDocumentDiagnosticReport::Full(
+                        WorkspaceFullDocumentDiagnosticReport {
+                            uri: path_to_uri(&module.path_buf).ok()?,
+                            version: None,
+                            full_document_diagnostic_report: FullDocumentDiagnosticReport {
+                                result_id: None,
+                                items: standpoint
+                                    .errors
+                                    .iter()
+                                    .filter(|error| error.offending_file == path_idx)
+                                    .map(|p| error_to_diagnostic(p))
+                                    .collect::<Vec<Diagnostic>>(),
+                            },
+                        },
+                    ))
+                })
+                .collect(),
+        })
+        // *was_updated = false;
+        // }
+        // diagnostic_report.clone()
     }
 
     /// Returns the folding ranges for the document.
@@ -841,9 +769,9 @@ impl DocumentManager {
         params: FoldingRangeParams,
     ) -> WithMessages<Option<Vec<FoldingRange>>> {
         let mut messages = self.remember(params.text_document.uri);
-        let standpoints = self.standpoints.lock().unwrap();
-        let module = match self.get_cached(&standpoints) {
-            Some((_, module)) => module,
+        let standpoint = self.standpoint.lock().unwrap();
+        let module = match self.get_cached(&standpoint) {
+            Some(module) => module,
             None => {
                 messages.error("Could not return the module.");
                 return (messages, None);
@@ -853,6 +781,59 @@ impl DocumentManager {
         folding_range_finder.gather();
         let ranges = folding_range_finder.ranges.take();
         (messages, Some(ranges))
+    }
+
+    pub fn get_symbols(&self, params: DocumentSymbolParams) -> Option<DocumentSymbolResponse> {
+        self.remember(params.text_document.uri);
+        let standpoint = self.standpoint.lock().unwrap();
+        let module = self.get_cached(&standpoint)?;
+        let symbol_library = &standpoint.symbol_library;
+
+        let symbols = symbol_library
+            .symbols()
+            .filter(|(_, symbol)| symbol.is_referenced_in(module.path_idx))
+            .map(|(idx, _)| {
+                let idx = symbol_library.forward(idx);
+                let symbol = symbol_library.get(idx).unwrap();
+                let (kind, detail) = match &symbol.kind {
+                    SemanticSymbolKind::Module { .. } => (SymbolKind::MODULE, None),
+                    SemanticSymbolKind::Interface { .. } => (SymbolKind::INTERFACE, None),
+                    SemanticSymbolKind::Model { .. } => (SymbolKind::CLASS, None),
+                    SemanticSymbolKind::Enum { .. } => (SymbolKind::ENUM, None),
+                    SemanticSymbolKind::Variable { inferred_type, .. } => (
+                        SymbolKind::VARIABLE,
+                        Some(symbol_library.format_evaluated_type(inferred_type)),
+                    ),
+                    SemanticSymbolKind::Constant { inferred_type, .. } => (
+                        SymbolKind::CONSTANT,
+                        Some(symbol_library.format_evaluated_type(inferred_type)),
+                    ),
+                    SemanticSymbolKind::Function { .. } => (SymbolKind::FUNCTION, None),
+                    SemanticSymbolKind::TypeName { .. } => (SymbolKind::INTERFACE, None),
+                    SemanticSymbolKind::Attribute { .. } => (SymbolKind::FIELD, None),
+                    SemanticSymbolKind::Parameter { .. } => (SymbolKind::VARIABLE, None),
+                    SemanticSymbolKind::GenericParameter { .. } => {
+                        (SymbolKind::TYPE_PARAMETER, None)
+                    }
+                    SemanticSymbolKind::Method { .. } => (SymbolKind::METHOD, None),
+                    SemanticSymbolKind::Variant { .. } => (SymbolKind::CONSTANT, None),
+                    _ => (SymbolKind::KEY, None),
+                };
+                #[allow(deprecated)]
+                let doc_symbol = DocumentSymbol {
+                    name: symbol.name.clone(),
+                    detail,
+                    kind,
+                    range: to_range(symbol.origin_span),
+                    selection_range: to_range(symbol.ident_span()),
+                    children: None,
+                    deprecated: None,
+                    tags: None,
+                };
+                doc_symbol
+            })
+            .collect::<Vec<_>>();
+        return Some(DocumentSymbolResponse::Nested(symbols));
     }
 }
 

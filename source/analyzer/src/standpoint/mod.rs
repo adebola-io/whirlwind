@@ -5,7 +5,7 @@ use super::{symbols::*, ProgramError};
 use crate::{
     bind, typecheck, CurrentModuleType, IntrinsicPaths, LiteralMap, Module, ModuleMap, PathIndex,
     ProgramErrorType::{self, Importing},
-    SurfaceAreaCalculator, SymbolLibrary, TypedModule,
+    SurfaceAreaCalculator, SymbolLibrary, SymbolTable, TypedModule,
 };
 use ast::UseTarget;
 use std::{
@@ -485,16 +485,6 @@ impl Standpoint {
     /// for unresolvable items.
     pub fn resolve_imports(&mut self) {
         for (idx, _) in self.module_map.paths() {
-            // Remove all stale errors.
-            let mut i = 0;
-            while i < self.errors.len() {
-                let error = &self.errors[i];
-                let should_remove = error.offending_file == idx;
-                if should_remove {
-                    self.errors.swap_remove(i);
-                }
-                i += 1;
-            }
             self.analyze_imports(idx, ResolutionPhase::Assessment);
         }
     }
@@ -573,10 +563,12 @@ impl Standpoint {
                         Self::INTERNAL => CurrentModuleType::Internal,
                         Self::ITERATABLE => CurrentModuleType::Iteratable,
                         Self::OPS => CurrentModuleType::Ops,
-                        Self::TRAITS => CurrentModuleType::Interfaces,
+                        Self::INTERFACES => CurrentModuleType::Interfaces,
                         Self::RANGE => CurrentModuleType::Range,
                         Self::STRING => CurrentModuleType::String,
                         Self::DEFAULT => CurrentModuleType::Default,
+                        Self::TRY => CurrentModuleType::Try,
+                        Self::GUARANTEED => CurrentModuleType::Guaranteed,
                         Self::MAYBE => CurrentModuleType::Maybe,
                         Self::PRELUDE => {
                             is_prelude = true;
@@ -635,8 +627,8 @@ impl Standpoint {
     }
 
     /// Removes the module with a particlar index and all its related characteristics.
-    pub fn remove_module(&mut self, path_idx: PathIndex) -> Option<TypedModule> {
-        let stale_module = self.module_map.get(path_idx)?;
+    pub fn remove_module(&mut self, path_idx: PathIndex) -> Option<(TypedModule, SymbolTable)> {
+        let stale_module = self.module_map.get(path_idx).unwrap();
         let area = SurfaceAreaCalculator::gather_from_module(stale_module, self);
         let module_symbol_idx = stale_module.symbol_idx;
         let module_symbol = self.symbol_library.get(module_symbol_idx)?;
@@ -655,7 +647,6 @@ impl Standpoint {
                 return None;
             })
             .collect::<Vec<_>>();
-        self.symbol_library.remove_module_table(path_idx);
         for literal_idx in literals_to_remove {
             self.literals.remove(literal_idx);
         }
@@ -673,16 +664,19 @@ impl Standpoint {
         if dir_map.is_empty() {
             self.directories.remove(parent_directory);
         }
-        self.module_map.remove(path_idx)
+        Some((
+            self.module_map.remove(path_idx).unwrap(),
+            self.symbol_library.remove_module_table(path_idx).unwrap(),
+        ))
     }
 
     /// Changes the content of a single module and updates the entire standpoint accordingly.
     pub fn refresh_module(&mut self, path_idx: PathIndex, text: &str) -> Option<()> {
-        let module = self.remove_module(path_idx)?;
+        let (stale_module, _stale_table) = self.remove_module(path_idx)?;
 
-        // Add updated module.
         let mut update = Module::from_text(&text);
-        update.module_path = Some(module.path_buf);
+        update.module_path = Some(stale_module.path_buf);
+
         let new_path_idx = self.add_module(update)?;
         // if it was the Core library that was updated:
         if self
@@ -691,7 +685,30 @@ impl Standpoint {
         {
             self.corelib_path = Some(new_path_idx);
         }
+        self.analyze_imports(path_idx, ResolutionPhase::Assessment);
         self.check_module(path_idx);
+        // // Refresh related modules.
+        // let related_modules = stale_table
+        //     .symbols
+        //     .into_iter()
+        //     .map(|symbol| symbol.references)
+        //     .map(|reflists| reflists.into_iter().map(|reflist| reflist.module_path))
+        //     .flatten()
+        //     .collect::<Vec<_>>();
+        // for related_module_idx in related_modules {
+        //     if related_module_idx == path_idx {
+        //         continue;
+        //     }
+        //     self.errors.retain(|error| {
+        //         !(error.offending_file == related_module_idx
+        //             && matches!(
+        //                 error.error_type,
+        //                 ProgramErrorType::Importing(_) | ProgramErrorType::Typing(_)
+        //             ))
+        //     });
+        //     self.analyze_imports(related_module_idx, ResolutionPhase::Assessment);
+        //     self.check_module(related_module_idx);
+        // }
         Some(())
     }
 

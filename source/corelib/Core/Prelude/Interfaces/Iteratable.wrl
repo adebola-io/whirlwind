@@ -1,9 +1,9 @@
 module Iteratable;
 
-use Super.Primitives.Array;
-use Prelude.Bool;
-use Prelude.Todo;
-use Maybe.Maybe;
+use Super.Array;
+use Super.Bool;
+use Super.Todo;
+use Super.Maybe;
 
 /// ## The Iteratable interface
 /// The Iteratable interface is a common abstraction that allows different types of collections to be traversed in a uniform way. 
@@ -37,10 +37,10 @@ public interface Iteratable<I> {
     /// ### Usage
     /// ```
     /// ```
-    public function Filter(predicate: fn(value: &I): Bool): Filter<This> {
+    public function Filter(predicate: fn(value: &I): Bool): Filter<I, This> {
         Todo()
     }
-    public function Map<J>(predicate: fn(value: I): J): Map<This, J> {
+    public function Map<J>(predicate: fn(value: I): J): Map<I, This> {
         Todo()
     }
     /// Checks if any of the elements produced by the iterator matches a predicate.
@@ -59,6 +59,33 @@ public interface Iteratable<I> {
     public function Any(predicate: fn(value: &I): Bool): Bool {
         Todo()
     }
+    /// Returns true if all the elements produced by the iterator match a predicate.
+    /// ### Usage
+    /// ```
+    /// iter := [3, 6, 9, 12, 15].IntoIter();
+    /// 
+    /// AssertThat(iter.All(fn(x) x % 3 == 0)) // Consumes the entire iterator and returns true.
+    /// ```
+    /// Like the `.Any()` method, `.All()` is also shortcircuiting, meaning it will stop advancing after the first
+    /// false item, whether or not there are still items in the iterator.
+    /// ```
+    /// iter := [12, 14, 15, 17, 18, 20].IntoIter();
+    /// 
+    /// AssertThat(!iter.All(fn(x) x > 16)); // Halts at 17 and returns false.
+    /// // Iterator can still be used.
+    /// Assert(iter.Next()).Equals(Some(18));
+    /// Assert(iter.Next()).Equals(Some(20));
+    /// ```
+    public function All(predicate: fn(value: &I): Bool): Bool {
+        Todo()
+    }
+    public function Enumerate(): Enumerate<This> {
+
+    }
+}
+
+public interface Enumerate<I, J implements Iteratable<I>>> implements Iteratable<I> {
+
 }
 
 /// This interface specifies that a model can be made into an iterator.
@@ -67,10 +94,8 @@ public interface AsIterator<I, T implements Iteratable<I>> {
     public function IntoIter(): T;
 }
 
-public model Filter<I> implements Iteratable<I> {
+public model Filter<I, J implements Iteratable<I>> implements Iteratable<I> {
 
 }
 
-public model Map<I, J> implements Iteratable<J> {
-
-}
+public model Map<I, J implements Iteratable<I>> implements Iteratable<J> {}
