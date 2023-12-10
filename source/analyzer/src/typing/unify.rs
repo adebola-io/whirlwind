@@ -1,5 +1,5 @@
 use crate::{
-    utils::{is_numeric_type, distill_as_function_type, FunctionType}, EvaluatedType::*, 
+    utils::{is_numeric_type, distill_as_function_type, FunctionType, coerce}, EvaluatedType::*, 
     SemanticSymbolKind, SymbolIndex, SymbolLibrary, UNKNOWN, *,
 };
 use errors::TypeErrorType;
@@ -167,8 +167,8 @@ pub fn unify_types(
                 right: symbollib.format_evaluated_type(right)
             }])
         }
-        // Comparing model instances.
-        // Two models instances are unifiable if they refer to the same model,
+        // Comparing model or interface instances.
+        // Two instances are unifiable if they refer to the same symbol,
         // and their generic list is unifiable.
         (
             ModelInstance {
@@ -179,17 +179,26 @@ pub fn unify_types(
                 model: second,
                 generic_arguments: second_gen_args,
             },
+        ) | (
+            InterfaceInstance {
+                interface_: first,
+                generic_arguments: first_gen_args,
+            },
+            InterfaceInstance {
+                interface_: second,
+                generic_arguments: second_gen_args,
+            },
         ) => {
-            let first_model_symbol = symbollib.get(*first).unwrap();
-            let second_model_symbol = symbollib.get(*second).unwrap();
-            if !std::ptr::eq(first_model_symbol, second_model_symbol) {
+            let first_instance_symbol = symbollib.get(*first).unwrap();
+            let second_instance_symbol = symbollib.get(*second).unwrap();
+            if !std::ptr::eq(first_instance_symbol, second_instance_symbol) {
                 return Err(vec![default_error()]);
             }
             if first_gen_args.len() != second_gen_args.len() {
                 return Err(vec![
                     default_error(),
                     TypeErrorType::MismatchedGenericArgs {
-                        name: first_model_symbol.name.clone(),
+                        name: first_instance_symbol.name.clone(),
                         expected: first_gen_args.len(),
                         assigned: second_gen_args.len(),
                     },
@@ -215,14 +224,12 @@ pub fn unify_types(
                 }
             }
             // Truncate the list of arguments to the appriopriate size.
-            let generic_arg_length = match &first_model_symbol.kind {
+            let generic_arg_length = match &first_instance_symbol.kind {
                 SemanticSymbolKind::Model { generic_params, .. } => generic_params.len(),
                 _ => return Ok(EvaluatedType::Unknown),
             };
 
-            return Ok(ModelInstance {
-                model: *first,
-                generic_arguments: final_generic_args
+            let generic_arguments = final_generic_args
                     .into_iter()
                     .filter(|(base, _)| {
                         first_gen_args
@@ -230,7 +237,13 @@ pub fn unify_types(
                             .any(|(firstbase, _)| firstbase == base)
                     })
                     .take(generic_arg_length)
-                    .collect(),
+                    .collect();
+            return Ok(if first_instance_symbol.kind.is_model() {
+                ModelInstance {
+                model: *first,
+                generic_arguments,
+            }} else {
+                InterfaceInstance { interface_: *first, generic_arguments }   
             });
         }
         // Either type is unknown.
@@ -548,12 +561,17 @@ fn solve_generic_type(
                 }
             }
             for _interface in interfaces {
-                let interface_evaluated = evaluate(_interface, symbollib, None, &mut None, 0);
+                let mut interface_evaluated = evaluate(_interface, symbollib, None, &mut None, 0);
                 // The interface guard does not refer to a interface.
                 // Unification cannot continue, but it is not the problem of this process.
                 if !interface_evaluated.is_interface_instance() {
                     return Ok(Unknown);
                 }
+                // Handle all generics inside the interface to check against.
+                let solved_generics = map
+                    .as_ref()
+                    .map(|map| map.iter().map(|(a, b)| (a.clone(), b.clone())).collect()).unwrap_or(vec![]);
+                interface_evaluated = coerce(interface_evaluated, &solved_generics);
                 let implementations = match free_type {
                     ModelInstance { model: base, .. }
                     | InterfaceInstance { interface_: base,.. }
@@ -580,36 +598,72 @@ fn solve_generic_type(
                      => Some(generic_arguments),
                     _ => None,
                 };
+                let mut errors = vec![];
                 let interface_is_implemented = implementations.is_some_and(|implementations| {
                     implementations
                         .iter()
                         .find(|implementation| {
                             // todo: block infinite types.
-                            evaluate(implementation, symbollib, free_type_generics, &mut None, 0)
-                                == interface_evaluated
+                            let implemented_type = evaluate(implementation, symbollib, free_type_generics, &mut None, 0);
+                            unify_types(&interface_evaluated, &implemented_type, symbollib, UnifyOptions::HardConform, map.as_deref_mut()).is_ok()
                         })
                         .is_some()
-                }) || match free_type {
+                }) 
+                || match free_type {
+                    // An interface is implemented by an opaque type if all its collaborator
+                    // types implement the interface.
                     OpaqueTypeInstance {available_interfaces, ..} => {
                         available_interfaces.iter().find(|interface_| interface_ == &&interface_evaluated).is_some()
                     }
                     _=> false
                 };
-                if !interface_is_implemented {
-                    return Err(vec![
-                        default_error(),
+                // Since interface instances are placeholders for instances of models 
+                // that implement said interface, the logical conclusion is that
+                // an interface is an implementation of itself.
+                let is_equal_interface =  
+                 free_type == &interface_evaluated
+                || match (free_type, &interface_evaluated) {
+                    (
+                        EvaluatedType::InterfaceInstance { 
+                            interface_: first_interface, 
+                            generic_arguments: first_gen_args 
+                        },
+                        EvaluatedType::InterfaceInstance { 
+                            interface_: second_interface, 
+                            generic_arguments: second_gen_args 
+                        }
+                    ) => {
+                        first_interface == second_interface && 
+                        match unify_generic_arguments(
+                            first_gen_args, 
+                            second_gen_args, symbollib, options, map.as_deref_mut()
+                        ) {
+                            Ok(_) => true,
+                            Err(mut gen_errors) => {
+                                errors.append(&mut gen_errors);
+                                false
+                            },
+                        }
+                    }
+                    _ => false,
+                };
+                if !interface_is_implemented && !is_equal_interface {
+                    errors.insert(0, default_error());
+                    errors.push(
                         TypeErrorType::UnimplementedInterface {
                             offender: symbollib.format_evaluated_type(free_type),
                             _interface: symbollib.format_evaluated_type(&interface_evaluated),
                         },
-                    ]);
+                    );
+                    return Err(errors);
                 }
             }
             // Generic parameter solved.
+            let final_type =free_type.clone();
             if let Some(map) = map.as_deref_mut() {
-                map.insert(*base, free_type.clone());
+                map.insert(*base,  final_type.clone());
             }
-            Ok(free_type.clone())
+            Ok(final_type)
         }
         // Something has gone wrong if this ever happens. Look into it.
         _ => Ok(Unknown),

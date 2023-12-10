@@ -188,6 +188,13 @@ impl SemanticSymbolKind {
             _ => false,
         }
     }
+
+    pub(crate) fn is_model(&self) -> bool {
+        match self {
+            SemanticSymbolKind::Model { .. } => true,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]

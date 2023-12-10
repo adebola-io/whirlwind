@@ -977,7 +977,13 @@ impl<L: Lexer> Parser<L> {
                         TokenType::Bracket(_)
                         | TokenType::Operator(
                             SemiColon | GreaterThan | RightShift | LesserThan | LeftShift,
-                        ) => break,
+                        )
+                        | TokenType::Keyword(Model)
+                        | TokenType::Keyword(For)
+                        | TokenType::Keyword(Function)
+                        | TokenType::Keyword(Interface)
+                        | TokenType::Keyword(Public)
+                        | TokenType::Keyword(Var) => break,
                         _ => self.advance(),
                     },
                     None => break,
@@ -1559,33 +1565,108 @@ impl<L: Lexer> Parser<L> {
         let info = self.get_doc_comment();
         self.advance(); // Move past model.
         let name = check!(self.identifier());
-        let generic_params = check!(self.maybe_generic_params());
-        if_ended!(
-            errors::expected(TokenType::Bracket(LCurly), self.last_token_end(),),
-            self
-        );
-        let implementations = check!(self.maybe_interface_implementations());
-        expect_or_return!(TokenType::Bracket(LCurly), self);
+        let mut errors = vec![];
+        let generic_params = match self.maybe_generic_params() {
+            Ok(params) => params,
+            Err(error) => {
+                errors.push(error);
+                None
+            }
+        };
         let entry_no = self.module_ambience().reserve_entry_space();
         let address = ScopeAddress {
             module_id: self.module_ambience().id(),
             scope_id: self.module_ambience().current_scope(),
             entry_no,
         };
-        let (results, errors) = self.model_body(&address).to_tuple();
-        if results.is_none() {
-            return Partial::from_errors(errors);
-        }
-        let (body, properties, methods, parameters) = results.unwrap();
-        let signature = ModelSignature {
-            name,
-            info,
-            is_public,
-            generic_params,
-            parameters,
-            implementations,
-            attributes: properties,
-            methods,
+        let (body, signature) = if self.token().is_none() {
+            errors.push(errors::expected(
+                TokenType::Bracket(LCurly),
+                self.last_token_end(),
+            ));
+            (
+                ModelBody {
+                    properties: vec![],
+                    constructor: None,
+                    span: self.last_token_end(),
+                },
+                ModelSignature {
+                    name,
+                    info,
+                    is_public,
+                    generic_params,
+                    parameters: None,
+                    implementations: vec![],
+                    attributes: vec![],
+                    methods: vec![],
+                },
+            )
+        } else {
+            let implementations = match self.maybe_interface_implementations() {
+                Ok(impls) => impls,
+                Err(error) => {
+                    errors.push(error);
+                    vec![]
+                }
+            };
+            let (body, signature) = if !self
+                .token()
+                .is_some_and(|token| token._type == TokenType::Bracket(LCurly))
+            {
+                (
+                    ModelBody {
+                        properties: vec![],
+                        constructor: None,
+                        span: self.last_token_end(),
+                    },
+                    ModelSignature {
+                        name,
+                        info,
+                        is_public,
+                        generic_params,
+                        parameters: None,
+                        implementations,
+                        attributes: vec![],
+                        methods: vec![],
+                    },
+                )
+            } else {
+                let (results, mut body_errors) = self.model_body(&address).to_tuple();
+                errors.append(&mut body_errors);
+                if results.is_none() {
+                    (
+                        ModelBody {
+                            properties: vec![],
+                            constructor: None,
+                            span: self.last_token_end(),
+                        },
+                        ModelSignature {
+                            name,
+                            info,
+                            is_public,
+                            generic_params,
+                            parameters: None,
+                            implementations,
+                            attributes: vec![],
+                            methods: vec![],
+                        },
+                    )
+                } else {
+                    let (body, properties, methods, parameters) = results.unwrap();
+                    let signature = ModelSignature {
+                        name,
+                        info,
+                        is_public,
+                        generic_params,
+                        parameters,
+                        implementations,
+                        attributes: properties,
+                        methods,
+                    };
+                    (body, signature)
+                }
+            };
+            (body, signature)
         };
         let end = body.span.end;
         self.module_ambience()
@@ -2212,6 +2293,7 @@ impl<L: Lexer> Parser<L> {
         self.advance(); // Move past interface.
         let name = check!(self.identifier());
         let generic_params = check!(self.maybe_generic_params());
+        let mut errors = vec![];
         if_ended!(
             errors::expected(TokenType::Bracket(LCurly), self.last_token_end(),),
             self
@@ -2222,9 +2304,27 @@ impl<L: Lexer> Parser<L> {
             scope_id: self.module_ambience().current_scope(),
             entry_no,
         };
-        let implementations = check!(self.maybe_interface_implementations());
-        let (results, errors) = self.interface_body(&address).to_tuple();
+        let implementations = match self.maybe_interface_implementations() {
+            Ok(impls) => impls,
+            Err(error) => {
+                errors.push(error);
+                vec![]
+            }
+        };
+        let (results, mut body_errors) = self.interface_body(&address).to_tuple();
+        errors.append(&mut body_errors);
         if results.is_none() {
+            self.module_ambience().register_at(
+                entry_no,
+                ScopeEntry::Interface(InterfaceSignature {
+                    name,
+                    info,
+                    is_public,
+                    generic_params,
+                    methods: vec![],
+                    implementations,
+                }),
+            );
             return Partial::from_errors(errors);
         }
         let (body, methods) = results.unwrap();
@@ -2240,13 +2340,13 @@ impl<L: Lexer> Parser<L> {
         self.module_ambience()
             .register_at(entry_no, ScopeEntry::Interface(signature));
         let span = Span::from([start, end]);
-        let model = InterfaceDeclaration {
+        let interface = InterfaceDeclaration {
             address,
             body,
             span,
         };
         Partial {
-            value: Some(model),
+            value: Some(interface),
             errors,
         }
     }
@@ -3307,11 +3407,15 @@ impl<L: Lexer> Parser<L> {
         }
         let token = self.token().unwrap();
         match token._type {
-            TokenType::Operator(GreaterThan) => self.advance(), // Move past >
+            TokenType::Operator(GreaterThan) => {
+                self.advance(); // Move past >
+                *self.waiting_for_second_angular_bracket.borrow_mut() = false;
+            }
             TokenType::Operator(RightShift) => {
                 // Wait and advance the second time.
-                if self.waiting_for_second_angular_bracket.take() {
+                if *self.waiting_for_second_angular_bracket.borrow() {
                     self.advance(); // Move past >>
+                    *self.waiting_for_second_angular_bracket.borrow_mut() = false;
                 } else {
                     *self.waiting_for_second_angular_bracket.borrow_mut() = true;
                 }

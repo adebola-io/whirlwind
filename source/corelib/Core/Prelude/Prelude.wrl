@@ -3,7 +3,7 @@ module Prelude;
 
 public use Core;
 public use Interfaces.{
-    Default.Default, Display.Display, Iteratable.{Iteratable, AsIterator}, 
+    Default.Default, Display.Display, Iteratable.{Iteratable, AsIterator, Flatten}, 
     Guaranteed.Guaranteed, Try.Try
 };
 public use Outcome.{Ok, Err, Outcome};
@@ -14,7 +14,7 @@ public use Super.{
     Async.{Eventual, Prospect},
     Primitives.{
         String, Array, Number, Int, Float, UnsignedInt, Bool,
-        UInt8, UInt16, UInt32, UInt64
+        UInt8, UInt16, UInt32, UInt64, Chars
     },
     Process.{Todo, Error},
     Internals.never,

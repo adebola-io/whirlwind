@@ -5,28 +5,28 @@ use Super.Prelude.Todo;
 
 /// A simple pair of items.
 public model Tuple<T, U> {
-    public var first: T;
-    public var second: U;
+    public var one: T;
+    public var two: U;
     
     new(first: T, second: U) {
-        this.first = first;
-        this.second = second;
+        this.one = first;
+        this.two = second;
     }
 
     public function Swap(): Tuple<U, T> {
-        new Tuple(this.second, this.first)
+        new Tuple(this.two, this.one)
     }
 }
 
 public model Triple<T, U, V> {
-    public var first: T;
-    public var second: U;
-    public var third: V;
+    public var one: T;
+    public var two: U;
+    public var three: V;
 
     new(first: T, second: U, third: V) {
-        this.first = first;
-        this.second = second;
-        this.third = third;
+        this.one = first;
+        this.two = second;
+        this.three = third;
     }
 }
 

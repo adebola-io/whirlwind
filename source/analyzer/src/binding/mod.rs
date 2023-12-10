@@ -3295,10 +3295,16 @@ mod types {
     ) -> Vec<SymbolIndex> {
         let mut symbol_indexes = vec![];
         if let Some(ref params) = param_list {
+            // Generic parameters are bound by name first, so that cyclic
+            // generic interface guards can be possible.
+            let mut bound_names = vec![];
             for parameter in params.iter() {
                 // Binds only the parameter names.
                 let binding_result =
                     bind_generic_parameter_name(parameter, binder, symbol_library, errors);
+                bound_names.push(binding_result);
+            }
+            for (i, parameter) in params.iter().enumerate() {
                 let mut type_exp_binder = |typ| {
                     types::bind_type_expression(typ, binder, symbol_library, errors, ambience)
                 };
@@ -3312,6 +3318,7 @@ mod types {
                     .default
                     .as_ref()
                     .map(|default_value| type_exp_binder(default_value));
+                let binding_result = bound_names[i];
                 let idx = binding_result
                     .map(|idx| {
                         match symbol_library.get_mut(idx) {

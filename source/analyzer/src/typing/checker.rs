@@ -213,7 +213,7 @@ mod statements {
             // this.a = this.b;
             // this.b = someValue;
             // answer: All instances of the attribute are recorded and tracked. If the first instance is not an assignment, error.
-            // NOTE: if the type of the attribute implements Default, then this check is not needed.
+            // If the type of the attribute implements Default, then this check is not needed.
             let model_symbol = symbollib.get(model.name).unwrap();
             let attribute_idxs =
                 if let SemanticSymbolKind::Model { attributes, .. } = &model_symbol.kind {

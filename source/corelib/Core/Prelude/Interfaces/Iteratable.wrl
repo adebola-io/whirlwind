@@ -3,7 +3,9 @@ module Iteratable;
 use Super.Array;
 use Super.Bool;
 use Super.Todo;
+use Super.Some;
 use Super.Maybe;
+use Core.Collections.Tuple;
 
 /// ## The Iteratable interface
 /// The Iteratable interface is a common abstraction that allows different types of collections to be traversed in a uniform way. 
@@ -34,13 +36,24 @@ public interface Iteratable<I> {
         Todo()
     }
     /// Returns an iterator that only yields items that match a predicate.
+    /// The predicate returns a boolean value indicating whether the item
+    /// should be kept or discarded.
     /// ### Usage
     /// ```
     /// ```
     public function Filter(predicate: fn(value: &I): Bool): Filter<I, This> {
-        Todo()
+        return new Filter(this, predicate);
     }
-    public function Map<J>(predicate: fn(value: I): J): Map<I, This> {
+    /// The `.Map()` method is an iterator adapter that allows the creation of a new iterator by applying a
+    /// given function to every element of the current iterator as it runs.
+    /// ### Usage
+    /// ```
+    /// list := [1, 2, 3, 4];
+    /// listTransformed := list.Iter().Map(fn(x) x * 3).Collect();
+    /// 
+    /// Assert(listTransformed).Equals([3, 6, 9, 12]);
+    /// ```
+    public function Map<O>(transformer: fn(value: I): O): Map<I, O, This> {
         Todo()
     }
     /// Checks if any of the elements produced by the iterator matches a predicate.
@@ -79,23 +92,69 @@ public interface Iteratable<I> {
     public function All(predicate: fn(value: &I): Bool): Bool {
         Todo()
     }
-    public function Enumerate(): Enumerate<This> {
-
+    public function Enumerate(): Enumerate<I, This> {
+        return new Enumerate(this);
     }
 }
 
-public interface Enumerate<I, J implements Iteratable<I>>> implements Iteratable<I> {
+public model Enumerate<I, J implements Iteratable<I>> implements Iteratable<Tuple<UnsignedInt, I>>> {
+    var iterator: J;
+    var indexer: UnsignedInt;
+
+    new(iterator: J) {
+        this.indexer = 0;
+        this.iterator = iterator;
+    }
+
+    public function [Iteratable.Next](): Maybe<Tuple<UnsignedInt, I>> {
+        value := this.iterator.Next()?;
+        this.indexer += 1;
+        return Some(new Tuple(this.indexer, value));
+    }
+}
+
+public model Filter<I, J implements Iteratable<I>> implements Iteratable<I> {
+    var iterator: J;
+    var predicate: fn(value: &I): Bool;
+
+    new(iterator: J, predicate: fn(value: &I): Bool){
+        this.iterator = iterator;
+        this.predicate = predicate;
+    }
+
+    public function [Iteratable.Next](): Maybe<I> {
+        value := this.iterator.Next()?;
+        while !this.predicate(&value) {
+            value = this.iterator.Next()?;
+        }
+        return Some(value);
+    }
 
 }
+
+/// Flattens a nested iterator.
+public function Flatten<T implements Iteratable<U>, U implements Iteratable<V>, V>(iterator: T): U {
+    return Todo();
+}
+public model Map<I, O, J implements Iteratable<I>> implements Iteratable<O> {
+    var iterator: J;
+    var transformer: fn(input: I): O;
+
+    new(iterator: J, transformer: fn(input: I): O) {
+        this.iterator = iterator;
+        this.transformer = transformer;
+    }
+
+    public function [Iteratable.Next](): Maybe<O> {
+        return Some(this.transformer(this.iterator.Next()?));
+    }
+}
+
+public model Unique<I, J implements Iteratable<I>> implements Iteratable<I> {}
+
 
 /// This interface specifies that a model can be made into an iterator.
 public interface AsIterator<I, T implements Iteratable<I>> {
     /// Turn a model into an iterator.
     public function IntoIter(): T;
 }
-
-public model Filter<I, J implements Iteratable<I>> implements Iteratable<I> {
-
-}
-
-public model Map<I, J implements Iteratable<I>> implements Iteratable<J> {}
