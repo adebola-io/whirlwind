@@ -201,19 +201,24 @@ pub trait LexerInner {
     fn line_or_doc_comment(&mut self) -> Token {
         let mut text = String::new();
         let mut is_doc_comment = false;
+        let mut is_ended = false;
 
         if let Some(ch) = self.next_char() {
             if ch == '/' {
                 is_doc_comment = true;
+            } else if ch == '\n' {
+                is_ended = true;
             } else {
                 text.push(ch)
             }
         }
 
-        loop {
-            match self.next_char() {
-                Some('\n') | None => break,
-                Some(ch) => text.push(ch),
+        if !is_ended {
+            loop {
+                match self.next_char() {
+                    Some('\n') | None => break,
+                    Some(ch) => text.push(ch),
+                }
             }
         }
         Token {
