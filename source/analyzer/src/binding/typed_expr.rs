@@ -27,6 +27,16 @@ impl TypedExpression {
     pub fn is_identifier(&self) -> bool {
         matches!(self, Self::Identifier(_))
     }
+
+    // /// Checks the symbol library to see if the expression refers to a parameter.
+    // pub(crate) fn is_parameter(&self, symbollib: &mut SymbolLibrary) -> bool {
+    //     match self {
+    //         TypedExpression::Identifier(ident) => symbollib
+    //             .get(ident.value)
+    //             .is_some_and(|symbol| matches!(&symbol.kind, SemanticSymbolKind::Parameter { .. })),
+    //         _ => false,
+    //     }
+    // }
 }
 
 #[derive(Debug, PartialEq)]

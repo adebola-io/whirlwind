@@ -93,19 +93,17 @@ public interface Iteratable<I> {
         Todo()
     }
     public function Enumerate(): Enumerate<I, This> {
-        return new Enumerate(this);
+        return new Enumerate(*this);
     }
 }
 
 public model Enumerate<I, J implements Iteratable<I>> implements Iteratable<Tuple<UnsignedInt, I>>> {
     var iterator: J;
     var indexer: UnsignedInt;
-
     new(iterator: J) {
         this.indexer = 0;
         this.iterator = iterator;
     }
-
     public function [Iteratable.Next](): Maybe<Tuple<UnsignedInt, I>> {
         value := this.iterator.Next()?;
         this.indexer += 1;
@@ -113,15 +111,14 @@ public model Enumerate<I, J implements Iteratable<I>> implements Iteratable<Tupl
     }
 }
 
+
 public model Filter<I, J implements Iteratable<I>> implements Iteratable<I> {
     var iterator: J;
     var predicate: fn(value: &I): Bool;
-
     new(iterator: J, predicate: fn(value: &I): Bool){
         this.iterator = iterator;
         this.predicate = predicate;
     }
-
     public function [Iteratable.Next](): Maybe<I> {
         value := this.iterator.Next()?;
         while !this.predicate(&value) {
@@ -129,7 +126,6 @@ public model Filter<I, J implements Iteratable<I>> implements Iteratable<I> {
         }
         return Some(value);
     }
-
 }
 
 /// Flattens a nested iterator.
@@ -139,12 +135,10 @@ public function Flatten<T implements Iteratable<U>, U implements Iteratable<V>, 
 public model Map<I, O, J implements Iteratable<I>> implements Iteratable<O> {
     var iterator: J;
     var transformer: fn(input: I): O;
-
     new(iterator: J, transformer: fn(input: I): O) {
         this.iterator = iterator;
         this.transformer = transformer;
     }
-
     public function [Iteratable.Next](): Maybe<O> {
         return Some(this.transformer(this.iterator.Next()?));
     }

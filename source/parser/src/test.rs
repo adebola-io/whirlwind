@@ -839,7 +839,7 @@ fn parse_fn_expressions() {
         Statement::FreeExpression(Expression::FnExpr(Box::new(FunctionExpr {
             is_async: false,
             generic_params: None,
-            params: vec![Parameter {
+            params: Some(vec![Parameter {
                 name: Identifier {
                     name: format!("a"),
                     span: [1, 5, 1, 6].into()
@@ -855,7 +855,7 @@ fn parse_fn_expressions() {
                 })),
                 is_optional: false,
                 span: [1, 5, 1, 14].into()
-            }],
+            }]),
             return_type: Some(TypeExpression::Discrete(DiscreteType {
                 name: Identifier {
                     name: format!("Number"),
@@ -882,7 +882,7 @@ fn parse_async_fn_expression() {
         Statement::FreeExpression(Expression::FnExpr(Box::new(FunctionExpr {
             is_async: true,
             generic_params: None,
-            params: vec![Parameter {
+            params: Some(vec![Parameter {
                 name: Identifier {
                     name: format!("a"),
                     span: [1, 12, 1, 13].into()
@@ -891,7 +891,7 @@ fn parse_async_fn_expression() {
                 type_label: None,
                 is_optional: false,
                 span: [1, 12, 1, 13].into()
-            }],
+            }]),
             return_type: None,
             body: Expression::Identifier(Identifier {
                 name: format!("a"),
@@ -1992,7 +1992,7 @@ fn parse_return_statement() {
         Statement::FreeExpression(Expression::FnExpr(Box::new(FunctionExpr {
             is_async: false,
             generic_params: None,
-            params: vec![],
+            params: Some(vec![]),
             return_type: None,
             body: Expression::BlockExpr(Block {
                 scope_id: 1,

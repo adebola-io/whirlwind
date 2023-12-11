@@ -79,6 +79,7 @@ public model RequestParams {
 
 
 /// An error that occurs on the HTTP server while it is active.
+/// 
 /// The error is non-fatal, meaning that it does not lead to the crashing of the server when it happens.
 public model HttpRequestError implements IoError + Display {
     var message: String;

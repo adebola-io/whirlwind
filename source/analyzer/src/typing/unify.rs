@@ -52,11 +52,6 @@ pub fn unify_types(
                 options,
             )
         }
-        // // One type is a hard generic, and other type is a soft variant of it.
-        // (
-        //     HardGeneric { base: firstbase } | Generic { base: firstbase },
-        //     HardGeneric { base: secondbase } | Generic { base: secondbase },
-        // ) if firstbase == secondbase => Ok(Generic { base: *firstbase }),
         // Left type is a generic parameter.
         (Generic { base }, free_type) if !free_type.is_void() => solve_generic_type(
             &mut map,
@@ -174,19 +169,23 @@ pub fn unify_types(
             ModelInstance {
                 model: first,
                 generic_arguments: first_gen_args,
+                ..
             },
             ModelInstance {
                 model: second,
                 generic_arguments: second_gen_args,
+                ..
             },
         ) | (
             InterfaceInstance {
                 interface_: first,
                 generic_arguments: first_gen_args,
+                ..
             },
             InterfaceInstance {
                 interface_: second,
                 generic_arguments: second_gen_args,
+                ..
             },
         ) => {
             let first_instance_symbol = symbollib.get(*first).unwrap();
@@ -242,8 +241,9 @@ pub fn unify_types(
                 ModelInstance {
                 model: *first,
                 generic_arguments,
+                is_invariant: false,
             }} else {
-                InterfaceInstance { interface_: *first, generic_arguments }   
+                InterfaceInstance { interface_: *first, generic_arguments, is_invariant: false }   
             });
         }
         // Either type is unknown.
@@ -355,6 +355,7 @@ pub fn unify_types(
                 params,
                 return_type,
                 generic_args,
+                is_invariant: false,
             });
         }
         // Both types are borrowed.
@@ -394,10 +395,12 @@ pub fn unify_types(
             ModelInstance {
                 model: child,
                 generic_arguments: subgenerics,
+                ..
             }
             | EnumInstance {
                 enum_: child,
                 generic_arguments: subgenerics,
+                ..
             },
         ) => {
             let mut errors = vec![];
@@ -605,7 +608,7 @@ fn solve_generic_type(
                         .find(|implementation| {
                             // todo: block infinite types.
                             let implemented_type = evaluate(implementation, symbollib, free_type_generics, &mut None, 0);
-                            unify_types(&interface_evaluated, &implemented_type, symbollib, UnifyOptions::HardConform, map.as_deref_mut()).is_ok()
+                            unify_types(&interface_evaluated, &implemented_type, symbollib, options, map.as_deref_mut()).is_ok()
                         })
                         .is_some()
                 }) 
@@ -626,11 +629,12 @@ fn solve_generic_type(
                     (
                         EvaluatedType::InterfaceInstance { 
                             interface_: first_interface, 
-                            generic_arguments: first_gen_args 
+                            generic_arguments: first_gen_args,
+                            ..
                         },
                         EvaluatedType::InterfaceInstance { 
                             interface_: second_interface, 
-                            generic_arguments: second_gen_args 
+                            generic_arguments: second_gen_args,.. 
                         }
                     ) => {
                         first_interface == second_interface && 

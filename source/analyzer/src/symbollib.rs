@@ -131,6 +131,7 @@ impl SymbolLibrary {
                     } // todo.
                     Literal::BooleanLiteral { .. } => self.bool?,
                 },
+                is_invariant: false,
                 generic_arguments: vec![],
             },
             TypedExpression::NewExpr(new) => new.inferred_type.clone(),
@@ -225,10 +226,12 @@ impl SymbolLibrary {
             EvaluatedType::ModelInstance {
                 model: base,
                 generic_arguments,
+                ..
             }
             | EvaluatedType::InterfaceInstance {
                 interface_: base,
                 generic_arguments,
+                ..
             } => {
                 let symbol = self.get(*base).unwrap();
                 string = symbol.name.clone();
@@ -250,6 +253,7 @@ impl SymbolLibrary {
             EvaluatedType::EnumInstance {
                 enum_,
                 generic_arguments,
+                ..
             } => {
                 let symbol = self.get(*enum_).unwrap();
                 string = symbol.name.clone();
@@ -262,6 +266,7 @@ impl SymbolLibrary {
             EvaluatedType::FunctionInstance {
                 function,
                 generic_arguments,
+                ..
             } => {
                 self.format_function_details(function, &mut string, generic_arguments);
             }
@@ -294,6 +299,7 @@ impl SymbolLibrary {
             EvaluatedType::MethodInstance {
                 method,
                 generic_arguments,
+                ..
             } => {
                 self.format_function_details(method, &mut string, &generic_arguments);
             }

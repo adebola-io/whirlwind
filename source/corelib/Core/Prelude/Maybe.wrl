@@ -3,7 +3,7 @@ module Maybe;
 use Super.{
     Primitives.Bool,
     Internals.{never, Injunction},
-    Process.{PanicOnCaller, Todo},
+    Process.{FatalOnCaller, Todo},
 }; 
 use Outcome.{ Ok, Err, Outcome }; 
 use Interfaces.{ Guaranteed, Try.Try, Default.Default };
@@ -133,7 +133,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, Maybe<never>> {
     public function Map<U>(func: fn(former: T): U): Maybe<U> {
         Some(func(this?))
     }   
-    public static function UnwrapOrDefault<T implements Default>(value: Maybe<T>): T {
+    public static function UnwrapOrDefault<U implements Default>(value: Maybe<U>): U {
         Todo()
     }
 }

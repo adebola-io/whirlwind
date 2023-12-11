@@ -21,24 +21,29 @@ pub enum EvaluatedType {
     /// An instance created with `new A()`, or by labelling a value with `: A`.
     ModelInstance {
         model: SymbolIndex,
+        is_invariant: bool,
         generic_arguments: Vec<(SymbolIndex, EvaluatedType)>,
     },
     InterfaceInstance {
         interface_: SymbolIndex,
+        is_invariant: bool,
         generic_arguments: Vec<(SymbolIndex, EvaluatedType)>,
     },
     /// An instance of an enum created by assigning a variant.
     EnumInstance {
         enum_: SymbolIndex,
+        is_invariant: bool,
         generic_arguments: Vec<(SymbolIndex, EvaluatedType)>,
     },
     /// A named or anonymous function.
     FunctionInstance {
         function: SymbolIndex,
+        is_invariant: bool,
         generic_arguments: Vec<(SymbolIndex, EvaluatedType)>,
     },
     FunctionExpressionInstance {
         is_async: bool,
+        is_invariant: bool,
         params: Vec<ParameterType>,
         return_type: Box<EvaluatedType>,
         generic_args: Vec<(SymbolIndex, EvaluatedType)>,
@@ -46,6 +51,7 @@ pub enum EvaluatedType {
     /// A method.
     MethodInstance {
         method: SymbolIndex,
+        is_invariant: bool,
         generic_arguments: Vec<(SymbolIndex, EvaluatedType)>,
     },
     /// A model value.
@@ -305,6 +311,37 @@ impl EvaluatedType {
                 _ => false,
             }
     }
+
+    pub(crate) fn is_invariant(&self) -> bool {
+        match self {
+            EvaluatedType::Partial { types } => types.iter().all(|typ| typ.is_invariant()),
+            EvaluatedType::InterfaceInstance { is_invariant, .. }
+            | EvaluatedType::EnumInstance { is_invariant, .. }
+            | EvaluatedType::FunctionInstance { is_invariant, .. }
+            | EvaluatedType::FunctionExpressionInstance { is_invariant, .. }
+            | EvaluatedType::MethodInstance { is_invariant, .. }
+            | EvaluatedType::ModelInstance { is_invariant, .. } => *is_invariant,
+            EvaluatedType::HardGeneric { .. } => true,
+            EvaluatedType::Borrowed { base } => base.is_invariant(),
+            _ => false,
+        }
+    }
+
+    pub(crate) fn set_invariance(&mut self, value: bool) {
+        match self {
+            EvaluatedType::Partial { types } => {
+                types.iter_mut().for_each(|typ| typ.set_invariance(value))
+            }
+            EvaluatedType::InterfaceInstance { is_invariant, .. }
+            | EvaluatedType::EnumInstance { is_invariant, .. }
+            | EvaluatedType::FunctionInstance { is_invariant, .. }
+            | EvaluatedType::FunctionExpressionInstance { is_invariant, .. }
+            | EvaluatedType::MethodInstance { is_invariant, .. }
+            | EvaluatedType::ModelInstance { is_invariant, .. } => *is_invariant = value,
+            EvaluatedType::Borrowed { base } => base.set_invariance(value),
+            _ => {}
+        }
+    }
 }
 
 /// Converts an intermediate type into an evaluation.
@@ -365,6 +402,7 @@ pub fn evaluate(
                         param
                     })
                     .collect(),
+                is_invariant: false,
                 return_type,
                 generic_args: solved_generics.cloned().unwrap_or(vec![]),
             }
@@ -397,15 +435,18 @@ pub fn evaluate(
                     EvaluatedType::InterfaceInstance {
                         interface_: idx,
                         generic_arguments: get_generics(generic_params),
+                        is_invariant: false,
                     }
                 }
                 SemanticSymbolKind::Model { generic_params, .. } => EvaluatedType::ModelInstance {
                     model: idx,
                     generic_arguments: get_generics(generic_params),
+                    is_invariant: false,
                 },
                 SemanticSymbolKind::Enum { generic_params, .. } => EvaluatedType::EnumInstance {
                     enum_: idx,
                     generic_arguments: get_generics(generic_params),
+                    is_invariant: false,
                 },
                 SemanticSymbolKind::TypeName {
                     generic_params,
@@ -522,10 +563,12 @@ pub fn evaluate(
                     EvaluatedType::ModelInstance {
                         model: collab,
                         generic_arguments: collab_generics,
+                        ..
                     }
                     | EvaluatedType::EnumInstance {
                         enum_: collab,
                         generic_arguments: collab_generics,
+                        ..
                     } => {
                         let unification = unify_generic_arguments(
                             &generic_arguments,
@@ -595,10 +638,12 @@ pub fn evaluate(
                                         EvaluatedType::InterfaceInstance {
                                             interface_: first,
                                             generic_arguments: left_generics,
+                                            ..
                                         },
                                         EvaluatedType::InterfaceInstance {
                                             interface_: second,
                                             generic_arguments: right_generics,
+                                            ..
                                         },
                                     ) => {
                                         first == second

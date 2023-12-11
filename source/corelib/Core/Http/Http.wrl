@@ -1,7 +1,7 @@
 module Http;
 use Super.Prelude.{
     Core, Bool, Todo, Outcome, Prospect, String,
-    Maybe, UnsignedInt, Some, Array, None, Error
+    Maybe, UnsignedInt, Some, Array, None, Fatal
 };
 use Super.Primitives.Ops.Addition;
 public use Request.{
@@ -31,7 +31,7 @@ public type ServerOutcome = Outcome<HttpResponse, HttpRequestError>;
 
 /// A simple model for an HTTP server.
 public model HttpServer {
-    public var endpoints: Endpoints;
+    var endpoints: Endpoints;
     var middleware: Array<Middleware>;
     var isRunning: Bool;
     var port: UnsignedInt;
@@ -62,7 +62,7 @@ public model HttpServer {
     /// Asserts that the server is not yet running.
     function AssertInert() {
         if this.isRunning {
-            Core.Process.Panic(Some("Server is already running."));
+            Fatal(Some("Server is already running."));
         }
     }
     /// Starts the server by listening at the specified port for changes.

@@ -152,6 +152,7 @@ impl<'a> CompletionFinder<'a> {
                     let mut final_eval_type = EvaluatedType::MethodInstance {
                         method,
                         generic_arguments: vec![],
+                        is_invariant: false,
                     };
                     final_eval_type = coerce(final_eval_type, &generic_arguments);
                     let detail = Some(symbollib.format_evaluated_type(&final_eval_type));
@@ -267,6 +268,7 @@ impl<'a> CompletionFinder<'a> {
                 symbollib.format_evaluated_type(&EvaluatedType::MethodInstance {
                     method: *method_idx,
                     generic_arguments: vec![],
+                    is_invariant: false,
                 }),
             );
             let insert_text = Some(self.generate_function_completion(&symbol.name, params));
@@ -371,6 +373,7 @@ impl<'a> CompletionFinder<'a> {
                 symbollib.format_evaluated_type(&EvaluatedType::MethodInstance {
                     method: *method,
                     generic_arguments: vec![],
+                    is_invariant: false,
                 }),
             );
             // Prevent redundant duplicate completions.
@@ -511,6 +514,7 @@ impl<'a> CompletionFinder<'a> {
                     symbol_library.format_evaluated_type(&EvaluatedType::FunctionInstance {
                         function: symbol_idx,
                         generic_arguments: vec![],
+                        is_invariant: false,
                     }),
                 ),
             ),

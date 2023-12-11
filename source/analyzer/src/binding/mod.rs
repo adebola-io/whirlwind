@@ -2707,7 +2707,7 @@ mod expressions {
             Expression::BlockExpr(block) => {
                 let (body, params) = bind_function_block(
                     block,
-                    func.params,
+                    func.params.unwrap_or(vec![]),
                     binder,
                     symbol_library,
                     errors,
@@ -2736,7 +2736,7 @@ mod expressions {
                 };
                 let (mut block, params) = bind_function_block(
                     fakeblock,
-                    func.params,
+                    func.params.unwrap_or(vec![]),
                     binder,
                     symbol_library,
                     errors,

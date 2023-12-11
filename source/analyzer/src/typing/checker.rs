@@ -628,6 +628,7 @@ mod statements {
                         EvaluatedType::ModelInstance {
                             model,
                             generic_arguments,
+                            is_invariant,
                         } => {
                             let property_span = symbollib
                                 .get(property_symbol_idx)
@@ -640,6 +641,7 @@ mod statements {
                                 property_symbol_idx,
                                 generic_arguments.clone(),
                                 true,
+                                *is_invariant,
                                 property_span,
                             );
                             let get_model_name = || symbollib.get(*model).unwrap().name.clone();
@@ -990,7 +992,7 @@ mod statements {
                 return_type_span.unwrap_or_default(),
             )
         }
-        for (param_idx, new_type) in evaluated_param_types {
+        for (param_idx, mut new_type) in evaluated_param_types {
             let mut interface_in_label = None;
             if let SemanticSymbolKind::Parameter {
                 inferred_type,
@@ -1005,6 +1007,7 @@ mod statements {
                         param_type.as_ref().map(|p| p.span()).unwrap_or_default(),
                     ));
                 }
+                new_type.set_invariance(true);
                 *inferred_type = new_type;
             }
             if let Some((interface_, span)) = interface_in_label {
@@ -1299,6 +1302,7 @@ mod expressions {
                         .map(|boolean| EvaluatedType::ModelInstance {
                             model: boolean,
                             generic_arguments: vec![],
+                            is_invariant: false,
                         })
                         .unwrap_or(EvaluatedType::Unknown)
                 }
@@ -1658,6 +1662,7 @@ mod expressions {
                 return EvaluatedType::ModelInstance {
                     model: boolean_idx,
                     generic_arguments: vec![],
+                    is_invariant: false,
                 };
             } else {
                 checker_ctx.add_error(errors::missing_intrinsic(format!("Bool"), logexp.span));
@@ -1690,12 +1695,14 @@ mod expressions {
             let base = match &symbol.kind {
                 SemanticSymbolKind::Model { generic_params, .. } => EvaluatedType::ModelInstance {
                     model: model_or_interface,
-                    generic_arguments: evaluate_generic_params(generic_params, false),
+                    generic_arguments: evaluate_generic_params(generic_params, true),
+                    is_invariant: true,
                 },
                 SemanticSymbolKind::Interface { generic_params, .. } => {
                     EvaluatedType::InterfaceInstance {
                         interface_: model_or_interface,
-                        generic_arguments: evaluate_generic_params(generic_params, false),
+                        generic_arguments: evaluate_generic_params(generic_params, true),
+                        is_invariant: true,
                     }
                 }
                 _ => unreachable!("{symbol:#?} is not a model or interface."),
@@ -1731,11 +1738,6 @@ mod expressions {
                 TypedExpression::CallExpr(callexp) => {
                     let caller = &mut callexp.caller;
                     let evaluated_caller = typecheck_expression(caller, checker_ctx, symbollib);
-                    let evaluated_args = callexp
-                        .arguments
-                        .iter_mut()
-                        .map(|arg| typecheck_expression(arg, checker_ctx, symbollib))
-                        .collect::<Vec<_>>();
                     match evaluated_caller {
                         EvaluatedType::Model(model) => {
                             let model_symbol = symbollib.get_forwarded(model).unwrap();
@@ -1769,9 +1771,8 @@ mod expressions {
                                 };
                             zip_arguments(
                                 parameter_types,
-                                evaluated_args,
                                 checker_ctx,
-                                &callexp,
+                                callexp,
                                 symbollib,
                                 &mut generic_arguments,
                             );
@@ -1784,6 +1785,7 @@ mod expressions {
                                         generic_params.iter().any(|base| *base == argument.0)
                                     })
                                     .collect(),
+                                is_invariant: false,
                             };
                             return result_model_instance;
                         }
@@ -2002,6 +2004,7 @@ mod expressions {
             return EvaluatedType::ModelInstance {
                 model: bool_index,
                 generic_arguments: vec![],
+                is_invariant: false,
             };
         } else {
             checker_ctx.add_error(errors::missing_intrinsic(
@@ -2022,6 +2025,7 @@ mod expressions {
             return EvaluatedType::ModelInstance {
                 model: string_index,
                 generic_arguments: vec![],
+                is_invariant: false,
             };
         }
         checker_ctx.add_error(errors::missing_intrinsic(format!("String"), value.span));
@@ -2048,10 +2052,12 @@ mod expressions {
             EvaluatedType::MethodInstance {
                 method,
                 mut generic_arguments,
+                ..
             }
             | EvaluatedType::FunctionInstance {
                 function: method,
                 mut generic_arguments,
+                ..
             } => {
                 let method_symbol = symbollib.get(method).unwrap();
                 match &method_symbol.kind {
@@ -2100,31 +2106,26 @@ mod expressions {
                 params,
                 return_type,
                 generic_args,
+                ..
             } => (is_async, params, generic_args, *return_type),
             _ => {
                 return EvaluatedType::Unknown;
             }
         };
-        for (index, argument) in callexp.arguments.iter_mut().enumerate() {
-            // Try to preemptively guess the type of each argument.
-            if let Some(parameter_type) = parameter_types.get(index) {
+        // Try to preemptively guess the type of the first argument.
+        if let Some(argument) = callexp.arguments.get_mut(0) {
+            if let Some(parameter_type) = parameter_types.get(0) {
                 infer_ahead(argument, &parameter_type.inferred_type, symbollib);
             }
         }
-        let evaluated_args = callexp
-            .arguments
-            .iter_mut()
-            .map(|arg| typecheck_expression(arg, checker_ctx, symbollib))
-            .collect::<Vec<_>>();
         // Account for async functions.
         if is_async {
             return_type = prospectify(return_type, symbollib);
         }
         zip_arguments(
             parameter_types,
-            evaluated_args,
             checker_ctx,
-            &callexp,
+            callexp,
             symbollib,
             &mut generic_arguments,
         );
@@ -2137,59 +2138,106 @@ mod expressions {
     /// And updates a generic argument with inference results.
     fn zip_arguments(
         parameter_types: Vec<ParameterType>,
-        evaluated_args: Vec<EvaluatedType>,
         checker_ctx: &mut TypecheckerContext,
-        callexp: &TypedCallExpr,
+        callexp: &mut TypedCallExpr,
         symbollib: &mut SymbolLibrary,
         generic_arguments: &mut Vec<(SymbolIndex, EvaluatedType)>,
     ) {
         // mismatched arguments. It checks if the parameter list is longer, so it can account for optional parameters.
-        if parameter_types.len() < evaluated_args.len() {
+        if parameter_types.len() < callexp.arguments.len() {
             checker_ctx.add_error(errors::mismatched_function_args(
                 callexp.span,
                 parameter_types.len(),
-                evaluated_args.len(),
+                callexp.arguments.len(),
                 None,
             ));
             return;
         }
         let mut generic_map = HashMap::new();
         let mut i = 0;
+        let caller_type = symbollib
+            .get_expression_type(&callexp.caller, checker_ctx.literals)
+            .unwrap_or(EvaluatedType::Unknown);
         while i < parameter_types.len() {
-            let parameter_type = &parameter_types[i].inferred_type;
+            // Generics in call expressions are hard by default, but
+            // they can be transformed into regular, coercible generics, depending
+            // on whether the caller is a regular instance, a parameter type,
+            // or a shadow instance (this). Parameter types inherit the invariance
+            // of the function in which they are defined, and shadow instances
+            // inherit the invariance of their parent model.
+            // Everything else is free real estate.
+            let mut parameter_type = parameter_types[i].inferred_type.clone();
+            let caller_is_invariant = caller_type.is_invariant();
+            let unification_option = if caller_is_invariant {
+                UnifyOptions::Conform
+            } else {
+                // If a parameter is a hard generic (or contains a hard generic),
+                // it needs to be in list of generics owned by the caller to be coercible.
+                if parameter_type.contains_child_for_which(&|child| {
+                    matches!(child, EvaluatedType::HardGeneric { .. })
+                }) {
+                    let mut param_generics = vec![];
+                    parameter_type.gather_generics_into(&mut param_generics);
+                    let caller_generics = match &caller_type {
+                        EvaluatedType::FunctionInstance {
+                            function: caller_base,
+                            ..
+                        }
+                        // todo: generic params from function types.
+                        | EvaluatedType::MethodInstance {
+                            method: caller_base,
+                            ..
+                        } => match &symbollib.get(*caller_base).unwrap().kind {
+                            SemanticSymbolKind::Method { generic_params, .. }
+                            | SemanticSymbolKind::Function { generic_params, .. } => {
+                                Some(generic_params)
+                            }
+                            _ => None,
+                        },
+                        _ => None,
+                    };
+                    if param_generics.iter().all(|generic| {
+                        caller_generics.is_some_and(|generics| generics.contains(generic))
+                    }) {
+                        UnifyOptions::HardConform
+                    } else {
+                        UnifyOptions::Conform
+                    }
+                } else {
+                    UnifyOptions::HardConform
+                }
+            };
+
             // Account for optional types.
             let is_optional = parameter_types[i].is_optional;
-            let argument_type = match evaluated_args.get(i) {
+            let argument_type = callexp
+                .arguments
+                .get_mut(i)
+                .map(|expression| typecheck_expression(expression, checker_ctx, symbollib));
+            let argument_type = match argument_type {
                 Some(evaled_typ) => evaled_typ,
                 None => {
                     if !is_optional {
                         checker_ctx.add_error(errors::mismatched_function_args(
                             callexp.span,
                             parameter_types.len(),
-                            evaluated_args.len(),
+                            callexp.arguments.len(),
                             parameter_types.iter().position(|param| param.is_optional),
                         ))
                     };
                     break;
                 }
             };
-            let unification = if is_optional {
-                unify_types(
-                    &maybify(parameter_type.clone(), symbollib),
-                    argument_type,
-                    symbollib,
-                    UnifyOptions::HardConform,
-                    Some(&mut generic_map),
-                )
-            } else {
-                unify_types(
-                    parameter_type,
-                    argument_type,
-                    symbollib,
-                    UnifyOptions::HardConform,
-                    Some(&mut generic_map),
-                )
-            };
+            if is_optional {
+                parameter_type = maybify(parameter_type, symbollib);
+            }
+            let unification = unify_types(
+                &parameter_type,
+                &argument_type,
+                symbollib,
+                unification_option,
+                Some(&mut generic_map),
+            );
             if let Err(errortype) = unification {
                 for errortype in errortype {
                     checker_ctx.add_error(TypeError {
@@ -2198,18 +2246,27 @@ mod expressions {
                     })
                 }
             }
-            i += 1;
-        }
-        // Solve generics with new evaluated types.
-        for (generic, assigned_type) in generic_map {
-            if let Some(entry) = generic_arguments
-                .iter_mut()
-                .find(|prior| prior.0 == generic)
-            {
-                entry.1 = assigned_type;
-            } else {
-                generic_arguments.push((generic, assigned_type));
+            // Solve generics with new evaluated types.
+            for (generic, assigned_type) in generic_map.iter() {
+                if let Some(entry) = generic_arguments
+                    .iter_mut()
+                    .find(|prior| prior.0 == *generic)
+                {
+                    entry.1 = assigned_type.clone();
+                } else {
+                    generic_arguments.push((*generic, assigned_type.clone()));
+                }
             }
+            // Based on transformer generic values,
+            // the types of future arguments can be inferred.
+            if let Some((typ, expression)) = parameter_types
+                .get(i + 1)
+                .and_then(|param_type| Some((param_type, callexp.arguments.get_mut(i + 1)?)))
+            {
+                let target_type = coerce(typ.inferred_type.clone(), &generic_arguments);
+                infer_ahead(expression, &target_type, symbollib)
+            }
+            i += 1;
         }
     }
 
@@ -2431,6 +2488,7 @@ mod expressions {
                 params: parameter_types,
                 generic_args,
                 return_type: Box::new(inferred_return_type),
+                is_invariant: false,
             }
         })();
         f.inferred_type.clone()
@@ -2473,22 +2531,15 @@ mod expressions {
             EvaluatedType::ModelInstance {
                 model,
                 ref generic_arguments,
+                is_invariant,
             } => search_for_property(
                 checker_ctx,
                 symbollib,
                 model,
                 property_symbol_idx,
-                {
-                    if matches!(access.object, TypedExpression::ThisExpr(_)) {
-                        generic_arguments
-                            .iter()
-                            .map(|(a, b)| (*a, harden_generics(b)))
-                            .collect::<Vec<_>>()
-                    } else {
-                        generic_arguments.clone()
-                    }
-                },
+                generic_arguments.clone(),
                 true,
+                is_invariant,
                 property_span,
             ),
             EvaluatedType::Model(model) => {
@@ -2508,6 +2559,7 @@ mod expressions {
                     property_symbol_idx,
                     generic_arguments,
                     object_is_instance,
+                    false,
                     property_span,
                 )
             }
@@ -2581,6 +2633,7 @@ mod expressions {
                             EvaluatedType::InterfaceInstance {
                                 interface_,
                                 generic_arguments: interface_generics,
+                                ..
                             } => {
                                 let interface_ = *interface_;
                                 // Update the solutions of the interfaces generics.
@@ -2626,6 +2679,7 @@ mod expressions {
                         return EvaluatedType::MethodInstance {
                             method,
                             generic_arguments: generic_arguments.clone(),
+                            is_invariant: false,
                         };
                     }
                 }
@@ -2649,6 +2703,7 @@ mod expressions {
                     property_symbol_idx,
                     vec![],
                     true,
+                    false,
                     property_span,
                 )
             }
@@ -2673,14 +2728,6 @@ mod expressions {
         })
     }
 
-    fn harden_generics(b: &EvaluatedType) -> EvaluatedType {
-        let evaluated_type = match b {
-            EvaluatedType::Generic { base } => EvaluatedType::HardGeneric { base: *base },
-            _ => b.clone(),
-        };
-        evaluated_type
-    }
-
     /// Look through all the possible methods and attributes of a model or generic
     /// to determine the property being referenced.
     pub fn search_for_property(
@@ -2690,6 +2737,7 @@ mod expressions {
         property_symbol_idx: SymbolIndex,
         mut generic_arguments: Vec<(SymbolIndex, EvaluatedType)>,
         object_is_instance: bool,
+        is_invariant: bool,
         property_span: Span,
     ) -> Option<EvaluatedType> {
         // The base type of the model or generic.
@@ -2723,6 +2771,7 @@ mod expressions {
                     EvaluatedType::InterfaceInstance {
                         interface_,
                         generic_arguments: mut interface_generics,
+                        ..
                     } => {
                         // Update the solutions of the interfaces generics.
                         generic_arguments.append(&mut interface_generics);
@@ -2733,6 +2782,7 @@ mod expressions {
                             EvaluatedType::ModelInstance {
                                 model,
                                 generic_arguments: generic_arguments.clone(),
+                                is_invariant: false,
                             },
                         ));
                         let interface_symbol = symbollib.get_forwarded(interface_)?;
@@ -2796,6 +2846,7 @@ mod expressions {
                 return Some(EvaluatedType::MethodInstance {
                     method,
                     generic_arguments,
+                    is_invariant,
                 });
             }
         }

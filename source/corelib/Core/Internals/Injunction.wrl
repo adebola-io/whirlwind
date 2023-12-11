@@ -3,7 +3,6 @@ module Injunction;
 use Super.{
     Prelude.Range,
     Async.Eventual,
-    Process.Halt,
     Primitives.{
         String,
         Int,
@@ -43,11 +42,14 @@ public enum Injunction {
     // Eventuals.
     EventAwait(&Sequence),
     EventAbort(&Sequence),
-    /// Creates an eventual from a prospect.
-    EventCreate(&Prospect)
+    EventCreate(&Prospect),
+    SeqId(&Sequence)
 }
 
-/// Compile time function to call underlying dynamic libraries.
+/// Function to perform intrinsic and builtin operations.
 public function Invoke(command: Injunction): never {
-    return Halt("Compiler Built in.");
+   // The recursion here is false, and only exists to satisfy the
+   // typechecker. Technically, all calls to `Invoke` are handled
+   // outside the Whirlwind runtime.
+   return Invoke(command);
 }

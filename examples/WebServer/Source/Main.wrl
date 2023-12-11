@@ -9,7 +9,7 @@ use Core.{
     },
     Io.{Fmt, Print},
     Crypto.JwtEncryptor,
-    Process.ReadEnv
+    Process.GetEnv
 };
 
 /// Entry point into the program.
@@ -55,7 +55,7 @@ async function AuthenticationHandler(request: HttpRequest): MiddlewareResponse {
         } else {
             auth.Slice(7..auth.Length()).Unwrap()
         };
-        maybeSecret := ReadEnv("JWT_SECRET");
+        maybeSecret := GetEnv("JWT_SECRET");
         if maybeSecret.IsNone() {
             return Err(new HttpRequestError("Unathorized Request", request));
         };

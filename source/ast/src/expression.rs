@@ -72,7 +72,7 @@ pub struct CallExpr {
 pub struct FunctionExpr {
     pub is_async: bool,
     pub generic_params: Option<Vec<GenericParameter>>,
-    pub params: Vec<Parameter>,
+    pub params: Option<Vec<Parameter>>,
     pub return_type: Option<TypeExpression>,
     pub body: Expression,
     pub span: Span,

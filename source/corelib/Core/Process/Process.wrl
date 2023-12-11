@@ -3,54 +3,74 @@ module Process;
 use Super.{
     Primitives.String,
     Primitives.UnsignedInt,
-    Async.CurrentSequence
+    Async.CurrentSequence,
+    Internals.{Invoke, Injunction},
 };
 use Super.Prelude.Maybe;
+use Super.Os.PathLike;
 
-public model Error {
-    new(message?: String) {
-
-    }
-}
-
-/// Mock function for panicking.
-public function PanicOnCaller(message: String): never  {
-    // Compiler built-in.
-    Todo()
-}
-
-/// Mock function for compile-time stuff.
-public function Halt(message: String): never {
-    Todo()
+/// Unwinds the stack by one frame and crashes with a fatal error.
+public function FatalOnCaller(message: String): never  {
+    return Invoke(Injunction.SeqFatalOneStep(message));
 }
 
 /// Indicates that the current piece of code is unfinished.
 /// 
 /// Developers can use this function as a temporary marker for incomplete work.
 /// It is also useful for satisfying the type system when implementing other functionality.
-/// ## Panic
-/// This function will *always* panic.
-/// ## Usage
+/// 
+/// This function will *always* cause the sequence to crash.
+/// ### Usage
 /// ```
+/// function PositiveSquare(a: Int): Outcome<Int, String> {
+///     if a >= 0 {
+///         return Ok(a * a);
+///     } else {
+///         Todo() // will implement later.
+///     }
+/// }
 /// ```
 public function Todo(message?: String): never {
-    return PanicOnCaller(message.UnwrapOr("Entered unfinished code."));
+    return FatalOnCaller(message.UnwrapOr("Entered unfinished code."));
 }
 
-/// Panic is used to create and throw an exception.
-/// ## Panic
-/// This function will *always* panic.
-/// ## Usage
-/// ```
+/// Called when an execution sequence encounters an unrecoverable or
+/// unexpected condition. It causes the sequence to
+/// abruptly terminate or crash, unwinding the sequence's stack.
 /// 
+/// If the sequence has no recover callback attached, 
+/// then the crash will bubble up, crashing the parent sequence, and then its parent,
+/// up until it encounters a recovery, or it crashes the main program sequence.
+///
+/// ### Usage
 /// ```
-public function Panic(message?: String): never {
-    return Halt("Compiler built in.");
+/// function Divide(number: Int, divisor: Int): Float {
+///     if divisor == 0 {
+///         Fatal("Cannot divide by zero!");
+///     } else {
+///         return a / b;
+///     }
+/// }
+/// ```
+public function Fatal(message?: String): never {
+    return Invoke(Injunction.SeqFatal(message));
 }
 
 /// Returns the value of an environment variable.
-public function ReadEnv(variableName: String): Maybe<&String> {
+public function GetEnv(varName: String): Maybe<&String> {
     Todo()
+}
+
+
+const CURRENT_WORKING_DIRECTORY: String = "";
+/// Returns a string value corresponding to the path of the current working directory.
+/// ### Usage
+/// ```
+/// currentDir := Core.Process.Cwd();
+/// Print("The current directory is " + currentDir);
+/// ```
+public function Cwd(): String {
+    return CURRENT_WORKING_DIRECTORY;
 }
 
 /// Schedules a function to run after a duration elapses.

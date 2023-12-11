@@ -25,6 +25,7 @@ pub fn prospectify(typ: EvaluatedType, symbollib: &SymbolLibrary) -> EvaluatedTy
         return EvaluatedType::ModelInstance {
             model,
             generic_arguments: vec![(prospect_generic_parameter, typ)],
+            is_invariant: false,
         };
     } else {
         return typ;
@@ -88,6 +89,7 @@ pub fn maybify(typ: EvaluatedType, symbollib: &SymbolLibrary) -> EvaluatedType {
         return EvaluatedType::ModelInstance {
             model,
             generic_arguments: vec![(maybe_generic_parameter, typ)],
+            is_invariant: false,
         };
     } else {
         return typ;
@@ -106,6 +108,7 @@ pub fn arrify(typ: EvaluatedType, symbollib: &SymbolLibrary) -> EvaluatedType {
         return EvaluatedType::ModelInstance {
             model,
             generic_arguments: vec![(maybe_generic_parameter, typ)],
+            is_invariant: false,
         };
     } else {
         return typ;
@@ -128,6 +131,7 @@ pub fn coerce(typ: EvaluatedType, args: &Vec<(SymbolIndex, EvaluatedType)>) -> E
         EvaluatedType::ModelInstance {
             model,
             generic_arguments: old_generic_arguments,
+            is_invariant,
         } => {
             let mut generic_arguments = vec![];
             for (argument, old_type) in old_generic_arguments {
@@ -136,11 +140,13 @@ pub fn coerce(typ: EvaluatedType, args: &Vec<(SymbolIndex, EvaluatedType)>) -> E
             EvaluatedType::ModelInstance {
                 model,
                 generic_arguments,
+                is_invariant,
             }
         }
         EvaluatedType::InterfaceInstance {
             interface_,
             generic_arguments: old_generic_arguments,
+            is_invariant,
         } => {
             let mut generic_arguments = vec![];
             // Interfaces are coercible too because of the "This" type.
@@ -153,11 +159,13 @@ pub fn coerce(typ: EvaluatedType, args: &Vec<(SymbolIndex, EvaluatedType)>) -> E
             EvaluatedType::InterfaceInstance {
                 interface_,
                 generic_arguments,
+                is_invariant,
             }
         }
         EvaluatedType::EnumInstance {
             enum_,
             generic_arguments: old_generic_arguments,
+            is_invariant,
         } => {
             let mut generic_arguments = vec![];
             for (argument, old_type) in old_generic_arguments {
@@ -166,11 +174,13 @@ pub fn coerce(typ: EvaluatedType, args: &Vec<(SymbolIndex, EvaluatedType)>) -> E
             EvaluatedType::EnumInstance {
                 enum_,
                 generic_arguments,
+                is_invariant,
             }
         }
         EvaluatedType::FunctionInstance {
             function,
             generic_arguments: old_generic_arguments,
+            is_invariant,
         } => {
             let mut generic_arguments = vec![];
             for (argument, old_type) in old_generic_arguments {
@@ -179,6 +189,7 @@ pub fn coerce(typ: EvaluatedType, args: &Vec<(SymbolIndex, EvaluatedType)>) -> E
             EvaluatedType::FunctionInstance {
                 function,
                 generic_arguments,
+                is_invariant,
             }
         }
         EvaluatedType::FunctionExpressionInstance {
@@ -186,6 +197,7 @@ pub fn coerce(typ: EvaluatedType, args: &Vec<(SymbolIndex, EvaluatedType)>) -> E
             params: old_params,
             return_type: old_return_type,
             generic_args: old_generic_args,
+            is_invariant,
         } => {
             let mut generic_args = vec![];
             for (argument, old_type) in old_generic_args {
@@ -204,11 +216,13 @@ pub fn coerce(typ: EvaluatedType, args: &Vec<(SymbolIndex, EvaluatedType)>) -> E
                 params,
                 return_type,
                 generic_args,
+                is_invariant,
             }
         }
         EvaluatedType::MethodInstance {
             method,
             generic_arguments: old_generic_arguments,
+            is_invariant,
         } => {
             let mut generic_arguments = vec![];
             for (argument, old_type) in old_generic_arguments {
@@ -217,6 +231,7 @@ pub fn coerce(typ: EvaluatedType, args: &Vec<(SymbolIndex, EvaluatedType)>) -> E
             EvaluatedType::MethodInstance {
                 method,
                 generic_arguments,
+                is_invariant,
             }
         }
         EvaluatedType::Generic { base } => {
@@ -298,6 +313,7 @@ pub fn symbol_to_type(
                     _ => vec![],
                 }
             },
+            is_invariant: false,
         },
         SemanticSymbolKind::Variable { inferred_type, .. } => inferred_type.clone(),
         SemanticSymbolKind::Constant { inferred_type, .. } => inferred_type.clone(),
@@ -325,6 +341,7 @@ pub fn symbol_to_type(
         SemanticSymbolKind::Function { generic_params, .. } => EvaluatedType::FunctionInstance {
             function: name,
             generic_arguments: evaluate_generic_params(generic_params, false),
+            is_invariant: false,
         }, //TODO
         _ => EvaluatedType::Unknown,
     };
@@ -360,6 +377,7 @@ pub fn get_method_types_from_symbol<'a>(
                 let initial_type = EvaluatedType::MethodInstance {
                     method,
                     generic_arguments: evaluate_generic_params(generic_params, false),
+                    is_invariant: false,
                 };
                 let coerced = coerce(initial_type, generic_arguments);
                 method_types.push((&method_symbol.name, coerced, method_symbol.kind.is_public()));
@@ -371,6 +389,7 @@ pub fn get_method_types_from_symbol<'a>(
                 if let EvaluatedType::InterfaceInstance {
                     interface_,
                     generic_arguments,
+                    ..
                 } = evaled
                 {
                     let mut methods_from_interface =
@@ -424,6 +443,7 @@ pub fn get_interface_types_from_symbol(
                 if let EvaluatedType::InterfaceInstance {
                     interface_,
                     generic_arguments,
+                    ..
                 } = &evaled
                 {
                     interface_types.push(evaled.clone());
@@ -557,10 +577,12 @@ pub fn distill_as_function_type<'a>(
         EvaluatedType::MethodInstance {
             method: function,
             generic_arguments,
+            ..
         }
         | EvaluatedType::FunctionInstance {
             function,
             generic_arguments,
+            ..
         } => {
             let function_symbol = symbollib.get(*function).unwrap();
             match &function_symbol.kind {
@@ -629,6 +651,7 @@ pub fn distill_as_function_type<'a>(
             params,
             return_type,
             generic_args,
+            ..
         } => {
             let is_async = *is_async;
             let parameter_types = params.clone();
@@ -669,8 +692,8 @@ pub fn infer_ahead(
                             .parameter_types
                             .get(index)
                             .is_some_and(|shadow_type| {
-                                shadow_type.is_optional ||
-                                is_maybe_type(&shadow_type.inferred_type, symbollib)
+                                shadow_type.is_optional
+                                    || is_maybe_type(&shadow_type.inferred_type, symbollib)
                             });
                     let parameter_symbol = symbollib.get_mut(*param_idx).unwrap();
                     if let SemanticSymbolKind::Parameter {
@@ -685,8 +708,8 @@ pub fn infer_ahead(
                             None => break,
                         };
                         let is_optional = *is_optional;
-                        let optionality_is_equal = (shadow_type.is_optional == is_optional)
-                            || (shadow_type_is_maybe);
+                        let optionality_is_equal =
+                            (shadow_type.is_optional == is_optional) || (shadow_type_is_maybe);
 
                         if param_type.is_none() && optionality_is_equal {
                             *inferred_type = match functiontype.parameter_types.get(index) {

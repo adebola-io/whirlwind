@@ -3,11 +3,52 @@ module Internals;
 use Super.Primitives.Bool;
 public use Injunction.{ Injunction, Invoke };
 
+/// The never type is a type representing the set of values that cannot occur.
+/// 
+/// Examples of never types are:
+/// - the return value of a function that exits the program,
+/// - the type of an exception that crashes execution, and
+/// - the type of a value that is infinitely recursive (e.g. `type T = T;`).
+/// 
+/// The exact definition is that it is the type of a value that cannot be
+/// modelled by the type system. For example, the bridge between builtin
+/// methods and the Whirlwind runtime, returns a type of never.
+/// 
+/// Because it is a placeholder for something conceptual, _the `never` type is assignable to
+/// all types, including itself._ This makes it useful for writing unfinished code that
+/// still runs because it satisfies the typechecker.
+/// 
+/// However, due to its abstract nature, _no other type is assignable to `never`, except itself._
+/// 
+/// This means that these are all semantically valid;
+/// <!--#ignore-->
+/// ```
+/// function BlackHole(): never {
+///     Core.Process.Exit(1) // Exits the program and never returns.
+/// }
+/// num: Int := BlackHole(); // valid.
+/// str: String := BlackHole(); // valid.
+/// 
+/// function ProduceValue(): String {
+///     return BlackHole(); // valid.
+/// }
+/// ```
+/// But the following is not.
+/// <!--#ignore-->
+/// ```
+/// neverNum: never := 0; // will not compile.
+/// type Recursive = Recursive;
+/// neverBool: Recursive = true; // will not compile.
+/// 
+/// function OutsideReality(): never {
+///     return "Hello, world"; // will not compile.
+/// }
+/// ```
+/// As a matter of fact, `never` types are preemptively disallowed in variable type labels.
+/// They are only allowed in return types for functions.
 public type never = never;
-
-function Builtin(): never {
-    Builtin()
-}
+/// The null pointer.
+public var NULLPTR = &0;
 
 /// Returns true if a value is the null pointer.
 /// ### Usage
@@ -16,11 +57,7 @@ function Builtin(): never {
 /// Assert(IsNull(Nullptr));
 /// ```
 public function IsNull<T>(value: T): Bool {
-    return value is Nullptr;
-}
-
-public model Nullptr {
-    // Compiler built-in;
+    return value is NULLPTR;
 }
 
 public enum Flow<T> {
@@ -31,7 +68,11 @@ public enum Flow<T> {
     Normal(T)
 }
 
-/// A currently running set of instructions.
+/// A running set of instructions.
 public model Sequence {
-
+    /// Returns the id of the sequence.
+    /// The id of the main sequence is always 0.
+    function GetId(): UnsignedInt {
+        return Invoke(Injunction.SeqId(this));
+    }
 }

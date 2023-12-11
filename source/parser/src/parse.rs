@@ -369,7 +369,14 @@ impl<L: Lexer> Parser<L> {
         expect_or_return!(TokenType::Keyword(Fn), self);
         self.advance(); // Move past fn.
         let generic_params = check!(self.maybe_generic_params());
-        let params = check!(self.parameters());
+        let params = if self
+            .token()
+            .is_some_and(|token| token._type == TokenType::Bracket(LParens))
+        {
+            Some(check!(self.parameters()))
+        } else {
+            None
+        };
         let return_type = check!(self.maybe_type_label());
 
         if_ended!(

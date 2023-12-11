@@ -6,7 +6,7 @@ use Super.{
     Internals.{ Invoke, Injunction }, 
     Memory.{ CharSpace, Buffer }, 
     Collections.Hash,
-    Prelude.{ Maybe, AsIterator, Iteratable, Range, Display },
+    Prelude.{ Maybe, AsIterator, Iteratable, Range, Display, Some },
     Process.Todo,
 };
 use Numeric.{ Int, UnsignedInt };
@@ -419,9 +419,9 @@ public model Chars implements Iteratable<&String> {
     }
     /// Returns the next character.
     public function [Iteratable.Next](): Maybe<&String> {
-        nextChar := this.string.At(this.idx);
+        nextChar := this.string.At(this.idx)?;
         this.idx += 1;
-        return nextChar;
+        return Some(nextChar);
     }
 }
 

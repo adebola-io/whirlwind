@@ -110,7 +110,7 @@ test "Testing types." {
             this.name = name;
             this.age = Maybe.UnwrapOrDefault(age);
         }
-        public static function [Default.Init](): This {
+        static function [Default.Init](): This {
             return new Person("{unknown}");
         }
     }
@@ -119,4 +119,13 @@ test "Testing types." {
     var { name as johnsName} = new Person("John Doe");
 
     function AnyType<T>(value: T) {}
+
+    // Generic Invariance.
+    function Hello<T>(value: T, factory: fn(value: T): T): T {
+        value = factory(value); // valid.
+        if true {
+            return value; // valid.
+        }
+        return factory(value);
+    }
 }
