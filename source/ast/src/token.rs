@@ -24,7 +24,6 @@ pub enum TokenType {
     Operator(Operator),
     Ident(String),
     String(String),
-    TemplateStringFragment(String),
     Number(Number),
     Bracket(Bracket),
     Invalid(char),

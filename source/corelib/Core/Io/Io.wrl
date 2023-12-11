@@ -1,3 +1,11 @@
+/// ## Input/Output in Whirlwind
+/// 
+/// The `Io` module provides a set of tools for fundamental input/output operations and streams.
+/// These tools facilitate reading and writing data to various sources, such as files, 
+/// network connections, or in-memory buffers. 
+/// 
+/// It abstracts the underlying details of the data source, allowing
+/// for a consistent interface.
 module Io;
 
 use Super.Primitives.String;

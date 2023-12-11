@@ -26,7 +26,7 @@ public function Some<T>(value: T): Maybe<T> {
 
 /// A value that may or may not exist.
 public model Maybe<T> implements Guaranteed<T> + Try<T, Maybe<never>> {
-    var inner: MaybeVal<T>;
+    var inner: MaybeVal;
 
     /// Implementation of `Guarantee` interface.
     function [Guaranteed.Guarantee](): T {
@@ -34,11 +34,11 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, Maybe<never>> {
     }
     /// Implementation of `Try` interface.
     function [Try.Try](): Outcome<T, Maybe<never>> {
-        // this.inner => {
-        //     .Some(value) => Flow.Normal(value),
-        //     .None => Flow.ReturnWithValue(None())
-        // }
-        Todo()
+        if this.IsSome() {
+            return Ok(this.Unwrap());
+        } else {
+            return Err(None());
+        }
     }
     /// Returns a Bool indicating if the Maybe contains no value.
     /// ### Usage
@@ -139,7 +139,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, Maybe<never>> {
 }
 
 
-enum MaybeVal<T> {
-    Some(T),
+enum MaybeVal {
+    Some,
     None
 }

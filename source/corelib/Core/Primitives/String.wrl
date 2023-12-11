@@ -15,7 +15,7 @@ use Array.Array;
 /// Model for creating, manipulating and formatting text sequences.
 public model String implements Addition + AsIterator<&String, Chars> + Sequenced + Display + Hash {
     /// Returns the next character alphabetically in a sequence.
-    public function [Sequenced.NextItem](): Maybe<String> {
+    function [Sequenced.NextItem](): Maybe<String> {
         return Invoke(Injunction.NextChar(this));
     }
     /// Implementation of the Display trait.
@@ -28,7 +28,7 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     /// str := "Hello" + ", world!";
     /// Assert(str).Equals("Hello, world!");
     /// ```
-    public function [Addition.Add](other: This): This {
+    function [Addition.Add](other: This): This {
         return Invoke(Injunction.StrAdd(this, other));
     }
     /// Creates an iterator from the contents of a string.

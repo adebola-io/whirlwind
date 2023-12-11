@@ -1,0 +1,7 @@
+module Renderer;
+
+
+public interface Component {
+    public function Update() {}
+    public function Render(): String;
+}

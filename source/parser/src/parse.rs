@@ -286,7 +286,6 @@ impl<L: Lexer> Parser<L> {
                 self.spring(Partial::from(self.identifier()).map(|i| Expression::Identifier(i)))
             }
             TokenType::String(_) => self.spring(Partial::from(self.string_literal())),
-            TokenType::TemplateStringFragment(_) => todo!(),
             TokenType::Number(_) => self.spring(Partial::from(self.number_literal())),
             TokenType::Bracket(LParens) => self.spring(self.grouped_expression()),
             TokenType::Bracket(LSquare) => self.array_expression(),

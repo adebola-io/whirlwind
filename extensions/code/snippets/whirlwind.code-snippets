@@ -89,15 +89,6 @@
       "body": ["while ${1:condition} {", "\t$TM_SELECTED_TEXT$0", "}"],
       "description": "While Statement"
    },
-   "Wait Function": {
-      "prefix": "wait",
-      "body": [
-         "Core.Process.WaitThen(fn () {",
-         "\t$TM_SELECTED_TEXT$0",
-         "}, ${1:timeout});"
-      ],
-      "description": "Wait then Function"
-   },
    "Async Function Statement": {
       "prefix": "async func",
       "body": [

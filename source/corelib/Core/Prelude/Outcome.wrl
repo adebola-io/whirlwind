@@ -3,7 +3,8 @@ module Outcome;
 use Super.{
     Primitives.Bool,
     Prelude.{ Try, Guaranteed, Maybe, Todo },
-    Internals.{ Flow, never },
+    Internals.{never, Injunction, Invoke},
+    Process.FatalOnCaller
 };
 
 /// An `Outcome` is a generic (enumerated) model 
@@ -22,36 +23,51 @@ use Super.{
 /// 
 /// It presents a way to handle errors predictably.
 public model Outcome<T, E> implements Guaranteed<T> + Try<T, Outcome<never, E>> {
-    var inner: OutcomeVal<T, E>;
-
+    var value: OutcomeVal;
     /// Implementation of the Guarantee interface.
     function [Guaranteed.Guarantee](): T {
         this.Unwrap()
     }
-
     /// Implementation of the `Try` interface.
     function [Try.Try](): Outcome<T, Outcome<never, E>> {
-        // this.inner => {
-        //     .Ok(value) => Ok(Flow.Normal(value)),
-        //     .Err(error) => Err(Flow.ReturnWithValue(Err(error)))
-        // }
-        Todo()
+        if this.IsOk() {
+            return *this;
+        } else {
+            return Todo();
+        }
     }
-
     /// Returns the inner value if the operation was a success, or causes a runtime error otherwise.
     /// ### Usage
     /// ```
     /// outcome := Ok(9);
     /// value := outcome.Unwrap();
     /// Assert(value).Equals(9);
-    /// 
+    /// ```
+    /// <!--ignore-->
+    /// ```
     /// outcome := Err("This was an error");
     /// outcome.Unwrap(); // Will cause a runtime error.
     /// ```
     public function Unwrap(): T {
-        Todo()
+        if this.IsErr() {
+            FatalOnCaller("Called Unwrap on an Err value.")
+        }
+        return Invoke(Injunction.OutcUnwrap(this.value));
     }
-
+    /// Returns the inner error value if the outcome is an error, or causes a runtime error otherwise.
+    /// ### Usage
+    /// ```
+    /// outcome := Err("An error occured.");
+    /// value := outcome.AsErr();
+    /// Assert(value).Equals("An error occured.");
+    /// 
+    /// ```
+    public function AsErr(): E {
+        if this.IsOk() {
+            FatalOnCaller("Called AsErr on an Ok value.");
+        }
+        return Invoke(Injunction.OutcErr(this.value));
+    }
     /// Returns true if the outcome is `Ok` 
     /// i.e. The operation was successful.
     /// ### Usage
@@ -60,11 +76,7 @@ public model Outcome<T, E> implements Guaranteed<T> + Try<T, Outcome<never, E>> 
     /// AssertThat(outcome.IsOk())
     /// ```
     public function IsOk(): Bool {
-        // this.inner => {
-        //     .Ok => true,
-        //     .Err => false,
-        // }
-        Todo()
+        return this.value == OutcomeVal.Ok;
     }
 
     /// Returns true if the outcome is an `Err`.
@@ -75,9 +87,8 @@ public model Outcome<T, E> implements Guaranteed<T> + Try<T, Outcome<never, E>> 
     /// AssertThat(outcome.IsErr())
     /// ```
     public function IsErr(): Bool {
-        !this.IsOk()
+        return this.value == OutcomeVal.Err;
     }
-
     /// Checks if the outcome was successful and checks its internal value as well.
     /// ### Usage
     /// ```
@@ -91,7 +102,6 @@ public model Outcome<T, E> implements Guaranteed<T> + Try<T, Outcome<never, E>> 
         // };
         Todo()
     }
-
     /// Checks if the outcome failed and checks the error value as well.
     /// ### Usage
     /// ```
@@ -105,12 +115,14 @@ public model Outcome<T, E> implements Guaranteed<T> + Try<T, Outcome<never, E>> 
         // };
         Todo()
     }
-
     /// Converts an `Outcome<T, E>` to a `Maybe<T>`.
     public function Ok(): Maybe<T> {
-        Todo()
+        if this.IsOk() {
+            return Some(this.Unwrap());
+        } else {
+            return None();
+        }
     }
-
     /// Converts an `Outcome<T, E>` to an `Outcome<U, E>` by applying a function.
     /// ### Usage
     /// ```
@@ -129,9 +141,9 @@ public model Outcome<T, E> implements Guaranteed<T> + Try<T, Outcome<never, E>> 
 
 }
 
-enum OutcomeVal<T, E> {
-    Ok(T),
-    Err(E)
+enum OutcomeVal {
+    Ok,
+    Err
 }
 
 /// Returns an `Outcome` with a value.

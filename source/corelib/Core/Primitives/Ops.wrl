@@ -7,7 +7,7 @@ use Super.Prelude.Maybe;
 /// by overloading the `+` operator, such as strings and numbers.
 public interface Addition {
     /// Adds two items together.
-    public function Add(other: This): This;
+    function Add(other: This): This;
 }
 
 enum Ordering {
@@ -20,24 +20,13 @@ enum Ordering {
 /// to other models of the same type.
 public interface Orderable {
     /// Compares two values together.
-    public function Compare(other: &This): Ordering;
+    function Compare(other: &This): Ordering;
 }
 
 /// This interface concerns all items that can exist in a sequence,
 /// most notably letters and numbers.
 public interface Sequenced {
     /// Returns the next item in a sequence.
-    public function NextItem(): Maybe<This>;
+    function NextItem(): Maybe<This>;
 }
 
-public interface Subtraction {
-    function Subtract(other: &This): This;
-}
-
-public interface Multiplication {
-    function Multiply(other: &This): This;
-}
-
-public interface Division {
-    function Divide(other: &This): This;
-}

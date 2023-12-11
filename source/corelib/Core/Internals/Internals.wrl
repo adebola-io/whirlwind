@@ -1,22 +1,25 @@
 module Internals;
 
 use Super.Primitives.Bool;
+use Super.Prelude.UnsignedInt;
 public use Injunction.{ Injunction, Invoke };
 
-/// The never type is a type representing the set of values that cannot occur.
+/// ### The Never Type
+/// `never` is a type representing the set of values that cannot occur.
 /// 
 /// Examples of never types are:
 /// - the return value of a function that exits the program,
-/// - the type of an exception that crashes execution, and
+/// - the type of an exception that crashes sequence execution, or
 /// - the type of a value that is infinitely recursive (e.g. `type T = T;`).
 /// 
 /// The exact definition is that it is the type of a value that cannot be
 /// modelled by the type system. For example, the bridge between builtin
-/// methods and the Whirlwind runtime, returns a type of never.
+/// methods and the Whirlwind runtime, returns a type of never. The null pointer
+/// stub in Whirlwind has a type of never.
 /// 
 /// Because it is a placeholder for something conceptual, _the `never` type is assignable to
 /// all types, including itself._ This makes it useful for writing unfinished code that
-/// still runs because it satisfies the typechecker.
+/// compiles because it satisfies the typechecker.
 /// 
 /// However, due to its abstract nature, _no other type is assignable to `never`, except itself._
 /// 
@@ -48,24 +51,17 @@ public use Injunction.{ Injunction, Invoke };
 /// They are only allowed in return types for functions.
 public type never = never;
 /// The null pointer.
+/// The actual value will be filled in at runtime.
 public var NULLPTR = &0;
 
 /// Returns true if a value is the null pointer.
 /// ### Usage
 /// ```
-/// use Internals.{IsNull, Nullptr};
-/// Assert(IsNull(Nullptr));
+/// use Internals.{IsNull, NULLPTR};
+/// Assert(IsNull(NULLPTR));
 /// ```
 public function IsNull<T>(value: T): Bool {
     return value is NULLPTR;
-}
-
-public enum Flow<T> {
-    Return,
-    ReturnWithValue(T),
-    Continue,
-    Break,
-    Normal(T)
 }
 
 /// A running set of instructions.

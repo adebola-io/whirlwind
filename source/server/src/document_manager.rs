@@ -10,7 +10,10 @@ use analyzer::{
     utils::symbol_to_type, Module, PathIndex, SemanticSymbol, SemanticSymbolDeclaration,
     SemanticSymbolKind, Standpoint, SymbolIndex, TypedModule, TypedVisitorNoArgs,
 };
-use ast::{is_keyword_or_operator, is_valid_identifier, is_valid_identifier_start, Span};
+use ast::{
+    is_keyword_or_operator, is_valid_identifier, is_valid_identifier_start, unwrap_or_continue,
+    Span,
+};
 use printer::SymbolWriter;
 use std::{
     collections::HashMap,
@@ -273,11 +276,32 @@ impl DocumentManager {
         // Editor ranges are zero-based, for some reason.
         let pos = [position.line + 1, position.character + 1];
         let hover_finder = HoverFinder::new(module, &standpoint, pos, messages);
+        let mut messages = MessageStore::new();
         for statement in module.statements.iter() {
             if let Some(hover) = hover_finder.statement(statement) {
-                let mut messages = hover_finder.message_store.take();
+                messages = hover_finder.message_store.take();
                 messages.inform(format!("Retreived hover info in {:?}", time.elapsed()));
                 return (messages, Some(hover));
+            }
+        }
+        // Hover info not found. Is hover over an imported module?
+        let symbollib = &standpoint.symbol_library;
+        for (_, othermodule) in standpoint.module_map.paths() {
+            let module_symbol = unwrap_or_continue!(symbollib.get(othermodule.symbol_idx));
+            if !module_symbol.is_referenced_in(module.path_idx) {
+                continue;
+            }
+            for reference in module_symbol.references.iter() {
+                if reference.module_path != module.path_idx {
+                    continue;
+                }
+                for start in reference.starts.iter() {
+                    let span = Span::on_line(*start, module_symbol.name.len() as u32);
+                    let hoverinfo = Some((&*standpoint, othermodule.symbol_idx).into());
+                    if span.contains(pos) {
+                        return (messages, hoverinfo);
+                    }
+                }
             }
         }
         return (hover_finder.message_store.take(), None);
@@ -434,27 +458,6 @@ impl DocumentManager {
             _ => error!(msgs, "Something went wrong while refreshing user text."),
         };
         *self.was_updated.lock().unwrap() = true;
-        // idk what to do here.
-        // todo: set threshold according to size of standpoint.
-        // if handling changes becomes too slow, the entire standpoint is refreshed.
-        // All modules are removed and added again, and the current module is updated with the latest text.
-        if time.elapsed() > std::time::Duration::from_millis(get_time_limit(&standpoint.module_map))
-        {
-            msgs.inform("Threshold crossed. Refreshing standpoint.");
-            // The current module should not be part of the list of modules to re-add.
-            standpoint.restart_and_exclude(path_idx);
-            // Add current module with current text.
-            let uri = params.text_document.uri;
-            let mut module = Module::from_text(&most_current);
-            let path = uri_to_absolute_path(uri).ok();
-            if path.is_none() {
-                return msgs;
-            }
-            let path = path.unwrap();
-            module.module_path = Some(path);
-            standpoint.add_module(module);
-            standpoint.validate();
-        };
         msgs
     }
 
@@ -791,45 +794,18 @@ impl DocumentManager {
 
         let symbols = symbol_library
             .symbols()
-            .filter(|(_, symbol)| symbol.is_referenced_in(module.path_idx))
+            .filter(|(_, symbol)| {
+                symbol.was_declared_in(module.path_idx)
+                    && !matches!(
+                        &symbol.kind,
+                        SemanticSymbolKind::Module { .. }
+                            | SemanticSymbolKind::Import { .. }
+                            | SemanticSymbolKind::Property { .. }
+                    )
+            })
             .map(|(idx, _)| {
-                let idx = symbol_library.forward(idx);
                 let symbol = symbol_library.get(idx).unwrap();
-                let (kind, detail) = match &symbol.kind {
-                    SemanticSymbolKind::Module { .. } => (SymbolKind::MODULE, None),
-                    SemanticSymbolKind::Interface { .. } => (SymbolKind::INTERFACE, None),
-                    SemanticSymbolKind::Model { .. } => (SymbolKind::CLASS, None),
-                    SemanticSymbolKind::Enum { .. } => (SymbolKind::ENUM, None),
-                    SemanticSymbolKind::Variable { inferred_type, .. } => (
-                        SymbolKind::VARIABLE,
-                        Some(symbol_library.format_evaluated_type(inferred_type)),
-                    ),
-                    SemanticSymbolKind::Constant { inferred_type, .. } => (
-                        SymbolKind::CONSTANT,
-                        Some(symbol_library.format_evaluated_type(inferred_type)),
-                    ),
-                    SemanticSymbolKind::Function { .. } => (SymbolKind::FUNCTION, None),
-                    SemanticSymbolKind::TypeName { .. } => (SymbolKind::INTERFACE, None),
-                    SemanticSymbolKind::Attribute { .. } => (SymbolKind::FIELD, None),
-                    SemanticSymbolKind::Parameter { .. } => (SymbolKind::VARIABLE, None),
-                    SemanticSymbolKind::GenericParameter { .. } => {
-                        (SymbolKind::TYPE_PARAMETER, None)
-                    }
-                    SemanticSymbolKind::Method { .. } => (SymbolKind::METHOD, None),
-                    SemanticSymbolKind::Variant { .. } => (SymbolKind::CONSTANT, None),
-                    _ => (SymbolKind::KEY, None),
-                };
-                #[allow(deprecated)]
-                let doc_symbol = DocumentSymbol {
-                    name: symbol.name.clone(),
-                    detail,
-                    kind,
-                    range: to_range(symbol.origin_span),
-                    selection_range: to_range(symbol.ident_span()),
-                    children: None,
-                    deprecated: None,
-                    tags: None,
-                };
+                let doc_symbol = doc_symbol_from_semantic_symbol(symbol, symbol_library);
                 doc_symbol
             })
             .collect::<Vec<_>>();
@@ -837,29 +813,127 @@ impl DocumentManager {
     }
 }
 
-/// Hacky hack.
-/// Calculates the maximum number of milliseconds a text change can take
-/// before it is necessary to trigger a full refresh.
-/// The values are chosen arbitrarily.
-/// If a standpoint takes 10 seconds to handle a text change, it will restart.
-fn get_time_limit(module_map: &analyzer::ModuleMap) -> u64 {
-    match module_map.len() {
-        0..=99 => {
-            // If there is a file with at least one thousand lines.
-            if module_map
-                .paths()
-                .any(|(_, idx)| idx.line_lengths.len() > 2000)
-            {
-                1200
-            } else {
-                600
+fn generate_doc_symbol<'a, T: 'a + Iterator<Item = &'a SymbolIndex>>(
+    iter: T,
+    symbol_library: &analyzer::SymbolLibrary,
+) -> Vec<DocumentSymbol> {
+    iter.filter_map(|idx| {
+        symbol_library
+            .get(*idx)
+            .map(|symbol| doc_symbol_from_semantic_symbol(symbol, symbol_library))
+    })
+    .collect()
+}
+
+fn doc_symbol_from_semantic_symbol(
+    symbol: &SemanticSymbol,
+    symbol_library: &analyzer::SymbolLibrary,
+) -> DocumentSymbol {
+    let (kind, detail) = get_symbol_kind_and_detail(symbol, symbol_library);
+    #[allow(deprecated)]
+    let doc_symbol = DocumentSymbol {
+        name: symbol.name.clone(),
+        detail,
+        kind,
+        range: to_range(symbol.origin_span),
+        selection_range: to_range(symbol.ident_span()),
+        children: match &symbol.kind {
+            SemanticSymbolKind::Interface { methods, .. } => {
+                Some(generate_doc_symbol(methods.iter(), symbol_library))
             }
-        }
-        100..=999 => 2000,
-        1000..=1500 => 4000,
-        1600..=2000 => 8000,
-        _ => 10000,
-    }
+            SemanticSymbolKind::Model {
+                methods,
+                attributes,
+                ..
+            } => Some(generate_doc_symbol(
+                methods.iter().chain(attributes.iter()),
+                symbol_library,
+            )),
+            SemanticSymbolKind::Enum { variants, .. } => {
+                Some(generate_doc_symbol(variants.iter(), symbol_library))
+            }
+            // SemanticSymbolKind::Variant {
+            //     owner_enum,
+            //     variant_index,
+            //     tagged_types,
+            // } => todo!(),
+            // SemanticSymbolKind::Variable {
+            //     pattern_type,
+            //     is_public,
+            //     declared_type,
+            //     inferred_type,
+            // } => todo!(),
+            // SemanticSymbolKind::Constant {
+            //     is_public,
+            //     declared_type,
+            //     inferred_type,
+            // } => todo!(),
+            // SemanticSymbolKind::Attribute {
+            //     owner_model,
+            //     is_public,
+            //     property_index,
+            //     declared_type,
+            // } => todo!(),
+            // SemanticSymbolKind::Method {
+            //     is_public,
+            //     is_static,
+            //     is_async,
+            //     owner_model_or_interface,
+            //     property_index,
+            //     params,
+            //     generic_params,
+            //     return_type,
+            // } => todo!(),
+            // SemanticSymbolKind::Parameter {
+            //     is_optional,
+            //     param_type,
+            //     inferred_type,
+            // } => todo!(),
+            // SemanticSymbolKind::GenericParameter {
+            //     interfaces,
+            //     default_value,
+            // } => todo!(),
+            // SemanticSymbolKind::Function {
+            //     is_public,
+            //     is_async,
+            //     params,
+            //     generic_params,
+            //     return_type,
+            // } => todo!(),
+            _ => None,
+        },
+        deprecated: None,
+        tags: None,
+    };
+    doc_symbol
+}
+
+fn get_symbol_kind_and_detail(
+    symbol: &SemanticSymbol,
+    symbol_library: &analyzer::SymbolLibrary,
+) -> (SymbolKind, Option<String>) {
+    let (kind, detail) = match &symbol.kind {
+        SemanticSymbolKind::Interface { .. } => (SymbolKind::INTERFACE, None),
+        SemanticSymbolKind::Model { .. } => (SymbolKind::CLASS, None),
+        SemanticSymbolKind::Enum { .. } => (SymbolKind::ENUM, None),
+        SemanticSymbolKind::Variable { inferred_type, .. } => (
+            SymbolKind::VARIABLE,
+            Some(symbol_library.format_evaluated_type(inferred_type)),
+        ),
+        SemanticSymbolKind::Constant { inferred_type, .. } => (
+            SymbolKind::CONSTANT,
+            Some(symbol_library.format_evaluated_type(inferred_type)),
+        ),
+        SemanticSymbolKind::Function { .. } => (SymbolKind::FUNCTION, None),
+        SemanticSymbolKind::TypeName { .. } => (SymbolKind::INTERFACE, None),
+        SemanticSymbolKind::Attribute { .. } => (SymbolKind::FIELD, None),
+        SemanticSymbolKind::Parameter { .. } => (SymbolKind::VARIABLE, None),
+        SemanticSymbolKind::GenericParameter { .. } => (SymbolKind::TYPE_PARAMETER, None),
+        SemanticSymbolKind::Method { .. } => (SymbolKind::METHOD, None),
+        SemanticSymbolKind::Variant { .. } => (SymbolKind::CONSTANT, None),
+        _ => (SymbolKind::KEY, None),
+    };
+    (kind, detail)
 }
 
 fn is_valid_complete_target(
@@ -882,7 +956,7 @@ fn is_valid_complete_target(
         }
         _ => true,
     };
-    let closest = closest_symbol.is_some() && {
+    let closest = (closest_symbol.is_some() && {
         let (_, symbol) = closest_symbol.as_ref().unwrap();
         sym.name.chars().next().unwrap().to_lowercase().eq(symbol
             .name
@@ -894,7 +968,7 @@ fn is_valid_complete_target(
                 .name
                 .to_lowercase()
                 .starts_with(&symbol.name.to_lowercase())
-    } || closest_symbol.is_none();
+    }) || closest_symbol.is_none();
     let is_valid_symbol = ((is_module_local && valid_location) || is_prelude_symbol) && closest;
     (match trigger {
         Trigger::NewInstance => match &sym.kind {

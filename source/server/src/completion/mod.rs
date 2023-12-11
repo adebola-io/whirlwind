@@ -885,7 +885,8 @@ impl<'a> CompletionFinder<'a> {
             .and_then(|constructor| { self.block(constructor) }));
         for property in &model.body.properties {
             match &property._type {
-                TypedModelPropertyType::TypedMethod { body } => {
+                TypedModelPropertyType::TypedMethod { body }
+                | TypedModelPropertyType::InterfaceImpl { body, .. } => {
                     maybe!(self.block(body))
                 }
                 _ => continue,

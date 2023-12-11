@@ -80,7 +80,7 @@ pub trait LexerInner {
                 token!(Operator::Divide, self)
             }
             // Lex a string.
-            ch @ ('\'' | '"') => Some(self.string(ch)),
+            ch @ ('\'' | '"' | '`') => Some(self.string(ch)),
             // Operators.
             ':' => token!(Operator::Colon, ['=', Operator::ColonAssign], self),
             ';' => token!(Operator::SemiColon, self),
