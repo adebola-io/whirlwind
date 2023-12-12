@@ -235,6 +235,10 @@ pub enum IntermediateType {
         span: Span,
     },
     Placeholder,
+    ArrayType {
+        element_type: Box<IntermediateType>,
+        span: Span,
+    },
 }
 
 impl IntermediateType {

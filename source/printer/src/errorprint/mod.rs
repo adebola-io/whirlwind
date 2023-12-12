@@ -165,8 +165,7 @@ pub fn stringify_parse_error(error: &ParserErrorType) -> String {
         ParserErrorType::EmptyEnumTag => format!("Enum variants cannot have empty tags. Remove the parenthesis if no tags are necessary."),
         ParserErrorType::ContinueOutsideLoop => format!("continue statements can only be used from within a loop."),
         ParserErrorType::BreakOutsideLoop => format!("break statements can only be used from within a loop."),
-        
-        
+        ParserErrorType::NumericValueInArray => format!("Numeric constraints are not supported in array types."),
     }
 }
 

@@ -68,6 +68,7 @@ pub enum TypeExpression {
         span: Span,
     },
     BorrowedType(BorrowedType),
+    Array(ArrayType),
     #[default]
     Invalid,
 }
@@ -114,6 +115,13 @@ pub struct BorrowedType {
     pub span: Span,
 }
 
+/// A shorthand for a list type. e.g. `type Bytes = []Uint8;`
+#[derive(Debug, PartialEq, Clone, Hash)]
+pub struct ArrayType {
+    pub element_type: Box<TypeExpression>,
+    pub span: Span,
+}
+
 impl std::fmt::Display for TypeExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)
@@ -138,6 +146,7 @@ impl TypeExpression {
             TypeExpression::Discrete(d) => d.span,
             TypeExpression::This { span } => span.clone(),
             TypeExpression::BorrowedType(b) => b.span,
+            TypeExpression::Array(a) => a.span,
             TypeExpression::Invalid => Span::default(),
         }
     }
@@ -175,6 +184,11 @@ impl std::fmt::Debug for TypeExpression {
             Self::BorrowedType(arg0) => f
                 .debug_struct("BorrowedType")
                 .field("value", &arg0.value)
+                .field("span", &arg0.span)
+                .finish(),
+            Self::Array(arg0) => f
+                .debug_struct("ArrayType")
+                .field("element_type", &arg0.element_type)
                 .field("span", &arg0.span)
                 .finish(),
         }

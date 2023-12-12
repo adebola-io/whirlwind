@@ -432,6 +432,9 @@ impl<'a> SymbolWriter<'a> {
                     self.print_intermediate_type_property(property)
                 )
             }
+            IntermediateType::ArrayType { element_type, .. } => {
+                format!("[]{}", self.print_intermediate_type(element_type))
+            }
         }
     }
 

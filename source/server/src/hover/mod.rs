@@ -710,6 +710,9 @@ impl HoverFinder<'_> {
                     maybe!(self.type_hover(typ))
                 }
             }
+            IntermediateType::ArrayType { element_type, .. } => {
+                maybe!(self.type_hover(&element_type))
+            }
         }
         return None;
     }

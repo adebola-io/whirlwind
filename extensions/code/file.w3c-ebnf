@@ -112,6 +112,8 @@ TypeExpression ::= DiscreteType
                    | MemberType 
                    | FunctionType
                    | UnionType
+                   | ArrayType
+                   | BorrowedType
 
 Word ::= Letter+
 
@@ -187,6 +189,10 @@ FunctionType ::= "fn " TypedParameterList TypeLabel
 
 UnionType ::= TypeExpression ("|" TypeExpression)+
 
+ArrayType := ("[]") TypeExpression
+
+BorrowedType := "&" TypeExpression
+
 Letter ::= [A-Z] | [a-z]
 
 Digit ::= [0-9]
@@ -197,7 +203,7 @@ NumberLiteral ::= Number  | Number "." Number | '0x' ([0-9][A-F])+ | '0o' ([0-7]
 
 BooleanLiteral ::= "true " | "false "
 
-BinaryOperator ::= "+" | "-" | "/" | "*" | "%" | "^" | "&" | "|"| ">>" | "<<" | ">" | "<" | " is "
+BinaryOperator ::= "+" | "-" | "/" | "*" | "%" | "^" | "&" | "|"| ">>" | "<<" | ">" | "<" | " is " | "|>"
 
 UnaryOperator ::= "!" | "&" | "*" | "+" | "-" | " not "
 

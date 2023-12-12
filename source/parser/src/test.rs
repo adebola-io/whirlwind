@@ -474,6 +474,30 @@ fn parsing_borrowed_type() {
 }
 
 #[test]
+fn parse_array_type() {
+    let mut parser = parse_text("type Bytes = []UInt8;");
+    let statement = parser.next().unwrap().unwrap();
+    let module_ambience = parser.module_ambience();
+
+    assert!(module_ambience
+        .lookaround("Bytes")
+        .is_some_and(|search| matches!(
+            search.entry, ast::ScopeEntry::Type(t) if matches!(
+                t.value,
+                TypeExpression::Array(_)
+            )
+        )));
+
+    assert_eq!(
+        statement,
+        Statement::TypeDeclaration(TypeDeclaration {
+            address: ScopeAddress::from([0, 0, 0]),
+            span: Span::from([1, 1, 1, 22])
+        })
+    );
+}
+
+#[test]
 fn test_testing_block() {
     let mut parser = parse_text("test 'test stuff' {}");
 

@@ -1,18 +1,18 @@
 use ast::{
-    AccessExpr, ArrayExpr, AssignmentExpr, AttributeSignature, BinaryExpr, Block, BorrowedType,
-    Bracket::*, BreakStatement, CallExpr, Comment, ConstantDeclaration, ConstantSignature,
-    ContinueStatement, DiscreteType, EnumDeclaration, EnumSignature, EnumVariant, Expression,
-    ExpressionPrecedence, ForStatement, FunctionDeclaration, FunctionExpr, FunctionSignature,
-    FunctionalType, GenericParameter, Identifier, IfExpression, IndexExpr, InterfaceBody,
-    InterfaceDeclaration, InterfaceProperty, InterfacePropertyType, InterfaceSignature, Keyword::*,
-    LogicExpr, LoopLabel, LoopVariable, MemberType, MethodSignature, ModelBody, ModelDeclaration,
-    ModelProperty, ModelPropertyType, ModelSignature, ModuleAmbience, ModuleDeclaration, NewExpr,
-    Operator::*, Parameter, ReturnStatement, ScopeAddress, ScopeEntry, ScopeType,
-    ShorthandVariableDeclaration, ShorthandVariableSignature, Span, Spannable, Statement,
-    TestDeclaration, ThisExpr, Token, TokenType, TypeDeclaration, TypeExpression, TypeSignature,
-    UnaryExpr, UnionType, UpdateExpr, UseDeclaration, UsePath, UseTarget, UseTargetSignature,
-    VariableDeclaration, VariablePattern, VariableSignature, WhileStatement, WhirlBoolean,
-    WhirlNumber, WhirlString,
+    AccessExpr, ArrayExpr, ArrayType, AssignmentExpr, AttributeSignature, BinaryExpr, Block,
+    BorrowedType, Bracket::*, BreakStatement, CallExpr, Comment, ConstantDeclaration,
+    ConstantSignature, ContinueStatement, DiscreteType, EnumDeclaration, EnumSignature,
+    EnumVariant, Expression, ExpressionPrecedence, ForStatement, FunctionDeclaration, FunctionExpr,
+    FunctionSignature, FunctionalType, GenericParameter, Identifier, IfExpression, IndexExpr,
+    InterfaceBody, InterfaceDeclaration, InterfaceProperty, InterfacePropertyType,
+    InterfaceSignature, Keyword::*, LogicExpr, LoopLabel, LoopVariable, MemberType,
+    MethodSignature, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType, ModelSignature,
+    ModuleAmbience, ModuleDeclaration, NewExpr, Operator::*, Parameter, ReturnStatement,
+    ScopeAddress, ScopeEntry, ScopeType, ShorthandVariableDeclaration, ShorthandVariableSignature,
+    Span, Spannable, Statement, TestDeclaration, ThisExpr, Token, TokenType, TypeDeclaration,
+    TypeExpression, TypeSignature, UnaryExpr, UnionType, UpdateExpr, UseDeclaration, UsePath,
+    UseTarget, UseTargetSignature, VariableDeclaration, VariablePattern, VariableSignature,
+    WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
 };
 use errors::{self as errors, expected, ParseError};
 use lexer::Lexer;
@@ -3229,6 +3229,8 @@ impl<L: Lexer> Parser<L> {
             TokenType::Ident(_) => self.regular_type_or_union()?,
             // &borrowed types.
             TokenType::Operator(Ampersand) => self.borrowed_type()?,
+            // Support for an array type.
+            TokenType::Bracket(LSquare) => self.array_type()?,
             _ => return Err(errors::identifier_expected(token.span)),
         };
 
@@ -3289,6 +3291,34 @@ impl<L: Lexer> Parser<L> {
         Ok(self.type_reparse(node)?)
     }
 
+    /// Parses an array type. Assumes that `]` is the next token.
+    /// todo: Should numeric values be usable?
+    fn array_type(&self) -> Fallible<TypeExpression> {
+        let start = self.token().unwrap().span.start;
+        self.advance(); // Move past [].
+        let mut error_on_numeric_type = None;
+        if let Some(Token {
+            _type: TokenType::Number(_),
+            span,
+        }) = self.token()
+        {
+            error_on_numeric_type = Some(span);
+            self.advance(); // Move past number.
+        }
+        expect!(TokenType::Bracket(RSquare), self);
+        self.advance(); // Move past ]
+        let element_type = self.type_expression()?;
+        if let Some(span) = error_on_numeric_type {
+            return Err(errors::numeric_value_in_array_type(*span));
+        }
+        let end = element_type.span().end;
+        let span = Span { start, end };
+        let node = TypeExpression::Array(ArrayType {
+            element_type: Box::new(element_type),
+            span,
+        });
+        Ok(self.type_reparse(node)?)
+    }
     /// Looks ahead to determing how to parse type precedence.
     fn type_reparse(&self, node: TypeExpression) -> Fallible<TypeExpression> {
         match self.token() {

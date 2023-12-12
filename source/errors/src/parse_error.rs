@@ -39,6 +39,7 @@ pub enum ParserErrorType {
     /// Using continue outside a loop.
     ContinueOutsideLoop,
     BreakOutsideLoop,
+    NumericValueInArray,
 }
 
 pub fn public_shorthand_var(span: Span) -> ParseError {
@@ -156,6 +157,13 @@ pub fn global_control(span: ast::Span) -> ParseError {
 pub fn test_in_non_global_scope(span: ast::Span) -> ParseError {
     ParseError {
         _type: ParserErrorType::TestInNonGlobalScope,
+        span,
+    }
+}
+
+pub fn numeric_value_in_array_type(span: Span) -> ParseError {
+    ParseError {
+        _type: ParserErrorType::NumericValueInArray,
         span,
     }
 }
