@@ -71,6 +71,7 @@ pub enum TypeExpression {
     Array(ArrayType),
     #[default]
     Invalid,
+    Optional(MaybeType),
 }
 
 /// A union type e.g.
@@ -122,6 +123,13 @@ pub struct ArrayType {
     pub span: Span,
 }
 
+/// A shorthand for a maybe type. e.g. `type MaybeString = ?String`
+#[derive(Debug, PartialEq, Clone, Hash)]
+pub struct MaybeType {
+    pub value: Box<TypeExpression>,
+    pub span: Span,
+}
+
 impl std::fmt::Display for TypeExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)
@@ -147,6 +155,7 @@ impl TypeExpression {
             TypeExpression::This { span } => span.clone(),
             TypeExpression::BorrowedType(b) => b.span,
             TypeExpression::Array(a) => a.span,
+            TypeExpression::Optional(o) => o.span,
             TypeExpression::Invalid => Span::default(),
         }
     }
@@ -189,6 +198,11 @@ impl std::fmt::Debug for TypeExpression {
             Self::Array(arg0) => f
                 .debug_struct("ArrayType")
                 .field("element_type", &arg0.element_type)
+                .field("span", &arg0.span)
+                .finish(),
+            Self::Optional(arg0) => f
+                .debug_struct("OptionType")
+                .field("value", &arg0.value)
                 .field("span", &arg0.span)
                 .finish(),
         }

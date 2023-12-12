@@ -10,7 +10,7 @@ public interface Addition {
     function Add(other: This): This;
 }
 
-enum Ordering {
+public enum Ordering {
     Less,
     Greater,
     Equal,
@@ -20,13 +20,13 @@ enum Ordering {
 /// to other models of the same type.
 public interface Orderable {
     /// Compares two values together.
-    function Compare(other: &This): Ordering;
+    public function Compare(other: &This): Ordering;
 }
 
 /// This interface concerns all items that can exist in a sequence,
 /// most notably letters and numbers.
 public interface Sequenced {
     /// Returns the next item in a sequence.
-    function NextItem(): Maybe<This>;
+    function NextItem(): ?This;
 }
 

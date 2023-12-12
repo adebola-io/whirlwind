@@ -5,7 +5,7 @@ use Super.Bool;
 use Super.Todo;
 use Super.Some;
 use Super.Maybe;
-use Core.Collections.Tuple;
+use Super.Core.Collections.Tuple;
 
 /// ## The Iteratable interface
 /// The Iteratable interface is a common abstraction that allows different types of collections to be traversed in a uniform way. 
@@ -26,13 +26,30 @@ use Core.Collections.Tuple;
 /// Optionally, one can also override some of the default methods to provide more efficient or customized behavior.
 public interface Iteratable<I> {
     /// Returns the next item in the iteration.
-    public function Next(): Maybe<I>;
+    public function Next(): ?I;
     /// Gathers all the items left in the iterator into an array.
+    /// 
+    /// Once the iterator is collected, it is exhausted and cannot produce new values.
+    /// ### Usage
+    /// ```
+    /// str := "Hello";
+    /// characters := str.Chars();
+    /// charsArray := characters.Collect();
+    /// 
+    /// Assert(charsArray.Length()).Equals(5);
+    /// AssertThat(characters.Next().IsNone());
+    /// ```
     public function Collect(): Array<I> {
-        // array := Todo();
-        // for item in this {
-        //     array.Push(item);
-        // }
+        Todo()
+    }
+    /// Consumes the iterator, running a callback for all the items produced by it.
+    /// 
+    /// ### Usage
+    /// ```
+    /// // Prints 1, 2 and 3.
+    /// [1, 2, 3].Iter().ForEach(fn(value) Print(value));
+    /// ```
+    public function ForEach(callback: fn(value: I)) {
         Todo()
     }
     /// Returns an iterator that only yields items that match a predicate.
@@ -40,9 +57,16 @@ public interface Iteratable<I> {
     /// should be kept or discarded.
     /// ### Usage
     /// ```
+    /// values := [20, 30, 40, 50, 60, 70];
+    /// // Produce only elements divisible by 4.
+    /// divBy4 := values.IntoIter().Filter(fn(x) x % 4 == 0);
+    /// 
+    /// Assert(divBy4.Next()).Equals(Some(20));
+    /// Assert(divBy4.Next()).Equals(Some(40));
+    /// Assert(divBy4.Next()).Equals(Some(60));
     /// ```
     public function Filter(predicate: fn(value: &I): Bool): Filter<I, This> {
-        return new Filter(this, predicate);
+        return new Filter(*this, predicate);
     }
     /// The `.Map()` method is an iterator adapter that allows the creation of a new iterator by applying a
     /// given function to every element of the current iterator as it runs.
@@ -54,7 +78,7 @@ public interface Iteratable<I> {
     /// Assert(listTransformed).Equals([3, 6, 9, 12]);
     /// ```
     public function Map<O>(transformer: fn(value: I): O): Map<I, O, This> {
-        Todo()
+        return new Map(*this, transformer);
     }
     /// Checks if any of the elements produced by the iterator matches a predicate.
     /// 
@@ -92,8 +116,69 @@ public interface Iteratable<I> {
     public function All(predicate: fn(value: &I): Bool): Bool {
         Todo()
     }
+    /// Returns a new iterator consisting of tuples, which are made up of an index value and the item type.
+    /// 
+    /// ### Usage
+    /// ```
+    /// ```
     public function Enumerate(): Enumerate<I, This> {
         return new Enumerate(*this);
+    }
+    /// Finds the first item in an iterator that matches a predicate.
+    /// 
+    /// ### Usage
+    /// ```
+    /// nameList := ["Mary", "Uche", "Abdul", "Fatima", "Xi"];
+    /// namesIter := names.Iter();
+    /// startsWithA := namesIter().Find(fn(name) name.StartsWith("A"));
+    /// 
+    /// Assert(startsWithA).Equals("Abdul");
+    /// 
+    /// // If there are still elements, the iterator can still be used.
+    /// Assert(namesIter.Next()).Equals(Some("Fatima"));
+    /// Assert(namesIter.Next()).Equals(Some("Xi"));
+    /// ```
+    public function Find(predicate: fn(value: &I): Bool): ?I {
+        Todo()
+    }
+    /// Collects the next _n_ elements from the iterator into an array.
+    /// 
+    /// ### Usage
+    /// ```
+    /// numbers := [2, 4, 6, 8, 10];
+    /// firstThree := numbers.IntoIter().Take(3);
+    /// 
+    /// Assert(firstThree).Equals([2, 4, 6]);
+    /// ```
+    /// If the iterator ends before the array is filled, then the incomplete array is returned.
+    /// ```
+    /// firstTen := numbers.IntoIter().Take(10);
+    /// 
+    /// Assert(firstThree).Equals([2, 4, 6, 8, 10]);
+    /// ```
+    public function Take(n: UnsignedInt): []I {
+        Todo()
+    }
+    /// Iterative adapter that advances as long as a condition is true.
+    /// 
+    /// The iteration will stop right after the first false item is returned.
+    /// **This means that when using it in a sequence, the last item will be false.**
+    /// 
+    /// For example, if the iteration has _n_ items that are true, then the condition 
+    /// will be checked (and the underlying iterator will have to advance) _n+1_ times.
+    /// 
+    /// ### Usage
+    /// ```
+    /// numbers := [10, 12, 14, 16, 18, 20];
+    /// iter := numbers.IntoIter();
+    /// 
+    /// iter.While(fn(x) x < 15); // Stops at 16.
+    /// 
+    /// AssertThat(iter.Next().Unwrap == 18);
+    /// AssertThat(iter.Next().Unwrap == 20);
+    /// ```
+    public function While(condition: fn(value: &I): Bool): While<I, This> {
+        return new While(*this, condition);
     }
 }
 
@@ -104,7 +189,7 @@ public model Enumerate<I, J implements Iteratable<I>> implements Iteratable<Tupl
         this.indexer = 0;
         this.iterator = iterator;
     }
-    public function [Iteratable.Next](): Maybe<Tuple<UnsignedInt, I>> {
+    public function [Iteratable.Next](): ?Tuple<UnsignedInt, I> {
         value := this.iterator.Next()?;
         this.indexer += 1;
         return Some(new Tuple(this.indexer, value));
@@ -119,12 +204,33 @@ public model Filter<I, J implements Iteratable<I>> implements Iteratable<I> {
         this.iterator = iterator;
         this.predicate = predicate;
     }
-    public function [Iteratable.Next](): Maybe<I> {
+    public function [Iteratable.Next](): ?I {
         value := this.iterator.Next()?;
         while !this.predicate(&value) {
             value = this.iterator.Next()?;
         }
         return Some(value);
+    }
+}
+public model While<I, J implements Iteratable<I>> implements Iteratable<I> {
+    var iterator: J;
+    var condition: fn(value: &I): Bool;
+    var ended: Bool;
+    new(iterator: J, condition: fn(value: &I): Bool) {
+        this.iterator = iterator;
+        this.condition = condition;
+        this.ended = false;
+    }
+    public function [Iteratable.Next](): ?I {
+        if this.ended {
+            return None();
+        };
+        nextItem := this.iterator.Next()?;
+        if !this.condition(&nextItem) {
+            return Some(nextItem);
+        }
+            this.ended = true;
+            return None();
     }
 }
 
@@ -139,7 +245,7 @@ public model Map<I, O, J implements Iteratable<I>> implements Iteratable<O> {
         this.iterator = iterator;
         this.transformer = transformer;
     }
-    public function [Iteratable.Next](): Maybe<O> {
+    public function [Iteratable.Next](): ?O {
         return Some(this.transformer(this.iterator.Next()?));
     }
 }

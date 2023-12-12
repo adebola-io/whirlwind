@@ -5,28 +5,33 @@ use Super.Internals.{Invoke, Injunction};
 use String.String;
 use Ops.{Addition, Sequenced};
 
-/// An unsigned 8-bit Int.
-public model UInt8 implements Display + Addition + Sequenced + Default {
+/// An interface to be implemented by values that can be cast to an unsigned integer.
+interface Unsigned {
+    public function Unsigned(): UnsignedInt;
+}
+
+/// An unsigned 8-bit integer.
+public model UInt8 implements Display + Addition + Sequenced + Default + Unsigned {
     // Compiler built in.
 }
 
 /// An unsigned 16-bit integer.
-public model UInt16 implements Display + Addition + Sequenced + Default {
+public model UInt16 implements Display + Addition + Sequenced + Default + Unsigned {
     // Compiler built in.
 }
 
 /// An unsigned 32-bit integer.
-public model UInt32 implements Display + Addition + Sequenced + Default {
+public model UInt32 implements Display + Addition + Sequenced + Default + Unsigned {
     // Compiler built in.
 }
 
 /// An unsigned 64-bit integer.
-public model UInt64 implements Display + Addition + Sequenced + Default {
+public model UInt64 implements Display + Addition + Sequenced + Default + Unsigned {
     // Compiler built in.
 }
 
 /// An integer value with a direction sign.
-public model SignedInt implements Display + Addition + Sequenced + Default {
+public model SignedInt implements Display + Addition + Sequenced + Default + Unsigned {
     // Compiler built in.
 }
 

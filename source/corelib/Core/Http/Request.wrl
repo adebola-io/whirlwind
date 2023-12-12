@@ -58,7 +58,7 @@ public model HttpRequest {
 }
 
 public model RequestHeaders {
-    function Get(name: String): Maybe<&String> {
+    function Get(name: String): ?&String {
         Todo()
     }
     function Has(name: &String): Bool {
@@ -70,7 +70,7 @@ public model RequestHeaders {
     }
 }
 public model RequestParams {
-    public function Get(name: String): Maybe<&String> {
+    public function Get(name: String): ?&String {
         Todo()
     }
     public function GetOrErr(name: String): Outcome<&String, HttpRequestError> {

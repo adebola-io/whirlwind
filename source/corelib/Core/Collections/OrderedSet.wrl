@@ -12,7 +12,15 @@ public model Tuple<T, U> {
         this.one = first;
         this.two = second;
     }
-
+    /// Returns a new tuple with the position of the two items in the tuple reversed.
+    /// ### Usage
+    /// ```
+    /// use Core.Collections.Tuple;
+    /// 
+    /// tuple := new Tuple(true, "story");
+    /// swapped := tuple.Swap();
+    /// Assert(swapped).Equals(new Tuple("story", true));
+    /// ```
     public function Swap(): Tuple<U, T> {
         new Tuple(this.two, this.one)
     }

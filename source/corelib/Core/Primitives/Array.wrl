@@ -2,10 +2,12 @@ module Array;
 
 use Bool.Bool;
 use Numeric.{ Int, UnsignedInt };
-use Ops.Orderable;
+use Ops.{ Orderable, Addition };
 use Super.Prelude.{ AsIterator, Maybe, None, Some, Todo, String, Default };
 use Super.Prelude.Iteratable;
 use Super.Prelude.Display;
+use Super.Math.{ Max, Min };
+use Super.Internals.{ Injunction, Invoke };
 
 /// A contiguous, growable list of items.
 public model Array<T> implements AsIterator<T, ArrayIter<T>> {
@@ -34,8 +36,18 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// arr := [15, 25, 35, 45, 55];
     /// Assert(arr.At(-1)).Equals(Some(55))
     /// ```
-    public function At(index: Int): Maybe<T> {
-        Todo()
+    public function At(index: Int): Maybe<&T> {
+        length := this.Length();
+        i := if index < 0 {
+            length + index
+        } else {
+            index
+        };
+        if i > length or i < 0 {
+            return None();
+        };
+        a := this[i.Unsigned()];
+        return Some(&a);
     }
     /// Checks if an item is contained in the array.
     /// ### Usage
@@ -56,8 +68,9 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// 
     /// AssertThat(array.Contains(&num)) // This will fail, because the 24 in the array is different from the num 24.
     /// ```
+    /// To check for comparative equality, consider using `.Iter().Any(...)`.
     public function Contains(value: &T): Bool {
-        Todo()
+        this.IntoIter().Any(fn(element) element is value)
     }
     /// Removes all elements in the array.
     /// ### Usage
@@ -69,9 +82,15 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// AssertThat(arr == []);
     /// ```
     public function Clear() {
-        Todo()
+        *this = [];
+    }
+    /// Returns a reference to the first item in the array, if it exists.
+    public function First(): ?&T {
+        if this.Length() == 0 { None() } 
+        else Some(&this[0])
     }
     /// Returns the zero-based index of a value in the array.
+    /// 
     /// Like the `.Contains` method, this method checks 
     /// for referential equality.
     /// ### Usage
@@ -83,8 +102,33 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// arr := [str1, str2, str3];
     /// Assert(arr.IndexOf(&str2)).Equals(Some(1)).
     /// ```
-    public function IndexOf(value: &T): Maybe<UnsignedInt> {
-        Todo()
+    public function IndexOf(value: &T): ?UnsignedInt {
+        this.IntoIter()
+            .Enumerate()
+            .Find(fn(tuple) tuple.two is value)
+            .Map(fn(tuple) tuple.one)
+    }
+    /// Inserts an element at an index in the array,
+    /// shifting all suceeding elements forward.
+    /// ### Usage
+    /// ```
+    /// arr := [1, 3, 4, 5];
+    /// arr.Insert(1, 2);
+    /// Assert(arr.At(1)).Equals(Some(&2));
+    /// ```
+    public function Insert(index: UnsignedInt, value: T) {
+        Invoke(Injunction.ArrInsert(index, value, this));
+    }
+    /// Inserts another array of items at the start of the array.
+    /// shifting all its prior elements forward.
+    /// ### Usage
+    /// ```
+    /// arr := [5, 6, 7, 8];
+    /// arr.Prepend([1, 2, 3, 4]);
+    /// Assert(arr).Equals([1, 2, 3, 4, 5, 6, 7, 8]);
+    /// ```
+    public function Prepend(prefix: []T) {
+        Invoke(Injunction.ArrPrepend(prefix, this));
     }
     /// Returns the number of items in the array.
     /// ### Usage
@@ -93,7 +137,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// Assert(arr.Length()).Equals(4);
     /// ```
     public function Length(): UnsignedInt {
-        Todo()
+        return Invoke(Injunction.ArrLength(this));
     }
     /// Adds an item to the end of the array.
     /// ### Usage
@@ -119,7 +163,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// array.Pop();
     /// Assert(array).Equals([1]);
     /// ```
-    public function Pop(): Maybe<T> {
+    public function Pop(): ?T {
         Todo()
     }
     /// Removes the first item in the array
@@ -145,12 +189,14 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// Assert(arr).Equals([]);
     /// Assert(firstItem).Equals(None());
     /// ```
-    public function Shift(): Maybe<T> {
+    public function Shift(): ?T {
         Todo()
     }
     /// Returns a reference to the last item in the array.
-    public function Last(): Maybe<&T> {
-        Todo()
+    public function Last(): ?&T {
+        length := this.Length();
+        if length == 0 { None() } 
+        else Some(&this[length - 1])
     }
     /// Converts an array to a string representation,
     /// given that its elements implement `Display`.
@@ -164,13 +210,14 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     public static function ToStr<T implements Display>(array: &Array<T>): String {
         string := "[";
         i := 0;
-        while i < array.Length() {
-            item := (*array)[i];
+        array.Iter().Enumerate().ForEach(fn(tuple) {
+            index := tuple.one;
+            item := tuple.two;
             string.Append(item.ToStr());
-            if i + 1 != array.Length() {
-                string.Append(", ");
+            if index + 1 != array.Length() {
+                string.Append(",")
             }
-        }
+        });
         string.Append("]");
         string
     }
@@ -207,13 +254,60 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// Assert(arr).Equals([0, 0, 0])
     /// ```
     public static function Reset<T implements Default>(array: &Array<T>) {
-        Todo()
+        array.Iter().ForEach(fn(value) {
+            var default: T;
+            *value = default;
+        })
+    }
+    /// Returns the largest value in an array.
+    /// It returns an empty value if the array is empty.
+    /// ### Usage
+    /// ```
+    /// array := [2, 3, 4, 5, 6, 7];
+    /// largest := Array.Max(&array);
+    /// 
+    /// Assert(largest == Some(7));
+    /// ```
+    public static function Max<T implements Orderable>(array: &Array<T>): ?T {
+        max := *array.First()?;
+        array.IntoIter().ForEach(fn(value) max = Max(max, value));
+        Some(max)
+    }
+
+    /// Returns the smallest value in an array.
+    /// It returns an empty value if the array is empty.
+    /// ### Usage
+    /// ```
+    /// array := [2, 3, 4, 5, 6, 7];
+    /// smallest := Array.Min(&array);
+    /// 
+    /// Assert(smallest == Some(2));
+    /// ```
+    public static function Min<T implements Orderable>(array: &Array<T>): ?T {
+        min := *array.First()?;
+        array.IntoIter().ForEach(fn(value) min = Min(min, value));
+        Some(min)
+    }
+
+    /// Returns the sum of all the elements in the array.
+    /// If there are no elements in the array, it returns the default value of
+    /// the given type.
+    /// ### Usage
+    /// ```
+    /// array := [1, 2, 3, 4];
+    /// summed = Array.Sum(&array)
+    /// 
+    /// Assert(summed == 10);
+    /// ```
+    public static function Sum<T implements Addition + Default>(array: &Array<T>): T {
+        var sum: T;
+        array.IntoIter().ForEach(fn(item) sum += item);
+        sum
     }
 }
 
 
 /// An owned iterator built from the elements of an array.
-/// ## Usage
 public model ArrayIter<T> implements Iteratable<T> {
     var array: &Array<T>;
     var idx: UnsignedInt;
@@ -227,28 +321,28 @@ public model ArrayIter<T> implements Iteratable<T> {
         if length == this.idx {
             return None();
         } else {
-            nextItem: T := this.array[this.idx];
+            nextItem := this.array[this.idx];
             this.idx += 1;
             return Some(nextItem);
         }
     }
 }
 
-public model ArrayRefIter<T> implements Iteratable<T> {
+public model ArrayRefIter<T> implements Iteratable<&T> {
     var array: &Array<T>;
     var idx: UnsignedInt;
     new(array: &Array<T>) {
         this.array = array;
         this.idx = 0;
     }
-    public function [Iteratable.Next](): Maybe<&T> {
+    public function [Iteratable.Next](): ?&T {
         Todo()
     }
 }
 
 /// A fixed-size list of items.
 public model StaticArray<T> {
-    new(size: Int) {
+    new(size: Int, values: Array<T>) {
         // Compiler built in.
     }
 }

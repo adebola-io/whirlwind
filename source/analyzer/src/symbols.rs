@@ -239,6 +239,10 @@ pub enum IntermediateType {
         element_type: Box<IntermediateType>,
         span: Span,
     },
+    MaybeType {
+        value: Box<IntermediateType>,
+        span: Span,
+    },
 }
 
 impl IntermediateType {
@@ -249,8 +253,10 @@ impl IntermediateType {
             | IntermediateType::SimpleType { span, .. }
             | IntermediateType::UnionType { span, .. }
             | IntermediateType::This { span, .. }
-            | IntermediateType::BorrowedType { span, .. } => *span,
-            _ => unreachable!("Cannot retrieve span of placeholder."),
+            | IntermediateType::BorrowedType { span, .. }
+            | IntermediateType::ArrayType { span, .. }
+            | IntermediateType::MaybeType { span, .. } => *span,
+            IntermediateType::Placeholder => Span::default(),
         }
     }
 }

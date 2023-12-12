@@ -76,7 +76,7 @@ pub fn unify_types(
         }
         // Right type is a generic parameter and conformity is requested.
         (free_type, Generic { base })
-            if matches!(options, UnifyOptions::Conform | UnifyOptions::AnyNever) && !free_type.is_void() =>
+            if matches!(options, UnifyOptions::Conform | UnifyOptions::AnyNever | UnifyOptions::Return) && !free_type.is_void() =>
         {
             solve_generic_type(
                 &mut map,
@@ -339,7 +339,7 @@ pub fn unify_types(
                 &left_return_type,
                 &right_return_type,
                 symbollib,
-                options,
+                UnifyOptions::HardConform,
                 map,
             );
             let return_type = match return_type_unification {

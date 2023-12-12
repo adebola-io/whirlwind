@@ -31,7 +31,7 @@ public model Outcome<T, E> implements Guaranteed<T> + Try<T, Outcome<never, E>> 
     /// Implementation of the `Try` interface.
     function [Try.Try](): Outcome<T, Outcome<never, E>> {
         if this.IsOk() {
-            return *this;
+            return Ok(this.Unwrap());
         } else {
             return Todo();
         }
@@ -116,7 +116,7 @@ public model Outcome<T, E> implements Guaranteed<T> + Try<T, Outcome<never, E>> 
         Todo()
     }
     /// Converts an `Outcome<T, E>` to a `Maybe<T>`.
-    public function Ok(): Maybe<T> {
+    public function Ok(): ?T {
         if this.IsOk() {
             return Some(this.Unwrap());
         } else {

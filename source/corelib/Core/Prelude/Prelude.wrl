@@ -13,8 +13,8 @@ public use Super.{
     Io.Print,
     Async.{Eventual, Prospect, ToSync},
     Primitives.{
-        String, Array, Number, Int, Float, UnsignedInt, Bool,
-        UInt8, UInt16, UInt32, UInt64, Chars
+        String, Array, Number, Int, Float, UnsignedInt,
+        Bool, UInt8, UInt16, UInt32, UInt64, Chars
     },
     Process.{Todo, Fatal},
     Internals.never,

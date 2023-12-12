@@ -32,7 +32,7 @@ public type ServerOutcome = Outcome<HttpResponse, HttpRequestError>;
 /// A simple model for an HTTP server.
 public model HttpServer {
     var endpoints: Endpoints;
-    var middleware: Array<Middleware>;
+    var middleware: []Middleware;
     var isRunning: Bool;
     var port: UnsignedInt;
     new(name: String, port: UnsignedInt) {

@@ -3254,6 +3254,16 @@ mod types {
                 )),
                 span: borrowedtype.span,
             },
+            TypeExpression::Optional(m) => IntermediateType::MaybeType {
+                value: Box::new(bind_type_expression(
+                    &m.value,
+                    binder,
+                    symbol_library,
+                    errors,
+                    ambience,
+                )),
+                span: m.span,
+            },
             TypeExpression::Invalid => IntermediateType::Placeholder,
             TypeExpression::Array(a) => IntermediateType::ArrayType {
                 element_type: Box::new(bind_type_expression(

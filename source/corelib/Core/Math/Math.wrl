@@ -1,1 +1,43 @@
 module Math;
+
+use Super.Primitives.Ops.{Orderable, Ordering};
+
+/// Returns the minimum of two values that implement Orderable.
+/// 
+/// If both elements have the same value then the first value is returned.
+/// 
+/// ### Usage
+/// ```
+/// use Core.Math.Min;
+/// 
+/// Assert(Max(1, 5)).Equals(1);
+/// ```
+public function Min<T implements Orderable>(first: T, second: T): T {
+    ordering := first.Compare(&second);
+    if ordering == Ordering.Less {
+        return first;
+    } else if ordering == Ordering.Greater {
+        return second;
+    }
+    return first;
+}
+
+/// Returns the maximum of two elements that implement Orderable.
+/// 
+/// If both elements have the same value, then the first value is returned.
+/// 
+/// ### Usage
+/// ```
+/// use Core.Math.Max;
+/// 
+/// Assert(Max(1, 3)).Equals(3);
+/// ```
+public function Max<T implements Orderable>(first: T, second: T): T {
+    ordering := first.Compare(&second);
+    if ordering == Ordering.Less {
+        return second;
+    } else if ordering == Ordering.Greater {
+        return first;
+    }
+    return second;
+}

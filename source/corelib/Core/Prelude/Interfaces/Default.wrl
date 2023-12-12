@@ -26,21 +26,11 @@ module Default;
 ///       this.x = x; 
 ///       this.y = y; 
 ///    }
-///    public static function [Default.Init](): This {
+///    static function [Default.Init](): This {
 ///       new Position(0, 0)
 ///    }
 /// }
 /// var p1: Position; /// Is automatically assigned (0, 0)
-/// ```
-/// Static analysis is used to determine when to assign a default value, meaning that variables that are initialised later will not be defaulted. 
-/// ```
-/// var p1: Position; 
-/// Core.Io.Println(p1); /// p1 is used before assignment, so it will be defaulted. 
-/// 
-/// var p2: Position;
-/// p2 = new Position(2, 3); /// p2 is assigned before usage, so no need for a default. 
-/// Core.Io.Println(p2);
-/// ```
 public interface Default {
     /// Returns the default instance of the implementing model.
     static function Init(): This;

@@ -45,13 +45,13 @@ public model Stack<T> {
         this.capacity = value;
     }
 
-    /// Returns the top value in the stack without removing it.
-    public function Top(): Maybe<T> {
+    /// Returns a reference to the top value in the stack.
+    public function Top(): ?&T {
         this.items.Last()
     }
 
     /// Removes the last item from the stack and returns it, if it exists.
-    public function Pop(): Maybe<T> {
+    public function Pop(): ?T {
         this.items.Pop()
     }
 

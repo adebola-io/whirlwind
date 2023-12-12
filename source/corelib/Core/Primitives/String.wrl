@@ -4,23 +4,33 @@ use Ops.{ Addition, Sequenced };
 use Bool.Bool;
 use Super.{ 
     Internals.{ Invoke, Injunction }, 
-    Memory.{ CharSpace, Buffer }, 
+    Memory.{ Buffer }, 
     Collections.Hash,
-    Prelude.{ Maybe, AsIterator, Iteratable, Range, Display, Some },
+    Prelude.{ Maybe, AsIterator, Iteratable, Range, Display, Some, Default },
     Process.Todo,
 };
-use Numeric.{ Int, UnsignedInt };
+use Numeric.{ Int, UnsignedInt, UInt8 };
 use Array.Array;
  
 /// Model for creating, manipulating and formatting text sequences.
-public model String implements Addition + AsIterator<&String, Chars> + Sequenced + Display + Hash {
+public model String implements Addition + AsIterator<&String, Chars> + Sequenced + Display + Hash + Default {
+    var units: []UInt8;
+    new() {
+        this.units = [];
+    }
     /// Returns the next character alphabetically in a sequence.
     function [Sequenced.NextItem](): Maybe<String> {
         return Invoke(Injunction.NextChar(this));
     }
     /// Implementation of the Display trait.
     public function [Display.ToStr](): String {
-        return this + "";
+        copy := *this;
+        copy += ""; // forces a copy to be created.
+        return copy;
+    }
+    /// Implementation of the Default trait.
+    static function [Default.Init](): This {
+        return new String();
     }
     /// Adds two strings together.
     /// ## Usage
@@ -61,7 +71,7 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     /// Assert(str.At(-3)).Equals(Some("i"));
     /// ```
     /// It will return no value if the length of the string is exceeded.
-    public function At(position: Int): Maybe<&String> {
+    public function At(position: Int): ?&String {
         return Invoke(Injunction.StrAt(this, position));
     }
     /// Adds text to the end of the string.
@@ -73,9 +83,8 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     /// 
     /// Assert(Str).Equals("Hello, world!");
     /// ```
-    // !::mutable::!
     public function Append(suffix: String) {
-        Invoke(Injunction.StrAppend(this, suffix));
+        suffix.units.IntoIter().ForEach(fn(unit) this.units.Push(unit))
     }
     /// Returns an iterator over the bytes in the string.
     /// ## Usage
@@ -87,7 +96,7 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     /// }
     /// ```
     public function Bytes(): Buffer {
-        return Invoke(Injunction.StrBytes(this));
+        return new Buffer(&this.units);
     }
     /// Changes the first character of every word in the string to upper case.
     /// ## Usage
@@ -179,7 +188,7 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     /// Assert(str.Length()).Equals(5);
     /// ```
     public function Length(): UnsignedInt {
-        return Invoke(Injunction.StrLength(this));
+        this.units.Length()
     }
     /// Changes the case of all letters in the string to lower case.
     /// ## Usage
@@ -245,9 +254,8 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     /// 
     /// Assert(str).Equals("Hello, world!");
     /// ```
-    // !::mutable::!
     public function Prepend(prefix: String) {
-        Invoke(Injunction.StrPrepend(this, prefix));
+        this.units.Prepend(prefix.units);
     }
     /// Returns a String value that is made from a number of copies of the original string.
     /// If count is 0, the empty string is returned.
@@ -299,7 +307,7 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     /// 
     /// Assert(str.Slice(0..5)).Equals(Some(&"Hello")); // index 0 to 4.
     /// ```
-    public function Slice(bounds: Range<UnsignedInt>): Maybe<&String> {
+    public function Slice(bounds: Range<UnsignedInt>): ?&String {
         return Invoke(Injunction.StrSlice(this, bounds));
     }
     /// Divides the string into a list of substrings based on a delimeter.
@@ -418,7 +426,7 @@ public model Chars implements Iteratable<&String> {
         this.string = string;
     }
     /// Returns the next character.
-    public function [Iteratable.Next](): Maybe<&String> {
+    public function [Iteratable.Next](): ?&String {
         nextChar := this.string.At(this.idx)?;
         this.idx += 1;
         return Some(nextChar);

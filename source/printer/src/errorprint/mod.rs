@@ -106,7 +106,7 @@ Got: '{right}'.",
         },
         TypeErrorType::NotAModuleType { object_type } => format!("{object_type} is not a module."),
         TypeErrorType::NonPublicType { base_type, property } => format!("'{property}' exists in {base_type}, but it is not denoted as public."),
-         
+        TypeErrorType::IndexingWithIllegalValue { indexer } => format!("Value of type '{indexer}' cannot be used as an index into an array."),
     }
 }
 

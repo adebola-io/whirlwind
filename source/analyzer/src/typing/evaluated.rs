@@ -1,6 +1,6 @@
 use crate::{
     unify_generic_arguments, unify_types,
-    utils::{arrify, get_interface_types_from_symbol, get_method_types_from_symbol},
+    utils::{arrify, get_interface_types_from_symbol, get_method_types_from_symbol, maybify},
     IntermediateType, ParameterType, PathIndex, ProgramError, SemanticSymbolKind, SymbolIndex,
     SymbolLibrary, TypecheckerContext, UnifyOptions,
 };
@@ -666,6 +666,25 @@ pub fn evaluate(
                 return arrify(
                     evaluate(
                         &element_type,
+                        symbollib,
+                        solved_generics,
+                        error_tracker,
+                        recursion_depth,
+                    ),
+                    symbollib,
+                );
+            }
+            add_error_if_possible(
+                error_tracker,
+                errors::missing_intrinsic(String::from("Array"), *span),
+            );
+            return EvaluatedType::Unknown;
+        }
+        IntermediateType::MaybeType { value, span } => {
+            if symbollib.maybe.is_some() {
+                return maybify(
+                    evaluate(
+                        &value,
                         symbollib,
                         solved_generics,
                         error_tracker,

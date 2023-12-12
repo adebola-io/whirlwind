@@ -57,7 +57,7 @@ public function Fatal(message?: String): never {
 }
 
 /// Returns the value of an environment variable.
-public function GetEnv(varName: String): Maybe<&String> {
+public function GetEnv(varName: String): ?&String {
     Todo()
 }
 

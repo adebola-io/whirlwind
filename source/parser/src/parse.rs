@@ -5,7 +5,7 @@ use ast::{
     EnumVariant, Expression, ExpressionPrecedence, ForStatement, FunctionDeclaration, FunctionExpr,
     FunctionSignature, FunctionalType, GenericParameter, Identifier, IfExpression, IndexExpr,
     InterfaceBody, InterfaceDeclaration, InterfaceProperty, InterfacePropertyType,
-    InterfaceSignature, Keyword::*, LogicExpr, LoopLabel, LoopVariable, MemberType,
+    InterfaceSignature, Keyword::*, LogicExpr, LoopLabel, LoopVariable, MaybeType, MemberType,
     MethodSignature, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType, ModelSignature,
     ModuleAmbience, ModuleDeclaration, NewExpr, Operator::*, Parameter, ReturnStatement,
     ScopeAddress, ScopeEntry, ScopeType, ShorthandVariableDeclaration, ShorthandVariableSignature,
@@ -3226,9 +3226,19 @@ impl<L: Lexer> Parser<L> {
                 let union = self.union_type(first_exp)?;
                 union
             }
+            // Grouping of type expressions.
+            TokenType::Bracket(LParens) => {
+                self.advance(); // Move past (
+                let node = self.type_expression()?;
+                expect!(TokenType::Bracket(RParens), self);
+                self.advance(); // Move past )
+                self.type_reparse(node)?
+            }
             TokenType::Ident(_) => self.regular_type_or_union()?,
             // &borrowed types.
             TokenType::Operator(Ampersand) => self.borrowed_type()?,
+            // ?optional types.
+            TokenType::Operator(QuestionMark) => self.optional_type()?,
             // Support for an array type.
             TokenType::Bracket(LSquare) => self.array_type()?,
             _ => return Err(errors::identifier_expected(token.span)),
@@ -3282,12 +3292,25 @@ impl<L: Lexer> Parser<L> {
                 _type: TokenType::Keyword(This),
                 ..
             }) => self.this_type()?,
-            _ => self.regular_type_or_union()?,
+            _ => self.type_expression()?,
         });
         let end = value.span().end;
         let span = Span { start, end };
         self.precedence_stack.borrow_mut().pop();
         let node = TypeExpression::BorrowedType(BorrowedType { value, span });
+        Ok(self.type_reparse(node)?)
+    }
+
+    /// Parses an optional type. Assumes that `?` is the current token.
+    fn optional_type(&self) -> Fallible<TypeExpression> {
+        let start = self.token().unwrap().span.start;
+        self.advance(); // Move past &
+        self.push_precedence(ExpressionPrecedence::Referencing); // todo: not the correct precedence.
+        let value = Box::new(self.type_expression()?);
+        let end = value.span().end;
+        let span = Span { start, end };
+        self.precedence_stack.borrow_mut().pop();
+        let node = TypeExpression::Optional(MaybeType { value, span });
         Ok(self.type_reparse(node)?)
     }
 
@@ -3341,8 +3364,13 @@ impl<L: Lexer> Parser<L> {
                 return Err(errors::generic_args_in_namespace(d.span));
             }
         }
-        // Functional types cant serve as namespaces.
-        if let TypeExpression::Functional(_) = namespace {
+        // Only discrete types and other member types cant serve as namespaces.
+        if let TypeExpression::Functional(_)
+        | TypeExpression::Union(_)
+        | TypeExpression::BorrowedType(_)
+        | TypeExpression::Array(_)
+        | TypeExpression::Optional(_) = namespace
+        {
             return Err(errors::unexpected(self.last_token_span()));
         }
         self.push_precedence(ExpressionPrecedence::Access);

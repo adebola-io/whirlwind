@@ -231,6 +231,10 @@ pub enum TypeErrorType {
         base_type: String,
         property: String,
     },
+    // Using an invalid type as an index into an array.
+    IndexingWithIllegalValue {
+        indexer: String,
+    },
 }
 
 pub fn invalid_binary(left: String, operator: BinOperator, right: String, span: Span) -> TypeError {

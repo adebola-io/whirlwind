@@ -213,7 +213,6 @@ mod statements {
             // this.a = this.b;
             // this.b = someValue;
             // answer: All instances of the attribute are recorded and tracked. If the first instance is not an assignment, error.
-            // If the type of the attribute implements Default, then this check is not needed.
             let model_symbol = symbollib.get(model.name).unwrap();
             let attribute_idxs =
                 if let SemanticSymbolKind::Model { attributes, .. } = &model_symbol.kind {
@@ -280,30 +279,8 @@ mod statements {
                         }
                     }
                 } else {
-                    let mut should_error = true;
-                    let inferred_type = match &attribute_symbol.kind {
-                        SemanticSymbolKind::Attribute { declared_type, .. } => evaluate(
-                            declared_type,
-                            symbollib,
-                            None,
-                            &mut checker_ctx.tracker(),
-                            0,
-                        ),
-                        _ => EvaluatedType::Unknown,
-                    };
-                    let default_symbol = symbollib.default;
-                    // Type implements Default, so carry on.
-                    if default_symbol.is_some() {
-                        if get_implementation_of(default_symbol.unwrap(), &inferred_type, symbollib)
-                            .is_some()
-                        {
-                            should_error = false;
-                        }
-                    }
-                    if should_error {
-                        checker_ctx
-                            .add_error(errors::unassigned_attribute(attribute_symbol.origin_span));
-                    }
+                    checker_ctx
+                        .add_error(errors::unassigned_attribute(attribute_symbol.origin_span));
                 }
             }
         }
@@ -429,7 +406,11 @@ mod statements {
         let mut block_return_type =
             expressions::typecheck_block(body, true, checker_ctx, symbollib);
         pop_scopetype(checker_ctx);
-        if !block_return_type.is_generic() {
+        if !block_return_type.is_generic()
+            && !block_return_type.contains_child_for_which(&|child| {
+                matches!(child, EvaluatedType::HardGeneric { .. })
+            })
+        {
             block_return_type = coerce_all_generics(&block_return_type, EvaluatedType::Never);
         }
         checker_ctx.current_function_context.pop();
@@ -826,6 +807,9 @@ mod statements {
             // Coerce unresolved nested generic types to never, since they are no longer resolvable.
             let mut return_type = expressions::typecheck_expression(expr, checker_ctx, symbollib);
             if !return_type.is_generic()
+                && !return_type.contains_child_for_which(&|child| {
+                    matches!(child, EvaluatedType::HardGeneric { .. })
+                })
                 && function_context.as_ref().is_some_and(|ctx| ctx.is_named)
             {
                 return_type = coerce_all_generics(&return_type, EvaluatedType::Never)
@@ -1213,6 +1197,9 @@ mod expressions {
                             let function_ctx = checker_ctx.current_function_context.last();
                             returned_type = coerce(returned_type, &full_generic_list);
                             if !returned_type.is_generic()
+                                && !returned_type.contains_child_for_which(&|child| {
+                                    matches!(child, EvaluatedType::HardGeneric { .. })
+                                })
                                 && function_ctx.is_some_and(|ctx| ctx.is_named)
                             {
                                 returned_type =
@@ -1819,35 +1806,81 @@ mod expressions {
         indexexp.inferred_type = (|| {
             let type_of_indexed =
                 typecheck_expression(&mut indexexp.object, checker_ctx, symbollib);
-            let _type_of_indexer =
-                typecheck_expression(&mut indexexp.index, checker_ctx, symbollib);
+            let type_of_indexer = typecheck_expression(&mut indexexp.index, checker_ctx, symbollib);
             // todo: handle Index interfaceface overloading.
-            if !is_array(
-                match &type_of_indexed {
-                    EvaluatedType::Borrowed { base } => &*base,
-                    _ => &type_of_indexed,
-                },
-                symbollib,
-            ) {
-                checker_ctx.add_error(errors::invalid_index_subject(
-                    symbollib.format_evaluated_type(&type_of_indexed),
-                    indexexp.span,
-                ));
-                return EvaluatedType::Unknown;
+            let mut ptr = type_of_indexed;
+            if !is_array(&ptr, &symbollib) {
+                // Unwrap a pointer value.
+                loop {
+                    match ptr {
+                        EvaluatedType::Borrowed { base } => {
+                            ptr = *base;
+                        }
+                        _ => break,
+                    };
+                }
+                if !is_array(&ptr, symbollib) {
+                    checker_ctx.add_error(errors::invalid_index_subject(
+                        symbollib.format_evaluated_type(&ptr),
+                        indexexp.span,
+                    ));
+                    return EvaluatedType::Unknown;
+                }
             }
-            // todo: check type of indexer as UnsignedInt.
-            match type_of_indexed {
+            // Confirms that the indexer is at least a component of UnsignedInt.
+            if let Some(idx) = symbollib.uint {
+                let opaque_instance = evaluate(
+                    &crate::IntermediateType::SimpleType {
+                        value: idx,
+                        generic_args: vec![],
+                        span: Span::default(),
+                    },
+                    symbollib,
+                    None,
+                    &mut None,
+                    0,
+                );
+                if let Err(errors) = unify_types(
+                    &opaque_instance,
+                    &type_of_indexer,
+                    symbollib,
+                    UnifyOptions::None,
+                    None,
+                ) {
+                    let span = checker_ctx.span_of_expr(&indexexp.index, symbollib);
+                    checker_ctx.add_error(errors::indexing_with_illegal_value(
+                        symbollib.format_evaluated_type(&type_of_indexer),
+                        span,
+                    ));
+                    for error in errors {
+                        checker_ctx.add_error(TypeError { _type: error, span })
+                    }
+                }
+            } else {
+                checker_ctx.add_error(errors::missing_intrinsic(
+                    format!("UnsignedInt"),
+                    checker_ctx.span_of_expr(&indexexp.index, symbollib),
+                ));
+            }
+            match ptr {
                 EvaluatedType::ModelInstance {
+                    model,
                     mut generic_arguments,
                     ..
-                } => {
+                } if symbollib.array.is_some_and(|idx| idx == model) => {
                     if generic_arguments.len() != 1 {
                         EvaluatedType::Unknown
                     } else {
                         generic_arguments.remove(0).1
                     }
                 }
-                _ => EvaluatedType::Unknown,
+                _ => {
+                    checker_ctx.add_error(errors::invalid_index_subject(
+                        symbollib.format_evaluated_type(&ptr),
+                        indexexp.span,
+                    ));
+                    EvaluatedType::Unknown
+                }
             }
         })();
         indexexp.inferred_type.clone()

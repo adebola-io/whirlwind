@@ -3,5 +3,5 @@ use Super.Prelude.Display;
 
 
 public model Bool implements Display {
-
+    // compiler built-in.
 }

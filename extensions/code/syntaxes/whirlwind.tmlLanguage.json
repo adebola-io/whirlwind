@@ -352,7 +352,7 @@
       "type_label": {
          "begin": "\\:\\s*",
          "patterns": [{ "include": "#type_expression" }],
-         "end": "(,(?=\\s*([A-Za-z0-9]|_)+\\s*\\??\\s*(\\:|\\))))|(?=[^A-Za-z0-9\\&\\_\\.\\<\\>\\,\\s])"
+         "end": "(,(?=\\s*([A-Za-z0-9]|_)+\\s*\\??\\s*(\\:|\\))))|(?=[^A-Za-z0-9\\&\\?\\_\\.\\<\\>\\,\\s\\(\\)\\[\\]])"
       },
       "discrete_type": {
          "patterns": [
@@ -399,7 +399,7 @@
          "end": "(?=\\))"
       },
       "generic_args": {
-         "begin": "(?<=\\<\\s*)",
+         "begin": "(?<=((implements\\s+|\\:\\s*)\\w+\\s*)\\<\\s*)",
          "patterns": [
             { "include": "#type_expression" },
             { "include": "#generic_args" }
@@ -407,12 +407,16 @@
          "end": "(?=\\>)"
       },
       "generic_params": {
-         "begin": "(?<=\\<\\s*)",
+         "begin": "(?<=((type|model|function|enum|interface)\\s*\\w+\\s*)\\<\\s*)",
          "patterns": [
             { "include": "#injunction" },
             {
                "name": "punctuation",
                "match": "\\&"
+            },
+            {
+               "name": "punctuation",
+               "match": "\\?"
             },
             {
                "name": "constant.language",

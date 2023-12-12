@@ -678,7 +678,8 @@ impl HoverFinder<'_> {
                     return Some(HoverInfo::from_str("This: {unknown}"));
                 }
             }
-            IntermediateType::BorrowedType { value, span } => {
+            IntermediateType::BorrowedType { value, span }
+            | IntermediateType::MaybeType { value, span } => {
                 within!(span, self);
                 maybe!(self.type_hover(value));
             }
@@ -710,7 +711,8 @@ impl HoverFinder<'_> {
                     maybe!(self.type_hover(typ))
                 }
             }
-            IntermediateType::ArrayType { element_type, .. } => {
+            IntermediateType::ArrayType { element_type, span } => {
+                within!(span, self);
                 maybe!(self.type_hover(&element_type))
             }
         }

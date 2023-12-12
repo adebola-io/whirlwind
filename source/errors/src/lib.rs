@@ -510,3 +510,10 @@ pub fn non_public_type(base_type: String, property: String, span: ast::Span) -> 
         span,
     }
 }
+
+pub fn indexing_with_illegal_value(indexer: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::IndexingWithIllegalValue { indexer },
+        span,
+    }
+}

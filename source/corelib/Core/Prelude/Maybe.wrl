@@ -9,7 +9,7 @@ use Outcome.{ Ok, Err, Outcome };
 use Interfaces.{ Guaranteed, Try.Try, Default.Default };
 
 /// Creates a `Maybe` with no value.
-public function None<T>(): Maybe<T> {
+public function None<T>(): ?T {
     // Maybe {
     //     inner := MaybeVal.Some(value)
     // }
@@ -17,7 +17,7 @@ public function None<T>(): Maybe<T> {
 }
 
 /// Creates a `Maybe` with an internal value.
-public function Some<T>(value: T): Maybe<T> {
+public function Some<T>(value: T): ?T {
     // Maybe {
     //     inner := MaybeVal.Some(value)
     // }
@@ -25,7 +25,7 @@ public function Some<T>(value: T): Maybe<T> {
 }
 
 /// A value that may or may not exist.
-public model Maybe<T> implements Guaranteed<T> + Try<T, Maybe<never>> {
+public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     var inner: MaybeVal;
 
     /// Implementation of `Guarantee` interface.
@@ -33,7 +33,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, Maybe<never>> {
         return this.Unwrap();
     }
     /// Implementation of `Try` interface.
-    function [Try.Try](): Outcome<T, Maybe<never>> {
+    function [Try.Try](): Outcome<T, ?never> {
         if this.IsSome() {
             return Ok(this.Unwrap());
         } else {
@@ -43,7 +43,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, Maybe<never>> {
     /// Returns a Bool indicating if the Maybe contains no value.
     /// ### Usage
     /// ```
-    /// noValue: Maybe<String> := None();
+    /// noValue: ?String := None();
     /// AssertThat(noValue.IsNone());
     /// 
     /// stringValue := Some("boy");
@@ -62,7 +62,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, Maybe<never>> {
     /// stringValue := Some("boy");
     /// AssertThat(stringValue.IsSome());
     /// 
-    /// noValue: Maybe<String> := None();
+    /// noValue: ?String := None();
     /// AssertThat(!noValue.IsSome());
     /// ```
     public function IsSome(): Bool {
@@ -101,7 +101,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, Maybe<never>> {
     /// numValue := Some(89);
     /// Assert(numValue.Unwrap()).Equals(89);
     /// 
-    /// noValue: Maybe<Number> = None();
+    /// noValue: ?Number = None();
     /// noValue.Unwrap(); // Will panic with an error.
     /// ```
     /// ### Panics
@@ -130,10 +130,10 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, Maybe<never>> {
         Todo()
     }
     /// Converts a `Maybe<T>` to a `Maybe<E>` by applying a function.
-    public function Map<U>(func: fn(former: T): U): Maybe<U> {
+    public function Map<U>(func: fn(former: T): U): ?U {
         Some(func(this?))
     }   
-    public static function UnwrapOrDefault<U implements Default>(value: Maybe<U>): U {
+    public static function UnwrapOrDefault<U implements Default>(value: ?U): U {
         Todo()
     }
 }
