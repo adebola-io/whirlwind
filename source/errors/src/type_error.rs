@@ -222,6 +222,15 @@ pub enum TypeErrorType {
         error: String,
     },
     ThisInStaticMethod,
+    /// Object type in Member type is not a module.
+    NotAModuleType {
+        object_type: String,
+    },
+    /// Type exists in module, but it is not public.
+    NonPublicType {
+        base_type: String,
+        property: String,
+    },
 }
 
 pub fn invalid_binary(left: String, operator: BinOperator, right: String, span: Span) -> TypeError {

@@ -25,7 +25,7 @@ use Core.Io.IoError;
 use Core.Os;
 /// Function to display content from a file.
 function ReadToString(path: Os.PathLike): Outcome<String, IoError> {
-    return Ok("");
+    return Todo();
 }
 use Core.Http.HttpServer;
 /// Server that returns hello world.
@@ -35,5 +35,4 @@ function HelloWorldServer() {
         Ok(*request.Respond().Html("<h1>Hello, world!</h1>"))
     });
     app.Start().Run().Await();
-    
 }

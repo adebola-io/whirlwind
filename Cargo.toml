@@ -10,5 +10,7 @@ members = [
     "source/analyzer",
     "source/server",
     "source/utils",
-    "source/macros"
+    "source/macros",
+    "source/cli",
+    "source/vm"
     ]

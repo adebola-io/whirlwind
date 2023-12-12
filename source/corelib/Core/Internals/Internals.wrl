@@ -14,8 +14,9 @@ public use Injunction.{ Injunction, Invoke };
 /// 
 /// The exact definition is that it is the type of a value that cannot be
 /// modelled by the type system. For example, the bridge between builtin
-/// methods and the Whirlwind runtime, returns a type of never. The null pointer
-/// stub in Whirlwind has a type of never.
+/// methods and the runtime returns a type of never. The null pointer
+/// stub has a type of never. Generic values have their types
+/// coerced to never if they are returned before being resolved.
 /// 
 /// Because it is a placeholder for something conceptual, _the `never` type is assignable to
 /// all types, including itself._ This makes it useful for writing unfinished code that

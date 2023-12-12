@@ -125,7 +125,7 @@ test "Testing types." {
         value = factory(value); // valid.
         if true {
             return value; // valid.
-        }
+        };
         return factory(value);
     }
 }

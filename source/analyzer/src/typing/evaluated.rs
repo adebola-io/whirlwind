@@ -8,6 +8,7 @@ use ast::Span;
 use errors::{
     value_as_type,
     TypeError,
+    TypeErrorType,
     // TypeErrorType
 };
 
@@ -360,54 +361,36 @@ pub fn evaluate(
     } else {
         recursion_depth += 1;
     }
-    let evaltype = match typ {
+    match typ {
         IntermediateType::FunctionType {
             params,
             return_type,
             ..
-        } => {
-            let return_type = Box::new(
-                return_type
-                    .as_ref()
-                    .map(|typ| {
-                        evaluate(
-                            typ,
-                            symbollib,
-                            solved_generics,
-                            error_tracker,
-                            recursion_depth,
-                        )
-                    })
-                    .unwrap_or(EvaluatedType::Void),
-            );
-            EvaluatedType::FunctionExpressionInstance {
-                is_async: false, // todo: always false (for now).
-                params: params
-                    .iter()
-                    .map(|param| {
-                        let mut param = param.clone();
-                        param.inferred_type = param
-                            .type_label
-                            .as_ref()
-                            .map(|typ| {
-                                evaluate(
-                                    typ,
-                                    symbollib,
-                                    solved_generics,
-                                    &mut error_tracker,
-                                    recursion_depth,
-                                )
-                            })
-                            .unwrap_or(EvaluatedType::Unknown);
-                        param
-                    })
-                    .collect(),
-                is_invariant: false,
-                return_type,
-                generic_args: solved_generics.cloned().unwrap_or(vec![]),
-            }
-        }
-        IntermediateType::MemberType { .. } => EvaluatedType::Unknown, // todo
+        } => evaluate_function_type(
+            return_type,
+            symbollib,
+            solved_generics,
+            error_tracker,
+            recursion_depth,
+            params,
+        ),
+        // Accessing a member type of another module.
+        IntermediateType::MemberType {
+            object,
+            property,
+            span,
+        } => match evaluate_member_type(
+            object,
+            symbollib,
+            solved_generics,
+            error_tracker,
+            recursion_depth,
+            property,
+            span,
+        ) {
+            Ok(value) => value,
+            Err(value) => return value,
+        },
         IntermediateType::SimpleType {
             value,
             generic_args,
@@ -678,8 +661,136 @@ pub fn evaluate(
             };
         }
         _ => EvaluatedType::Unknown,
-    };
-    evaltype
+    }
+}
+
+/// Evaluates an intermediate member type into an evaluated type.
+fn evaluate_member_type(
+    object: &Box<IntermediateType>,
+    symbollib: &SymbolLibrary,
+    solved_generics: Option<&Vec<(SymbolIndex, EvaluatedType)>>,
+    error_tracker: &mut Option<(&mut Vec<ProgramError>, PathIndex)>,
+    recursion_depth: u64,
+    property: &crate::IntermediateTypeProperty,
+    span: &Span,
+) -> Result<EvaluatedType, EvaluatedType> {
+    let object_type = evaluate(
+        &*object,
+        symbollib,
+        solved_generics,
+        error_tracker,
+        recursion_depth,
+    );
+    match &object_type {
+        EvaluatedType::Module(module) => {
+            let module_symbol = match symbollib.get(*module) {
+                Some(symbol) => symbol,
+                None => return Err(EvaluatedType::Unknown),
+            };
+            let base_type = || module_symbol.name.clone();
+            let property_name = || property.name.clone();
+            if let SemanticSymbolKind::Module {
+                global_declaration_symbols,
+                ..
+            } = &module_symbol.kind
+            {
+                for symbol_idx in global_declaration_symbols {
+                    let global_symbol = ast::unwrap_or_continue!(symbollib.get(*symbol_idx));
+                    if global_symbol.name == property.name {
+                        if !global_symbol.kind.is_public() {
+                            add_error_if_possible(
+                                error_tracker,
+                                errors::non_public_type(base_type(), property_name(), *span),
+                            )
+                        }
+                        // Create an intermeduate type to evaluate.
+                        let intermediate = IntermediateType::SimpleType {
+                            value: *symbol_idx,
+                            generic_args: property.generic_args.clone(),
+                            span: property.span,
+                        };
+                        return Err(evaluate(
+                            &intermediate,
+                            symbollib,
+                            solved_generics,
+                            error_tracker,
+                            recursion_depth,
+                        ));
+                    }
+                }
+                // No match.
+                add_error_if_possible(
+                    error_tracker,
+                    TypeError {
+                        _type: TypeErrorType::NoSuchProperty {
+                            base_type: base_type(),
+                            property: property_name(),
+                        },
+                        span: *span,
+                    },
+                );
+                return Err(EvaluatedType::Unknown);
+            }
+        }
+        EvaluatedType::Unknown => return Err(EvaluatedType::Unknown),
+        _ => {}
+    }
+    add_error_if_possible(
+        error_tracker,
+        errors::not_a_module_type(symbollib.format_evaluated_type(&object_type), object.span()),
+    );
+    return Err(EvaluatedType::Unknown);
+}
+
+/// Evaluates an intermediate function type into an evaluated type.
+fn evaluate_function_type(
+    return_type: &Option<Box<IntermediateType>>,
+    symbollib: &SymbolLibrary,
+    solved_generics: Option<&Vec<(SymbolIndex, EvaluatedType)>>,
+    mut error_tracker: &mut Option<(&mut Vec<ProgramError>, PathIndex)>,
+    recursion_depth: u64,
+    params: &Vec<ParameterType>,
+) -> EvaluatedType {
+    let return_type = Box::new(
+        return_type
+            .as_ref()
+            .map(|typ| {
+                evaluate(
+                    typ,
+                    symbollib,
+                    solved_generics,
+                    error_tracker,
+                    recursion_depth,
+                )
+            })
+            .unwrap_or(EvaluatedType::Void),
+    );
+    EvaluatedType::FunctionExpressionInstance {
+        is_async: false, // todo: always false (for now).
+        params: params
+            .iter()
+            .map(|param| {
+                let mut param = param.clone();
+                param.inferred_type = param
+                    .type_label
+                    .as_ref()
+                    .map(|typ| {
+                        evaluate(
+                            typ,
+                            symbollib,
+                            solved_generics,
+                            &mut error_tracker,
+                            recursion_depth,
+                        )
+                    })
+                    .unwrap_or(EvaluatedType::Unknown);
+                param
+            })
+            .collect(),
+        is_invariant: false,
+        return_type,
+        generic_args: solved_generics.cloned().unwrap_or(vec![]),
+    }
 }
 
 fn generate_generics_from_arguments(

@@ -103,7 +103,10 @@ Got: '{right}'.",
                 }
             }
             string
-        }, 
+        },
+        TypeErrorType::NotAModuleType { object_type } => format!("{object_type} is not a module."),
+        TypeErrorType::NonPublicType { base_type, property } => format!("'{property}' exists in {base_type}, but it is not denoted as public."),
+         
     }
 }
 

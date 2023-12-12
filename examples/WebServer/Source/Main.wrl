@@ -47,38 +47,38 @@ async function HelloHandler(request: HttpRequest): ServerOutcome {
 }
 
 /// Handler function for authenticating users.
-async function AuthenticationHandler(request: HttpRequest): MiddlewareResponse {
-    if request.Url().StartsWith("/user/") {
-        auth := request.Headers().GetOrErr("auth")?;
+async function AuthenticationHandler(req: HttpRequest): MiddlewareResponse {
+    if req.Url().StartsWith("/user/") {
+        auth := req.Headers().GetOrErr("auth")?;
         token := if !auth.StartsWith("Bearer ") {
-            return Err(new HttpRequestError("Invalid authentication header", request));
+            return Err(req.CreateError("Invalid authentication header."));
         } else {
             auth.Slice(7..auth.Length()).Unwrap()
         };
         maybeSecret := GetEnv("JWT_SECRET");
         if maybeSecret.IsNone() {
-            return Err(new HttpRequestError("Unathorized Request", request));
+            return Err(req.CreateError("Unauthorized Request."));
         };
         secret := maybeSecret.Unwrap();
         decoded := JwtEncryptor.Decode(*token, *secret);
-        request.StoreData("user-id", decoded);
-        return Ok(request);
+        req.StoreData("user-id", decoded);
+        return Ok(req);
     }
-    return Ok(request);
+    return Ok(req);
 }
 
 /// Handler function for the "/greet/:name" endpoint.
-async function GreetHandler(request: HttpRequest): ServerOutcome {
-    name := request.PathParams().GetOrErr("name")?;
-    response := HttpResponse.From(&request);
+async function GreetHandler(req: HttpRequest): ServerOutcome {
+    name := req.PathParams().GetOrErr("name")?;
+    response := req.Respond();
     response.Status(200).Html("<h1>Hello, " + name + "!</h1>");
     return Ok(response);
 }
 
 // Handler function for serving static files.
-async function StaticFileHandler(request: HttpRequest): ServerOutcome {
-    filename := request.PathParams().Get("filename");
+async function StaticFileHandler(req: HttpRequest): ServerOutcome {
+    filename := req.PathParams().Get("filename");
     // Implement logic to read and serve the specified static file.
-    response := HttpResponse.From(&request);
+    response := req.Respond();
     return Ok(response);
 }

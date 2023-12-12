@@ -39,6 +39,9 @@ pub struct SymbolLibrary {
     pub maybe: Option<SymbolIndex>,
     pub range: Option<SymbolIndex>,
     pub default: Option<SymbolIndex>,
+    pub invoke: Option<SymbolIndex>,
+    pub injunction: Option<SymbolIndex>,
+    pub nullptr: Option<SymbolIndex>,
 }
 
 #[derive(Debug, Default)]
@@ -47,7 +50,7 @@ pub struct SymbolTable {
 }
 
 impl SymbolTable {
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self { symbols: vec![] }
     }
 }

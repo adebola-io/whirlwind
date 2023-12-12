@@ -51,7 +51,7 @@ public model Prospect<T> {
     }
     /// Executes a prospect.
     /// 
-    /// Running a prospect produces a model called an `Eventual`, 
+    /// Running a prospect produces an `Eventual`, 
     /// which is a representation of the future value expected to be 
     /// produced by the asynchronous operation. 
     /// 
@@ -81,6 +81,7 @@ public model Prospect<T> {
     /// re-run or used in interaction with other prospects.**
     /// 
     /// This means that the following code will cause an error.
+    /// <!--ignore-->
     /// ```
     /// prospect2 := AFunc();
     /// prospect2.Run();
@@ -216,9 +217,10 @@ public model Eventual<T> implements Guaranteed<T> {
         this.aborted = true;
     }
     /// Blocks other operations in the enclosing sequence until the eventual is resolved.
+    /// 
     /// Using Await can be tricky, because it does not pause _all_ execution.
     /// 
-    /// It only pauses the parent execution sequence, which could be the main sequence, or
+    /// It only pauses the parent execution sequence, which could be the main sequence or
     /// another, depending on whether it was called inside another asynchronous context or not.
     /// 
     /// It is a valid alternative to using callbacks on the source prospect, especially
@@ -226,10 +228,22 @@ public model Eventual<T> implements Guaranteed<T> {
     /// continue.
     /// ### Usage
     /// ```
+    /// async function WaitASec<T>(x: T): T {
+    ///     Core.Time.Sleep(1000);
+    ///     return x;
+    /// }
+    /// x := 34;
+    /// y := WaitASec(x).Run().Await(); // Waits a second and produces the value.
+    /// AssertThat(x == y);
     /// ```
-    /// Calling `.Await()` on an already resolved eventual just returns the previously produced value.
+    /// Calling `.Await()` on an already resolved eventual just returns a copy of the previously produced value.
     /// ```
+    /// eventual := WaitASec().Run();
     /// 
+    /// a := eventual.Await();
+    /// b := eventual.Await();
+    /// 
+    /// AssertThat(a == b);
     /// ```
     public function Await(): T {
         if this.aborted {
@@ -243,6 +257,9 @@ public model Eventual<T> implements Guaranteed<T> {
         return this.value; 
     }
     /// Forces the eventual to be resolved, and panics if it isn't.
+    /// 
+    /// There aren't many viable reasons why you should forcefully 
+    /// resolve an eventual, but it is still useful in some niche contexts.
     public function Unwrap(): T {
         if this.aborted {
             Fatal(Some("Called Unwrap() on an aborted eventual."));
@@ -269,7 +286,9 @@ public function ToSync<T>(prospect: Prospect<T>): T {
     return prospect.Run().Await();
 }
 
+/// The current running sequence for an instruction.
 public model CurrentSequence {
+    var handle: &Sequence;
     /// Forces the current running sequence to halt for a duration.
     public static function Sleep(timeout: UnsignedInt) {
         Todo()

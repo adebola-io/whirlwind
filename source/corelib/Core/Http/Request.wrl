@@ -51,6 +51,10 @@ public model HttpRequest {
     public function Respond(): HttpResponse {
         return HttpResponse.From(this);
     }
+    /// Returns an error based on this request.
+    public function CreateError(message: String, statusCode?: UnsignedInt): HttpRequestError {
+        return new HttpRequestError(message, this, statusCode);
+    }
 }
 
 public model RequestHeaders {
@@ -85,7 +89,7 @@ public model HttpRequestError implements IoError + Display {
     var message: String;
     var route: String;
     var statusCode: UnsignedInt;
-    new(message: String, request: HttpRequest, statusCode?: UnsignedInt) {
+    new(message: String, request: &HttpRequest, statusCode?: UnsignedInt) {
         this.message = message;
         this.route = *request.Url();
         this.statusCode = statusCode.UnwrapOr(400);

@@ -493,3 +493,20 @@ pub fn composite_type_error(
         span,
     }
 }
+
+pub fn not_a_module_type(object_type: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::NotAModuleType { object_type },
+        span,
+    }
+}
+
+pub fn non_public_type(base_type: String, property: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::NonPublicType {
+            base_type,
+            property,
+        },
+        span,
+    }
+}

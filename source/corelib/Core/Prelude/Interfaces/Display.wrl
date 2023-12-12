@@ -10,6 +10,7 @@ use Super.Core.Internals.{Invoke, Injunction};
 /// Models that implements Display can be printed using the `Core.Io.Print` method.
 /// ## Usage
 /// ```
+/// use Core.Io.Fmt;
 /// // Implementing Display on a model.
 /// model Rectangle implements Display {
 ///     var length: UInt32;
@@ -21,7 +22,7 @@ use Super.Core.Internals.{Invoke, Injunction};
 ///     }
 /// 
 ///     public function [Display.ToStr](): String {
-///         template := "Rectangle { length: %, breadth: % }";
+///         template := Fmt("Rectangle { length: %, breadth: % }");
 ///         template.Add(this.length).Add(this.breadth).Finish()
 ///     }
 /// }
@@ -31,7 +32,7 @@ use Super.Core.Internals.{Invoke, Injunction};
 /// Because the implementation is tedious to write again and again,
 /// especially for large models, it can be derived automatically.
 /// If all properties of a model implement Display, then the model itself 
-/// implements Display. All it needs is the `+ Display` appended.
+/// implements Display. All it needs is the `+ Display` interface appended.
 public interface Display {
     /// Converts the implementing type to a string.
     public function ToStr(): String {
