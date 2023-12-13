@@ -53,3 +53,67 @@ pub fn unknown_value(name: String, span: ast::Span) -> ContextError {
         span,
     }
 }
+
+pub fn already_declared_in_scope(name: String, span: ast::Span) -> ContextError {
+    ContextError {
+        _type: ContextErrorType::AlreadyDeclaredInScope { name },
+        span,
+    }
+}
+
+pub fn use_before_declare(name: String, span: ast::Span) -> ContextError {
+    ContextError {
+        _type: ContextErrorType::UseBeforeDeclare { name },
+        span,
+    }
+}
+
+pub fn this_outside_method(span: ast::Span) -> ContextError {
+    ContextError {
+        _type: ContextErrorType::ThisOutsideMethod,
+        span,
+    }
+}
+
+pub fn duplicate_property(name: ast::Identifier) -> ContextError {
+    ContextError {
+        _type: ContextErrorType::DuplicateModelProperty {
+            name: name.name.to_owned(),
+        },
+        span: name.span,
+    }
+}
+
+pub fn duplicate_generic_parameter(name: ast::Identifier) -> ContextError {
+    ContextError {
+        _type: ContextErrorType::DuplicateGenericParameter {
+            name: name.name.to_owned(),
+        },
+        span: name.span,
+    }
+}
+
+pub fn duplicate_parameter_names(name: ast::Identifier) -> ContextError {
+    ContextError {
+        _type: ContextErrorType::DuplicateParameterName {
+            name: name.name.to_owned(),
+        },
+        span: name.span,
+    }
+}
+
+pub fn required_parameter_after_optional(span: ast::Span) -> ContextError {
+    ContextError {
+        _type: ContextErrorType::RequiredAfterOptional,
+        span,
+    }
+}
+
+pub fn duplicate_enum_variant(name: ast::Identifier) -> ContextError {
+    ContextError {
+        _type: ContextErrorType::DuplicateEnumVariant {
+            name: name.name.to_owned(),
+        },
+        span: name.span,
+    }
+}

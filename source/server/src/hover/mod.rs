@@ -4,7 +4,7 @@ use analyzer::{
     TypedIdent, TypedModule, TypedThisExpr, TypedTypeDeclaration, TypedVisitorNoArgs,
 };
 use ast::{maybe, within, Span};
-use printer::SymbolWriter;
+use pretty::SymbolWriter;
 use std::cell::RefCell;
 use tower_lsp::lsp_types::{Hover, HoverContents, LanguageString, MarkedString};
 

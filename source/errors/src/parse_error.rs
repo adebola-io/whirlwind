@@ -167,3 +167,66 @@ pub fn numeric_value_in_array_type(span: Span) -> ParseError {
         span,
     }
 }
+
+pub fn module_declaration_not_global(span: ast::Span) -> ParseError {
+    ParseError {
+        _type: ParserErrorType::NonGlobalModuleDeclaration,
+        span,
+    }
+}
+
+pub fn invalid_return(span: ast::Span) -> ParseError {
+    ParseError {
+        _type: ParserErrorType::InvalidReturn,
+        span,
+    }
+}
+
+pub fn duplicate_constructor(span: ast::Span) -> ParseError {
+    ParseError {
+        _type: ParserErrorType::DuplicateConstructor,
+        span,
+    }
+}
+
+pub fn empty_path_list(span: ast::Span) -> ParseError {
+    ParseError {
+        _type: ParserErrorType::EmptyPathList,
+        span,
+    }
+}
+
+pub fn continue_outside_loop(span: ast::Span) -> ParseError {
+    ParseError {
+        _type: ParserErrorType::ContinueOutsideLoop,
+        span,
+    }
+}
+
+pub fn break_outside_loop(span: ast::Span) -> ParseError {
+    ParseError {
+        _type: ParserErrorType::BreakOutsideLoop,
+        span,
+    }
+}
+
+pub fn empty_enum_tag(span: ast::Span) -> ParseError {
+    ParseError {
+        _type: ParserErrorType::EmptyEnumTag,
+        span,
+    }
+}
+
+pub fn public_in_non_global_scope(span: ast::Span) -> ParseError {
+    ParseError {
+        _type: ParserErrorType::PublicAccessInNonGlobalScope,
+        span,
+    }
+}
+
+pub fn non_global_use(span: ast::Span) -> ParseError {
+    ParseError {
+        _type: ParserErrorType::UseImportInNonGlobalScope,
+        span,
+    }
+}

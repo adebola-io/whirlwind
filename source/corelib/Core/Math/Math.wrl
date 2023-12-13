@@ -41,3 +41,16 @@ public function Max<T implements Orderable>(first: T, second: T): T {
     }
     return second;
 }
+
+/// Returns the absolute value of an integer.
+/// 
+/// ### Usage
+/// ```
+/// use Core.Math.Abs;
+/// 
+/// Assert(Max(-4)).Equals(4);
+/// Assert(Max(10)).Equals(10);
+/// ```
+public function Abs(a: Int): UnsignedInt {
+    Todo()
+}

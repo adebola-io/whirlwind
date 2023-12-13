@@ -39,7 +39,7 @@ public interface Iteratable<I> {
     /// Assert(charsArray.Length()).Equals(5);
     /// AssertThat(characters.Next().IsNone());
     /// ```
-    public function Collect(): Array<I> {
+    public function Collect(): []I {
         Todo()
     }
     /// Consumes the iterator, running a callback for all the items produced by it.

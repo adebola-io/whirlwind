@@ -2,8 +2,6 @@ use std::collections::HashMap;
 
 use crate::{Identifier, Scope, ScopeAddress, ScopeEntry, ScopeSearch, ScopeType};
 
-pub struct DirectoryAmbience {}
-
 /// ### The Environment of a Module.
 /// This struct provides a hierarchical data structure that stores info in related, ordered "depths".
 /// It provides functions for creating and managing the lifecycle of nested scopes,

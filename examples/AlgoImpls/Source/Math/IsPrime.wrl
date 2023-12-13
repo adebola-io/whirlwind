@@ -1,7 +1,0 @@
-module IsPrime;
-
-use Core.Prelude.Array;
-
-public function IsPrime(number: Int): Array<Bool> {
-    return Todo();
-}

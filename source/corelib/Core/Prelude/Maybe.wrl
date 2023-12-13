@@ -50,11 +50,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     /// AssertThat(!stringValue.IsNone());
     /// ```
     public function IsNone(): Bool {
-        // this.inner => {
-        //     .None => true,
-        //     _ => false,
-        // }
-        Todo()
+        this.inner == MaybeVal.None
     }
     /// Returns a Bool indicating whether there is a value contained or not.
     /// ### Usage
@@ -66,11 +62,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     /// AssertThat(!noValue.IsSome());
     /// ```
     public function IsSome(): Bool {
-        // this.inner => {
-        //     .Some(_) => true,
-        //     .None => false,
-        // }
-        Todo()
+       this.inner == MaybeVal.Some
     }
     /// Returns a Bool indicating whether there is a value contained, and it
     /// upholds a given predicate.
@@ -92,6 +84,10 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
         //     .Some(value) => predicate(&value),
         //     .None => false
         // }
+        Todo()
+    }
+    /// Performs a computation if there is an internal value contained.
+    public function IsSomeThen(consequent: fn(value: T)) {
         Todo()
     }
     /// Ignores the maybe and returns the internal value. 

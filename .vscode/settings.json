@@ -1,25 +1,4 @@
 {
    "python.analysis.typeCheckingMode": "strict",
-   "editor.tokenColorCustomizations": {
-      "[Red]": {
-         "textMateRules": [
-            {
-               "scope": "variable",
-               "settings": {
-                  "fontStyle": ""
-               }
-            },
-            {
-               "scope": ["comment"],
-               "settings": {
-                  "foreground": "#876464",
-                  "fontStyle": ""
-               }
-            }
-         ]
-      }
-   },
-   "rust-analyzer.linkedProjects": [
-      "./source/analyzer/Cargo.toml"
-   ]
+   "rust-analyzer.linkedProjects": ["./source/analyzer/Cargo.toml"]
 }

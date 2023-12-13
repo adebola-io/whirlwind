@@ -1,0 +1,8 @@
+name: WebServer
+version: 0.0.0
+description: A simple web server implementation in Whirlwind.
+
+author: Adebola-io
+license: MIT
+
+entry: Source/Main.wrl

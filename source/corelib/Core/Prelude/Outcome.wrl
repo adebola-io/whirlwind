@@ -52,7 +52,7 @@ public model Outcome<T, E> implements Guaranteed<T> + Try<T, Outcome<never, E>> 
         if this.IsErr() {
             FatalOnCaller("Called Unwrap on an Err value.")
         }
-        return Invoke(Injunction.OutcUnwrap(this.value));
+        return Invoke(Injunction.OutcUnwrap(this));
     }
     /// Returns the inner error value if the outcome is an error, or causes a runtime error otherwise.
     /// ### Usage
@@ -60,13 +60,12 @@ public model Outcome<T, E> implements Guaranteed<T> + Try<T, Outcome<never, E>> 
     /// outcome := Err("An error occured.");
     /// value := outcome.AsErr();
     /// Assert(value).Equals("An error occured.");
-    /// 
     /// ```
     public function AsErr(): E {
         if this.IsOk() {
             FatalOnCaller("Called AsErr on an Ok value.");
         }
-        return Invoke(Injunction.OutcErr(this.value));
+        return Invoke(Injunction.OutcErr(this));
     }
     /// Returns true if the outcome is `Ok` 
     /// i.e. The operation was successful.

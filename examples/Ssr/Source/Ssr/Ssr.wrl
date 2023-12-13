@@ -1,7 +1,0 @@
-module Ssr;
-
-public use Renderer.Component;
-
-function Main() {
-    Print("Hello, world!");
-}

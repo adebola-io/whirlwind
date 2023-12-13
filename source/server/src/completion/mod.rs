@@ -6,9 +6,9 @@ use analyzer::{
     TypedModule, TypedStmnt,
 };
 use ast::{maybe, Span};
-use printer::SymbolWriter;
+use pretty::SymbolWriter;
 use serde_json::Value;
-use std::cell::RefCell;
+use std::{cell::RefCell, collections::HashMap};
 use tower_lsp::lsp_types::{
     CompletionContext, CompletionItem, CompletionItemKind, CompletionItemLabelDetails,
     CompletionResponse, Documentation, InsertTextFormat, MarkupContent, MarkupKind,
@@ -559,6 +559,17 @@ impl<'a> CompletionFinder<'a> {
 
 /// Sort an array of completions in alphabetical order.
 pub fn sort_completions(completions: &mut Vec<CompletionItem>) {
+    // Remove completions with duplicated names.
+    let mut unique = HashMap::new();
+    completions.iter_mut().for_each(|completion| {
+        if !unique.get(&completion.label).is_some() {
+            unique.insert(completion.label.clone(), std::mem::take(completion));
+        }
+    });
+    completions.clear();
+    for (_, completion) in unique {
+        completions.push(completion)
+    }
     completions.sort_by(|a, b| {
         a.label
             .chars()

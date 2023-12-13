@@ -1,7 +1,7 @@
-> **THIS PROJECT IS 70% INCOMPLETE. LOOK AWAY.**
+> **THIS PROJECT IS 60% INCOMPLETE. LOOK AWAY.**
 
 <h1 align=center>
-   <img width="80" src="./assets/Icon.svg" alt="Whirlwind Icon"/>
+   <img width="120" src="./assets/Icon.svg" alt="Whirlwind Icon"/>
    <p><i>Whirlwind.</i></p>
 </h1>
 

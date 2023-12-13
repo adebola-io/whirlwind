@@ -14,7 +14,7 @@ use ast::{
     is_keyword_or_operator, is_valid_identifier, is_valid_identifier_start, unwrap_or_continue,
     Span,
 };
-use printer::SymbolWriter;
+use pretty::SymbolWriter;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},

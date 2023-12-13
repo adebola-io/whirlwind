@@ -419,3 +419,280 @@ pub fn instance_static_method_access(
         span,
     }
 }
+
+pub fn not_callable(caller: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::NotCallable { caller },
+        span,
+    }
+}
+
+pub fn illegal_model_call(name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::IllegalModelCall { name },
+        span,
+    }
+}
+
+pub fn mismatched_function_args(
+    span: ast::Span,
+    expected: usize,
+    found: usize,
+    least_required: Option<usize>,
+) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::MismatchedFunctionArgs {
+            expected,
+            found,
+            least_required,
+        },
+        span,
+    }
+}
+
+pub fn missing_intrinsic(name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::MissingIntrinsic { name },
+        span,
+    }
+}
+
+pub fn invalid_index_subject(name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::InvalidIndexSubject { name },
+        span,
+    }
+}
+
+pub fn model_not_constructable(name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::ModelNotConstructable { name },
+        span,
+    }
+}
+
+pub fn calling_new_on_identifier(name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::NewOnIdentifier { name },
+        span,
+    }
+}
+
+pub fn infinite_type(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::InfiniteType,
+        span,
+    }
+}
+
+pub fn non_boolean_logic(name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::NonBooleanLogic { name },
+        span,
+    }
+}
+
+pub fn invalid_assignment_target(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::InvalidAssignmentTarget,
+        span,
+    }
+}
+
+pub fn mutating_method(owner: String, name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::MutatingMethod { owner, name },
+        span,
+    }
+}
+
+pub fn assigning_to_reference(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::AssigningToReference,
+        span,
+    }
+}
+
+pub fn separate_if_types(span: ast::Span, first: String, second: String) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::SeparateIfTypes { first, second },
+        span,
+    }
+}
+
+pub fn void_assignment(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::VoidAssignment,
+        span,
+    }
+}
+
+pub fn partial_type_assignment(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::PartialTypeAssigmentIf,
+        span,
+    }
+}
+
+pub fn never_as_declared(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::NeverAsDeclared,
+        span,
+    }
+}
+
+pub fn mispelled_name(name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::MispelledName { name },
+        span,
+    }
+}
+
+pub fn illegal_guarantee(name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::IllegalGuarantee { name },
+        span,
+    }
+}
+
+pub fn illegal_try(name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::IllegalTry { name },
+        span,
+    }
+}
+
+pub fn missing_annotations(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::MissingAnnotationsOrValue,
+        span,
+    }
+}
+
+pub fn no_default(declared: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::NoDefaultImplFor(declared),
+        span,
+    }
+}
+
+pub fn illegal_array_destructure(name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::IllegalArrayDestructure { name },
+        span,
+    }
+}
+
+pub fn illegal_model_destructure(name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::IllegalModelDestructure { name },
+        span,
+    }
+}
+
+pub fn unknown_property(base_type: String, property: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::NoSuchProperty {
+            base_type,
+            property,
+        },
+        span,
+    }
+}
+
+pub fn destructuring_method(base_type: String, method_name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::DestructuringMethod {
+            base_type,
+            method_name,
+        },
+        span,
+    }
+}
+
+pub fn non_pure_global(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::NonPureGlobal,
+        span,
+    }
+}
+
+pub fn return_from_constructor(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::ReturnFromConstructor,
+        span,
+    }
+}
+
+pub fn using_attribute_before_assign(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::UsingAttributeBeforeAssign,
+        span,
+    }
+}
+
+pub fn unassigned_attribute(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::UnassignedAttribute,
+        span,
+    }
+}
+
+pub fn uninferrable_variable(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::UninferrableVariable,
+        span,
+    }
+}
+
+pub fn invalid_size(error: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::InvalidSize { error },
+        span,
+    }
+}
+
+pub fn this_in_static_method(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::ThisInStaticMethod,
+        span,
+    }
+}
+
+pub fn composite_type_error(
+    main_error: TypeErrorType,
+    sub_errors: Vec<TypeErrorType>,
+    span: ast::Span,
+) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::CompositeError {
+            main_error: Box::new(main_error),
+            sub_errors,
+        },
+        span,
+    }
+}
+
+pub fn not_a_module_type(object_type: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::NotAModuleType { object_type },
+        span,
+    }
+}
+
+pub fn non_public_type(base_type: String, property: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::NonPublicType {
+            base_type,
+            property,
+        },
+        span,
+    }
+}
+
+pub fn indexing_with_illegal_value(indexer: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::IndexingWithIllegalValue { indexer },
+        span,
+    }
+}

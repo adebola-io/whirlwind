@@ -85,7 +85,15 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
         *this = [];
     }
     /// Returns a reference to the first item in the array, if it exists.
-    public function First(): ?&T {
+    /// ### Usage
+    /// ```
+    /// arr := [20, 30, 40, 50, 60];
+    /// Assert(arr.First()).Equals(Some(&20));
+    /// 
+    /// empty: []Int := [];
+    /// Assert(empty.First()).Equals(None());
+    /// ```
+    public function First(): Maybe<&T> {
         if this.Length() == 0 { None() } 
         else Some(&this[0])
     }
@@ -119,7 +127,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     public function Insert(index: UnsignedInt, value: T) {
         Invoke(Injunction.ArrInsert(index, value, this));
     }
-    /// Inserts another array of items at the start of the array.
+    /// Inserts all the items from another array at the start of this array,
     /// shifting all its prior elements forward.
     /// ### Usage
     /// ```
@@ -193,7 +201,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
         Todo()
     }
     /// Returns a reference to the last item in the array.
-    public function Last(): ?&T {
+    public function Last(): Maybe<&T> {
         length := this.Length();
         if length == 0 { None() } 
         else Some(&this[length - 1])
@@ -335,7 +343,7 @@ public model ArrayRefIter<T> implements Iteratable<&T> {
         this.array = array;
         this.idx = 0;
     }
-    public function [Iteratable.Next](): ?&T {
+    public function [Iteratable.Next](): Maybe<&T> {
         Todo()
     }
 }

@@ -6,12 +6,11 @@
    "configurations": [
       {
          "args": [
-            "--extensionDevelopmentPath=${workspaceFolder}/extensions/code",
-            "--inspect-extensions=6009",
-            "--core-path=${workspaceFolder}/source/corelib/Core/Core.wrl"
+            "--extensionDevelopmentPath=${workspaceFolder}/tools/vscode",
+            "--inspect-extensions=6009"
          ],
 
-         "name": "Launch Whirlwind Extension",
+         "name": "Launch Extension",
          "outFiles": ["${workspaceFolder}/extensions/code/out/**/*.js"],
          "request": "launch",
          "type": "extensionHost"
