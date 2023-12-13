@@ -1,6 +1,6 @@
 module Math;
 
-use Super.Primitives.Ops.{Orderable, Ordering};
+use Core.Primitives.Ops.{Orderable, Ordering};
 
 /// Returns the minimum of two values that implement Orderable.
 /// 

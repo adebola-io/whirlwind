@@ -98,7 +98,7 @@ Got: '{right}'.",
             for (index, error) in sub_errors.iter().enumerate() {
                 string += &error.to_string();
                 if index + 1 != sub_errors.len() {
-                    string += "\n"
+                    string += "\n\n"
                 }
             }
             string

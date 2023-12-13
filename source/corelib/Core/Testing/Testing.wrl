@@ -1,7 +1,7 @@
 module Testing;
 
-use Super.Prelude.Bool;
-use Super.Prelude.Todo;
+use Core.Prelude.Bool;
+use Core.Prelude.Todo;
 
 /// Creates an assertion object.
 public function Assert<T>(value: T): Assertion<T> {

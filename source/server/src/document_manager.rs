@@ -18,6 +18,7 @@ use pretty::SymbolWriter;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
+    str::FromStr,
     sync::{Arc, Mutex},
 };
 use tower_lsp::{
@@ -58,8 +59,10 @@ pub struct DocumentManager {
 impl DocumentManager {
     /// Creates a new document manager.
     pub fn new(corelib_path: Option<PathBuf>) -> Self {
+        let mut standpoint = Standpoint::new(true, corelib_path);
+        standpoint.validate();
         DocumentManager {
-            standpoint: Arc::new(Mutex::new(Standpoint::new(true, corelib_path))),
+            standpoint: Arc::new(Mutex::new(standpoint)),
             was_updated: Arc::new(Mutex::new(true)),
             _diagnostic_report: Arc::new(Mutex::new(WorkspaceDiagnosticReportResult::Report(
                 Default::default(),
@@ -164,6 +167,20 @@ impl DocumentManager {
         if standpoint.contains_file(&path_buf) {
             return msgs;
         }
+        msgs.inform(format!(
+            "Could not find {} in the path list. The URI was {:?}",
+            path_buf.display(),
+            uri.to_file_path()
+                .map(|path| path.to_string_lossy().to_string())
+        ));
+        msgs.inform(format!(
+            "Full Path list: {:?}",
+            standpoint
+                .module_map
+                .paths()
+                .map(|(_, module)| module.path_buf.display())
+                .collect::<Vec<_>>()
+        ));
         match Module::from_path(path_buf) {
             Ok(module) => {
                 let path_idx = match standpoint.add_module(module) {
@@ -1019,10 +1036,13 @@ fn get_closest_symbol<'a>(
 
 /// Convert a uri to an absolute path.
 pub fn uri_to_absolute_path(uri: Url) -> Result<PathBuf, DocumentError> {
-    Ok(uri
+    match uri
         .to_file_path()
-        .or_else(|_| Err(DocumentError::CouldNotConvert(uri)))?
-        .canonicalize()?)
+        .map(|path| PathBuf::from_str(path.to_string_lossy().to_string().as_str()))
+    {
+        Ok(path) => path.map_err(|_| DocumentError::CouldNotConvert(uri)),
+        Err(_) => Err(DocumentError::CouldNotConvert(uri)),
+    }
 }
 
 /// Convert a path to a uri.

@@ -1,10 +1,10 @@
 module Os;
 
-use Super.Prelude.String;
-use Super.Prelude.{Array, UInt8, Display};
-use Super.Prelude.Outcome;
-use Super.Io.IoError;
-use Super.Primitives.UnsignedInt;
+use Core.Prelude.String;
+use Core.Prelude.{Array, UInt8, Display};
+use Core.Prelude.Outcome;
+use Core.Io.IoError;
+use Core.Primitives.UnsignedInt;
 
 public type PathLike = String | Buffer | URL;
 public type FileHandle = UnsignedInt;

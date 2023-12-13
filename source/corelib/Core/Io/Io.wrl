@@ -8,10 +8,10 @@
 /// for a consistent interface.
 module Io;
 
-use Super.Primitives.String;
-use Super.Prelude.Display;
-use Super.Internals.Invoke;
-use Super.Internals.Injunction;
+use Core.Primitives.String;
+use Core.Prelude.Display;
+use Core.Internals.Invoke;
+use Core.Internals.Injunction;
 
 /// Creates a new format object.
 public function Fmt(template: String): TemplateString {

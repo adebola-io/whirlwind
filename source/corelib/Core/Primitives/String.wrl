@@ -2,7 +2,7 @@ module String;
 
 use Ops.{ Addition, Sequenced };
 use Bool.Bool;
-use Super.{ 
+use Core.{ 
     Internals.{ Invoke, Injunction }, 
     Memory.{ Buffer }, 
     Collections.Hash,
@@ -11,10 +11,10 @@ use Super.{
 };
 use Numeric.{ Int, UnsignedInt, UInt8 };
 use Array.Array;
- 
+
 /// Model for creating, manipulating and formatting text sequences.
 public model String implements Addition + AsIterator<&String, Chars> + Sequenced + Display + Hash + Default {
-    var units: []UInt8;
+    var units: []UInt16;
     new() {
         this.units = [];
     }
@@ -85,18 +85,6 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     /// ```
     public function Append(suffix: String) {
         suffix.units.IntoIter().ForEach(fn(unit) this.units.Push(unit))
-    }
-    /// Returns an iterator over the bytes in the string.
-    /// ## Usage
-    /// ```
-    /// str := "adebola.xyz";
-    /// 
-    /// for byte in str.Bytes() {
-    ///     Print(byte)
-    /// }
-    /// ```
-    public function Bytes(): Buffer {
-        return new Buffer(&this.units);
     }
     /// Changes the first character of every word in the string to upper case.
     /// ## Usage
@@ -297,7 +285,11 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     /// Assert(str2).Equals("muinomednap");
     /// ```
     public function Reverse(): String {
-        return Invoke(Injunction.StrReverse(this));
+        newStr := new String();
+        this.units.Reverse().ForEach(fn(unit) {
+            newStr.units.Push(unit);
+        });
+        return newStr;
     }
     /// Returns a section of the string.
     /// The range argument is exclusive, meaning it goes from the left index all the way to one before the right.
@@ -307,7 +299,7 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     /// 
     /// Assert(str.Slice(0..5)).Equals(Some(&"Hello")); // index 0 to 4.
     /// ```
-    public function Slice(bounds: Range<UnsignedInt>): ?&String {
+    public function Slice(bounds: Range<UnsignedInt>): Maybe<&String> {
         return Invoke(Injunction.StrSlice(this, bounds));
     }
     /// Divides the string into a list of substrings based on a delimeter.

@@ -1,9 +1,9 @@
 module Http;
-use Super.Prelude.{
+use Core.Prelude.{
     Core, Bool, Todo, Outcome, Prospect, String,
     Maybe, UnsignedInt, Some, Array, None, Fatal
 };
-use Super.Primitives.Ops.Addition;
+use Core.Primitives.Ops.Addition;
 public use Request.{
     RequestParams, 
     HttpRequest, 

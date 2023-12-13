@@ -1,9 +1,9 @@
 module Request;
 
-use Super.Prelude.{Todo, String, Bool, Maybe, UnsignedInt, Outcome, Display};
-use Super.Memory.Buffer;
-use Super.Collections.HashMap;
-use Super.Io.IoError;
+use Core.Prelude.{Todo, String, Bool, Maybe, UnsignedInt, Outcome, Display};
+use Core.Memory.Buffer;
+use Core.Collections.HashMap;
+use Core.Io.IoError;
 use Response.HttpResponse;
 
 public enum HttpMethod {

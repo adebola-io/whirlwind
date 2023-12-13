@@ -1,8 +1,8 @@
 module Range;
 
-use Super.Prelude.Iteratable;
-use Super.Prelude.{Maybe, None, Some};
-use Super.Primitives.Ops.Sequenced;
+use Core.Prelude.Iteratable;
+use Core.Prelude.{Maybe, None, Some};
+use Core.Primitives.Ops.Sequenced;
 
 public model Range<T implements Sequenced> implements Iteratable<T> {
     public var start: T;

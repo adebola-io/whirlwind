@@ -1,7 +1,7 @@
 module Ops;
 
 use Bool.Bool;
-use Super.Prelude.Maybe;
+use Core.Prelude.Maybe;
 
 /// This interface allows the definition of models that can be added together 
 /// by overloading the `+` operator, such as strings and numbers.

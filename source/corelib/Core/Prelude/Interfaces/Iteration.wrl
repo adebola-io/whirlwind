@@ -1,11 +1,19 @@
-module Iteratable;
+/// This module provides a collection of powerful functions, models and interfaces for looping over
+/// sequences, manipulating elements and performing other various operations.
+/// 
+/// Its key feature is the `Iteratable` interface, an intrinsic interface implemented by all models
+/// that work with structured sequences.
+/// 
+/// The module also contains useful models that iterate with a certain behaviorial modifier, allowing for
+/// a more finegrained control over iteration.
+module Iteration;
 
-use Super.Array;
-use Super.Bool;
-use Super.Todo;
-use Super.Some;
-use Super.Maybe;
-use Super.Core.Collections.Tuple;
+use Core.Prelude.Array;
+use Core.Prelude.Bool;
+use Core.Prelude.Todo;
+use Core.Prelude.Some;
+use Core.Prelude.Maybe;
+use Core.Prelude.Core.Collections.Tuple;
 
 /// ## The Iteratable interface
 /// The Iteratable interface is a common abstraction that allows different types of collections to be traversed in a uniform way. 
@@ -93,8 +101,16 @@ public interface Iteratable<I> {
     /// Assert(iterator.Next()).Equals(Some(13));
     /// Assert(iterator.Next()).Equals(Some(14));
     /// ```
-    public function Any(predicate: fn(value: &I): Bool): Bool {
-        Todo()
+    public function Any(predicate: fn(value: I): Bool): Bool {
+        // while true {
+        //     next := this.Next();
+        //     if next.IsNone() {
+        //         return false;
+        //     }
+        //     if predicate(next.Unwrap()) {
+        //         return true;
+        //     }
+        // }
     }
     /// Returns true if all the elements produced by the iterator match a predicate.
     /// ### Usage
@@ -114,7 +130,15 @@ public interface Iteratable<I> {
     /// Assert(iter.Next()).Equals(Some(20));
     /// ```
     public function All(predicate: fn(value: &I): Bool): Bool {
-        Todo()
+        // while true {
+        //     next := this.Next();
+        //     if next.IsNone() {
+        //         return true;
+        //     }
+        //     if !predicate(next.Unwrap()) {
+        //         return false;
+        //     }
+        // }
     }
     /// Returns a new iterator consisting of tuples, which are made up of an index value and the item type.
     /// 
@@ -252,6 +276,23 @@ public model Map<I, O, J implements Iteratable<I>> implements Iteratable<O> {
 
 public model Unique<I, J implements Iteratable<I>> implements Iteratable<I> {}
 
+
+public model Reversed<I> implements Iteratable<I> {
+    var array: &[]I;
+    var idx: UnsignedInt;
+    new(array: &[]I) {
+        this.array = array;
+        this.idx = array.Length();
+    }
+    public function [Iteratable.Next](): ?I {
+        if this.idx == 0 {
+            None()
+        } else {
+            this.idx -= 1;
+            return Some(this.array[this.idx]);
+        }
+    }
+}
 
 /// This interface specifies that a model can be made into an iterator.
 public interface AsIterator<I, T implements Iteratable<I>> {

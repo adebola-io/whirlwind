@@ -74,6 +74,8 @@ impl From<(&Standpoint, SymbolIndex)> for HoverInfo {
                 contents.push(MarkedString::String(documentation))
             }
         }
+        // Reference symbols.
+
         return HoverInfo {
             contents: HoverContents::Array(contents),
         };

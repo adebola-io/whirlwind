@@ -1,6 +1,6 @@
 module Try;
 
-use Super.Outcome;
+use Core.Prelude.Outcome;
 
 public interface Try<T, U> {
     function Try(): Outcome<T, U>;

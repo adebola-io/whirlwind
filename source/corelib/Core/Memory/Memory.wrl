@@ -1,6 +1,6 @@
 module Memory;
 
-use Super.{
+use Core.{
     Primitives.UInt8,
     Prelude.{Iteratable, Maybe}
 };

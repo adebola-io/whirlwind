@@ -1,8 +1,8 @@
 module Maybe;
 
-use Super.{
+use Core.{
     Primitives.Bool,
-    Internals.{never, Injunction},
+    Internals.{never, Injunction, Invoke},
     Process.{FatalOnCaller, Todo},
 }; 
 use Outcome.{ Ok, Err, Outcome }; 
@@ -10,23 +10,18 @@ use Interfaces.{ Guaranteed, Try.Try, Default.Default };
 
 /// Creates a `Maybe` with no value.
 public function None<T>(): ?T {
-    // Maybe {
-    //     inner := MaybeVal.Some(value)
-    // }
-    Todo()
+    return Invoke(Injunction.None);
 }
 
 /// Creates a `Maybe` with an internal value.
 public function Some<T>(value: T): ?T {
-    // Maybe {
-    //     inner := MaybeVal.Some(value)
-    // }
-    Todo()
+    return Invoke(Injunction.MayCreate(value));
 }
 
 /// A value that may or may not exist.
 public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     var inner: MaybeVal;
+    var value: T;
 
     /// Implementation of `Guarantee` interface.
     function [Guaranteed.Guarantee](): T {
@@ -39,6 +34,15 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
         } else {
             return Err(None());
         }
+    }
+    public function And<U>(conjunct: ?U): ?U {
+        if this.IsSome() { conjunct } else { None() }
+    }
+    public function AndThen<U>(conjunct: fn(former: This): ?U): ?U {
+        if this.IsSome() { conjunct(*this) } else { None() }
+    }
+    public function Expect(error: String): T {
+        if this.IsNone() { Fatal(Some(error)) } else { this.Unwrap() }
     }
     /// Returns a Bool indicating if the Maybe contains no value.
     /// ### Usage
@@ -80,18 +84,47 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     /// AssertThat(!maybeInt3.IsSomeAnd(predicate));
     /// ```
     public function IsSomeAnd(predicate: fn(value: &T): Bool): Bool {
-        // this.inner => {
-        //     .Some(value) => predicate(&value),
-        //     .None => false
-        // }
-        Todo()
+        this.IsSome() && predicate(&this.Unwrap())
     }
     /// Performs a computation if there is an internal value contained.
     public function IsSomeThen(consequent: fn(value: T)) {
-        Todo()
+        if this.IsNone() {
+            return;
+        };
+        consequent(this.Unwrap());
+    }
+    /// Performs a computation if there is no value contained in the Maybe.
+    public function IsNoneThen(consequent: fn()) {
+        if this.IsNone() {
+            consequent();
+        };
+    }
+    public function SomeOr<E>(error: E): Outcome<T, E> {
+        if this.IsNone() { Err(error) } else { Ok(this.Unwrap()) }
+    }
+    /// Provides a safe and concise way to combine two indeterminate values, returning the first
+    /// `Maybe` if it has a value, the second if the first is empty.
+    /// 
+    /// ### Usage
+    /// ```
+    /// govname: ?String := Some("John");
+    /// nickname: ?String := None();
+    /// 
+    /// name := govName.Or(nickname);
+    /// Assert(name).Equals("John");
+    /// 
+    /// name2 := nickname.Or(govname);
+    /// Assert(name2).Equals("John");
+    /// ```
+    public function Or(alternate: ?T): ?T {
+        if this.IsSome() { *this } else { alternate }
+    }
+    public function OrElse(alternate: fn(): ?T): ?T {
+        if this.IsSome() { *this } else { alternate() }
     }
     /// Ignores the maybe and returns the internal value. 
     /// It will throw an error if no value is present.
+    /// <!--ignore-->
     /// ### Usage
     /// ```
     /// numValue := Some(89);
@@ -103,37 +136,52 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     /// ### Panics
     /// It panics if called on a `Maybe` with no value.
     public function Unwrap(): T {
-        // this.inner => {
-        //     .None => PanicOnCaller("Called Unwrap on a None Value"),
-        //     .Some(value) => value,
-        // }
-        Todo()
+        return Invoke(Injunction.MayUnwrap(this));
     }
     /// Returns the internal value, or another given value.
     public function UnwrapOr(value: T): T {
-        // this.inner => {
-        //     .Some(innerValue) => innerValue,
-        //     .None => value
-        // }
-        Todo()
+        if this.IsNone() { value } else { this.Unwrap() }
     }
     /// Returns the internal value, or computes another given value.
     public function UnwrapOrElse(fallback: fn(): T): T {
-        // this.inner => {
-        //     .Some(value) => value,
-        //     .None => fallback()
-        // }
-        Todo()
+        if this.IsNone() { fallback() } else { this.Unwrap() }
     }
-    /// Converts a `Maybe<T>` to a `Maybe<E>` by applying a function.
+    /// Converts a `Maybe<T>` to a `Maybe<E>` by applying a transformation function.
     public function Map<U>(func: fn(former: T): U): ?U {
         Some(func(this?))
-    }   
+    } 
+    /// Unwraps a Maybe and returns its internal value if it exists.
+    /// 
+    /// If it does not, it returns the default value of the internal type.
+    /// ### Usage
+    /// ```
+    /// i := Some(50);
+    /// Assert(Maybe.UnwrapOrDefault(i)).Equals(50);
+    /// 
+    /// j: ?UInt8 := None();
+    /// Assert(Maybe.UnwrapOrDefault(j)).Equals(0); // default value for UInt8.
+    /// ```
     public static function UnwrapOrDefault<U implements Default>(value: ?U): U {
-        Todo()
+        if value.IsNone() {
+            var default: U;
+            default
+        } else {
+            value.Unwrap()
+        }
+    }
+    public function Xor(other: ?T): ?T {
+        if this.IsSome() && other.IsNone() {
+            return *this;
+        }
+        if this.IsNone() && other.IsSome() {
+            return other;
+        }
+        return None();
+    }
+    public static function Flatten<U>(maybe: ??U): ?U {
+        if maybe.IsNone() { None() } else { maybe.Unwrap() }
     }
 }
-
 
 enum MaybeVal {
     Some,

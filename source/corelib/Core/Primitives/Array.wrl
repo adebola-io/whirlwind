@@ -3,11 +3,11 @@ module Array;
 use Bool.Bool;
 use Numeric.{ Int, UnsignedInt };
 use Ops.{ Orderable, Addition };
-use Super.Prelude.{ AsIterator, Maybe, None, Some, Todo, String, Default };
-use Super.Prelude.Iteratable;
-use Super.Prelude.Display;
-use Super.Math.{ Max, Min };
-use Super.Internals.{ Injunction, Invoke };
+use Core.Prelude.{ AsIterator, Maybe, None, Some, Todo, String, Default };
+use Core.Prelude.Iteration.Reversed;
+use Core.Prelude.Display;
+use Core.Math.{ Max, Min };
+use Core.Internals.{ Injunction, Invoke };
 
 /// A contiguous, growable list of items.
 public model Array<T> implements AsIterator<T, ArrayIter<T>> {
@@ -70,7 +70,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// ```
     /// To check for comparative equality, consider using `.Iter().Any(...)`.
     public function Contains(value: &T): Bool {
-        this.IntoIter().Any(fn(element) element is value)
+        this.IntoIter().Any(fn(element) element is *value)
     }
     /// Removes all elements in the array.
     /// ### Usage
@@ -174,6 +174,9 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     public function Pop(): ?T {
         Todo()
     }
+    public function Reverse(): Reversed<T> {
+        return new Reversed(this);
+    }
     /// Removes the first item in the array
     /// and shifts all the other items backward
     /// by one index.
@@ -227,7 +230,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
             }
         });
         string.Append("]");
-        string
+        return string;
     }
     /// Sorts an array in place, given that its elements are orderable.
     /// ### Usage

@@ -1,7 +1,7 @@
 module Numeric;
 
-use Super.Prelude.{Display, Default};
-use Super.Internals.{Invoke, Injunction};
+use Core.Prelude.{Display, Default};
+use Core.Internals.{Invoke, Injunction};
 use String.String;
 use Ops.{Addition, Sequenced};
 

@@ -554,30 +554,27 @@ impl Standpoint {
         // intrinsic paths.
         let current_module_type = if let Some(folder) = core_path_folder {
             if let Ok(path) = module_path.strip_prefix(folder) {
-                if let Some(path_str) = path.to_str() {
-                    match path_str {
-                        Self::ARRAY => CurrentModuleType::Array,
-                        Self::ASYNC => CurrentModuleType::Async,
-                        Self::BOOL => CurrentModuleType::Bool,
-                        Self::NUMERIC => CurrentModuleType::Numeric,
-                        Self::INTERNAL => CurrentModuleType::Internal,
-                        Self::ITERATABLE => CurrentModuleType::Iteratable,
-                        Self::OPS => CurrentModuleType::Ops,
-                        Self::INTERFACES => CurrentModuleType::Interfaces,
-                        Self::RANGE => CurrentModuleType::Range,
-                        Self::STRING => CurrentModuleType::String,
-                        Self::DEFAULT => CurrentModuleType::Default,
-                        Self::TRY => CurrentModuleType::Try,
-                        Self::GUARANTEED => CurrentModuleType::Guaranteed,
-                        Self::MAYBE => CurrentModuleType::Maybe,
-                        Self::PRELUDE => {
-                            is_prelude = true;
-                            CurrentModuleType::Regular
-                        }
-                        _ => CurrentModuleType::Regular,
+                let path_str = path.to_string_lossy().replace("\\", "/");
+                match path_str.as_str() {
+                    Self::ARRAY => CurrentModuleType::Array,
+                    Self::ASYNC => CurrentModuleType::Async,
+                    Self::BOOL => CurrentModuleType::Bool,
+                    Self::NUMERIC => CurrentModuleType::Numeric,
+                    Self::INTERNAL => CurrentModuleType::Internal,
+                    Self::ITERATABLE => CurrentModuleType::Iteratable,
+                    Self::OPS => CurrentModuleType::Ops,
+                    Self::INTERFACES => CurrentModuleType::Interfaces,
+                    Self::RANGE => CurrentModuleType::Range,
+                    Self::STRING => CurrentModuleType::String,
+                    Self::DEFAULT => CurrentModuleType::Default,
+                    Self::TRY => CurrentModuleType::Try,
+                    Self::GUARANTEED => CurrentModuleType::Guaranteed,
+                    Self::MAYBE => CurrentModuleType::Maybe,
+                    Self::PRELUDE => {
+                        is_prelude = true;
+                        CurrentModuleType::Regular
                     }
-                } else {
-                    CurrentModuleType::Regular
+                    _ => CurrentModuleType::Regular,
                 }
             } else {
                 CurrentModuleType::Regular

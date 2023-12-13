@@ -35,7 +35,7 @@ pub trait IntrinsicPaths {
     const OPS: &'static str = "Primitives/Ops.wrl";
     const INTERFACES: &'static str = "Prelude/Interfaces.wrl";
     const RANGE: &'static str = "Prelude/Range.wrl";
-    const ITERATABLE: &'static str = "Prelude/Interfaces/Iteratable.wrl";
+    const ITERATABLE: &'static str = "Prelude/Interfaces/Iteration.wrl";
     const TRY: &'static str = "Prelude/Interfaces/Try.wrl";
     const GUARANTEED: &'static str = "Prelude/Interfaces/Guaranteed.wrl";
     const DEFAULT: &'static str = "Prelude/Interfaces/Default.wrl";

@@ -5,7 +5,6 @@ use Core.Primitives.Ops.Addition;
 
 /// Returns true if a username is valid.
 public function IsValidUsername(value: &String): Bool {
-    value.IsAlphanumeric()
-    //  && value.Length() > 3 && value.Length() < 30
+    return value.IsAlphanumeric();
 }
 

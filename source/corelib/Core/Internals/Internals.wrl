@@ -1,7 +1,7 @@
 module Internals;
 
-use Super.Primitives.Bool;
-use Super.Prelude.UnsignedInt;
+use Core.Primitives.Bool;
+use Core.Prelude.UnsignedInt;
 public use Injunction.{ Injunction, Invoke };
 
 /// ### The Never Type

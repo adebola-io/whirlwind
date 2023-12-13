@@ -2,12 +2,13 @@
 /// for the creation and utilization of concurrent processes.
 module Async;
 
-use Super.Prelude.Bool;
-use Super.Prelude.Todo;
-use Super.Prelude.Guaranteed;
-use Super.Process.Fatal;
-use Super.Internals.{Injunction, Invoke, Sequence};
-use Super.Primitives.UnsignedInt;
+use Core.Prelude.Bool;
+use Core.Prelude.Todo;
+use Core.Prelude.Guaranteed;
+use Core.Process.Fatal;
+use Core.Prelude.Some;
+use Core.Internals.{Injunction, Invoke, Sequence};
+use Core.Primitives.UnsignedInt;
 
 /// Asynchronous functions do not run automatically in Whirlwind. 
 /// 

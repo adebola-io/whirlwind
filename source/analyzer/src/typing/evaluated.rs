@@ -356,7 +356,7 @@ pub fn evaluate(
     // A value that safe guards against infinitely recursive union types, or indirect recursion in type aliases.
     mut recursion_depth: u64,
 ) -> EvaluatedType {
-    if recursion_depth == 500 {
+    if recursion_depth == 200 {
         return EvaluatedType::Never;
     } else {
         recursion_depth += 1;

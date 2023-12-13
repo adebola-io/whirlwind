@@ -1,5 +1,5 @@
 module Bool;
-use Super.Prelude.Display;
+use Core.Prelude.Display;
 
 
 public model Bool implements Display {

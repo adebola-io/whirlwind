@@ -1,15 +1,24 @@
-/// The `Prelude` module
+/// ## The Whirlwind Prelude
+/// 
+/// The `Prelude` module is a core module that exposes a set of fundamental types, functions and models,
+/// automatically available in the global namespace of every other module.
+/// 
+/// These functionalities are considered essential for writing clear, efficient code, and would be tedious
+/// to import again and again into other modules. The `Prelude` reduces boilerplate by predefining these values,
+/// increasing code readability, consistency and productivity.
 module Prelude;
 
 public use Core;
 public use Interfaces.{
-    Default.Default, Display.Display, Iteratable.{Iteratable, AsIterator, Flatten}, 
+    Default.Default, Display.Display, 
+    Iteration,
+    Iteration.{Iteratable, AsIterator, Flatten}, 
     Guaranteed.Guaranteed, Try.Try
 };
 public use Outcome.{Ok, Err, Outcome};
 public use Maybe.{None, Some, Maybe};
 public use Range.Range;
-public use Super.{
+public use Core.{
     Io.Print,
     Async.{Eventual, Prospect, ToSync},
     Primitives.{

@@ -1,6 +1,6 @@
 module HashMap;
 
-use Super.Prelude.Todo;
+use Core.Prelude.Todo;
 
 public interface Hash {
     

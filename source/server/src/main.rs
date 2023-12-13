@@ -82,6 +82,11 @@ impl LanguageServer for Backend {
         self.log_message("Extension Name: Whirlwind Language Server")
             .await;
         self.log_message("Extension Version: 0.0.0").await;
+        self.log_message(format!(
+            "{:?}",
+            self.docs.standpoint.lock().unwrap().prelude_path
+        ))
+        .await;
     }
 
     async fn shutdown(&self) -> Result<()> {
@@ -218,6 +223,7 @@ impl Backend {
 #[tokio::main]
 async fn main() {
     std::env::set_var("RUST_BACKTRACE", "1");
+    std::env::set_var("RUST_MIN_STACK", "8388608");
     let _args: Vec<String> = std::env::args().collect();
     let core_path = _args.get(1).map(|arg| PathBuf::from(arg));
     let stdin = tokio::io::stdin();

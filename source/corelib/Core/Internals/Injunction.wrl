@@ -1,6 +1,6 @@
 module Injunction;
 
-use Super.{
+use Core.{
     Prelude.Range,
     Async.Eventual,
     Primitives.{

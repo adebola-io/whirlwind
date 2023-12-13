@@ -1,13 +1,13 @@
 module Process;
 
-use Super.{
+use Core.{
     Primitives.String,
     Primitives.UnsignedInt,
     Async.CurrentSequence,
     Internals.{Invoke, Injunction},
 };
-use Super.Prelude.Maybe;
-use Super.Os.PathLike;
+use Core.Prelude.Maybe;
+use Core.Os.PathLike;
 
 /// Unwinds the stack by one frame and crashes with a fatal error.
 public function FatalOnCaller(message: String): never  {
