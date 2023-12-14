@@ -304,6 +304,20 @@ impl ScopeEntry {
             _ => panic!("{} is not a variable!!", self.name()),
         }
     }
+    /// Returns the entry as a loop variable. Panics if the entry is not a loop variable variant
+    pub fn loop_var(&self) -> &LoopVariable {
+        match self {
+            ScopeEntry::LoopVariable(l) => l,
+            _ => panic!("{} is not a loop variable!!", self.name()),
+        }
+    }
+    /// Returns the entry as a mutable loop variable. Panics if the entry is not a loop variable variant
+    pub fn loop_var_mut(&mut self) -> &mut LoopVariable {
+        match self {
+            ScopeEntry::LoopVariable(l) => l,
+            _ => panic!("{} is not a loop variable!!", self.name()),
+        }
+    }
     /// Returns true of the entry is reserved.
     pub fn is_reserved(&self) -> bool {
         matches!(self, ScopeEntry::ReservedSpace)

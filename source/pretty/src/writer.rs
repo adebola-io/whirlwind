@@ -142,6 +142,29 @@ impl<'a> SymbolWriter<'a> {
                     string.push_str("{unknown}")
                 }
             }
+            SemanticSymbolKind::LoopVariable {
+                inferred_type,
+                pattern_type,
+            } => {
+                string.push_str(&symbol.name);
+                string.push_str(": ");
+                // Always favor displaying the inferred type over the declared one.
+                if !matches!(inferred_type, EvaluatedType::Unknown { .. }) {
+                    let type_as_string = self
+                        .standpoint
+                        .symbol_library
+                        .format_evaluated_type(inferred_type);
+                    string.push_str(&type_as_string);
+                } else {
+                    match pattern_type {
+                        VariablePatternForm::Normal => string.push_str("{unknown}"),
+                        VariablePatternForm::DestructuredFromObject { .. } => {
+                            string.push_str("  [(property)]")
+                        }
+                        VariablePatternForm::DestructuredFromArray => string.push_str("[item]"),
+                    }
+                }
+            }
             SemanticSymbolKind::Constant {
                 is_public,
                 declared_type,

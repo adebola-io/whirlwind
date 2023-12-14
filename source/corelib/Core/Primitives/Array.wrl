@@ -11,6 +11,7 @@ use Core.Internals.{ Injunction, Invoke };
 
 /// A contiguous, growable list of items.
 public model Array<T> implements AsIterator<T, ArrayIter<T>> {
+    var length: UnsignedInt;
     public function [AsIterator.IntoIter](): ArrayIter<T> {
         new ArrayIter(this)
     }
@@ -37,13 +38,12 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// Assert(arr.At(-1)).Equals(Some(55))
     /// ```
     public function At(index: Int): Maybe<&T> {
-        length := this.Length();
         i := if index < 0 {
-            length + index
+            this.length + index
         } else {
             index
         };
-        if i > length or i < 0 {
+        if i > this.length or i < 0 {
             return None();
         };
         a := this[i.Unsigned()];
@@ -94,7 +94,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// Assert(empty.First()).Equals(None());
     /// ```
     public function First(): Maybe<&T> {
-        if this.Length() == 0 { None() } 
+        if this.length == 0 { None() } 
         else Some(&this[0])
     }
     /// Returns the zero-based index of a value in the array.
@@ -145,7 +145,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// Assert(arr.Length()).Equals(4);
     /// ```
     public function Length(): UnsignedInt {
-        return Invoke(Injunction.ArrLength(this));
+        return this.length;
     }
     /// Adds an item to the end of the array.
     /// ### Usage
@@ -174,6 +174,19 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     public function Pop(): ?T {
         Todo()
     }
+    /// Returns an iterator that produces elements from the end of the array
+    /// to the start.
+    /// ### Usage
+    /// ```
+    /// array := [7, 8, 9];
+    /// rev := array.Reverse();
+    /// 
+    /// Assert(rev.Next()).Equals(Some(9));
+    /// Assert(rev.Next()).Equals(Some(8));
+    /// Assert(rev.Next()).Equals(Some(7));
+    /// 
+    /// Assert(rev.Next()).Equals(None());
+    /// ```
     public function Reverse(): Reversed<T> {
         return new Reversed(this);
     }
@@ -205,9 +218,8 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     }
     /// Returns a reference to the last item in the array.
     public function Last(): Maybe<&T> {
-        length := this.Length();
-        if length == 0 { None() } 
-        else Some(&this[length - 1])
+        if this.length == 0 { None() } 
+        else Some(&this[this.length - 1])
     }
     /// Converts an array to a string representation,
     /// given that its elements implement `Display`.
@@ -225,7 +237,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
             index := tuple.one;
             item := tuple.two;
             string.Append(item.ToStr());
-            if index + 1 != array.Length() {
+            if index + 1 != array.length {
                 string.Append(",")
             }
         });

@@ -9,7 +9,7 @@ use Core.{
     Prelude.{ Maybe, AsIterator, Iteratable, Range, Display, Some, Default },
     Process.Todo,
 };
-use Numeric.{ Int, UnsignedInt, UInt8 };
+use Numeric.{ Int, UnsignedInt, UInt8, UInt16 };
 use Array.Array;
 
 /// Model for creating, manipulating and formatting text sequences.
@@ -287,7 +287,7 @@ public model String implements Addition + AsIterator<&String, Chars> + Sequenced
     public function Reverse(): String {
         newStr := new String();
         this.units.Reverse().ForEach(fn(unit) {
-            newStr.units.Push(unit);
+            newStr.units.Push(*unit);
         });
         return newStr;
     }

@@ -436,6 +436,24 @@ fn test_variable_binding() {
 }
 
 #[test]
+fn test_forloop_binding() {
+    let text = "
+            module Test;
+
+            public function Main() {
+                a := [1, 2, 3];
+                for { num as n } in a {
+                    
+                }
+            }
+        ";
+    let mut module = Module::from_text(text);
+    module.module_path = Some(PathBuf::from("testing://Test.wrl"));
+    let standpoint = Standpoint::build_from_module(module, false).unwrap();
+    println!("{:#?}", standpoint.symbol_library);
+}
+
+#[test]
 fn testing_the_standard_library() {
     let time = std::time::Instant::now();
     let corelib_path = Some(PathBuf::from(CORE_LIBRARY_PATH));

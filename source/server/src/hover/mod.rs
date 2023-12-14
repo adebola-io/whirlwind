@@ -584,14 +584,27 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
     fn for_statement(&self, forstat: &analyzer::TypedForStatement) -> Option<HoverInfo> {
         within!(forstat.span, self);
         // hovering over the loop variables.
-        for _ in &forstat.items {
-            // todo:
+        for name in &forstat.items {
+            let symbol = self.standpoint.symbol_library.get(*name)?;
+            // Hovering over variable name.
+            if symbol.ident_span().contains(self.pos) {
+                self.message_store
+                    .borrow_mut()
+                    .inform("Hovering over loop variable name...");
+                return Some(HoverInfo::from((self.standpoint, *name)));
+            };
         }
         // hovering over label.
         maybe!(forstat
             .label
             .as_ref()
-            .and_then(|ident| self.identifier(ident)));
+            .and_then(|ident| Some((ident, self.standpoint.symbol_library.get(*ident)?)))
+            .and_then(|(idx, symbol)| {
+                symbol
+                    .ident_span()
+                    .contains(self.pos)
+                    .then(|| HoverInfo::from((self.standpoint, *idx)))
+            }));
         // hovering over loop iterator.
         maybe!(self.expr(&forstat.iterator));
         self.block(&forstat.body)

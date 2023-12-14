@@ -170,6 +170,11 @@ pub enum SemanticSymbolKind {
         is_opaque: bool,
         resolved: Option<SymbolIndex>,
     },
+    /// A type of variable that is bound to the scope of a for loop.
+    LoopVariable {
+        pattern_type: VariablePatternForm,
+        inferred_type: EvaluatedType,
+    },
 }
 
 impl SemanticSymbolKind {

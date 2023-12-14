@@ -589,8 +589,11 @@ fn generate_documentation(
     let symbol = writer
         .standpoint
         .symbol_library
-        .get_forwarded(*symbol_idx)
-        .unwrap();
+        .get_forwarded(*symbol_idx);
+    let symbol = match symbol {
+        Some(symbol) => symbol,
+        _ => return Documentation::String(String::new()),
+    };
     // Documentation?
     if let Some(ref docs) = symbol.doc_info {
         let mut info = String::new();

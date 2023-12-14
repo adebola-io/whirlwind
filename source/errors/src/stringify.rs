@@ -232,6 +232,8 @@ impl std::fmt::Display for ContextErrorType {
             ContextErrorType::DuplicateParameterName { name } => format!("Duplicate parameter name '{name}'."),
             ContextErrorType::RequiredAfterOptional => format!("A required parameter cannot follow an optional one."),
             ContextErrorType::DuplicateEnumVariant { name } => format!("Duplicate enum variant '{name}'."),
+            ContextErrorType::DuplicateLoopVariable { name } => format!("Duplicate loop variable '{name}'"),
+            
                 
         };
         write!(f, "{message}")

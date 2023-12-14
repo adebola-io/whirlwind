@@ -147,11 +147,9 @@ pub fn bind(
 }
 
 mod bind_utils {
-    use ast::VariablePattern;
-
-    use crate::{EvaluatedType, ScopeId, VariablePatternForm};
-
     use super::*;
+    use crate::{EvaluatedType, ScopeId, VariablePatternForm};
+    use ast::VariablePattern;
 
     /// Bind an entry within a scope.
     pub fn handle_scope_entry(
@@ -246,7 +244,7 @@ mod bind_utils {
         // Add reference to this.
         symbol_library
             .get_mut(symbol_index)
-            .unwrap()
+            .expect("First value not yet added!")
             .add_reference(binder.path, entry_2.ident().unwrap().span);
         // return index of former declaration.
         symbol_index
@@ -537,7 +535,9 @@ mod bind_utils {
                 binder.known_values.insert(span, symbol_idx);
                 symbol_idx
             }
-            ScopeEntry::LoopVariable(_) => todo!(),
+            ScopeEntry::LoopVariable(label) => {
+                unreachable!("Encountered an unbound loop variable while binding.")
+            }
             ScopeEntry::LoopLabel(_) => todo!(),
         };
         // Account for intrinsic types.
@@ -745,17 +745,16 @@ mod bind_utils {
 
 /// Statements
 mod statements {
-    use ast::{InterfaceBody, InterfacePropertyType};
-
-    use crate::{EvaluatedType, ScopeId};
-
+    use self::expressions::bind_block;
     use super::{
         bind_utils::{add_ctx_error, handle_scope_entry},
-        expressions::{bind_block, bind_expression},
+        expressions::bind_expression,
         literals::bind_string,
         types::{bind_generic_parameters, bind_type_expression},
         *,
     };
+    use crate::{EvaluatedType, ScopeId, VariablePatternForm};
+    use ast::{unwrap_or_continue, InterfaceBody, InterfacePropertyType, VariablePattern};
 
     // Bind a statement.
     pub fn bind_statement(
@@ -881,7 +880,14 @@ mod statements {
                     ambience,
                 ))
             }
-            Statement::ForStatement(for_stat) => TypedStmnt::ForStatement(for_statement(for_stat)),
+            Statement::ForStatement(for_stat) => TypedStmnt::ForStatement(for_statement(
+                for_stat,
+                binder,
+                symbol_library,
+                errors,
+                literals,
+                ambience,
+            )),
             Statement::VariableDeclaration(variable) => {
                 TypedStmnt::VariableDeclaration(bind_variable_declaration(
                     variable,
@@ -2433,8 +2439,146 @@ mod statements {
         };
     }
     /// Binds a for statement.
-    pub fn for_statement(_for_statement: ast::ForStatement) -> TypedForStatement {
-        todo!()
+    pub fn for_statement(
+        fors: ast::ForStatement,
+        binder: &mut Binder,
+        symbol_library: &mut SymbolLibrary,
+        errors: &mut Vec<ProgramError>,
+        literals: &mut LiteralMap,
+        ambience: &mut ModuleAmbience,
+    ) -> TypedForStatement {
+        // As with parameters, variables declared in the loop header are
+        // treated as declarations local to the for loop block.
+        // Scope lookup ensures that they will always rank higher than
+        // normal variables.
+        ambience.jump_to_scope(fors.body.scope_id);
+        let origin_scope_id = Some(ScopeId(fors.body.scope_id as u32));
+        let mut details = vec![];
+        let mut items = vec![];
+        for address in fors.items {
+            let entry = ambience.get_entry_unguarded(address);
+            // Block duplication of names.
+            if details.iter().any(|name| name == entry.name()) {
+                add_ctx_error(
+                    binder,
+                    errors,
+                    errors::duplicate_loop_variable(entry.ident().unwrap()),
+                );
+                continue;
+            }
+            let loopvar = match entry {
+                ScopeEntry::LoopVariable(var) => var,
+                _ => continue,
+            };
+            let loopident = unwrap_or_continue!(entry.ident());
+            details.push(loopident.name.clone());
+            // The origin_span for a loop variable is the same as its ident_span.
+            let origin_span = loopident.span;
+            // Generate symbol from the loop variable.
+            let symbol = match &loopvar.name {
+                VariablePattern::Identifier(i) => SemanticSymbol {
+                    name: i.name.clone(),
+                    kind: SemanticSymbolKind::LoopVariable {
+                        inferred_type: EvaluatedType::Unknown,
+                        pattern_type: VariablePatternForm::Normal,
+                    },
+                    references: vec![SymbolReferenceList {
+                        module_path: binder.path,
+                        starts: vec![i.span.start],
+                    }],
+                    doc_info: None,
+                    origin_span,
+                    origin_scope_id,
+                },
+                VariablePattern::ObjectPattern {
+                    real_name, alias, ..
+                } => {
+                    // A property symbol is needed to handle the indirection.
+                    let mut property_symbol = SemanticSymbol {
+                        name: real_name.name.clone(),
+                        kind: SemanticSymbolKind::Property {
+                            resolved: None,
+                            is_opaque: false,
+                        },
+                        references: vec![],
+                        doc_info: None,
+                        origin_span: real_name.span,
+                        origin_scope_id,
+                    };
+                    property_symbol.add_reference(binder.path, real_name.span);
+                    let from_property = symbol_library.add_to_table(binder.path, property_symbol);
+                    let name = alias.as_ref().unwrap_or(real_name);
+                    SemanticSymbol {
+                        name: name.name.clone(),
+                        kind: SemanticSymbolKind::LoopVariable {
+                            inferred_type: EvaluatedType::Unknown,
+                            pattern_type: VariablePatternForm::DestructuredFromObject {
+                                from_property,
+                            },
+                        },
+                        references: vec![SymbolReferenceList {
+                            module_path: binder.path,
+                            starts: vec![name.span.start],
+                        }],
+                        doc_info: None,
+                        origin_span,
+                        origin_scope_id,
+                    }
+                }
+                VariablePattern::ArrayPattern(i) => SemanticSymbol {
+                    name: i.name.clone(),
+                    kind: SemanticSymbolKind::LoopVariable {
+                        inferred_type: EvaluatedType::Unknown,
+                        pattern_type: VariablePatternForm::DestructuredFromArray,
+                    },
+                    references: vec![SymbolReferenceList {
+                        module_path: binder.path,
+                        starts: vec![i.span.start],
+                    }],
+                    doc_info: None,
+                    origin_span,
+                    origin_scope_id,
+                },
+            };
+            let symbol_idx = symbol_library.add_to_table(binder.path, symbol);
+            binder.known_values.insert(origin_span, symbol_idx);
+            items.push(symbol_idx);
+        }
+        ambience.leave_scope();
+        let iterator = bind_expression(
+            fors.iterator,
+            binder,
+            symbol_library,
+            errors,
+            literals,
+            ambience,
+        );
+        let body = bind_block(
+            fors.body,
+            binder,
+            symbol_library,
+            errors,
+            literals,
+            ambience,
+        );
+        TypedForStatement {
+            items,
+            iterator,
+            label: fors.label.and_then(|address| {
+                handle_scope_entry(
+                    binder,
+                    symbol_library,
+                    errors,
+                    ambience,
+                    address,
+                    fors.span,
+                    false,
+                )
+                .ok()
+            }),
+            body,
+            span: fors.span,
+        }
     }
 }
 

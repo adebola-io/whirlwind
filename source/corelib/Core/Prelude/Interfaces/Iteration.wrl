@@ -152,7 +152,7 @@ public interface Iteratable<I> {
     /// 
     /// ### Usage
     /// ```
-    /// nameList := ["Mary", "Uche", "Abdul", "Fatima", "Xi"];
+    /// nameList := ["Mary", "Uche", "Abdul", "Fatima", "Bao"];
     /// namesIter := names.Iter();
     /// startsWithA := namesIter().Find(fn(name) name.StartsWith("A"));
     /// 
@@ -160,7 +160,7 @@ public interface Iteratable<I> {
     /// 
     /// // If there are still elements, the iterator can still be used.
     /// Assert(namesIter.Next()).Equals(Some("Fatima"));
-    /// Assert(namesIter.Next()).Equals(Some("Xi"));
+    /// Assert(namesIter.Next()).Equals(Some("Bao"));
     /// ```
     public function Find(predicate: fn(value: &I): Bool): ?I {
         Todo()
@@ -277,19 +277,19 @@ public model Map<I, O, J implements Iteratable<I>> implements Iteratable<O> {
 public model Unique<I, J implements Iteratable<I>> implements Iteratable<I> {}
 
 
-public model Reversed<I> implements Iteratable<I> {
+public model Reversed<I> implements Iteratable<&I> {
     var array: &[]I;
     var idx: UnsignedInt;
     new(array: &[]I) {
         this.array = array;
         this.idx = array.Length();
     }
-    public function [Iteratable.Next](): ?I {
+    public function [Iteratable.Next](): Maybe<&I> {
         if this.idx == 0 {
             None()
         } else {
             this.idx -= 1;
-            return Some(this.array[this.idx]);
+            return Some(&this.array[this.idx]);
         }
     }
 }

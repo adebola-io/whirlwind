@@ -45,6 +45,10 @@ pub enum ContextErrorType {
     DuplicateEnumVariant {
         name: String,
     },
+    /// Declaraing two loop variables with the same name.
+    DuplicateLoopVariable {
+        name: String,
+    },
 }
 
 pub fn unknown_value(name: String, span: ast::Span) -> ContextError {
@@ -113,6 +117,15 @@ pub fn duplicate_enum_variant(name: ast::Identifier) -> ContextError {
     ContextError {
         _type: ContextErrorType::DuplicateEnumVariant {
             name: name.name.to_owned(),
+        },
+        span: name.span,
+    }
+}
+
+pub fn duplicate_loop_variable(name: &ast::Identifier) -> ContextError {
+    ContextError {
+        _type: ContextErrorType::DuplicateLoopVariable {
+            name: name.name.clone(),
         },
         span: name.span,
     }
