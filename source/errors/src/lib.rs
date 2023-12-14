@@ -20,3 +20,17 @@ pub enum ModuleError<'a> {
     TypeError(&'a TypeError),
     ImportError(&'a ImportError),
 }
+
+pub fn implicit_loop_return(rettype: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::ImplicitLoopReturn { rettype },
+        span,
+    }
+}
+
+pub fn illegal_iterator(illegal_type: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::Illegalterator { illegal_type },
+        span,
+    }
+}

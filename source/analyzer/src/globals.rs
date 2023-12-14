@@ -19,7 +19,7 @@ pub enum CurrentModuleType {
     Interfaces,
     Guaranteed,
     Try,
-    Iteratable,
+    Iteration,
     Range,
     Default,
     Maybe,

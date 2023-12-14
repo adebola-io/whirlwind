@@ -5,7 +5,7 @@ use Core.Prelude.UnsignedInt;
 public use Injunction.{ Injunction, Invoke };
 
 /// ### The Never Type
-/// `never` is a type representing the set of values that cannot occur.
+/// `never` is a type representing the set of values that _cannot_ occur.
 /// 
 /// Examples of never types are:
 /// - the return value of a function that exits the program,

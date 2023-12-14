@@ -95,9 +95,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     }
     /// Performs a computation if there is no value contained in the Maybe.
     public function IsNoneThen(consequent: fn()) {
-        if this.IsNone() {
-            consequent();
-        };
+        if this.IsNone() { consequent() };
     }
     public function SomeOr<E>(error: E): Outcome<T, E> {
         if this.IsNone() { Err(error) } else { Ok(this.Unwrap()) }
@@ -150,6 +148,15 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     public function Map<U>(func: fn(former: T): U): ?U {
         Some(func(this?))
     } 
+    public function Xor(other: ?T): ?T {
+        if this.IsSome() && other.IsNone() {
+            return *this;
+        }
+        if this.IsNone() && other.IsSome() {
+            return other;
+        }
+        return None();
+    }
     /// Unwraps a Maybe and returns its internal value if it exists.
     /// 
     /// If it does not, it returns the default value of the internal type.
@@ -168,15 +175,6 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
         } else {
             value.Unwrap()
         }
-    }
-    public function Xor(other: ?T): ?T {
-        if this.IsSome() && other.IsNone() {
-            return *this;
-        }
-        if this.IsNone() && other.IsSome() {
-            return other;
-        }
-        return None();
     }
     public static function Flatten<U>(maybe: ??U): ?U {
         if maybe.IsNone() { None() } else { maybe.Unwrap() }

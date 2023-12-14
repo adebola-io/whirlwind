@@ -535,7 +535,7 @@ mod bind_utils {
                 binder.known_values.insert(span, symbol_idx);
                 symbol_idx
             }
-            ScopeEntry::LoopVariable(label) => {
+            ScopeEntry::LoopVariable(_) => {
                 unreachable!("Encountered an unbound loop variable while binding.")
             }
             ScopeEntry::LoopLabel(_) => todo!(),
@@ -566,6 +566,11 @@ mod bind_utils {
                     "Injunction" => &mut symbol_library.injunction,
                     "Invoke" => &mut symbol_library.invoke,
                     "NULLPTR" => &mut symbol_library.nullptr,
+                    _ => return index,
+                },
+                (CurrentModuleType::Iteration, _) => match entry.name() {
+                    "Iteratable" => &mut symbol_library.iteratable,
+                    "AsIterator" => &mut symbol_library.asiter,
                     _ => return index,
                 },
                 (CurrentModuleType::Try, "Try") => &mut symbol_library.try_s,

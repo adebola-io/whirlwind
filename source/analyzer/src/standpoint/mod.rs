@@ -561,7 +561,7 @@ impl Standpoint {
                     Self::BOOL => CurrentModuleType::Bool,
                     Self::NUMERIC => CurrentModuleType::Numeric,
                     Self::INTERNAL => CurrentModuleType::Internal,
-                    Self::ITERATABLE => CurrentModuleType::Iteratable,
+                    Self::ITERATABLE => CurrentModuleType::Iteration,
                     Self::OPS => CurrentModuleType::Ops,
                     Self::INTERFACES => CurrentModuleType::Interfaces,
                     Self::RANGE => CurrentModuleType::Range,

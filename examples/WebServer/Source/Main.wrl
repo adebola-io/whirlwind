@@ -3,7 +3,7 @@ module Main;
 
 // Import necessary modules from the Core library.
 use Core.{
-    Http.{ 
+    Http.{
         HttpServer, ServerOutcome, HttpRequest, HttpResponse,
         Middleware, MiddlewareResponse, HttpRequestError
     },
@@ -42,7 +42,7 @@ public function Main() {
 /// Handler function for the "/hello" endpoint.
 async function HelloHandler(request: HttpRequest): ServerOutcome {
     response := HttpResponse.From(&request);
-    response.Status(200).Html("<h1>Hello, world!</h1>");
+    response.Status(200).Html(`<h1>Hello, world!</h1>`);
     Ok(response)
 }
 
@@ -71,7 +71,7 @@ async function AuthenticationHandler(req: HttpRequest): MiddlewareResponse {
 async function GreetHandler(req: HttpRequest): ServerOutcome {
     name := req.PathParams().GetOrErr("name")?;
     response := req.Respond();
-    response.Status(200).Html("<h1>Hello, " + name + "!</h1>");
+    response.Status(200).Html(`<h1>Hello, ` + name + `!</h1>`);
     return Ok(response);
 }
 

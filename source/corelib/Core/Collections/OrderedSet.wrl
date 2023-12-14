@@ -5,12 +5,12 @@ use Core.Prelude.Todo;
 
 /// A simple pair of items.
 public model Tuple<T, U> {
-    public var one: T;
-    public var two: U;
+    public var a: T;
+    public var b: U;
     
     new(first: T, second: U) {
-        this.one = first;
-        this.two = second;
+        this.a = first;
+        this.b = second;
     }
     /// Returns a new tuple with the position of the two items in the tuple reversed.
     /// ### Usage
@@ -22,7 +22,7 @@ public model Tuple<T, U> {
     /// Assert(swapped).Equals(new Tuple("story", true));
     /// ```
     public function Swap(): Tuple<U, T> {
-        new Tuple(this.two, this.one)
+        new Tuple(this.b, this.a)
     }
 }
 

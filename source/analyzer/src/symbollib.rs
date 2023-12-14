@@ -42,6 +42,8 @@ pub struct SymbolLibrary {
     pub invoke: Option<SymbolIndex>,
     pub injunction: Option<SymbolIndex>,
     pub nullptr: Option<SymbolIndex>,
+    pub iteratable: Option<SymbolIndex>,
+    pub asiter: Option<SymbolIndex>,
 }
 
 #[derive(Debug, Default)]

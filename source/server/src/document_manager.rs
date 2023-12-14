@@ -703,7 +703,7 @@ impl DocumentManager {
         };
         let mut hints: Vec<InlayHint> = vec![];
         for symbol in standpoint.symbol_library.in_module(module.path_idx) {
-            match &symbol.kind {
+            let inferred_type = match &symbol.kind {
                 SemanticSymbolKind::Variable {
                     declared_type,
                     inferred_type,
@@ -713,37 +713,36 @@ impl DocumentManager {
                     param_type: declared_type,
                     inferred_type,
                     ..
-                } => {
-                    let entry_span = Span::on_line(
-                        symbol.references.first().unwrap().starts[0],
-                        symbol.name.len() as u32,
-                    );
-                    let position = to_range(entry_span).end;
-                    let label_text = format!(
-                        ": {}",
-                        standpoint
-                            .symbol_library
-                            .format_evaluated_type(inferred_type)
-                    );
-                    if label_text.len() > 48 {
-                        continue;
-                    }
-                    let label = InlayHintLabel::String(label_text);
-                    if declared_type.is_none() {
-                        hints.push(InlayHint {
-                            position,
-                            label,
-                            kind: Some(InlayHintKind::TYPE),
-                            padding_right: Some(true),
-                            text_edits: None,
-                            tooltip: None,
-                            padding_left: None,
-                            data: None,
-                        })
-                    }
-                }
-                _ => (),
+                } if declared_type.is_none() => inferred_type,
+                SemanticSymbolKind::LoopVariable { inferred_type, .. } => inferred_type,
+                _ => continue,
+            };
+            let entry_span = Span::on_line(
+                symbol.references.first().unwrap().starts[0],
+                symbol.name.len() as u32,
+            );
+            let position = to_range(entry_span).end;
+            let label_text = format!(
+                ": {}",
+                standpoint
+                    .symbol_library
+                    .format_evaluated_type(inferred_type)
+            );
+            if label_text.len() > 48 {
+                continue;
             }
+            let label = InlayHintLabel::String(label_text);
+
+            hints.push(InlayHint {
+                position,
+                label,
+                kind: Some(InlayHintKind::TYPE),
+                padding_right: Some(true),
+                text_edits: None,
+                tooltip: None,
+                padding_left: None,
+                data: None,
+            });
         }
         (msgs, Some(hints))
     }

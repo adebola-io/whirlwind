@@ -204,6 +204,23 @@ public interface Iteratable<I> {
     public function While(condition: fn(value: &I): Bool): While<I, This> {
         return new While(*this, condition);
     }
+    /// Returns an iterator that produces elements from both iterators as a tuple.
+    /// 
+    /// The iteration will end if one of its components end.
+    /// 
+    /// ### Usage
+    /// ```
+    /// numbers := [1, 2, 3, 4, 5].IntoIter();
+    /// words := ["one", "two", "three", "four", "five"].IntoIter();
+    /// 
+    /// numbersAndWords := numbers.Zip(words);
+    /// 
+    /// Assert(numbersAndWords.Next()).Equals(Some(new Tuple(1, "one")));
+    /// Assert(numbersAndWords.Next()).Equals(Some(new Tuple(2, "two")));
+    /// ```
+    public function Zip<J, Other implements Iteratable<J>>(that: Other): Zip<I, This, J, Other> {
+        return new Zip(*this, that);
+    }
 }
 
 public model Enumerate<I, J implements Iteratable<I>> implements Iteratable<Tuple<UnsignedInt, I>>> {
@@ -276,6 +293,19 @@ public model Map<I, O, J implements Iteratable<I>> implements Iteratable<O> {
 
 public model Unique<I, J implements Iteratable<I>> implements Iteratable<I> {}
 
+public model Zip<I, I1 implements Iteratable<I>, J, I2 implements Iteratable<J>> implements Iteratable<Tuple<I, J>>> {
+    var first: I1;
+    var second: I2;
+    new(first: I1, second: I2) {
+        this.first = first;
+        this.second = second;
+    }
+    public function [Iteratable.Next](): ?Tuple<I, J> {
+        firstItem := this.first.Next()?;
+        secondItem := this.second.Next()?;
+        return Some(new Tuple(firstItem, secondItem));
+    }
+}
 
 public model Reversed<I> implements Iteratable<&I> {
     var array: &[]I;

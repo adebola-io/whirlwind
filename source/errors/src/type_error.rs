@@ -235,6 +235,12 @@ pub enum TypeErrorType {
     IndexingWithIllegalValue {
         indexer: String,
     },
+    ImplicitLoopReturn {
+        rettype: String,
+    },
+    Illegalterator {
+        illegal_type: String,
+    },
 }
 
 pub fn invalid_binary(left: String, operator: BinOperator, right: String, span: Span) -> TypeError {

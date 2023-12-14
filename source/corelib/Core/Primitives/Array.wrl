@@ -70,7 +70,12 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// ```
     /// To check for comparative equality, consider using `.Iter().Any(...)`.
     public function Contains(value: &T): Bool {
-        this.IntoIter().Any(fn(element) element is *value)
+        for element in this.Iter() {
+            if element is value {
+                return true;
+            };
+        }
+        return false;
     }
     /// Removes all elements in the array.
     /// ### Usage
@@ -111,10 +116,13 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// Assert(arr.IndexOf(&str2)).Equals(Some(1)).
     /// ```
     public function IndexOf(value: &T): ?UnsignedInt {
-        this.IntoIter()
-            .Enumerate()
-            .Find(fn(tuple) tuple.two is value)
-            .Map(fn(tuple) tuple.one)
+        for { a as index, b as element } in this.Iter().Enumerate() 
+        {
+            if element is value {
+                return Some(index);
+            };
+        }
+        return None();
     }
     /// Inserts an element at an index in the array,
     /// shifting all suceeding elements forward.
@@ -233,14 +241,13 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     public static function ToStr<T implements Display>(array: &Array<T>): String {
         string := "[";
         i := 0;
-        array.Iter().Enumerate().ForEach(fn(tuple) {
-            index := tuple.one;
-            item := tuple.two;
+        for { a as index, b as item } in array.Iter().Enumerate() 
+        {
             string.Append(item.ToStr());
             if index + 1 != array.length {
                 string.Append(",")
             }
-        });
+        }
         string.Append("]");
         return string;
     }
@@ -277,10 +284,10 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// Assert(arr).Equals([0, 0, 0])
     /// ```
     public static function Reset<T implements Default>(array: &Array<T>) {
-        array.Iter().ForEach(fn(value) {
+        for value in array.Iter() {
             var default: T;
             *value = default;
-        })
+        }
     }
     /// Returns the largest value in an array.
     /// It returns an empty value if the array is empty.
@@ -320,12 +327,39 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// array := [1, 2, 3, 4];
     /// summed = Array.Sum(&array)
     /// 
-    /// Assert(summed == 10);
+    /// AssertThat(summed == 10);
     /// ```
     public static function Sum<T implements Addition + Default>(array: &Array<T>): T {
         var sum: T;
         array.IntoIter().ForEach(fn(item) sum += item);
         sum
+    }
+    /// Joins all the elements in an array into one string and returns it.
+    /// 
+    /// If no separator argument is specified, a single whitespace will be used instead.
+    /// ### Usage
+    /// ```
+    /// array := ["Best", "believe", "I'm", "still", "bejeweled"];
+    /// joined := Array.Join(&array);
+    /// 
+    /// AssertThat(joined == "Best believe I'm still bejeweled");
+    /// 
+    /// array2 := [1, 2, 3, 4, 5];
+    /// joined2 := Array.Join(&array2, "+");
+    /// 
+    /// AssertThat(joined2 == "1+2+3+4+5");
+    /// ```
+    public static function Join<T implements Display>(array: &Array<T>, separator?: String): String {
+        separatorValue := separator.UnwrapOr(" ");
+        string := new String();
+        for { a as i, b as element } in array.Iter().Enumerate() 
+        {
+            string += element.ToStr();
+            if i + 1 != array.length {
+                string += separatorValue;
+            }
+        }
+        return string;
     }
 }
 
