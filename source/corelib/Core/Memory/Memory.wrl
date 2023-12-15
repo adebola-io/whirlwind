@@ -1,12 +1,12 @@
 module Memory;
 
 use Core.{
-    Primitives.UInt8,
-    Prelude.{Iteratable, Maybe}
+    Primitives.{UInt8, UnsignedInt},
+    Prelude.{Iteratable, Maybe, None, Some, Display, String,},
 };
 
 
-public model Buffer implements Iteratable<UInt8> {
+public model Buffer implements Iteratable<UInt8> + Display {
     var values: &[]UInt8;
     var idx: UnsignedInt;
 
@@ -22,5 +22,9 @@ public model Buffer implements Iteratable<UInt8> {
         nextByte := this.values[this.idx];
         this.idx += 1;
         return Some(nextByte);
+    }
+
+    public function [Display.ToStr](): String {
+        return Todo();
     }
 }

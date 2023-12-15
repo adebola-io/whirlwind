@@ -1,10 +1,15 @@
 module Response;
 use Request.HttpRequest;
 
+use Core.Prelude.{String, UnsignedInt, Maybe, Todo};
+
 /// The headers on a 
 public model ResponseHeaders {
     public function Set(key: String, value: String) {
-
+        Todo()
+    }
+    public function Get(key: String): Maybe<&String> {
+        Todo()
     }
 }
 
@@ -15,6 +20,10 @@ public model HttpResponse {
     /// Build a response object from a request.
     public static function From(request: &HttpRequest): This {
         return Todo();
+    }
+    /// Returns the content type set in the response header.
+    public function ContentType(): Maybe<&String> {
+        this.headers.Get("Content-Type")
     }
     /// Sets the status code value of the response.
     public function Status(value: UnsignedInt): &This {

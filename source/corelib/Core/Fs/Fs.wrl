@@ -1,0 +1,37 @@
+module Fs;
+
+use Core.Prelude.String;
+use Core.Prelude.{Array, UInt8, Display, Todo, Bool};
+use Core.Prelude.Outcome;
+use Core.Memory.Buffer;
+use Core.Io.IoError;
+use Core.Primitives.UnsignedInt;
+use Core.Net.Url;
+
+public type PathLike = String | Buffer | Url;
+public type FileHandle = UnsignedInt;
+
+public model File {
+
+}
+
+public model FsError {
+
+}
+
+/// Opens a file.
+public async function Open(filepath: PathLike): Outcome<File, FsError> {
+    return Todo();
+}
+
+
+/// Closes an open file.
+public async function Close(handle: FileHandle): Outcome<Bool, FsError> {
+    return Todo();
+}
+
+/// Reads a file, given its filename, and returns its contents.
+public async function ReadFile(filename: PathLike): Outcome<Buffer, FsError> {
+    Todo()
+    // return Err("");
+}

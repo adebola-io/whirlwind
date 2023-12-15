@@ -2,8 +2,12 @@ module HashMap;
 
 use Core.Prelude.Todo;
 
-public interface Hash {
-    
+public interface Hash {}
+
+/// An interface to be implemented by models that can be transformed into
+/// a hashmap of sorts.
+public interface ToMap<K, V> {
+    public function ToMap(): HashMap<K, V>;
 }
 
 public model HashMap<K implements Hash, V> {

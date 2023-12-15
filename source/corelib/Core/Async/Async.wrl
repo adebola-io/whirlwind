@@ -2,11 +2,8 @@
 /// for the creation and utilization of concurrent processes.
 module Async;
 
-use Core.Prelude.Bool;
-use Core.Prelude.Todo;
-use Core.Prelude.Guaranteed;
 use Core.Process.Fatal;
-use Core.Prelude.Some;
+use Core.Prelude.{Some, Array, Todo, Bool, Guaranteed};
 use Core.Internals.{Injunction, Invoke, Sequence};
 use Core.Primitives.UnsignedInt;
 

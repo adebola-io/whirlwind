@@ -1,5 +1,11 @@
 module ArrayStack;
 
+use Core.Prelude.{
+    Array, UnsignedInt, Maybe, Int, Outcome, Bool, String,
+    Todo, Err, Ok,
+};
+use Core.Math.UINTMAX;
+
 /// An implementation of a stack using an array.
 /// 
 /// A stack is a LIFO (Last-in-First-out) data structure 
@@ -10,7 +16,7 @@ public model ArrayStack<T> {
    
     new(capacity?: UnsignedInt) {
         this.items = [];
-        this.capacity = capacity.UnwrapOr(Todo());
+        this.capacity = capacity.UnwrapOr(UINTMAX);
     }
     /// Dynamically change the number of items in the stack.
     ///

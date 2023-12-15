@@ -221,6 +221,45 @@ public interface Iteratable<I> {
     public function Zip<J, Other implements Iteratable<J>>(that: Other): Zip<I, This, J, Other> {
         return new Zip(*this, that);
     }
+    /// An iterative adapter that adds a fallback value in between the items produced from the iteration.
+    /// 
+    /// The iteration will always end with the fallback value.
+    /// ### Usage
+    /// ```
+    /// numbers := [1, 2, 3, 4];
+    /// iter := numbers.IntoIter().Interleave(5);
+    /// 
+    /// numbersWith5 := iter.Collect();
+    /// Assert(numbersWith5).Equals([1, 5, 2, 5, 3, 5, 4, 5]);
+    /// ```
+    public function Interleave(value: I): Interleave<I, This> {
+        return new Interleave(*this, value);
+    }
+
+    /// Creates a new iterator that skips over the first _n_ elements in the iteration,
+    /// returning the rest.
+    /// ### Usage
+    /// ```
+    /// fruits := ["apple", "banana", "cherry", "date", "elderberry"];
+    /// 
+    /// iter := fruits.IntoIter().Skip(2);
+    /// 
+    /// Assert(iter.Collect()).Equals(["cherry", "date", "elderberry"]);
+    /// ```
+    public function Skip(n: UnsignedInt): Skip<I, This> {
+        return new Skip(this, n);
+    }
+    /// Specifies a side-effect that should run once the iterator stops producing elements.
+    /// 
+    /// The side effect is run _if the iterator is called after the last element is yielded_.
+    /// ### Usage
+    /// ```
+    /// fruits := ["blueberry", "mango", "pawpaw"];
+    /// 
+    /// ```
+    public function OnEnd(callback: fn()): OnEnd<I, This> {
+        return new OnEnd(this, callback);
+    }
 }
 
 public model Enumerate<I, J implements Iteratable<I>> implements Iteratable<Tuple<UnsignedInt, I>>> {
@@ -307,6 +346,26 @@ public model Zip<I, I1 implements Iteratable<I>, J, I2 implements Iteratable<J>>
     }
 }
 
+public model Interleave<I, J implements Iteratable<I>> implements Iteratable<I> {
+    var delimeter: I;
+    var iterator: J;
+    var flag: Bool;
+    new(iterator: J, delimeter: I) {
+        this.iterator = iterator;
+        this.delimeter = delimeter;
+        this.flag = false;
+    }
+    public function [Iteratable.Next](): ?I {
+        if this.flag {
+            return Some(this.delimeter);
+        } else {
+            value := this.iterator.Next()?;
+            this.flag = true;
+            return Some(value);
+        }
+    }
+}
+
 public model Reversed<I> implements Iteratable<&I> {
     var array: &[]I;
     var idx: UnsignedInt;
@@ -321,6 +380,45 @@ public model Reversed<I> implements Iteratable<&I> {
             this.idx -= 1;
             return Some(&this.array[this.idx]);
         }
+    }
+}
+
+public model Skip<I, J implements Iteratable<I>> implements Iteratable<I> {
+    var iterator: J;
+    var skipCount: UnsignedInt;
+    new(iterator: J, n: UnsignedInt) {
+        this.iterator = iterator;
+        this.skipCount = n;
+    }
+    public function [Iteratable.Next](): ?I {
+        if this.skipCount == 0 {
+            return this.iterator.Next();
+        } else {
+            while this.n > 0 {
+                var {} = this.iterator.Next();
+                this.skipCount -= 1;
+            }
+            return this.iterator.Next();
+        }
+    }
+}
+
+public model OnEnd<I, J implements Iteratable<I>> implements Iteratable<I> {
+    var iterator: J;
+    var callback: fn();
+    var ended: Bool;
+    new(iterator: J, callback: fn()) {
+        this.iterator = iterator;
+        this.callback = callback;
+        this.ended = false;
+    }
+    public function [Iteratable.Next](): ?I {
+        nextItem := this.iterator.Next();
+        if nextItem.IsNone() && !this.ended {
+            this.callback();
+            this.ended = true;
+        }
+        return nextItem;
     }
 }
 

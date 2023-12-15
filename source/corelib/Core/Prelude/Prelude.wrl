@@ -27,4 +27,5 @@ public use Core.{
     },
     Process.{Todo, Fatal},
     Internals.never,
+    Collections.{Tuple, Pair}
 };

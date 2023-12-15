@@ -1,0 +1,27 @@
+module Serialize;
+
+use Core.Prelude.UInt8;
+use Core.Memory.Buffer;
+use Core.Process.Todo;
+use Core.Prelude.Outcome;
+use Json.JsonValue;
+
+
+public interface Serializeable {
+    public function ToBytes(): Buffer;
+    public function toJson(): JsonValue {
+        Todo()
+    }
+}
+
+enum SerializeErrorType {}
+public model SerializeError {
+    var typ: SerializeErrorType;
+}
+
+public interface Deserializeable {
+    public function FromBytes(bytes: Buffer): This;
+    public function FromJson(bytes: Buffer): Outcome<This, SerializeError> {
+
+    }
+}

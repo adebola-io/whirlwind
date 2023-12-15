@@ -2,7 +2,7 @@ module Injunction;
 
 use Core.{
     Prelude.Range,
-    Async.Eventual,
+    Async.{Eventual, Prospect},
     Primitives.{
         String,
         Int,

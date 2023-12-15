@@ -1,7 +1,8 @@
-module Http;
+module Net;
 use Core.Prelude.{
-    Core, Bool, Todo, Outcome, Prospect, String,
-    Maybe, UnsignedInt, Some, Array, None, Fatal
+    Bool, Todo, Outcome, Prospect, String,
+    Maybe, UnsignedInt, Some, Array, None, Fatal,
+    Display,
 };
 use Core.Primitives.Ops.Addition;
 public use Request.{
@@ -13,6 +14,7 @@ public use Request.{
 public use Response.HttpResponse;
 
 
+public model Url implements Display {}
 model Endpoints {
     new() {
 

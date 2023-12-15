@@ -1,6 +1,7 @@
 module Crypto;
 
 use Core.Prelude.Todo;
+use Core.Prelude.String;
 
 public model JwtEncryptor {
     /// Verify 

@@ -2843,7 +2843,10 @@ mod expressions {
                                     });
                                 }
                                 let actualidx = symbollib.forward(*idx);
-                                let actualsymbol = symbollib.get_forwarded(actualidx).unwrap();
+                                let actualsymbol = match symbollib.get_forwarded(actualidx) {
+                                    Some(symbol) => symbol,
+                                    None => return EvaluatedType::Unknown,
+                                };
                                 let evaluated_type =
                                     symbol_to_type(actualsymbol, actualidx, symbollib)
                                         .ok()

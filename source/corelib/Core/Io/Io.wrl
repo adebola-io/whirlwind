@@ -12,23 +12,30 @@ use Core.Primitives.String;
 use Core.Prelude.Display;
 use Core.Internals.Invoke;
 use Core.Internals.Injunction;
+use Core.Prelude.Todo;
+use Core.Prelude.UnsignedInt;
 
-/// Creates a new format object.
-public function Fmt(template: String): TemplateString {
-    new TemplateString(template)
+/// Prints a message or an object to the console, terminal or any predefined output interface.
+public function Print<T implements Display>(message: T) {
+    messageAsStr := message.ToStr();
+    Invoke(Injunction.Print(messageAsStr));
 }
 
-model FormatError implements IoError {
+public interface IoError {}
 
+
+/// Creates a new formattable template.
+public function Fmt(template: String): Template {
+    new Template(template)
 }
 
-/// The format object is a 
-public model TemplateString {
+/// The Template model is a 
+public model Template {
     var template: String;
-    var positions: Array<String>;
+    var arguments: []String;
     new(template: String) {
         this.template = template;
-        this.positions = [];
+        this.arguments = [];
     }
     /// Adds an argument according to the list of predefined arguments in the template
     /// string.
@@ -43,19 +50,44 @@ public model TemplateString {
     /// Core.Io.Print(completed); // Will print out "My name is Sefunmi and I am 21 years old."
     /// ```
     public function Add<T implements Display>(value: T): &This {
-        this.positions.Push(value.ToStr());
+        this.arguments.Push(value.ToStr());
         return this;
+    }
+    /// Appends new template text to the end of the template.
+    /// ### Usage
+    /// ```
+    /// name := Core.Io.Fmt("Welcome, %!");
+    /// name.Add("Mark");
+    /// 
+    /// name.Extend(" Good %.");
+    /// name.Add("Morning");
+    /// 
+    /// Assert(name.Finish()).Equals("Welcome, Mark! Good Morning.");
+    /// ```
+    public function Extend(suffix: String): &This {
+        this.template += suffix;
+        return this;
+    }
+    /// Transforms a positional argument with a function.
+    /// The positional arguments are zero-based, meaning 0
+    /// corresponds to the first argument.
+    /// 
+    /// If the argument index is not within the template, then the
+    /// transformer is ignored until it is.
+    /// ### Usage
+    /// ```
+    /// template := Core.Io.Fmt("Hello %!");
+    /// 
+    /// template.Transform(0, fn(x) x.CapitalCase());
+    /// template.Add("john");
+    /// 
+    /// Assert(template.Finish()).Equals("Hello, John!");
+    /// ```
+    public function Transform(arg: UnsignedInt): &This {
+        Todo()
     }
     /// Builds a string from the template with all the inputted values.
     public function Finish(): String {
         Todo()
     }
 }
-
-/// Prints a message or an object to the console, terminal or any predefined output interface.
-public function Print<T implements Display>(message: T) {
-    messageAsStr := message.ToStr();
-    // Invoke(Injunction.Print(messageAsStr));
-}
-
-public interface IoError {}

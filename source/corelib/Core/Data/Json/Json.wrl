@@ -1,0 +1,183 @@
+module Json;
+
+use Core.Prelude.{Display, Bool, String, Number, None, Some};
+use Core.Collections.HashMap;
+use Super.Serializeable;
+
+public use JsonParsing.JsonParseError;
+public use JsonParsing.Stringify;
+
+/// An simple union type that abstracts over underlying JSON values.
+public type RawJsonVal = 
+    | JsonString 
+    | JsonArray 
+    | JsonBool 
+    | JsonNumber 
+    | JsonObject;
+
+public enum JsonValueType {
+    String,
+    Array,
+    Bool,
+    Number,
+    Object,
+    Null
+}
+
+/// A unifying, general interface for any value in the JSON format.
+public interface JsonValue {
+    /// Returns the type of the JSON value.
+    /// ### Usage
+    /// ```
+    /// use Core.Data.JsonString;
+    /// 
+    /// str := new JsonString();
+    /// Assert(str.GetType()).Equals(JsonValueType.String);
+    /// ```
+    public function GetType(): JsonValueType;
+    /// Returns true if the JSON value is null.
+    /// ### Usage
+    /// ```
+    /// use Core.Data.JsonNull;
+    /// 
+    /// null := new JsonNull();
+    /// AssertThat(null.IsNull());
+    /// ```
+    public function IsNull(): Bool {
+        return this.GetType() == JsonValueType.Null;
+    }
+    /// Returns true if the JSON value is a string.
+    /// ### Usage
+    /// ```
+    /// use Core.Data.JsonString;
+    /// 
+    /// str := new JsonString();
+    /// AssertThat(str.IsString());
+    /// ```
+    public function IsString(): Bool {
+        return this.GetType() == JsonValueType.String;
+    }
+    /// Returns true if the JSON value is numeric.
+    /// ### Usage
+    /// ```
+    /// use Core.Data.JsonNumber;
+    /// 
+    /// str := new JsonNumber(Some(42));
+    /// AssertThat(str.IsNumber());
+    /// ```
+    public function IsNumber(): Bool {
+        return this.GetType() == JsonValueType.Number;
+    }
+    /// Converts a JSON array to its underlying value.
+    /// If the underlying value is not an array, the method returns `None()`.
+    /// ### Usage
+    /// ```
+    /// use Core.Data.{JsonArray, JsonString};
+    /// 
+    /// arr := new JsonArray();
+    /// Assert(arr.AsArray()).Equals(Some([]));
+    /// 
+    /// str := new JsonString();
+    /// Assert(str.AsArray()).Equals(None());
+    /// ```
+    public function AsArray(): ?[]RawJsonVal {
+        return None();
+    }
+    /// Converts a JSON string to its underlying value.
+    /// If the underlying value is not a string, the method return `None()`.
+    /// ### Usage
+    /// ```
+    /// use Core.Data.{JsonString, JsonBool};
+    /// 
+    /// str := new JsonString();
+    /// Assert(str.AsString()).Equals(Some(""));
+    /// 
+    /// bool := new JsonBool(Some(true));
+    /// Assert(str.AsString()).Equals(None());
+    /// ```
+    public function AsString(): ?String {
+        return None();
+    }
+    /// Converts a JSON boolean to its underlying value.
+    public function AsBool(): ?Bool {
+        return None();
+    }
+    /// Converts a JSON number to its underlying value.
+    public function AsNumber(): ?Number {
+        return None();
+    }
+    /// Converts a JSON object to its underlying value.
+    public function AsObject(): ?HashMap<String, RawJsonVal> {
+        return None();
+    }
+}
+
+/// A string value that adheres to the JSON data format.
+public model JsonString implements JsonValue {
+    public var value: String;
+    new(value?: String) {
+        this.value = value.UnwrapOr("");
+    }
+    public function [JsonValue.GetType](): JsonValueType {
+        return JsonValueType.String;
+    }
+    public function [JsonValue.AsString](): ?String {
+        return Some(this.value);
+    }
+}
+
+/// An ordered collection of values in the JSON format.
+public model JsonArray implements JsonValue {
+    public var value: []RawJsonVal;
+    new(value?: []RawJsonVal) {
+        this.value = value.UnwrapOr([]);
+    }
+    public function [JsonValue.GetType](): JsonValueType {
+        return JsonValueType.Array;
+    }
+    public function [JsonValue.AsArray](): ?[]RawJsonVal {
+        return Some(this.value);
+    }
+}
+
+/// A boolean value in the JSON format.
+public model JsonBool implements JsonValue {
+    public var value: Bool;
+    new(value?: Bool) {
+        this.value = value.UnwrapOr(false);
+    }
+    public function [JsonValue.GetType](): JsonValueType {
+        return JsonValueType.Bool;
+    }
+    public function [JsonValue.AsBool](): ?Bool {
+        return Some(this.value);
+    }
+}
+
+/// A numeric value in the JSON format.
+public model JsonNumber implements JsonValue {
+    public var value: Number;
+    new(value?: Number) {
+        this.value = value.UnwrapOr(0);
+    }
+    public function [JsonValue.GetType](): JsonValueType {
+        return JsonValueType.Number;
+    }
+    public function [JsonValue.AsArray](): ?Number {
+        return Some(this.value);
+    }
+}
+
+/// An object in the JSON format.
+public model JsonObject implements Display + JsonValue {
+    public var map: HashMap<String, RawJsonVal>;
+    new(map?: HashMap<String, RawJsonVal>) {
+        this.map = map.UnwrapOr(new HashMap());
+    }
+    public function [JsonValue.GetType](): JsonValueType {
+        return JsonValueType.Object;
+    }
+    public function [JsonValue.AsObject](): ?HashMap<String, RawJsonVal> {
+        return Some(this.map);
+    }      
+}

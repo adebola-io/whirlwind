@@ -5,6 +5,7 @@ use Numeric.{ Int, UnsignedInt };
 use Ops.{ Orderable, Addition };
 use Core.Prelude.{ AsIterator, Maybe, None, Some, Todo, String, Default };
 use Core.Prelude.Iteration.Reversed;
+use Core.Prelude.Iteratable;
 use Core.Prelude.Display;
 use Core.Math.{ Max, Min };
 use Core.Internals.{ Injunction, Invoke };

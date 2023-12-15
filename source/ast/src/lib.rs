@@ -1,5 +1,4 @@
 mod ambience;
-mod context;
 mod expression;
 mod scope;
 mod signature;
@@ -10,8 +9,12 @@ mod token;
 mod types;
 mod visitor;
 
+use std::{
+    fs::File,
+    io::{Error, Read, Seek, SeekFrom},
+};
+
 pub use ambience::*;
-pub use context::*;
 pub use expression::*;
 pub use scope::*;
 pub use signature::*;
@@ -51,4 +54,33 @@ macro_rules! unwrap_or_continue {
             None => continue,
         }
     }};
+}
+
+/// Returns a string containing the documentation comments from a particular range in a file.
+pub fn get_documentation_at(
+    path: &std::path::Path,
+    line_lengths: &[u32],
+    docs_span: Span,
+) -> Result<String, Error> {
+    let mut file = File::open(path)?;
+    let range = Span::to_range(docs_span, line_lengths);
+
+    file.seek(SeekFrom::Start(range.start as u64))?;
+    let mut buffer = vec![0; range.end - range.start];
+
+    file.read_exact(&mut buffer)?;
+
+    let raw_str = String::from_utf8(buffer).unwrap_or_else(|_| String::new());
+    let doc_str = raw_str
+        .lines()
+        .map(|line| {
+            let trim = line.trim();
+            if trim.ends_with("///") {
+                return String::from("\n\n");
+            } else {
+                return String::from(trim.split_at(3).1) + "\n";
+            }
+        })
+        .collect::<String>();
+    Ok(doc_str)
 }

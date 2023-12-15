@@ -6,17 +6,19 @@
 /// ranging from string manipulation and arrays to networking and file system handling.
 module Core;
 
-public use Primitives;
-public use Prelude;
-
 public use Async;
-public use Io;
-public use Http;
-public use Process;
-public use Internals;
-public use Memory;
-public use Testing;
 public use Collections;
 public use Crypto;
+public use Net;
+public use Data;
+public use Fs;
+public use Internals;
+public use Io;
 public use Math;
+public use Memory;
 public use Os;
+public use Path;
+public use Prelude;
+public use Primitives;
+public use Process;
+public use Testing;

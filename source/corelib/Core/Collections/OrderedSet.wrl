@@ -1,9 +1,11 @@
 module OrderedSet;
 
 use Core.Prelude.Todo;
+use Core.Primitives.Ops.Addition;
 
 
-/// A simple pair of items.
+/// A simple ordered pair of items. Elements within a tuple can be of any type,
+/// and the order in which they are defined is preserved.
 public model Tuple<T, U> {
     public var a: T;
     public var b: U;
@@ -24,6 +26,37 @@ public model Tuple<T, U> {
     public function Swap(): Tuple<U, T> {
         new Tuple(this.b, this.a)
     }
+    /// Concatenates the elements of the pair into one.
+    /// ### Usage
+    /// ```
+    /// tuple := Pair("John ", "Doe");
+    /// joined := Tuple.Join(&tuple);
+    /// 
+    /// Assert(joined).Equals("John Doe");
+    /// ```
+    public static function Join<T implements Addition>(tuple: &Tuple<T, T>): T {
+        tuple.a + tuple.b
+    }
+}
+/// Takes two arguments of any type and returns a `Tuple` containing them.
+/// 
+/// It is useful for grouping related data or for passing multiple values 
+/// as a single unit.
+/// 
+/// ### Usage
+/// ```
+/// pair1 := Pair(1, "apple");
+/// pair2 := Pair(true, [1, 2, 3]);
+/// 
+/// // Accessing elements of the tuple.
+/// first := pair1.a; 
+/// Assert(first).Equals(1);
+/// 
+/// second := pair1.b;
+/// Assert(second).Equals("apple");
+/// ```
+public function Pair<T, U>(a: T, b: U): Tuple<T, U> {
+    return new Tuple(a, b);
 }
 
 public model Triple<T, U, V> {

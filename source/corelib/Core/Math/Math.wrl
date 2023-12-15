@@ -1,6 +1,9 @@
 module Math;
 
 use Core.Primitives.Ops.{Orderable, Ordering};
+use Core.Primitives.Numeric.{Float64, Number, Int, UnsignedInt};
+use Core.Prelude.Todo;
+use Core.Internals.{Injunction, Invoke};
 
 /// Returns the minimum of two values that implement Orderable.
 /// 
@@ -42,7 +45,40 @@ public function Max<T implements Orderable>(first: T, second: T): T {
     return second;
 }
 
-/// Returns the absolute value of an integer.
+/// The approximate value of PI.
+/// 
+/// @TODO: Define to 64-bits.
+public const PI: Float64 = 3.1415926535897932384626433;
+public const UINTMAX: UnsignedInt = Invoke(Injunction.MaxUnsignedInt);
+
+/// Computes the square of a number.
+public function Square(a: Number): Number {
+    return a * a;
+}
+
+/// Computes the square root of a number.
+/// ### Usage
+/// ```
+/// use Core.Math.Sqrt;
+/// 
+/// num := Sqrt(4);
+/// AssertThat(num == 2);
+/// ```
+public function Sqrt(a: Number) {
+    Todo()
+}
+
+/// Returns the smallest integer greater than or equal to x.
+public function Ceil(x: Number): Int {
+    return Todo();
+}
+
+/// Returns the largest integer smaller than or equal to x.
+public function Floor(x: Number): Int {
+    return Todo();
+}
+
+/// Returns the absolute value of a number.
 /// 
 /// ### Usage
 /// ```
@@ -51,6 +87,6 @@ public function Max<T implements Orderable>(first: T, second: T): T {
 /// Assert(Max(-4)).Equals(4);
 /// Assert(Max(10)).Equals(10);
 /// ```
-public function Abs(a: Int): UnsignedInt {
+public function Abs(a: Number): UnsignedInt {
     Todo()
 }

@@ -5,7 +5,7 @@ use Bool.Bool;
 use Core.{ 
     Internals.{ Invoke, Injunction }, 
     Collections.Hash,
-    Prelude.{ Maybe, AsIterator, Iteratable, Range, Display, Some, Default },
+    Prelude.{ Maybe, AsIterator, Iteratable, Range, Display, Some, None, Default },
     Process.Todo,
 };
 use Numeric.{ Int, UnsignedInt, UInt8, UInt16 };
@@ -415,6 +415,7 @@ public model String
         return Invoke(Injunction.StrUppercase(this));
     }
     /// Returns true if the string starts with a given pattern.
+    /// 
     /// ### Usage
     /// ```
     /// name := "Joshua";
@@ -425,7 +426,8 @@ public model String
         if pat.chars.Length() > this.chars.Length() {
             return false;
         }
-        for {a, b} in this.chars.Iter().Zip(pat.chars.Iter()) {
+        for { a, b } in this.chars.Iter().Zip(pat.chars.Iter()) 
+        {
             if a != b {
                 return false;
             }

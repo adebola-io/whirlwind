@@ -52,7 +52,10 @@ public model HttpRequest {
         return HttpResponse.From(this);
     }
     /// Returns an error based on this request.
-    public function CreateError(message: String, statusCode?: UnsignedInt): HttpRequestError {
+    public function CreateError(
+        message: String, 
+        statusCode?: UnsignedInt
+    ): HttpRequestError {
         return new HttpRequestError(message, this, statusCode);
     }
 }
@@ -65,7 +68,8 @@ public model RequestHeaders {
         Todo()
     }
     /// Returns the 
-    public function GetOrErr(name: String): Outcome<&String, HttpRequestError> {
+    public function GetOrErr(name: String): Outcome<&String, HttpRequestError> 
+    {
         Todo()
     }
 }
@@ -73,7 +77,8 @@ public model RequestParams {
     public function Get(name: String): ?&String {
         Todo()
     }
-    public function GetOrErr(name: String): Outcome<&String, HttpRequestError> {
+    public function GetOrErr(name: String): Outcome<&String, HttpRequestError> 
+    {
         Todo()
     }
     function Has(name: &String): Bool {
@@ -84,7 +89,8 @@ public model RequestParams {
 
 /// An error that occurs on the HTTP server while it is active.
 /// 
-/// The error is non-fatal, meaning that it does not lead to the crashing of the server when it happens.
+/// The error is non-fatal, meaning that it does not lead to the
+/// crashing of the server when it happens.
 public model HttpRequestError implements IoError + Display {
     var message: String;
     var route: String;
