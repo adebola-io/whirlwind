@@ -5,6 +5,4 @@ public use OrderedSet.Tuple;
 public use OrderedSet.Quadruple;
 public use OrderedSet.Pair;
 public use ArrayStack.ArrayStack;
-public use HashMap.HashMap;
-public use HashMap.Hash;
-public use HashMap.ToMap;
+public use HashMap.{HashMap, Hash, ToMap};
