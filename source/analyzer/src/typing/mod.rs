@@ -1,5 +1,6 @@
 mod checker;
 mod evaluated;
+mod tests;
 pub mod unify;
 pub mod utils;
 

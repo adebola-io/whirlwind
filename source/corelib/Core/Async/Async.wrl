@@ -20,6 +20,13 @@ use Core.Primitives.UnsignedInt;
 public model Prospect<T> {
     /// The prospect has been executed.
     var consumed: Bool;
+    /// The function to execute when the run method is called.
+    var func: fn(): T;
+
+    new(func: fn(): T) {
+        this.consumed = false;
+        this.func = func;
+    }
     /// Chains a callback to be run when the prospect completes.
     /// 
     /// It returns a new Prospect which resolves to the value returned 
@@ -45,7 +52,7 @@ public model Prospect<T> {
         if this.consumed {
             Fatal(Some("Cannot chain callback to a consumed prospect."))
         };
-        Todo()
+        new Prospect(fn next(Some(this.func())))
     }
     /// Executes a prospect.
     /// 
@@ -74,8 +81,7 @@ public model Prospect<T> {
     /// prospect.Then(fn() Print("Hello 2"));
     /// prospect.Run(); // Prints "Hello 1", then prints "Hello 2".
     /// ```
-    /// **Once a prospect is run, the prospect, (and all component
-    /// prospects within it), are effectively _consumed_, meaning they cannot be altered,
+    /// **Once a prospect is run, it is effectively _consumed_, meaning it cannot be altered,
     /// re-run or used in interaction with other prospects.**
     /// 
     /// This means that the following code will cause an error.
@@ -83,7 +89,7 @@ public model Prospect<T> {
     /// ```
     /// prospect2 := AFunc();
     /// prospect2.Run();
-    /// prospect2.Then(fn() Print("Something else.")); // Will cause an error.
+    /// prospect2.Then(fn Print("Something else.")); // Will cause an error.
     /// ```
     public function Run(): Eventual<T> {
         if this.consumed {
@@ -91,6 +97,16 @@ public model Prospect<T> {
         }
         this.consumed = true;
         return Invoke(Injunction.EventCreate(this));
+    }
+    /// Sets a timeout on the prospect's eventual execution. If the duration elapses 
+    /// before the eventual can be resolved, it is abruptly aborted.
+    public function Timeout(ms: UnsignedInt): Prospect<T> {
+        Todo();
+        return *this;
+    }
+    /// Attaches a callback that should run if the execution of the prospect fails.
+    public function Recover(callback: fn()) {
+        Todo();
     }
     /// Races a prospect against another.
     /// 
@@ -153,7 +169,7 @@ public model Eventual<T> implements Guaranteed<T> {
     /// Whether or not the eventual has been aborted.
     var aborted: Bool;
     /// A reference to the parent sequence in charge of this eventual.
-    var sequence: &Sequence;
+    public var sequence: &Sequence;
     /// The final value to be produced. 
     /// Until the eventual is resolved, the value remains empty (points to Nullptr).
     var value: T;

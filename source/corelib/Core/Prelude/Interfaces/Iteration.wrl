@@ -8,12 +8,8 @@
 /// a more finegrained control over iteration.
 module Iteration;
 
-use Core.Prelude.Array;
-use Core.Prelude.Bool;
-use Core.Prelude.Todo;
-use Core.Prelude.Some;
-use Core.Prelude.Maybe;
-use Core.Prelude.Core.Collections.Tuple;
+use Core.Prelude.{Array, Bool, Todo, Maybe, Some};
+use Core.Collections.Tuple;
 
 /// ## The Iteratable interface
 /// The Iteratable interface is a common abstraction that allows different types of collections to be traversed in a uniform way. 
@@ -21,7 +17,7 @@ use Core.Prelude.Core.Collections.Tuple;
 ///
 /// It is usually specified as a generic parameter or an associated type. 
 /// The `Next()` method is the core method that moves the iterator forward and returns the next element, 
-/// or `None` if there are no more elements. 
+/// or `None` if there are no more elements.
 /// 
 /// The Iteratable interface also provides many other methods that are implemented based on the next method. 
 /// These methods can perform various operations on the elements of the iterator, 
@@ -178,31 +174,34 @@ public interface Iteratable<I> {
     /// ```
     /// firstTen := numbers.IntoIter().Take(10);
     /// 
-    /// Assert(firstThree).Equals([2, 4, 6, 8, 10]);
+    /// Assert(firstTen).Equals([2, 4, 6, 8, 10]);
     /// ```
     public function Take(n: UnsignedInt): []I {
         Todo()
     }
     /// Iterative adapter that advances as long as a condition is true.
     /// 
-    /// The iteration will stop right after the first false item is returned.
-    /// **This means that when using it in a sequence, the last item will be false.**
+    /// The iteration will stop right before the first false item is returned.
     /// 
-    /// For example, if the iteration has _n_ items that are true, then the condition 
+    /// This means if the iteration has _n_ items that are true, then the condition 
     /// will be checked (and the underlying iterator will have to advance) _n+1_ times.
+    /// 
+    /// A second function called the catch can be specified to run on the first element that is false.
     /// 
     /// ### Usage
     /// ```
     /// numbers := [10, 12, 14, 16, 18, 20];
     /// iter := numbers.IntoIter();
     /// 
-    /// iter.While(fn(x) x < 15); // Stops at 16.
+    /// iter.While(fn(x) x < 15, Some(fn(y) Print(y)));
     /// 
-    /// AssertThat(iter.Next().Unwrap == 18);
-    /// AssertThat(iter.Next().Unwrap == 20);
+    /// AssertThat(iter.Next() == Some(10));
+    /// AssertThat(iter.Next() == Some(12));
+    /// AssertThat(iter.Next() == Some(14));
+    /// AssertThat(iter.Next() == None()); // 16 is printed.
     /// ```
-    public function While(condition: fn(value: &I): Bool): While<I, This> {
-        return new While(*this, condition);
+    public function While(condition: fn(value: &I): Bool, catch?: fn(value: I)): While<I, This> {
+        return new While(*this, condition, catch);
     }
     /// Returns an iterator that produces elements from both iterators as a tuple.
     /// 
@@ -215,8 +214,8 @@ public interface Iteratable<I> {
     /// 
     /// numbersAndWords := numbers.Zip(words);
     /// 
-    /// Assert(numbersAndWords.Next()).Equals(Some(new Tuple(1, "one")));
-    /// Assert(numbersAndWords.Next()).Equals(Some(new Tuple(2, "two")));
+    /// Assert(numbersAndWords.Next()).Equals(Some(Pair(1, "one")));
+    /// Assert(numbersAndWords.Next()).Equals(Some(Pair(2, "two")));
     /// ```
     public function Zip<J, Other implements Iteratable<J>>(that: Other): Zip<I, This, J, Other> {
         return new Zip(*this, that);
@@ -260,6 +259,21 @@ public interface Iteratable<I> {
     public function OnEnd(callback: fn()): OnEnd<I, This> {
         return new OnEnd(this, callback);
     }
+    /// Joins two iterators together .i.e. It starts producing values from the second iterator
+    /// once the first runs out (provided they return values of the same type).
+    /// 
+    /// ### Usage
+    /// ```
+    /// numIter := [1, 2, 3].IntoIter();
+    /// numIter2 := [4, 5, 6].IntoIter();
+    /// 
+    /// chained := numIter.Chain(numIter2);
+    /// 
+    /// Assert(chained.Collect()).Equals([1, 2, 3, 4, 5, 6]);
+    /// ```
+    public function Chain<That implements Iteratable<I>>(that: That): Chain<I, This, That> {
+        return new Chain(*this, that);
+    }
 }
 
 public model Enumerate<I, J implements Iteratable<I>> implements Iteratable<Tuple<UnsignedInt, I>>> {
@@ -295,10 +309,12 @@ public model Filter<I, J implements Iteratable<I>> implements Iteratable<I> {
 public model While<I, J implements Iteratable<I>> implements Iteratable<I> {
     var iterator: J;
     var condition: fn(value: &I): Bool;
+    var catch: ?fn(value: I);
     var ended: Bool;
-    new(iterator: J, condition: fn(value: &I): Bool) {
+    new(iterator: J, condition: fn(value: &I): Bool, catch?: fn(value: I)) {
         this.iterator = iterator;
         this.condition = condition;
+        this.catch = catch;
         this.ended = false;
     }
     public function [Iteratable.Next](): ?I {
@@ -306,11 +322,12 @@ public model While<I, J implements Iteratable<I>> implements Iteratable<I> {
             return None();
         };
         nextItem := this.iterator.Next()?;
-        if !this.condition(&nextItem) {
+        if this.condition(&nextItem) {
             return Some(nextItem);
         }
-            this.ended = true;
-            return None();
+        this.ended = true;
+        this.catch.Unwrap()(nextItem);
+        return None();
     }
 }
 
@@ -419,6 +436,30 @@ public model OnEnd<I, J implements Iteratable<I>> implements Iteratable<I> {
             this.ended = true;
         }
         return nextItem;
+    }
+}
+
+public model Chain<I, J implements Iteratable<I>, K implements Iteratable<I>> implements Iteratable<I> {
+    var first: J;
+    var second: K;
+    var firstEnded: Bool;
+    new(first: J, second: K) {
+        this.first = first;
+        this.second = second;
+        this.firstEnded = false;
+    }
+    public function [Iteratable.Next](): ?I {
+        if this.firstEnded {
+            return this.second.Next();
+        } else {
+            nextItem := this.first.Next();
+            if nextItem.IsNone() {
+                this.firstEnded = true;
+                this.second.Next()
+            } else {
+                nextItem
+            }
+        }   
     }
 }
 

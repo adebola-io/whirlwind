@@ -3,10 +3,10 @@ module Process;
 use Core.{
     Primitives.String,
     Primitives.UnsignedInt,
+    Prelude.Maybe,
     Async.CurrentSequence,
     Internals.{Invoke, Injunction},
 };
-use Core.Prelude.Maybe;
 
 /// Unwinds the stack by one frame and crashes with a fatal error.
 public function FatalOnCaller(message: String): never  {

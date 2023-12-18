@@ -79,7 +79,7 @@
       },
       "string_template_percent": {
          "name": "meta.template.expression constant.numeric",
-         "match": "\\%"
+         "match": "\\%(\\{[^\\}]*\\})?"
       },
       "template_literal": {
          "name": "string.quoted meta.string",

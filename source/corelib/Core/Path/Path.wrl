@@ -1,1 +1,23 @@
 module Path;
+
+use Core.Io.IoError;
+use Core.Prelude.{Maybe, Outcome, Bool, Todo, String};
+
+public model Path {
+    new() {
+
+    }
+    /// Returns true if a path exists.
+    public function Exists(): Bool {
+        Todo()
+    }
+    public function ToAbsolute(): Outcome<Path, IoError> {
+        Todo()
+    }
+    public function Extname(): Maybe<&String> {
+        Todo()
+    }
+    public function Basename(): Maybe<&String> {
+        Todo()
+    }
+}

@@ -167,22 +167,23 @@ pub fn span_of_typed_expression(
     literals: &LiteralMap,
 ) -> Span {
     match expression {
-        TypedExpression::Identifier(i) => {
-            let symbol = symbollib.get(i.value).unwrap();
-            Span::on_line(i.start, symbol.name.len() as u32)
-        }
-        TypedExpression::Literal(l) => match literals.get(*l).unwrap() {
-            Literal::StringLiteral { value, .. } => value.span,
-            Literal::NumericLiteral { value, .. } => value.span,
-            Literal::BooleanLiteral {
+        TypedExpression::Identifier(i) => symbollib
+            .get(i.value)
+            .map(|symbol| Span::on_line(i.start, symbol.name.len() as u32))
+            .unwrap_or_default(),
+        TypedExpression::Literal(l) => match literals.get(*l) {
+            Some(Literal::StringLiteral { value, .. }) => value.span,
+            Some(Literal::NumericLiteral { value, .. }) => value.span,
+            Some(Literal::BooleanLiteral {
                 value,
                 start_line,
                 start_character,
                 ..
-            } => Span {
+            }) => Span {
                 start: [*start_line, *start_character],
                 end: [*start_line, *start_character + if *value { 4 } else { 5 }],
             },
+            _ => Span::default(),
         },
         TypedExpression::CallExpr(c) => c.span,
         TypedExpression::FnExpr(f) => f.span,

@@ -3,7 +3,7 @@ module Main;
 
 // Import necessary modules from the Core library.
 use Core.{
-    Http.{
+    Net.Http.{
         HttpServer, ServerOutcome, HttpRequest, HttpResponse,
         Middleware, MiddlewareResponse, HttpRequestError
     },

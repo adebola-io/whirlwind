@@ -107,7 +107,8 @@ Got: '{right}'.",
         TypeErrorType::NonPublicType { base_type, property } => format!("'{property}' exists in {base_type}, but it is not denoted as public."),
         TypeErrorType::IndexingWithIllegalValue { indexer } => format!("Value of type '{indexer}' cannot be used as an index into an array."),
         TypeErrorType::ImplicitLoopReturn { rettype } => format!("For loop blocks do not return a value, but {rettype} is implicitly returned here."),
-        TypeErrorType::Illegalterator { illegal_type } => format!("Iteration invalid because {illegal_type} does not implement Iteratable or AsIterator."),  
+        TypeErrorType::Illegalterator { illegal_type } => format!("Iteration invalid because {illegal_type} does not implement Iteratable or AsIterator."),
+        TypeErrorType::UsingThisBeforeConstructor => format!("Instance cannot be used before it is fully constructed."),  
         };
         write!(f, "{message}")
     }

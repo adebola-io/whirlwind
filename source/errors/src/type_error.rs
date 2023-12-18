@@ -241,6 +241,7 @@ pub enum TypeErrorType {
     Illegalterator {
         illegal_type: String,
     },
+    UsingThisBeforeConstructor,
 }
 
 pub fn invalid_binary(left: String, operator: BinOperator, right: String, span: Span) -> TypeError {

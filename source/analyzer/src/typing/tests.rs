@@ -1,19 +1,16 @@
 #![cfg(test)]
 
-use crate::{
-    EvaluatedType, Module, ProgramErrorType, SemanticSymbolKind, Standpoint, CORE_LIBRARY_PATH,
-};
-use errors::TypeError;
+use crate::{EvaluatedType, Module, SemanticSymbolKind, Standpoint, CORE_LIBRARY_PATH};
+
 use std::path::PathBuf;
 
-#[track_caller]
 macro_rules! text_produces_errors{
     ($text: expr, $errors: expr) => {{
         let mut module = Module::from_text($text.to_string());
         module.module_path = Some(PathBuf::from("testing://Test.wrl"));
         let mut standpoint = Standpoint::new(true, Some(CORE_LIBRARY_PATH.into()));
         standpoint.add_module(module);
-        standpoint.check_all_modules();
+        standpoint.validate();
         for error in $errors {
             if !standpoint.errors.iter().any(
                 |prog_error| matches!(&prog_error.error_type, ProgramErrorType::Typing(e) if e == error),
@@ -24,14 +21,13 @@ macro_rules! text_produces_errors{
     }}
 }
 
-#[track_caller]
 macro_rules! check_types {
     ($text: expr, $types: expr) => {
-        let mut module = Module::from_text($text.to_string());
+        let mut module = Module::from_text($text);
         module.module_path = Some(PathBuf::from("testing://Test.wrl"));
         let mut standpoint = Standpoint::new(true, Some(CORE_LIBRARY_PATH.into()));
         let path_idx = standpoint.add_module(module).unwrap();
-        standpoint.check_all_modules();
+        standpoint.validate();
         let symbol_library = &standpoint.symbol_library;
         for symbol in symbol_library.in_module(path_idx) {
             for (symbol_name, type_value) in $types {
@@ -72,20 +68,41 @@ fn it_solves_assignment() {}
 
 #[test]
 fn it_creates_intrinsic_instances() {
-    // check_types!(
-    //     "
-    // module Testing;
+    check_types!(
+        "
+    module Testing;
 
-    // function Main() {
-    //     stringVal := true;
-    // }
-    // ",
-    //     &[("stringVal", "String")]
-    // );
+    function Main() {
+        boolean := true;
+        str := \"Hello, World\";
+        num := 34;
+    }
+    ",
+        &[("boolean", "Bool"), ("str", "String"), ("num", "UInt8")]
+    );
 }
 
 #[test]
-fn it_creates_instances() {}
+fn it_creates_instances() {
+    check_types!(
+        "
+    module Testing;
+
+    model Person {
+        public var name: String;
+        new(name: String) {
+            this.name = name;
+        }
+    }
+
+    function Main() {
+        var person = new Person();
+        var { name as personName } = new Person(\"John Doe\");
+    }    
+    ",
+        &[("person", "Person"), ("personName", "String")]
+    );
+}
 
 #[test]
 fn it_blocks_type_as_values() {}
@@ -165,7 +182,19 @@ fn it_errors_for_uncombinable_unions() {}
 fn it_errors_for_self_referential_types() {}
 
 #[test]
-fn it_errors_for_infinitely_cyclic_types() {}
+fn it_resolves_infinitely_cyclic_types_to_never() {}
 
 #[test]
 fn it_errors_for_uninferable_types() {}
+
+#[test]
+fn it_maintains_generic_parameter_invariance() {}
+
+#[test]
+fn it_infers_anonymous_function_parameter_types() {}
+
+#[test]
+fn it_errors_on_attribute_usage_before_assign() {}
+
+#[test]
+fn it_errors_on_recursive_models() {}

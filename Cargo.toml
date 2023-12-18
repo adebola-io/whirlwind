@@ -13,5 +13,5 @@ members = [
     "source/utils",
     "source/macros",
     "source/cli",
-    "source/whim"
+    "source/vm"
     ]

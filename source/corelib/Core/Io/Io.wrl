@@ -14,6 +14,7 @@ use Core.Internals.Invoke;
 use Core.Internals.Injunction;
 use Core.Prelude.Todo;
 use Core.Prelude.UnsignedInt;
+use Core.Collections.HashMap;
 
 /// Prints a message or an object to the console, terminal or any predefined output interface.
 public function Print<T implements Display>(message: T) {
@@ -29,16 +30,53 @@ public function Fmt(template: String): Template {
     new Template(template)
 }
 
-/// The Template model is a 
-public model Template {
+/// The Template model helps in the construction of dynamic strings by 
+/// embedding expressions within a formatted template. It
+/// works by defining and substituting characters with values retreived from
+/// various sources, ensuring support for basic transformations and type safety.
+public model Template implements Display {
     var template: String;
     var arguments: []String;
+    var map: HashMap<String, String>;
+    var transforms: []fn(x: String): String;
     new(template: String) {
+        this.map = new HashMap();
         this.template = template;
+        this.transforms = [];
         this.arguments = [];
     }
-    /// Adds an argument according to the list of predefined arguments in the template
-    /// string.
+    public function [Display.ToStr](): String {
+        return this.Finish();
+    }
+    /// Sets an argument based on the list of named parameters in the template string.
+    /// ### Usage
+    /// ```
+    /// weather := "bright";
+    /// emotion := "happy";
+    /// 
+    /// template := Core.Io.Fmt(
+    ///            "The day is %{weather}, 
+    ///             It's bright and fair,
+    ///             Oh %{emotion} day,
+    ///             The day of joy!");
+    /// 
+    /// completed := template
+    ///                 .Set("weather", weather)
+    ///                 .Set("emotion", emotion)
+    ///                 .Finish();
+    /// 
+    /// Assert(completed)
+    ///    .Equals("The day is bright, 
+    ///             It's bright and fair,
+    ///             Oh happy day,
+    ///             The day of joy!");
+    /// ```
+    public function Set<T implements Display>(param: String, value: T): &This {
+        this.map.Set(param, value.ToStr());
+        return this;
+    }
+    /// Adds an argument according to the list of positional parameters
+    /// in the template string.
     /// ### Usage
     /// ```
     /// name := "Sefunmi";
@@ -68,7 +106,7 @@ public model Template {
         this.template += suffix;
         return this;
     }
-    /// Transforms a positional argument with a function.
+    /// Transforms a positional parameter with a function.
     /// The positional arguments are zero-based, meaning 0
     /// corresponds to the first argument.
     /// 
@@ -90,4 +128,12 @@ public model Template {
     public function Finish(): String {
         Todo()
     }
+}
+
+test "create templates" {
+    use Core.Testing.Assert;
+
+    template := new Template("Hello, %!");
+    template.Add("world");
+    Print(template)
 }

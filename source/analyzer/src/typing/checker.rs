@@ -31,6 +31,9 @@ pub struct TypecheckerContext<'a> {
     enclosing_model_or_interface: Option<SymbolIndex>,
     /// A marker for static model methods, to block the use of 'this'.
     current_function_is_static: Option<bool>,
+    /// A marker for blocking the use of the `this` value standalone
+    /// in a constructor block.
+    current_expression_is_access: Option<bool>,
     /// List of errors from the standpoint.
     errors: &'a mut Vec<ProgramError>,
     /// List of literal types from the standpoint.
@@ -41,24 +44,24 @@ pub struct TypecheckerContext<'a> {
 }
 
 #[derive(Clone)]
-pub struct CurrentFunctionContext {
+struct CurrentFunctionContext {
     /// Whether it is a named function or a function expression.
     is_named: bool,
     return_type: EvaluatedType,
 }
 
-pub struct CurrentConstructorContext {
+struct CurrentConstructorContext {
     scopes: Vec<ScopeType>,
     attributes: HashMap<SymbolIndex, Vec<AttributeAssignment>>,
 }
 
-pub enum ScopeType {
+enum ScopeType {
     IfBlock { id: ScopeId },
     ElseBlock { id_of_parent_if: ScopeId },
     Other,
 }
 
-pub enum AttributeAssignment {
+enum AttributeAssignment {
     /// The attribute is propertly assigned in the constructor scope.
     Definite {
         span: Span,
@@ -110,6 +113,7 @@ pub fn typecheck(
         current_constructor_context: Vec::new(),
         enclosing_model_or_interface: None,
         current_function_is_static: None,
+        current_expression_is_access: None,
         errors,
         literals,
     };
@@ -133,12 +137,12 @@ pub fn typecheck(
     }
 }
 
-pub fn pop_scopetype(checker_ctx: &mut TypecheckerContext<'_>) {
+fn pop_scopetype(checker_ctx: &mut TypecheckerContext<'_>) {
     let mut constructor_context = checker_ctx.current_constructor_context.last_mut();
     constructor_context.as_mut().map(|ctx| ctx.scopes.pop());
 }
 
-pub fn push_scopetype(checker_ctx: &mut TypecheckerContext<'_>, scope: ScopeType) {
+fn push_scopetype(checker_ctx: &mut TypecheckerContext<'_>, scope: ScopeType) {
     let mut constructor_context = checker_ctx.current_constructor_context.last_mut();
     constructor_context
         .as_mut()
@@ -1896,8 +1900,17 @@ mod expressions {
                 .is_some_and(|is_static| is_static)
             {
                 let start = [this.start_line, this.start_character];
-                checker_ctx.add_error(errors::this_in_static_method(Span::on_line(start, 4)));
+                let span = Span::on_line(start, 4);
+                checker_ctx.add_error(errors::this_in_static_method(span));
                 return EvaluatedType::Unknown;
+            }
+            // Block the use of `this` as a standalone value in the constructor.
+            if !checker_ctx.current_expression_is_access.is_some_and(|x| x)
+                && checker_ctx.current_constructor_context.last().is_some()
+            {
+                let start = [this.start_line, this.start_character];
+                let span = Span::on_line(start, 4);
+                checker_ctx.add_error(errors::using_this_before_construction(span));
             }
             let symbol = symbollib.get_forwarded(model_or_interface).unwrap();
             let base = match &symbol.kind {
@@ -2754,6 +2767,7 @@ mod expressions {
         symbollib: &mut SymbolLibrary,
         checker_ctx: &mut TypecheckerContext,
     ) -> EvaluatedType {
+        checker_ctx.current_expression_is_access = Some(true);
         access.inferred_type = (|| {
             let object_type = typecheck_expression(&mut access.object, checker_ctx, symbollib);
             let property_symbol_idx = match &access.property {
@@ -2768,6 +2782,7 @@ mod expressions {
                 access,
             )
         })();
+        checker_ctx.current_expression_is_access = Some(false);
         access.inferred_type.clone()
     }
 

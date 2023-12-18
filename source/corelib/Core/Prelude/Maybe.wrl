@@ -35,9 +35,15 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
             return Err(None());
         }
     }
+    /// Combines two `Maybe` values, returning the second if and only if the 
+    /// first exists, and nothing otherwise.
+    /// ### Usage
+    /// ```
+    /// ```
     public function And<U>(conjunct: ?U): ?U {
         if this.IsSome() { conjunct } else { None() }
     }
+    /// Combines two `Maybe` values
     public function AndThen<U>(conjunct: fn(former: This): ?U): ?U {
         if this.IsSome() { conjunct(*this) } else { None() }
     }
@@ -80,7 +86,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     /// maybeInt2 := Some(100);
     /// AssertThat(!maybeInt2.IsSomeAnd(predicate));
     /// 
-    /// maybeInt3 := None()
+    /// maybeInt3: ?Int := None()
     /// AssertThat(!maybeInt3.IsSomeAnd(predicate));
     /// ```
     public function IsSomeAnd(predicate: fn(value: &T): Bool): Bool {
@@ -97,8 +103,39 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     public function IsNoneThen(consequent: fn()) {
         if this.IsNone() { consequent() };
     }
+    /// Returns a Bool indicating whether there is no value, or there is a value and it
+    /// upholds a given predicate.
+    /// ### Usage
+    /// ```
+    /// predicate := fn(value: &Int) value > 5;
+    /// 
+    /// maybeInt := Some(10);
+    /// AssertThat(maybeInt.IsNoneOr(predicate));
+    /// 
+    /// maybeInt2: ?Int := None();
+    /// AssertThat(maybeInt2.IsNoneOr(predicate));
+    /// 
+    /// maybeInt3 := Some(4);
+    /// AssertThat(not maybeInt3.IsNoneOr(predicate));
+    /// ```
+    public function IsNoneOr(predicate: fn(value: &T): Bool): Bool {
+        this.IsNone() || predicate(&this.Unwrap())
+    }
+    /// Maps a `Maybe<T>` to an `Outcome<T, E>` by passing in a fallback error
+    /// value if there is nothing within.
+    /// ### Usage
+    /// ```
+    /// ```
     public function SomeOr<E>(error: E): Outcome<T, E> {
         if this.IsNone() { Err(error) } else { Ok(this.Unwrap()) }
+    }
+    /// Maps a `Maybe<T>` to an `Outcome<T, E>` by computing a fallback error
+    /// value if there is nothing within.
+    /// ### Usage
+    /// ```
+    /// ```
+    public function SomeOrElse<E>(error: fn(): E): Outcome<T, E> {
+        if this.IsNone() { Err(error()) } else { Ok(this.Unwrap()) }
     }
     /// Provides a safe and concise way to combine two indeterminate values, returning the first
     /// `Maybe` if it has a value, the second if the first is empty.

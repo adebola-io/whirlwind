@@ -34,3 +34,10 @@ pub fn illegal_iterator(illegal_type: String, span: ast::Span) -> TypeError {
         span,
     }
 }
+
+pub fn using_this_before_construction(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::UsingThisBeforeConstructor,
+        span,
+    }
+}

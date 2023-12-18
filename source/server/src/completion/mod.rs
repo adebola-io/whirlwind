@@ -586,10 +586,7 @@ fn generate_documentation(
 ) -> Documentation {
     let header = writer.print_symbol_with_idx(*symbol_idx);
     let mut value = format!("```wrl\n{header}\n```");
-    let symbol = writer
-        .standpoint
-        .symbol_library
-        .get_forwarded(*symbol_idx);
+    let symbol = writer.standpoint.symbol_library.get_forwarded(*symbol_idx);
     let symbol = match symbol {
         Some(symbol) => symbol,
         _ => return Documentation::String(String::new()),
@@ -786,7 +783,11 @@ impl<'a> CompletionFinder<'a> {
             return Some(CompletionResponse::Array(
                 items
                     .into_iter()
-                    .filter(|item| item.label.starts_with(property_name))
+                    .filter(|item| {
+                        item.label
+                            .to_lowercase()
+                            .starts_with(&property_name.to_lowercase())
+                    })
                     .collect(),
             ));
         }
