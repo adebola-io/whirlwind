@@ -880,3 +880,20 @@ pub fn get_type_generics_mut<'a>(
 pub fn get_size_of_type(_inferred_type: EvaluatedType, _name: SymbolIndex) -> Result<i32, String> {
     Ok(0)
 }
+
+/// Unrolls a borrowed evaluated type.
+pub fn deref_type(mut typ: EvaluatedType) -> EvaluatedType {
+    while let EvaluatedType::Borrowed { base } = typ {
+        typ = *base;
+    }
+    return typ;
+}
+
+/// Creates an instance of Bool.
+pub fn boolean_instance(bool_symbol: SymbolIndex) -> EvaluatedType {
+    EvaluatedType::ModelInstance {
+        model: bool_symbol,
+        is_invariant: false,
+        generic_arguments: vec![],
+    }
+}

@@ -1,30 +1,39 @@
-use std::any::Any;
+#[derive(Clone, Copy)]
+pub struct Register(pub f64);
 
-type ValueAddress = *mut dyn Any;
+#[derive(Default)]
+pub enum AccValue {
+    #[default]
+    None,
+    StackPointer(usize),
+    ConstIndex(usize),
+    Numeric(f64),
+    Bool(bool),
+}
 
-pub enum Register {
-    /// The accumulator.
-    Acc(u64),
-    /// A register for storing small unsigned integer values.
-    Suintx(u8),
-    /// A register for storing 16-bit unsigned integer values.
-    Muintx(u16),
-    /// A register for storing 32-bit unsigned integer values.
-    Luintx(u32),
-    /// A register for storing 64-bit unsigned integer values.
-    Xluintx(u64),
-    /// A register for storing signed integer values.
-    Aintx(isize),
-    /// Register for temporary boolean values.
-    Boolx(bool),
-    /// A register for storing addresses.
-    Addrx(ValueAddress),
-    /// Another register for storing addresses.
-    Eaddrx(ValueAddress),
-    /// Index to a position on the stack.
-    Sp(usize),
-    /// Address of the next executable instruction.
-    Ip(usize),
-    /// The counter value for loops.
-    Cntx(usize),
+#[derive(Default, Debug)]
+pub struct RegisterList {
+    pub acc8: i8,
+    pub acc16: i16,
+    pub acc32: f32,
+    pub acc64: f64,
+
+    pub boolx: bool,
+
+    pub r8: i8,
+    pub r16: i16,
+    pub r32: f32,
+    pub r64: f64,
+
+    pub stackptr: usize,
+    pub constptr: usize,
+
+    pub addressptr: u64,
+    pub loopcounter: usize,
+}
+
+impl RegisterList {
+    pub fn new() -> Self {
+        Default::default()
+    }
 }

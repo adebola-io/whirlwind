@@ -20,7 +20,6 @@ public enum Injunction {
     StrBytes(String),
     StrClear(String),
     StrContains(String, String),
-    StrLength(String),
     StrPad(String, UnsignedInt),
     StrPadLeft(String, UnsignedInt),
     StrPadRight(String, UnsignedInt),

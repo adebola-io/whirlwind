@@ -18,6 +18,7 @@ pub enum SymbolEntry {
 #[derive(Debug, Default)]
 pub struct SymbolLibrary {
     tables: HashMap<PathIndex, SymbolTable>,
+    // Numeric intrinsic values.
     pub float: Option<SymbolIndex>,
     pub float32: Option<SymbolIndex>,
     pub float64: Option<SymbolIndex>,
@@ -28,21 +29,33 @@ pub struct SymbolLibrary {
     pub uint32: Option<SymbolIndex>,
     pub uint64: Option<SymbolIndex>,
     pub uint: Option<SymbolIndex>,
+
     pub string: Option<SymbolIndex>,
     pub array: Option<SymbolIndex>,
     pub bool: Option<SymbolIndex>,
     pub prospect: Option<SymbolIndex>,
     pub never: Option<SymbolIndex>,
+    pub range: Option<SymbolIndex>,
+    pub maybe: Option<SymbolIndex>,
+
+    // Interfaces.
     pub addition: Option<SymbolIndex>,
     pub try_s: Option<SymbolIndex>,
     pub guaranteed: Option<SymbolIndex>,
-    pub maybe: Option<SymbolIndex>,
-    pub range: Option<SymbolIndex>,
     pub default: Option<SymbolIndex>,
+    pub iteratable: Option<SymbolIndex>,
+    pub bitwise: Option<SymbolIndex>,
+    pub subtract: Option<SymbolIndex>,
+    pub orderable: Option<SymbolIndex>,
+    pub multiply: Option<SymbolIndex>,
+    pub divide: Option<SymbolIndex>,
+    pub remainder: Option<SymbolIndex>,
+    pub index: Option<SymbolIndex>,
+    pub negation: Option<SymbolIndex>,
+
     pub invoke: Option<SymbolIndex>,
     pub injunction: Option<SymbolIndex>,
     pub nullptr: Option<SymbolIndex>,
-    pub iteratable: Option<SymbolIndex>,
     pub asiter: Option<SymbolIndex>,
 }
 

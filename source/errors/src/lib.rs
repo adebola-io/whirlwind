@@ -41,3 +41,10 @@ pub fn using_this_before_construction(span: ast::Span) -> TypeError {
         span,
     }
 }
+
+pub fn incomparable(left: String, right: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::Incomparable { left, right },
+        span,
+    }
+}

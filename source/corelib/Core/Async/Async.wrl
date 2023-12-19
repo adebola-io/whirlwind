@@ -3,7 +3,7 @@
 module Async;
 
 use Core.Process.Fatal;
-use Core.Prelude.{Some, Array, Todo, Bool, Guaranteed};
+use Core.Prelude.{Some, Array, Todo, Bool, Guaranteed, String};
 use Core.Internals.{Injunction, Invoke, Sequence};
 use Core.Primitives.UnsignedInt;
 
@@ -105,7 +105,7 @@ public model Prospect<T> {
         return *this;
     }
     /// Attaches a callback that should run if the execution of the prospect fails.
-    public function Recover(callback: fn()) {
+    public function Recover(callback: fn(errorMessage?: String)) {
         Todo();
     }
     /// Races a prospect against another.

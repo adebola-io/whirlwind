@@ -4,7 +4,7 @@ use Core.{
     Primitives.Bool,
     Internals.{never, Injunction, Invoke},
     Process.{FatalOnCaller, Todo},
-}; 
+};
 use Outcome.{ Ok, Err, Outcome }; 
 use Interfaces.{ Guaranteed, Try.Try, Default.Default };
 
@@ -21,7 +21,6 @@ public function Some<T>(value: T): ?T {
 /// A value that may or may not exist.
 public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     var inner: MaybeVal;
-    var value: T;
 
     /// Implementation of `Guarantee` interface.
     function [Guaranteed.Guarantee](): T {
@@ -43,10 +42,20 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     public function And<U>(conjunct: ?U): ?U {
         if this.IsSome() { conjunct } else { None() }
     }
-    /// Combines two `Maybe` values
-    public function AndThen<U>(conjunct: fn(former: This): ?U): ?U {
-        if this.IsSome() { conjunct(*this) } else { None() }
+    /// Combines two `Maybe` values, computing the second if and only if the
+    /// first exists, and nothing otherwise.
+    /// ### Usage
+    /// ```
+    /// ```
+    public function AndThen<U>(conjunct: fn(former: T): ?U): ?U {
+        if this.IsSome() { conjunct(this.Unwrap()) } else { None() }
     }
+    /// Unwraps the Maybe value if it exists, or crashes the running sequence 
+    /// if otherwise. It takes in an error message that will be displayed if the
+    /// later is the case.
+    /// ### Usage
+    /// ```
+    /// ```
     public function Expect(error: String): T {
         if this.IsNone() { Fatal(Some(error)) } else { this.Unwrap() }
     }
@@ -119,7 +128,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     /// AssertThat(not maybeInt3.IsNoneOr(predicate));
     /// ```
     public function IsNoneOr(predicate: fn(value: &T): Bool): Bool {
-        this.IsNone() || predicate(&this.Unwrap())
+        this.IsNone() or predicate(&this.Unwrap())
     }
     /// Maps a `Maybe<T>` to an `Outcome<T, E>` by passing in a fallback error
     /// value if there is nothing within.
@@ -154,6 +163,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     public function Or(alternate: ?T): ?T {
         if this.IsSome() { *this } else { alternate }
     }
+    /// Combines two intermediate values
     public function OrElse(alternate: fn(): ?T): ?T {
         if this.IsSome() { *this } else { alternate() }
     }
@@ -182,6 +192,10 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
         if this.IsNone() { fallback() } else { this.Unwrap() }
     }
     /// Converts a `Maybe<T>` to a `Maybe<E>` by applying a transformation function.
+    /// ### Usage
+    /// ```
+    /// 
+    /// ```
     public function Map<U>(func: fn(former: T): U): ?U {
         Some(func(this?))
     } 

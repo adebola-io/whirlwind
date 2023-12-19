@@ -30,7 +30,7 @@
       },
       "injunction": {
          "name": "meta.injunction keyword.storage.injunction",
-         "match": "\\b(use|module|enum|public|static|test|var|new|const|model|async|record|interface|type|implements|not|and|or|is|Package|Super|Core)\\b"
+         "match": "\\b(use|module|enum|public|static|test|var|new|const|model|async|record|interface|type|implements|not|and|or|is|Super|Core|Packages)\\b"
       },
       "comment": {
          "patterns": [

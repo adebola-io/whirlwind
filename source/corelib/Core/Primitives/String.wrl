@@ -1,14 +1,14 @@
 module String;
 
-use Ops.{ Addition, Sequenced };
+use Ops.{Addition, Sequenced};
 use Bool.Bool;
 use Core.{ 
-    Internals.{ Invoke, Injunction }, 
+    Internals.{Invoke, Injunction}, 
     Collections.Hash,
-    Prelude.{ Maybe, AsIterator, Iteratable, Range, Display, Some, None, Default },
+    Prelude.{Maybe, AsIterator, Iteratable, Range, Display, Some, None, Default},
     Process.Todo,
 };
-use Numeric.{ Int, UnsignedInt, UInt8, UInt16 };
+use Numeric.{Int, UnsignedInt, UInt8, UInt16};
 use Array.Array;
 
 /// Model for creating, manipulating and formatting text sequences.
@@ -20,13 +20,13 @@ public model String
     + Hash 
     + Default 
 {
-    var chars: []UInt16;
+    var arr: []UInt16;
     new() {
-        this.chars = [];
+        this.arr = [];
     }
     /// Returns the next character alphabetically in a sequence.
-    function [Sequenced.NextItem](): Maybe<String> {
-        if this.chars.Length() > 1 { None() } else { Todo() }
+    function [Sequenced.NextItem](): ?String {
+        if this.arr.Length() > 1 { None() } else { Todo() }
     }
     /// Implementation of the Display trait.
     public function [Display.ToStr](): String {
@@ -44,11 +44,11 @@ public model String
     /// ```
     function [Addition.Add](other: This): This {
         newStr := new String();
-        for char in this.chars {
-            newStr.chars.Push(char);
+        for char in this.arr {
+            newStr.arr.Push(char);
         }
-        for char in other.chars {
-            newStr.chars.Push(char);
+        for char in other.arr {
+            newStr.arr.Push(char);
         }
         return newStr;
     }
@@ -95,8 +95,8 @@ public model String
     /// Assert(Str).Equals("Hello, world!");
     /// ```
     public function Append(suffix: String) {
-        for unit in suffix.chars {
-            this.chars.Push(unit);
+        for unit in suffix.arr {
+            this.arr.Push(unit);
         }
     }
     /// Changes the first character of every word in the string to upper case.
@@ -155,11 +155,11 @@ public model String
     /// AssertThat(name.StartsWith("ael"));
     /// ```
     public function EndsWith(pat: String): Bool {
-        if pat.chars.Length() > this.chars.Length() {
+        if pat.arr.Length() > this.arr.Length() {
             return false;
         }
         for { a as ch1, b as ch2 } 
-          in this.chars.Reverse().Zip(pat.chars.Reverse()) 
+          in this.arr.Reverse().Zip(pat.arr.Reverse()) 
         {
             if ch1 != ch2 {
                 return false;
@@ -189,7 +189,7 @@ public model String
     /// AssertThat(!str.IsEmpty());
     /// ```
     public function IsEmpty(): Bool {
-        return this.chars.Length() == 0;
+        return this.arr.Length() == 0;
     }
     /// Returns the number of characters in the string.
     /// ## Usage
@@ -199,7 +199,7 @@ public model String
     /// Assert(str.Length()).Equals(5);
     /// ```
     public function Length(): UnsignedInt {
-        this.chars.Length()
+        this.arr.Length()
     }
     /// Changes the case of all letters in the string to lower case.
     /// ## Usage
@@ -266,7 +266,7 @@ public model String
     /// Assert(str).Equals("Hello, world!");
     /// ```
     public function Prepend(prefix: String) {
-        this.chars.Prepend(prefix.chars);
+        this.arr.Prepend(prefix.arr);
     }
     /// Returns a String value that is made from a number of copies of the original string.
     /// If count is 0, the empty string is returned.
@@ -313,8 +313,8 @@ public model String
     /// ```
     public function Reverse(): String {
         newStr := new String();
-        for unit in this.chars.Reverse() {
-            newStr.chars.Push(*unit);
+        for unit in this.arr.Reverse() {
+            newStr.arr.Push(*unit);
         }
         return newStr;
     }
@@ -423,10 +423,10 @@ public model String
     /// AssertThat(name.StartsWith("Jo"));
     /// ```
     public function StartsWith(pat: String): Bool {
-        if pat.chars.Length() > this.chars.Length() {
+        if pat.arr.Length() > this.arr.Length() {
             return false;
         }
-        for { a, b } in this.chars.Iter().Zip(pat.chars.Iter()) 
+        for { a, b } in this.arr.Iter().Zip(pat.arr.Iter()) 
         {
             if a != b {
                 return false;

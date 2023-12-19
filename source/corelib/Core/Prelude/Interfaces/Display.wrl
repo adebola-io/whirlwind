@@ -32,10 +32,24 @@ use Core.Internals.{Invoke, Injunction};
 /// Because the implementation is tedious to write again and again,
 /// especially for large models, it can be derived automatically.
 /// If all properties of a model implement Display, then the model itself 
-/// implements Display. All it needs is the `+ Display` interface appended.
+/// implements Display. All it needs is the `implements Display` interface appended.
+/// ```
+/// model Circle implements Display {
+///     var radius: UInt32;
+///     new(radius: UInt32) {
+///         this.radius = radius;
+///     }
+/// }
+/// 
+/// Print(new Circle(10)); // Will print out "Circle { radius: 10 }"
+/// ```
 public interface Display {
     /// Converts the implementing type to a string.
     public function ToStr(): String {
         return Invoke(Injunction.Display(this));
+    }
+    /// Converts the implementing type to a formatted string.
+    public function ToFmtStr(): String {
+        return this.ToStr();
     }
 }

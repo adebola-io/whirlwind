@@ -2,10 +2,10 @@ use crate::{
     evaluate, evaluate_parameter_idxs, span_of_typed_expression, span_of_typed_statement,
     unify::{unify_freely, unify_types},
     utils::{
-        arrify, coerce, coerce_all_generics, ensure_assignment_validity, evaluate_generic_params,
-        get_implementation_of, get_numeric_type, get_size_of_type, get_type_generics, infer_ahead,
-        is_array, is_boolean, is_numeric_type, maybify, prospectify, symbol_to_type,
-        update_expression_type,
+        arrify, boolean_instance, coerce, coerce_all_generics, deref_type,
+        ensure_assignment_validity, evaluate_generic_params, get_implementation_of,
+        get_numeric_type, get_size_of_type, get_type_generics, infer_ahead, is_array, is_boolean,
+        is_numeric_type, maybify, prospectify, symbol_to_type, update_expression_type,
     },
     EvaluatedType, Literal, LiteralMap, ParameterType, PathIndex, ProgramError, ScopeId,
     SemanticSymbolKind, SymbolIndex, SymbolLibrary, TypedAccessExpr, TypedAssignmentExpr,
@@ -1275,7 +1275,9 @@ mod expressions {
             TypedExpression::IndexExpr(indexexp) => {
                 typecheck_index_expression(indexexp, symbollib, checker_ctx)
             }
-            // TypedExpression::BinaryExpr(binexp) => typecheck_binary_expression(),
+            TypedExpression::BinaryExpr(binexp) => {
+                typecheck_binary_expression(binexp, checker_ctx, symbollib)
+            }
             TypedExpression::AssignmentExpr(assexp) => {
                 typecheck_assignment_expression(assexp, checker_ctx, symbollib)
             }
@@ -1288,8 +1290,83 @@ mod expressions {
             TypedExpression::UpdateExpr(updateexp) => {
                 typecheck_update_expression(updateexp, checker_ctx, symbollib)
             }
-            _ => EvaluatedType::Unknown,
         }
+    }
+
+    ///  Typechecks a binary expression.
+    fn typecheck_binary_expression(
+        binexp: &mut crate::TypedBinExpr,
+        checker_ctx: &mut TypecheckerContext<'_>,
+        symbollib: &mut SymbolLibrary,
+    ) -> EvaluatedType {
+        binexp.inferred_type = (|| {
+            let mut left = typecheck_expression(&mut binexp.left, checker_ctx, symbollib);
+            let mut right = typecheck_expression(&mut binexp.left, checker_ctx, symbollib);
+            let _is_numeric =
+                is_numeric_type(&left, symbollib) && is_numeric_type(&right, symbollib);
+            let mut generic_hashmap = HashMap::new();
+            let mut unifier = |left, right| {
+                unify_types(
+                    left,
+                    right,
+                    symbollib,
+                    UnifyOptions::Conform,
+                    Some(&mut generic_hashmap),
+                )
+            };
+            match binexp.operator {
+                // equality operations.
+                // valid if a and b refer to the same base type.
+                ast::BinOperator::Is | ast::BinOperator::Equals | ast::BinOperator::NotEquals => {
+                    if matches!(binexp.operator, ast::BinOperator::Is) {
+                        left = deref_type(left);
+                        right = deref_type(right);
+                    }
+                    let mut unification = unifier(&left, &right);
+                    // for numeric type, unification should be possible in both directions.
+                    let is_numeric =
+                        is_numeric_type(&left, symbollib) && is_numeric_type(&right, symbollib);
+                    if is_numeric {
+                        unification = unification.or(unifier(&right, &left));
+                    };
+                    match unification {
+                        Ok(_) => {
+                            let generic_arguments = generic_hashmap.into_iter().collect::<Vec<_>>();
+                            update_expression_type(&mut binexp.left, symbollib, &generic_arguments);
+                            update_expression_type(
+                                &mut binexp.right,
+                                symbollib,
+                                &generic_arguments,
+                            );
+                            if let Some(bool) = symbollib.bool {
+                                return boolean_instance(bool);
+                            } else {
+                                checker_ctx.add_error(errors::missing_intrinsic(
+                                    format!("Bool"),
+                                    binexp.span,
+                                ));
+                                return EvaluatedType::Unknown;
+                            }
+                        }
+                        Err(error_types) => {
+                            let left = symbollib.format_evaluated_type(&left);
+                            let right = symbollib.format_evaluated_type(&right);
+                            for error_type in error_types {
+                                let error = TypeError {
+                                    _type: error_type,
+                                    span: binexp.span,
+                                };
+                                checker_ctx.add_error(error);
+                            }
+                            checker_ctx.add_error(errors::incomparable(left, right, binexp.span));
+                            return EvaluatedType::Unknown;
+                        }
+                    }
+                }
+                _ => return EvaluatedType::Unknown,
+            }
+        })();
+        binexp.inferred_type.clone()
     }
 
     /// Typechecks an update expression.

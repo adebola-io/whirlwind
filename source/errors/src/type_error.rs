@@ -242,6 +242,10 @@ pub enum TypeErrorType {
         illegal_type: String,
     },
     UsingThisBeforeConstructor,
+    Incomparable {
+        left: String,
+        right: String,
+    },
 }
 
 pub fn invalid_binary(left: String, operator: BinOperator, right: String, span: Span) -> TypeError {

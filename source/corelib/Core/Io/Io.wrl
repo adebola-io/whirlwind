@@ -17,9 +17,15 @@ use Core.Prelude.UnsignedInt;
 use Core.Collections.HashMap;
 
 /// Prints a message or an object to the console, terminal or any predefined output interface.
-public function Print<T implements Display>(message: T) {
-    messageAsStr := message.ToStr();
-    Invoke(Injunction.Print(messageAsStr));
+public function Print<T implements Display>(data: T) {
+    dataStr := data.ToStr();
+    Invoke(Injunction.Print(dataStr));
+}
+
+/// Prints a message or an object to the console, terminal, or any predefined output interface.
+public function PrintFmt<T implements Display>(data: T) {
+    dataStr := data.ToFmtStr();
+    Invoke(Injunction.Print(dataStr));
 }
 
 public interface IoError {}

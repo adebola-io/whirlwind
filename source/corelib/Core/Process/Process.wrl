@@ -3,6 +3,7 @@ module Process;
 use Core.{
     Primitives.String,
     Primitives.UnsignedInt,
+    Primitives.UInt8,
     Prelude.Maybe,
     Async.CurrentSequence,
     Internals.{Invoke, Injunction},
@@ -53,6 +54,17 @@ public function Todo(message?: String): never {
 /// ```
 public function Fatal(message?: String): never {
     return Invoke(Injunction.SeqFatal(message));
+}
+
+/// Closes all sequences and exits the program with a given code.
+/// ### Usage
+/// ```
+/// use Core.Process.Exit;
+/// 
+/// Exit(0);
+/// ```
+public function Exit(code: UInt8): never {
+    return Invoke(Injunction.Exit);
 }
 
 /// Returns the value of an environment variable.

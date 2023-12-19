@@ -411,7 +411,7 @@ public model Skip<I, J implements Iteratable<I>> implements Iteratable<I> {
         if this.skipCount == 0 {
             return this.iterator.Next();
         } else {
-            while this.n > 0 {
+            while this.skipCount > 0 {
                 var {} = this.iterator.Next();
                 this.skipCount -= 1;
             }

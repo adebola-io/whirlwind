@@ -455,9 +455,9 @@ fn test_forloop_binding() {
 
 #[test]
 fn testing_the_standard_library() {
-    let time = std::time::Instant::now();
     let corelib_path = Some(PathBuf::from(CORE_LIBRARY_PATH));
     let mut standpoint = Standpoint::new(true, corelib_path);
+    let time = std::time::Instant::now();
     standpoint.validate();
     println!("Built Core in {:?}", time.elapsed());
     for error in standpoint.errors {

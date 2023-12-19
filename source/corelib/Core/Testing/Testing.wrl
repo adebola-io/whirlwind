@@ -4,6 +4,7 @@ use Core.Prelude.Bool;
 use Core.Prelude.Todo;
 use Core.Process.FatalOnCaller;
 use Core.Io.Fmt;
+use Core.Prelude.Display;
 
 /// Creates an assertion object.
 public function Assert<T implements Display>(value: T): Assertion<T> {

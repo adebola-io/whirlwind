@@ -5,7 +5,8 @@ use super::{symbols::*, ProgramError};
 use crate::{
     bind, typecheck, CurrentModuleType, IntrinsicPaths, LiteralMap, Module, ModuleMap, PathIndex,
     ProgramErrorType::{self, Importing},
-    SurfaceAreaCalculator, SymbolLibrary, SymbolTable, TypedModule,
+    SurfaceAreaCalculator, SymbolLibrary, SymbolTable, TypedFunctionDeclaration, TypedModule,
+    TypedStmnt,
 };
 use ast::UseTarget;
 use std::{
@@ -14,10 +15,10 @@ use std::{
 };
 use utils::get_parent_dir;
 
-/// The standpoint is the final and complete representation
-/// in the compiler frontend, and is responsible for tasks like
-/// resolving imports, creating and managing symbol tables,
-/// typechecking, binding declarations, etc.
+/// The standpoint is the final and complete intermediate representation
+/// in the compiler frontend. It consists of every module in the program,
+/// and is responsible for tasks like resolving imports, creating and managing
+/// symbol tables, typechecking, binding declarations, static size analysis etc.
 #[derive(Debug)]
 pub struct Standpoint {
     pub module_map: ModuleMap,
@@ -128,6 +129,7 @@ impl Standpoint {
         } else if name == "Core" && self.corelib_path.is_some() {
             return self.corelib_path;
         } else {
+            // todo: Packages. namespace.
             (name, self.directories.get(dir)?)
         };
 
@@ -194,6 +196,19 @@ impl Standpoint {
                 }
             }
         }
+    }
+    /// Returns the entry function in the main module.
+    pub fn main(&self) -> Option<&TypedFunctionDeclaration> {
+        let entry_module = self.module_map.get(self.entry_module)?;
+        for statement in &entry_module.statements {
+            if let TypedStmnt::FunctionDeclaration(f) = statement {
+                let function_symbol = ast::unwrap_or_continue!(self.symbol_library.get(f.name));
+                if function_symbol.name == "Main" {
+                    return Some(f);
+                }
+            }
+        }
+        return None;
     }
 }
 

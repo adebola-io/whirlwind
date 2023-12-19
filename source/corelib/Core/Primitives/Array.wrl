@@ -13,6 +13,13 @@ use Core.Internals.{ Injunction, Invoke };
 /// A contiguous, growable list of items.
 public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     var length: UnsignedInt;
+    new() {
+        this.length = 0;
+    }
+    /// Returns an iterator that produces copies of the elements in the array.
+    /// ### Usage
+    /// ```
+    /// ```
     public function [AsIterator.IntoIter](): ArrayIter<T> {
         new ArrayIter(this)
     }
@@ -223,7 +230,11 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// Assert(firstItem).Equals(None());
     /// ```
     public function Shift(): ?T {
-        Todo()
+        if this.length == 0 {
+            return None();
+        } else {
+            Todo()
+        }
     }
     /// Returns a reference to the last item in the array.
     public function Last(): Maybe<&T> {
