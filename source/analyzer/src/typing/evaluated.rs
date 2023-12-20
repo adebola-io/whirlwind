@@ -78,9 +78,6 @@ pub enum EvaluatedType {
     Generic {
         base: SymbolIndex,
     },
-    Borrowed {
-        base: Box<EvaluatedType>,
-    },
 }
 
 impl EvaluatedType {
@@ -202,7 +199,6 @@ impl EvaluatedType {
                             .any(|typ| typ.contains(child))
                 }
                 EvaluatedType::OpaqueTypeInstance { .. } => false,
-                EvaluatedType::Borrowed { base } => base.contains(child),
                 _ => false,
             }
     }
@@ -245,17 +241,8 @@ impl EvaluatedType {
             EvaluatedType::HardGeneric { base } | EvaluatedType::Generic { base } => {
                 generic_map.push(*base)
             }
-            EvaluatedType::Borrowed { base } => base.gather_generics_into(generic_map),
             _ => {}
         }
-    }
-
-    /// Returns `true` if the evaluated type is [`Borrowed`].
-    ///
-    /// [`Borrowed`]: EvaluatedType::Borrowed
-    #[must_use]
-    pub fn is_borrowed(&self) -> bool {
-        matches!(self, Self::Borrowed { .. })
     }
 
     /// Returns `true` if the evaluated type is [`MethodInstance`].
@@ -308,7 +295,6 @@ impl EvaluatedType {
                             .any(|typ| typ.contains_child_for_which(predicate))
                 }
                 EvaluatedType::OpaqueTypeInstance { .. } => false,
-                EvaluatedType::Borrowed { base } => base.contains_child_for_which(predicate),
                 _ => false,
             }
     }
@@ -323,7 +309,6 @@ impl EvaluatedType {
             | EvaluatedType::MethodInstance { is_invariant, .. }
             | EvaluatedType::ModelInstance { is_invariant, .. } => *is_invariant,
             EvaluatedType::HardGeneric { .. } => true,
-            EvaluatedType::Borrowed { base } => base.is_invariant(),
             _ => false,
         }
     }
@@ -339,7 +324,6 @@ impl EvaluatedType {
             | EvaluatedType::FunctionExpressionInstance { is_invariant, .. }
             | EvaluatedType::MethodInstance { is_invariant, .. }
             | EvaluatedType::ModelInstance { is_invariant, .. } => *is_invariant = value,
-            EvaluatedType::Borrowed { base } => base.set_invariance(value),
             _ => {}
         }
     }
@@ -520,15 +504,6 @@ pub fn evaluate(
                 None => EvaluatedType::Unknown,
             }
         }
-        IntermediateType::BorrowedType { value, .. } => EvaluatedType::Borrowed {
-            base: Box::new(evaluate(
-                &value,
-                symbollib,
-                solved_generics,
-                error_tracker,
-                recursion_depth,
-            )),
-        },
         IntermediateType::UnionType { types, .. } => {
             let mut collaborators = vec![];
             let mut generic_arguments = vec![];
@@ -580,7 +555,6 @@ pub fn evaluate(
                     // then all types are corrupted, and the final result
                     // is a never type.
                     EvaluatedType::Never => return EvaluatedType::Never,
-                    EvaluatedType::Borrowed { .. } => continue, // todo. How will this be handled?
                     _ => continue,
                 };
             }

@@ -87,7 +87,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     /// upholds a given predicate.
     /// ### Usage
     /// ```
-    /// predicate := fn(value: &Int) value == 42;
+    /// predicate := fn(value: Int) value == 42;
     /// 
     /// maybeInt := Some(42);
     /// AssertThat(maybeInt.IsSomeAnd(predicate));
@@ -98,8 +98,8 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     /// maybeInt3: ?Int := None()
     /// AssertThat(!maybeInt3.IsSomeAnd(predicate));
     /// ```
-    public function IsSomeAnd(predicate: fn(value: &T): Bool): Bool {
-        this.IsSome() && predicate(&this.Unwrap())
+    public function IsSomeAnd(predicate: fn(value: T): Bool): Bool {
+        this.IsSome() and predicate(this.Unwrap())
     }
     /// Performs a computation if there is an internal value contained.
     public function IsSomeThen(consequent: fn(value: T)) {
@@ -116,7 +116,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     /// upholds a given predicate.
     /// ### Usage
     /// ```
-    /// predicate := fn(value: &Int) value > 5;
+    /// predicate := fn(value: Int) value > 5;
     /// 
     /// maybeInt := Some(10);
     /// AssertThat(maybeInt.IsNoneOr(predicate));
@@ -127,8 +127,8 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     /// maybeInt3 := Some(4);
     /// AssertThat(not maybeInt3.IsNoneOr(predicate));
     /// ```
-    public function IsNoneOr(predicate: fn(value: &T): Bool): Bool {
-        this.IsNone() or predicate(&this.Unwrap())
+    public function IsNoneOr(predicate: fn(value: T): Bool): Bool {
+        this.IsNone() or predicate(this.Unwrap())
     }
     /// Maps a `Maybe<T>` to an `Outcome<T, E>` by passing in a fallback error
     /// value if there is nothing within.
@@ -161,11 +161,11 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     /// Assert(name2).Equals("John");
     /// ```
     public function Or(alternate: ?T): ?T {
-        if this.IsSome() { *this } else { alternate }
+        if this.IsSome() { this } else { alternate }
     }
     /// Combines two intermediate values
     public function OrElse(alternate: fn(): ?T): ?T {
-        if this.IsSome() { *this } else { alternate() }
+        if this.IsSome() { this } else { alternate() }
     }
     /// Ignores the maybe and returns the internal value. 
     /// It will throw an error if no value is present.
@@ -200,10 +200,10 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
         Some(func(this?))
     } 
     public function Xor(other: ?T): ?T {
-        if this.IsSome() && other.IsNone() {
-            return *this;
+        if this.IsSome() and other.IsNone() {
+            return this;
         }
-        if this.IsNone() && other.IsSome() {
+        if this.IsNone() and other.IsSome() {
             return other;
         }
         return None();

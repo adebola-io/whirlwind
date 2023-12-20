@@ -30,11 +30,11 @@ public model Tuple<T, U> {
     /// ### Usage
     /// ```
     /// tuple := Pair("John ", "Doe");
-    /// joined := Tuple.Join(&tuple);
+    /// joined := Tuple.Join(tuple);
     /// 
     /// Assert(joined).Equals("John Doe");
     /// ```
-    public static function Join<T implements Addition>(tuple: &Tuple<T, T>): T {
+    public static function Join<T implements Addition>(tuple: Tuple<T, T>): T {
         tuple.a + tuple.b
     }
 }
@@ -59,30 +59,31 @@ public function Pair<T, U>(a: T, b: U): Tuple<T, U> {
     return new Tuple(a, b);
 }
 
+/// A set containing three individual items.
 public model Triple<T, U, V> {
-    public var one: T;
-    public var two: U;
-    public var three: V;
+    public var a: T;
+    public var b: U;
+    public var c: V;
 
-    new(first: T, second: U, third: V) {
-        this.one = first;
-        this.two = second;
-        this.three = third;
+    new(a: T, b: U, c: V) {
+        this.a = a;
+        this.b = b;
+        this.c = c;
     }
 }
 
 /// A set containing four individual items.
 public model Quadruple<T, U, V, S> {
-    public var first: T;
-    public var second: U;
-    public var third: V;
-    public var fourth: S;
+    public var a: T;
+    public var b: U;
+    public var c: V;
+    public var d: S;
 
     new(first: T, second: U, third: V, fourth: S) {
-        this.first = first;
-        this.second = second;
-        this.third = third;
-        this.fourth = fourth;
+        this.a = first;
+        this.b = second;
+        this.c = third;
+        this.d = fourth;
     }
     /// Groups the items in the quadruple to two tuples.
     /// ###  Usage
@@ -90,12 +91,12 @@ public model Quadruple<T, U, V, S> {
     /// use Core.Collections.{Quadruple, Tuple};
     /// 
     /// quadruple := new Quadruple(1, "Sefunmi", true, [35.5]);
-    /// var { first, second } = quadruple.ToTuple();
+    /// var { a as first, b as second } = quadruple.ToTuple();
     /// 
     /// Assert(first).Equals(new Tuple(1, "Sefunmi"));
     /// Assert(second).Equals(new Tuple(true, [35.5]));
     /// ```
     public function ToTuple(): Tuple<Tuple<T, U>, Tuple<V, S>> {
-        Todo()
+        return Pair(Pair(this.a, this.b), Pair(this.c, this.d));
     }
 }

@@ -135,9 +135,6 @@ impl<'a> CompletionFinder<'a> {
                     _ => return None,
                 }
             }
-            EvaluatedType::Borrowed { base } => {
-                return self.complete_from_dot(*base, completion_type)
-            }
             EvaluatedType::OpaqueTypeInstance {
                 available_methods,
                 available_interfaces,

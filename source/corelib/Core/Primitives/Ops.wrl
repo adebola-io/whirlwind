@@ -7,7 +7,7 @@ use Core.Prelude.Maybe;
 /// by overloading the `+` operator, such as strings and numbers.
 public interface Addition {
     /// Adds two items together.
-    public function Add(other: &This): This;
+    public function Add(other: This): This;
 }
 
 public interface Negation<R> {
@@ -17,19 +17,19 @@ public interface Negation<R> {
 
 public interface Remainder<R> {
     /// Finds the remainder from dividing an item.
-    public function Remainder(other: &This): R;
+    public function Remainder(other: This): R;
 }
 
 public interface Subtraction {
-    public function Subtract(other: &This): This;
+    public function Subtract(other: This): This;
 }
 
 public interface Multiplication {
-    public function Multiply(other: &This): This;
+    public function Multiply(other: This): This;
 }
 
 public interface Division {
-    public function Division(other: &This): This;
+    public function Division(other: This): This;
 }
 
 public interface Index<I, R> {
@@ -46,10 +46,10 @@ public enum Ordering {
 /// to other models of the same type.
 public interface Orderable {
     /// Compares two values together.
-    public function Compare(other: &This): Ordering;
+    public function Compare(other: This): Ordering;
 }
 
-/// Provides a set of methods to enable overloading of bitwise operators (`|` and `&`) for custom models.
+/// Provides a set of methods to enable overloading of bitwise operators (`|` and ``) for custom models.
 /// It allows instances of a class to behave like integers in bitwise operations.
 public interface Bitwise {
     /// Performs the bitwise OR operation.

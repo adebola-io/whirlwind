@@ -33,7 +33,7 @@ public model Assertion<T implements Display> {
         this.value = value;
     }
     /// Checks if the contained value equals another.
-    public function Equals(other: T): &This {
+    public function Equals(other: T): This {
         if other != this.value {
             message := AssertionMessage(
                         "Assertion failed on equality.", 
@@ -44,7 +44,7 @@ public model Assertion<T implements Display> {
         return this;
     }
     /// Checks that the contained value does not equal another.
-    public function DoesNotEqual(other: T): &This {
+    public function DoesNotEqual(other: T): This {
         if other == this.value {
             message := AssertionMessage(
                         "Assertion failed on inequality.", 
@@ -55,7 +55,7 @@ public model Assertion<T implements Display> {
         return this;
     }
     /// Checks that two values refer to the same place in memory.
-    public function Is(other: T): &This {
+    public function Is(other: T): This {
         if other is this.value {} else {
             message := AssertionMessage(
                         "Assertion failed on reference equality.", 
@@ -66,7 +66,7 @@ public model Assertion<T implements Display> {
         return this;
     }
     /// Checks that an array is empty.
-    public static function ArrayIsEmpty<T>(arr: &Array<T>) {
+    public static function ArrayIsEmpty<T>(arr: Array<T>) {
         if arr.Length() != 0 {
             message := Core.Io.Fmt("Assertion failed because array is not empty.");
             message.Extend("Array Length: %").Add(arr.Length());

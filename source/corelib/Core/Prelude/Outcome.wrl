@@ -94,9 +94,9 @@ public model Outcome<T, E> implements Guaranteed<T> + Try<T, Outcome<never, E>> 
     /// outcome := Ok(42);
     /// AssertThat(outcome.IsOkAnd(fn(value) value == 42));
     /// ```
-    public function IsOkAnd(predicate: fn(value: &T): Bool): Bool {
+    public function IsOkAnd(predicate: fn(value: T): Bool): Bool {
         // return this.inner => {
-        //     .Ok(value) => predicate(&value),
+        //     .Ok(value) => predicate(value),
         //     _ => false,
         // };
         Todo()
@@ -107,9 +107,9 @@ public model Outcome<T, E> implements Guaranteed<T> + Try<T, Outcome<never, E>> 
     /// outcome := Err("Something went wrong.");
     /// AssertThat(outcome.IsErrAnd(fn(e) e == "Something went wrong."));
     /// ```
-    public function IsErrAnd(predicate: fn(value: &E): Bool): Bool {
+    public function IsErrAnd(predicate: fn(value: E): Bool): Bool {
         // return this.inner => {
-        //     .Err(error) => predicate(&error),
+        //     .Err(error) => predicate(error),
         //     _ => false,
         // };
         Todo()

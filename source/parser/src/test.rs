@@ -449,31 +449,6 @@ fn parsing_this_type() {
 }
 
 #[test]
-fn parsing_borrowed_type() {
-    let mut parser = parse_text("type Ref<T> = &T;");
-
-    let statement = parser.next().unwrap().unwrap();
-    let module_ambience = parser.module_ambience();
-
-    assert!(module_ambience
-        .lookaround("Ref")
-        .is_some_and(|search| matches!(
-            search.entry, ast::ScopeEntry::Type(t) if matches!(
-                t.value,
-                TypeExpression::BorrowedType(_)
-            )
-        )));
-
-    assert_eq!(
-        statement,
-        Statement::TypeDeclaration(TypeDeclaration {
-            address: ScopeAddress::from([0, 0, 0]),
-            span: Span::from([1, 1, 1, 18])
-        })
-    );
-}
-
-#[test]
 fn parse_array_type() {
     let mut parser = parse_text("type Bytes = []UInt8;");
     let statement = parser.next().unwrap().unwrap();
@@ -1416,34 +1391,6 @@ fn parse_unary_expression() {
                 span: [1, 2, 1, 3].into()
             }),
             span: [1, 1, 1, 3].into()
-        })))
-    );
-}
-
-#[test]
-fn parse_ref_expression() {
-    let mut parser = parse_text("&a.hello()");
-    parser.debug_allow_global_expressions = true;
-    assert_eq!(
-        parser.next().unwrap().unwrap(),
-        Statement::FreeExpression(Expression::UnaryExpr(Box::new(UnaryExpr {
-            operator: ast::UnaryOperator::Ref,
-            operand: Expression::CallExpr(Box::new(CallExpr {
-                caller: Expression::AccessExpr(Box::new(AccessExpr {
-                    object: Expression::Identifier(Identifier {
-                        name: format!("a"),
-                        span: [1, 2, 1, 3].into()
-                    }),
-                    property: Expression::Identifier(Identifier {
-                        name: format!("hello"),
-                        span: [1, 4, 1, 9].into()
-                    }),
-                    span: [1, 2, 1, 9].into()
-                })),
-                arguments: vec![],
-                span: [1, 2, 1, 11].into()
-            })),
-            span: [1, 1, 1, 11].into()
         })))
     );
 }

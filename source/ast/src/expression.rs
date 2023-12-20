@@ -181,8 +181,6 @@ pub enum UnaryOperator {
     NegationLiteral, // not a
     Plus,            // +a
     Minus,           // -a
-    Ref,             // &a
-    Deref,           // *a
 }
 
 #[derive(Debug, PartialEq)]
@@ -209,12 +207,13 @@ pub enum AssignOperator {
 /// Chart for expression precedence in Whirlwind.
 #[derive(Clone, Copy, PartialEq, PartialOrd)]
 pub enum ExpressionPrecedence {
-    Access = 1,                     // a.b
-    Index = 2,                      // a[b]
-    Call = 3,                       // a(b)
-    AssertionOrTry = 4,             // a?, a!
-    New = 5,                        // new a
-    Referencing = 6,                // &a, *a
+    Access = 1,         // a.b
+    Index = 2,          // a[b]
+    Call = 3,           // a(b)
+    AssertionOrTry = 4, // a?, a!
+    New = 5,            // new a
+    // Referencing = 6,                // &a, *a
+    Option = 6,
     Negation = 7,                   // !a, not a
     UnaryPlusOrMinus = 8,           // +a, -a
     Range = 9,                      // a..b

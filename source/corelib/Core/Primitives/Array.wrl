@@ -16,19 +16,12 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     new() {
         this.length = 0;
     }
-    /// Returns an iterator that produces copies of the elements in the array.
+    /// Returns an iterator over elements in this array.
     /// ### Usage
     /// ```
     /// ```
-    public function [AsIterator.IntoIter](): ArrayIter<T> {
+    public function [AsIterator.Iter](): ArrayIter<T> {
         new ArrayIter(this)
-    }
-    /// Returns an iterator over references to the elements in this array.
-    /// ### Usage
-    /// ```
-    /// ```
-    public function Iter(): ArrayRefIter<T> {
-        new ArrayRefIter(this)
     }
     /// Returns the item at a particular index in the array, if it exists.
     /// Indexes are zero-based, meaning that the first item is at index 0.
@@ -45,7 +38,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// arr := [15, 25, 35, 45, 55];
     /// Assert(arr.At(-1)).Equals(Some(55))
     /// ```
-    public function At(index: Int): Maybe<&T> {
+    public function At(index: Int): Maybe<T> {
         i := if index < 0 {
             this.length + index
         } else {
@@ -55,7 +48,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
             return None();
         };
         a := this[i.Unsigned()];
-        return Some(&a);
+        return Some(a);
     }
     /// Checks if an item is contained in the array.
     /// ### Usage
@@ -64,7 +57,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// array := [];
     /// array.Push(str);
     /// 
-    /// AssertThat(array.Contains(&str));
+    /// AssertThat(array.Contains(str));
     /// ```
     /// The method checks referential equality, meaning it will only return true
     /// if the checked item is in the array,
@@ -74,10 +67,10 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// num := 24;
     /// array := [24];
     /// 
-    /// AssertThat(array.Contains(&num)) // This will fail, because the 24 in the array is different from the num 24.
+    /// AssertThat(array.Contains(num)) // This will fail, because the 24 in the array is different from the num 24.
     /// ```
     /// To check for comparative equality, consider using `.Iter().Any(...)`.
-    public function Contains(value: &T): Bool {
+    public function Contains(value: T): Bool {
         for element in this.Iter() {
             if element is value {
                 return true;
@@ -95,20 +88,20 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// AssertThat(arr == []);
     /// ```
     public function Clear() {
-        *this = [];
+        Invoke(Injunction.ArrClear(this));
     }
     /// Returns a reference to the first item in the array, if it exists.
     /// ### Usage
     /// ```
     /// arr := [20, 30, 40, 50, 60];
-    /// Assert(arr.First()).Equals(Some(&20));
+    /// Assert(arr.First()).Equals(Some(20));
     /// 
     /// empty: []Int := [];
     /// Assert(empty.First()).Equals(None());
     /// ```
-    public function First(): Maybe<&T> {
+    public function First(): Maybe<T> {
         if this.length == 0 { None() } 
-        else Some(&this[0])
+        else Some(this[0])
     }
     /// Returns the zero-based index of a value in the array.
     /// 
@@ -121,9 +114,9 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// str3 := "This is the future!";
     /// 
     /// arr := [str1, str2, str3];
-    /// Assert(arr.IndexOf(&str2)).Equals(Some(1)).
+    /// Assert(arr.IndexOf(str2)).Equals(Some(1)).
     /// ```
-    public function IndexOf(value: &T): ?UnsignedInt {
+    public function IndexOf(value: T): ?UnsignedInt {
         for { a as index, b as element } in this.Iter().Enumerate() 
         {
             if element is value {
@@ -138,7 +131,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// ```
     /// arr := [1, 3, 4, 5];
     /// arr.Insert(1, 2);
-    /// Assert(arr.At(1)).Equals(Some(&2));
+    /// Assert(arr.At(1)).Equals(Some(2));
     /// ```
     public function Insert(index: UnsignedInt, value: T) {
         Invoke(Injunction.ArrInsert(index, value, this));
@@ -237,20 +230,20 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
         }
     }
     /// Returns a reference to the last item in the array.
-    public function Last(): Maybe<&T> {
+    public function Last(): Maybe<T> {
         if this.length == 0 { None() } 
-        else Some(&this[this.length - 1])
+        else Some(this[this.length - 1])
     }
     /// Converts an array to a string representation,
     /// given that its elements implement `Display`.
     /// ### Usage
     /// ```
     /// arr := [1, 6, 7, 8, 10];
-    /// arrAsStr := Array.ToStr(&arr);
+    /// arrAsStr := Array.ToStr(arr);
     /// 
     /// Assert(arrAsStr).Equals("[1, 6, 7, 8, 10]");
     /// ```
-    public static function ToStr<T implements Display>(array: &Array<T>): String {
+    public static function ToStr<T implements Display>(array: Array<T>): String {
         string := "[";
         i := 0;
         for { a as index, b as item } in array.Iter().Enumerate() 
@@ -267,10 +260,10 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// ### Usage
     /// ```
     /// arr := [34, 21, 89, 11, 20, 46];
-    /// Array.Sort(&arr)
+    /// Array.Sort(arr)
     /// Assert(arr).Equals([11, 20, 21, 34, 46, 89]);
     /// ```
-    public static function Sort<T implements Orderable>(array: &Array<T>) {
+    public static function Sort<T implements Orderable>(array: Array<T>) {
         Todo()
     }
     /// Returns a Sorted version of an array
@@ -281,24 +274,25 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// ### Usage
     /// ```
     /// arr := [26, 10, 35, 16, 87, 1, 12];
-    /// arrSorted := Array.Sorted(&arr);
+    /// arrSorted := Array.Sorted(arr);
     /// 
     /// Assert(arrSorted).Equals([1, 10, 12, 16, 26, 35, 87]);
     /// ```
-    public static function Sorted<T implements Orderable>(array: &Array<T>): Array<T> {
+    public static function Sorted<T implements Orderable>(array: Array<T>): Array<T> {
         Todo()
     }
     /// Fills an array with default values, given that the element type can be defaulted.
     /// ### Usage
     /// ```
     /// arr := [1, 2, 3];
-    /// Array.Reset(&arr);
+    /// Array.Reset(arr);
     /// Assert(arr).Equals([0, 0, 0])
     /// ```
-    public static function Reset<T implements Default>(array: &Array<T>) {
-        for value in array.Iter() {
-            var default: T;
-            *value = default;
+    public static function Reset<T implements Default>(array: Array<T>) {
+        i := 0;
+        while i < array.Length() {
+            var def: T;
+            array[i] = def;
         }
     }
     /// Returns the largest value in an array.
@@ -306,13 +300,13 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// ### Usage
     /// ```
     /// array := [2, 3, 4, 5, 6, 7];
-    /// largest := Array.Max(&array);
+    /// largest := Array.Max(array);
     /// 
     /// Assert(largest == Some(7));
     /// ```
-    public static function Max<T implements Orderable>(array: &Array<T>): ?T {
-        max := *array.First()?;
-        array.IntoIter().ForEach(fn(value) max = Max(max, value));
+    public static function Max<T implements Orderable>(array: Array<T>): ?T {
+        max := array.First()?;
+        array.Iter().ForEach(fn(value) max = Max(max, value));
         Some(max)
     }
 
@@ -321,13 +315,13 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// ### Usage
     /// ```
     /// array := [2, 3, 4, 5, 6, 7];
-    /// smallest := Array.Min(&array);
+    /// smallest := Array.Min(array);
     /// 
     /// Assert(smallest == Some(2));
     /// ```
-    public static function Min<T implements Orderable>(array: &Array<T>): ?T {
-        min := *array.First()?;
-        array.IntoIter().ForEach(fn(value) min = Min(min, value));
+    public static function Min<T implements Orderable>(array: Array<T>): ?T {
+        min := array.First()?;
+        array.Iter().ForEach(fn(value) min = Min(min, value));
         Some(min)
     }
 
@@ -337,13 +331,13 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// ### Usage
     /// ```
     /// array := [1, 2, 3, 4];
-    /// summed = Array.Sum(&array)
+    /// summed = Array.Sum(array)
     /// 
     /// AssertThat(summed == 10);
     /// ```
-    public static function Sum<T implements Addition + Default>(array: &Array<T>): T {
+    public static function Sum<T implements Addition + Default>(array: Array<T>): T {
         var sum: T;
-        array.IntoIter().ForEach(fn(item) sum += item);
+        array.Iter().ForEach(fn(item) sum += item);
         sum
     }
     /// Joins all the elements in an array into one string and returns it.
@@ -352,16 +346,16 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// ### Usage
     /// ```
     /// array := ["Best", "believe", "I'm", "still", "bejeweled"];
-    /// joined := Array.Join(&array);
+    /// joined := Array.Join(array);
     /// 
     /// AssertThat(joined == "Best believe I'm still bejeweled");
     /// 
     /// array2 := [1, 2, 3, 4, 5];
-    /// joined2 := Array.Join(&array2, "+");
+    /// joined2 := Array.Join(array2, "+");
     /// 
     /// AssertThat(joined2 == "1+2+3+4+5");
     /// ```
-    public static function Join<T implements Display>(array: &Array<T>, separator?: String): String {
+    public static function Join<T implements Display>(array: Array<T>, separator?: String): String {
         separatorValue := separator.UnwrapOr(" ");
         string := new String();
         for { a as i, b as element } in array.Iter().Enumerate() 
@@ -378,9 +372,9 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
 
 /// An owned iterator built from the elements of an array.
 public model ArrayIter<T> implements Iteratable<T> {
-    var array: &Array<T>;
+    var array: Array<T>;
     var idx: UnsignedInt;
-    new(array: &Array<T>) {
+    new(array: Array<T>) {
         this.array = array;
         this.idx = 0;
     }
@@ -397,14 +391,14 @@ public model ArrayIter<T> implements Iteratable<T> {
     }
 }
 
-public model ArrayRefIter<T> implements Iteratable<&T> {
-    var array: &Array<T>;
+public model ArrayRefIter<T> implements Iteratable<T> {
+    var array: Array<T>;
     var idx: UnsignedInt;
-    new(array: &Array<T>) {
+    new(array: Array<T>) {
         this.array = array;
         this.idx = 0;
     }
-    public function [Iteratable.Next](): Maybe<&T> {
+    public function [Iteratable.Next](): Maybe<T> {
         Todo()
     }
 }

@@ -18,7 +18,6 @@ pub enum UnifyOptions {
 /// that upholds the properties of both.
 /// It optionally takes in a map so it can track the generic parameters
 /// that have been transformed.
-// TODO: Return custom error if one type is borrowed.
 // TODO: Return custom error if one type is a Maybe of the other.
 // TODO: Return custom error if one type is an array of the other.
 pub fn unify_types(
@@ -357,18 +356,6 @@ pub fn unify_types(
                 generic_args,
                 is_invariant: false,
             });
-        }
-        // Both types are borrowed.
-        (Borrowed { base: left_type }, Borrowed { base: right_type }) => {
-            return Ok(Borrowed {
-                base: Box::new(unify_types(
-                    &left_type,
-                    &right_type,
-                    symbollib,
-                    options,
-                    map,
-                )?),
-            })
         }
         // Left type is never, and the unification mode is special.
         (Never, right_type)

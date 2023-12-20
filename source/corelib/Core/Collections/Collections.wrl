@@ -6,3 +6,4 @@ public use OrderedSet.Quadruple;
 public use OrderedSet.Pair;
 public use ArrayStack.ArrayStack;
 public use HashMap.{HashMap, Hash, ToMap};
+public use Sort.{QuickSort};

@@ -25,7 +25,7 @@ pub struct RegisterList {
     pub r32: f32,
     pub r64: f64,
 
-    pub stackptr: usize,
+    pub frameptr: usize,
     pub constptr: usize,
 
     pub addressptr: u64,

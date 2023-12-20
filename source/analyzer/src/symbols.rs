@@ -235,10 +235,6 @@ pub enum IntermediateType {
         meaning: Option<SymbolIndex>,
         span: Span,
     },
-    BorrowedType {
-        value: Box<IntermediateType>,
-        span: Span,
-    },
     Placeholder,
     ArrayType {
         element_type: Box<IntermediateType>,
@@ -258,7 +254,6 @@ impl IntermediateType {
             | IntermediateType::SimpleType { span, .. }
             | IntermediateType::UnionType { span, .. }
             | IntermediateType::This { span, .. }
-            | IntermediateType::BorrowedType { span, .. }
             | IntermediateType::ArrayType { span, .. }
             | IntermediateType::MaybeType { span, .. } => *span,
             IntermediateType::Placeholder => Span::default(),

@@ -24,10 +24,10 @@ pub enum Opcode {
     LoadImToReg32,
     /// Loads the next eight bytes as a u64 value into the 64-bit register.
     LoadImToReg64,
-    /// Loads the next four bytes as a usize into the stackptr register.
+    /// Loads the next four bytes as a usize into the frameptr register.
     /// The value decoded is offset from the start of the function's frame,
     /// not the overall stack.
-    LoadImToStackPtr,
+    LoadImToFramePtr,
     /// Loads the next eight bytes as a usize into the constptr register.
     LoadImToConstPtr,
     /// Loads the value in an 8-bit register into the 8-bit accumulator.
@@ -38,12 +38,24 @@ pub enum Opcode {
     LoadAcc32,
     /// Loads the value in the 64-bit register into the 64-bit accumulator.
     LoadAcc64,
+    /// Moves the value in the 8-bit accumulator into the 16-bit accumulator.
+    MoveAcc8To16,
+    /// Moves the value in the 8-bit accumulator into the 32-bit accumulator.
+    MoveAcc8To32,
     /// Moves the value in the 8-bit accumulator into the 64-bit accumulator.
     MoveAcc8To64,
+    /// Moves the value in the 16-bit accumulator into the 32-bit accumulator.
+    MoveAcc16To32,
     /// Moves the value in the 16-bit accumulator into the 64-bit accumulator.
     MoveAcc16To64,
     /// Moves the value in the 32-bit accumulator into the 64-bit accumulator.
     MoveAcc32To64,
+    /// Moves the value in the 8-bit accumulator to the frame.
+    /// The next 4 bytes correspond to the index in the frame to write into.
+    MoveAcc8ToFrame,
+    MoveAcc16ToFrame,
+    MoveAcc32ToFrame,
+    MoveAcc64ToFrame,
 
     // ARITHMETIC OPCODES.
     // ---
@@ -126,8 +138,11 @@ pub enum Opcode {
     /// value in the loop.
     BreakLoop,
     /// Moves the instruction pointer to a new index.
+    /// The next
     Goto,
     /// Calls a function.
+    /// The next 4 bytes correspond to the index of the function in the function registry.
+    /// A stack frame will be created for the function, and
     Call,
     /// Returns to the caller block of the current function and continues execution.
     Return,

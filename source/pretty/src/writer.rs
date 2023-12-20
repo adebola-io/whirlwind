@@ -440,27 +440,6 @@ impl<'a> SymbolWriter<'a> {
                 string
             }
             IntermediateType::This { .. } => format!("This"),
-            IntermediateType::BorrowedType { value, .. } => {
-                let mut string = String::from("&");
-                let mut parenthesize = false;
-                match **value {
-                    IntermediateType::UnionType { .. }
-                    | IntermediateType::FunctionType { .. }
-                    | IntermediateType::ArrayType { .. }
-                    | IntermediateType::MaybeType { .. } => {
-                        parenthesize = true;
-                    }
-                    _ => {}
-                };
-                if parenthesize {
-                    string.push_str("(")
-                }
-                string.push_str(self.print_intermediate_type(&value).as_str());
-                if parenthesize {
-                    string.push_str(")")
-                }
-                string
-            }
             IntermediateType::Placeholder => {
                 unreachable!("Attempted to print a placeholder intermediate type.")
             }
@@ -477,9 +456,7 @@ impl<'a> SymbolWriter<'a> {
                 let mut string = String::from("[]");
                 let mut parenthesize = false;
                 match **element_type {
-                    IntermediateType::UnionType { .. }
-                    | IntermediateType::FunctionType { .. }
-                    | IntermediateType::BorrowedType { .. } => {
+                    IntermediateType::UnionType { .. } | IntermediateType::FunctionType { .. } => {
                         parenthesize = true;
                     }
                     _ => {}
@@ -499,8 +476,7 @@ impl<'a> SymbolWriter<'a> {
                 match **value {
                     IntermediateType::UnionType { .. }
                     | IntermediateType::FunctionType { .. }
-                    | IntermediateType::ArrayType { .. }
-                    | IntermediateType::BorrowedType { .. } => {
+                    | IntermediateType::ArrayType { .. } => {
                         parenthesize = true;
                     }
                     _ => {}

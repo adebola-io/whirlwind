@@ -14,7 +14,7 @@ use Array.Array;
 /// Model for creating, manipulating and formatting text sequences.
 public model String 
     implements Addition 
-    + AsIterator<&String, Chars> 
+    + AsIterator<String, Chars> 
     + Sequenced 
     + Display 
     + Hash 
@@ -30,7 +30,7 @@ public model String
     }
     /// Implementation of the Display trait.
     public function [Display.ToStr](): String {
-        return *this;
+        return this;
     }
     /// Implementation of the Default trait.
     static function [Default.Init](): This {
@@ -82,7 +82,7 @@ public model String
     /// Assert(str.At(-3)).Equals(Some("i"));
     /// ```
     /// It will return no value if the length of the string is exceeded.
-    public function At(position: Int): ?&String {
+    public function At(position: Int): ?String {
         return Invoke(Injunction.StrAt(this, position));
     }
     /// Adds text to the end of the string.
@@ -134,17 +134,17 @@ public model String
     /// ```
     // !::mutable::!
     public function Clear() {
-        *this = new String();
+        Invoke(Injunction.StrClear(this))
     }
     /// Returns true if a substring is contained within the string.
     /// ## Usage
     /// ```
     /// str := "This is a world premiere.";
     /// 
-    /// AssertThat(str.Contains(&"world"));
-    /// AssertThat(str.Contains(&"premiere"));
+    /// AssertThat(str.Contains("world"));
+    /// AssertThat(str.Contains("premiere"));
     /// ```
-    public function Contains(substr: &String): Bool {
+    public function Contains(substr: String): Bool {
         return Invoke(Injunction.StrContains(this, substr));
     }
     /// Returns true if the string ends with a given pattern.
@@ -286,7 +286,7 @@ public model String
     public function Repeat(count: UnsignedInt): String {
         str := new String();
         // for {} in 0..count {
-        //    str.Append(*this);
+        //    str.Append(this);
         // }
         return str;
     }
@@ -314,7 +314,7 @@ public model String
     public function Reverse(): String {
         newStr := new String();
         for unit in this.arr.Reverse() {
-            newStr.arr.Push(*unit);
+            newStr.arr.Push(unit);
         }
         return newStr;
     }
@@ -324,9 +324,9 @@ public model String
     /// ```
     /// str := "Hello, world!";
     /// 
-    /// Assert(str.Slice(0..5)).Equals(Some(&"Hello")); // index 0 to 4.
+    /// Assert(str.Slice(0..5)).Equals(Some("Hello")); // index 0 to 4.
     /// ```
-    public function Slice(bounds: Range<UnsignedInt>): Maybe<&String> {
+    public function Slice(bounds: Range<UnsignedInt>): Maybe<String> {
         return Invoke(Injunction.StrSlice(this, bounds));
     }
     /// Divides the string into a list of substrings based on a delimeter.
@@ -335,9 +335,9 @@ public model String
     /// str := "Ring around the rosy";
     /// words := str.Split(" ");
     /// 
-    /// Assert(words).Equals([&"Ring", &"Around", &"The", &"Rosy"]);
+    /// Assert(words).Equals(["Ring", "Around", "The", "Rosy"]);
     /// ```
-    public function Split(delim: String): Array<&String> {
+    public function Split(delim: String): Array<String> {
         return Invoke(Injunction.StrSplit(this, delim));
     }
     /// Divides the string into a list of substrings based on a predicate.
@@ -346,9 +346,9 @@ public model String
     /// str := "Hello world. My name is James.";
     /// sentences := str.SplitAt(fn(pat) pat == ". ");
     /// 
-    /// Assert(sentences).Equals([&"Hello world", "My name is James."]);
+    /// Assert(sentences).Equals(["Hello world", "My name is James."]);
     /// ```
-    public function SplitAt(predicate: fn(pattern: &String): Bool): This {
+    public function SplitAt(predicate: fn(pattern: String): Bool): This {
         return Invoke(Injunction.StrSplitAt(this, predicate));
     }
     /// Changes only the first character in the string to upper case.
@@ -449,15 +449,15 @@ public model String
 
 
 /// A simple iterator over the characters in a string.
-public model Chars implements Iteratable<&String> {
+public model Chars implements Iteratable<String> {
     var idx: UnsignedInt;
-    var string: &String;
-    new(string: &String) {
+    var string: String;
+    new(string: String) {
         this.idx = 0;
         this.string = string;
     }
     /// Returns the next character.
-    public function [Iteratable.Next](): ?&String {
+    public function [Iteratable.Next](): ?String {
         nextChar := this.string.At(this.idx)?;
         this.idx += 1;
         return Some(nextChar);
@@ -465,6 +465,6 @@ public model Chars implements Iteratable<&String> {
 }
 
 /// Calculates the edit distance between two strings using the [Levenshtein's Algorithm](http://example.com).
-public function LevenshteinEditRatio(str1: &String, str2: &String): Int {
+public function LevenshteinEditRatio(str1: String, str2: String): Int {
     Todo()
 }

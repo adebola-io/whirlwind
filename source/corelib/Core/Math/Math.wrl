@@ -16,7 +16,7 @@ use Core.Internals.{Injunction, Invoke};
 /// Assert(Max(1, 5)).Equals(1);
 /// ```
 public function Min<T implements Orderable>(first: T, second: T): T {
-    ordering := first.Compare(&second);
+    ordering := first.Compare(second);
     if ordering == Ordering.Less {
         return first;
     } else if ordering == Ordering.Greater {
@@ -36,7 +36,7 @@ public function Min<T implements Orderable>(first: T, second: T): T {
 /// Assert(Max(1, 3)).Equals(3);
 /// ```
 public function Max<T implements Orderable>(first: T, second: T): T {
-    ordering := first.Compare(&second);
+    ordering := first.Compare(second);
     if ordering == Ordering.Less {
         return second;
     } else if ordering == Ordering.Greater {

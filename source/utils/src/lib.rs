@@ -2,6 +2,7 @@ mod container;
 mod fs;
 mod partial;
 mod stringmutator;
+mod threadpool;
 mod unorderedmap;
 
 pub use container::*;
@@ -12,6 +13,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 pub use stringmutator::*;
+pub use threadpool::*;
 pub use unorderedmap::*;
 
 pub fn get_parent_dir(path: &Path) -> Option<&Path> {

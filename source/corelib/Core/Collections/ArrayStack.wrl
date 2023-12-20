@@ -53,7 +53,7 @@ public model ArrayStack<T> {
         this.capacity = value;
     }
     /// Returns the top value in the stack without removing it.
-    public function Top(): ?&T {
+    public function Top(): ?T {
         this.items.Last()
     }
     /// Removes the last item from the stack and returns it, if it exists.
@@ -65,7 +65,7 @@ public model ArrayStack<T> {
     /// This method will fail if the size of the stack is already at maximum length.
     public function Push(data: T): Outcome<Bool, StackError> {
         if this.items.Length() == this.capacity {
-            Err(new StackError("The stack is already full."))
+            Err(StackError.AlreadyFull)
         } else {
             this.items.Push(data);
             Ok(true)
@@ -81,9 +81,6 @@ public model ArrayStack<T> {
     }   
 }
 
-model StackError {
-    var message: String;
-    new(message: String){
-        this.message = message;
-    }   
+enum StackError {
+    AlreadyFull
 }

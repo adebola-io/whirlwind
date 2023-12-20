@@ -28,6 +28,9 @@ public function PrintFmt<T implements Display>(data: T) {
     Invoke(Injunction.Print(dataStr));
 }
 
+public interface Writer {}
+public interface Reader {}
+
 public interface IoError {}
 
 
@@ -45,6 +48,7 @@ public model Template implements Display {
     var arguments: []String;
     var map: HashMap<String, String>;
     var transforms: []fn(x: String): String;
+    
     new(template: String) {
         this.map = new HashMap();
         this.template = template;
@@ -77,7 +81,7 @@ public model Template implements Display {
     ///             Oh happy day,
     ///             The day of joy!");
     /// ```
-    public function Set<T implements Display>(param: String, value: T): &This {
+    public function Set<T implements Display>(param: String, value: T): This {
         this.map.Set(param, value.ToStr());
         return this;
     }
@@ -93,7 +97,7 @@ public model Template implements Display {
     /// 
     /// Core.Io.Print(completed); // Will print out "My name is Sefunmi and I am 21 years old."
     /// ```
-    public function Add<T implements Display>(value: T): &This {
+    public function Add<T implements Display>(value: T): This {
         this.arguments.Push(value.ToStr());
         return this;
     }
@@ -108,7 +112,7 @@ public model Template implements Display {
     /// 
     /// Assert(name.Finish()).Equals("Welcome, Mark! Good Morning.");
     /// ```
-    public function Extend(suffix: String): &This {
+    public function Extend(suffix: String): This {
         this.template += suffix;
         return this;
     }
@@ -127,8 +131,9 @@ public model Template implements Display {
     /// 
     /// Assert(template.Finish()).Equals("Hello, John!");
     /// ```
-    public function Transform(arg: UnsignedInt): &This {
-        Todo()
+    public function Transform(arg: UnsignedInt, transformer: fn(x: String): String): This {
+        this.transforms.Push(transformer);
+        return this;
     }
     /// Builds a string from the template with all the inputted values.
     public function Finish(): String {

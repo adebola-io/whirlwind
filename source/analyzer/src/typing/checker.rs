@@ -2,10 +2,10 @@ use crate::{
     evaluate, evaluate_parameter_idxs, span_of_typed_expression, span_of_typed_statement,
     unify::{unify_freely, unify_types},
     utils::{
-        arrify, boolean_instance, coerce, coerce_all_generics, deref_type,
-        ensure_assignment_validity, evaluate_generic_params, get_implementation_of,
-        get_numeric_type, get_size_of_type, get_type_generics, infer_ahead, is_array, is_boolean,
-        is_numeric_type, maybify, prospectify, symbol_to_type, update_expression_type,
+        arrify, boolean_instance, coerce, coerce_all_generics, ensure_assignment_validity,
+        evaluate_generic_params, get_implementation_of, get_numeric_type, get_size_of_type,
+        get_type_generics, infer_ahead, is_array, is_boolean, is_numeric_type, maybify,
+        prospectify, symbol_to_type, update_expression_type,
     },
     EvaluatedType, Literal, LiteralMap, ParameterType, PathIndex, ProgramError, ScopeId,
     SemanticSymbolKind, SymbolIndex, SymbolLibrary, TypedAccessExpr, TypedAssignmentExpr,
@@ -206,12 +206,8 @@ mod statements {
         checker_ctx: &mut TypecheckerContext<'_>,
         symbollib: &mut SymbolLibrary,
     ) {
-        let mut iterator_type =
+        let iterator_type =
             expressions::typecheck_expression(&mut forloop.iterator, checker_ctx, symbollib);
-        // Unwrap borrowed type. References are iteratable as well.
-        while let EvaluatedType::Borrowed { base } = iterator_type {
-            iterator_type = *base;
-        }
         if symbollib.iteratable.is_none() || symbollib.asiter.is_none() {
             let span = checker_ctx.span_of_expr(&forloop.iterator, symbollib);
             checker_ctx.add_error(errors::missing_intrinsic("Iteration".to_owned(), span));
@@ -1318,10 +1314,6 @@ mod expressions {
                 // equality operations.
                 // valid if a and b refer to the same base type.
                 ast::BinOperator::Is | ast::BinOperator::Equals | ast::BinOperator::NotEquals => {
-                    if matches!(binexp.operator, ast::BinOperator::Is) {
-                        left = deref_type(left);
-                        right = deref_type(right);
-                    }
                     let mut unification = unifier(&left, &right);
                     // for numeric type, unification should be possible in both directions.
                     let is_numeric =
@@ -1390,10 +1382,7 @@ mod expressions {
                             _ => return EvaluatedType::Unknown,
                         };
                         // Reference types of models that implement Guarantee, also implement Guarantee.
-                        let operand_type_deref = match &operand_type {
-                            EvaluatedType::Borrowed { base } => &*base,
-                            _ => &operand_type,
-                        };
+                        let operand_type_deref = &operand_type;
                         if let Some(implementation) =
                             get_implementation_of(guaranteed, operand_type_deref, &symbollib)
                         {
@@ -1453,10 +1442,7 @@ mod expressions {
                                 _ => return EvaluatedType::Unknown,
                             };
                         // Reference types of models that implement Try, also implement Try.
-                        let operand_type = match &operand_type {
-                            EvaluatedType::Borrowed { base } => &*base,
-                            _ => &operand_type,
-                        };
+                        let operand_type = &operand_type;
                         let implementation =
                             get_implementation_of(try_idx, operand_type, &symbollib);
                         if implementation.is_none() {
@@ -1595,20 +1581,6 @@ mod expressions {
                         })
                         .unwrap_or(EvaluatedType::Unknown)
                 }
-                UnaryOperator::Ref => EvaluatedType::Borrowed {
-                    base: Box::new(operand_type),
-                },
-                UnaryOperator::Deref => match operand_type {
-                    EvaluatedType::Borrowed { base } => *base,
-                    _ => {
-                        let name = symbollib.format_evaluated_type(&operand_type);
-                        checker_ctx.add_error(TypeError {
-                            _type: TypeErrorType::InvalidDereference { name },
-                            span: unaryexp.span,
-                        });
-                        EvaluatedType::Unknown
-                    }
-                },
                 // UnaryOperator::Plus => todo!(),
                 // UnaryOperator::Minus => todo!(),
                 _ => EvaluatedType::Unknown,
@@ -1701,11 +1673,6 @@ mod expressions {
                 infer_ahead(&mut assexp.right, &left_type, symbollib);
                 typecheck_expression(&mut assexp.right, checker_ctx, symbollib)
             };
-            if matches!(&assexp.left, TypedExpression::UnaryExpr(unexp) if matches!(unexp.operator, UnaryOperator::Ref))
-            {
-                checker_ctx.add_error(errors::assigning_to_reference(assexp.span));
-                return EvaluatedType::Unknown;
-            }
             let mut generic_hashmap = HashMap::new();
             match &left_type {
                 EvaluatedType::ModelInstance { .. }
@@ -1714,8 +1681,7 @@ mod expressions {
                 | EvaluatedType::HardGeneric { .. }
                 | EvaluatedType::Generic { .. }
                 | EvaluatedType::OpaqueTypeInstance { .. }
-                | EvaluatedType::FunctionExpressionInstance { .. }
-                | EvaluatedType::Borrowed { .. } => {
+                | EvaluatedType::FunctionExpressionInstance { .. } => {
                     if matches!(left_type, EvaluatedType::EnumInstance { .. })
                         && !assexp.left.is_identifier()
                     {
@@ -1915,13 +1881,13 @@ mod expressions {
     /// Returns true if the left hand side is a valid assignment target, syntactically.
     fn is_valid_lhs(expression: &TypedExpression) -> bool {
         match expression {
-            TypedExpression::Identifier(_) => true,
+            TypedExpression::Identifier(_) | TypedExpression::ThisExpr(_) => true,
             TypedExpression::AccessExpr(accessexp) => {
                 is_valid_lhs(&accessexp.object)
                     || matches!(accessexp.object, TypedExpression::ThisExpr(_))
             }
             TypedExpression::IndexExpr(indexp) => is_valid_lhs(&indexp.object),
-            TypedExpression::UnaryExpr(expr) => matches!(&expr.operator, UnaryOperator::Deref),
+
             _ => false,
         }
     }
@@ -1990,7 +1956,7 @@ mod expressions {
                 checker_ctx.add_error(errors::using_this_before_construction(span));
             }
             let symbol = symbollib.get_forwarded(model_or_interface).unwrap();
-            let base = match &symbol.kind {
+            match &symbol.kind {
                 SemanticSymbolKind::Model { generic_params, .. } => EvaluatedType::ModelInstance {
                     model: model_or_interface,
                     generic_arguments: evaluate_generic_params(generic_params, true),
@@ -2004,9 +1970,7 @@ mod expressions {
                     }
                 }
                 _ => unreachable!("{symbol:#?} is not a model or interface."),
-            };
-            let base = Box::new(base);
-            EvaluatedType::Borrowed { base }
+            }
         })();
         this.inferred_type.clone()
     }
@@ -2121,15 +2085,6 @@ mod expressions {
             // todo: handle Index interfaceface overloading.
             let mut ptr = type_of_indexed;
             if !is_array(&ptr, &symbollib) {
-                // Unwrap a pointer value.
-                loop {
-                    match ptr {
-                        EvaluatedType::Borrowed { base } => {
-                            ptr = *base;
-                        }
-                        _ => break,
-                    };
-                }
                 if !is_array(&ptr, symbollib) {
                     checker_ctx.add_error(errors::invalid_index_subject(
                         symbollib.format_evaluated_type(&ptr),
@@ -2690,13 +2645,6 @@ mod expressions {
                 ));
                 EvaluatedType::Unknown
             }
-            EvaluatedType::Borrowed { base } => {
-                let mut caller = *base;
-                while let EvaluatedType::Borrowed { base: inner } = caller {
-                    caller = *inner
-                }
-                extract_call_of(caller, symbollib, checker_ctx, caller_span)
-            }
             _ => EvaluatedType::Unknown,
         };
         caller
@@ -3033,15 +2981,6 @@ mod expressions {
                     }
                 }
                 None
-            }
-            EvaluatedType::Borrowed { base } => {
-                return extract_property_of(
-                    *base,
-                    symbollib,
-                    property_symbol_idx,
-                    checker_ctx,
-                    access,
-                )
             }
             EvaluatedType::Enum(_) => Some(EvaluatedType::Unknown),
             EvaluatedType::Generic { base } | EvaluatedType::HardGeneric { base } => {

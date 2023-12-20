@@ -172,8 +172,6 @@ impl From<Operator> for UnaryOperator {
             Operator::Not => Self::NegationLiteral,
             Operator::Plus => Self::Plus,
             Operator::Minus => Self::Minus,
-            Operator::Ampersand => Self::Ref,
-            Operator::Asterisk => Self::Deref,
             _ => panic!("Cannot convert {:?} to unary operator!", value),
         }
     }

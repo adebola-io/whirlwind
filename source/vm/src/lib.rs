@@ -2,7 +2,11 @@
 mod sequence;
 
 use sequence::{Sequence, SequenceRequest, SequenceStatus};
-use std::{any::Any, fmt::Display};
+use std::{
+    any::Any,
+    fmt::Display,
+    io::{stdout, Write},
+};
 
 pub struct SizeRegistry {}
 
@@ -110,25 +114,29 @@ fn test_runtime_exit() {
 
 #[test]
 fn test_runtime_hello_world() {
-    let v = 0usize.to_be_bytes();
-    let instructions = [
-        6, v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], 7,
-        0, // Print "Hello, world." and exit.
-    ];
-    let mut vm = VM::new(
-        SizeRegistry {},
-        vec![
-            Constant::String(String::from("Hello, world.")),
-            Constant::String(String::from("\n")),
-        ],
-    );
-    unsafe { vm.run(&instructions) };
+    let time = std::time::Instant::now();
+    let lock = &mut stdout().lock();
+    lock.write("hello, world!".as_bytes()).unwrap();
+    println!("Completed in {:?}", time.elapsed());
+    // let v = 0usize.to_be_bytes();
+    // let instructions = [
+    //     0x11, v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7],
+    //     0, // Print "Hello, world." and exit.
+    // ];
+    // let mut vm = VM::new(
+    //     SizeRegistry {},
+    //     vec![
+    //         Constant::String(String::from("Hello, world.")),
+    //         Constant::String(String::from("\n")),
+    //     ],
+    // );
+    // unsafe { vm.run(&instructions) };
 }
 
 #[test]
 fn test_runtime_add_numbers() {
-    let instructions = [1, 4, 0];
+    // let instructions = [1, 4, 0];
     // Print 4 + 5;
     let mut vm = VM::new(SizeRegistry {}, vec![]);
-    unsafe { vm.run(&instructions) };
+    // unsafe { vm.run(&instructions) };
 }

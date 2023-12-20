@@ -1,18 +1,18 @@
 use ast::{
     AccessExpr, ArrayExpr, ArrayType, AssignmentExpr, AttributeSignature, BinaryExpr, Block,
-    BorrowedType, Bracket::*, BreakStatement, CallExpr, Comment, ConstantDeclaration,
-    ConstantSignature, ContinueStatement, DiscreteType, EnumDeclaration, EnumSignature,
-    EnumVariant, Expression, ExpressionPrecedence, ForStatement, FunctionDeclaration, FunctionExpr,
-    FunctionSignature, FunctionalType, GenericParameter, Identifier, IfExpression, IndexExpr,
-    InterfaceBody, InterfaceDeclaration, InterfaceProperty, InterfacePropertyType,
-    InterfaceSignature, Keyword::*, LogicExpr, LoopLabel, LoopVariable, MaybeType, MemberType,
-    MethodSignature, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType, ModelSignature,
-    ModuleAmbience, ModuleDeclaration, NewExpr, Operator::*, Parameter, ReturnStatement,
-    ScopeAddress, ScopeEntry, ScopeType, ShorthandVariableDeclaration, ShorthandVariableSignature,
-    Span, Spannable, Statement, TestDeclaration, ThisExpr, Token, TokenType, TypeDeclaration,
-    TypeExpression, TypeSignature, UnaryExpr, UnionType, UpdateExpr, UseDeclaration, UsePath,
-    UseTarget, UseTargetSignature, VariableDeclaration, VariablePattern, VariableSignature,
-    WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
+    Bracket::*, BreakStatement, CallExpr, Comment, ConstantDeclaration, ConstantSignature,
+    ContinueStatement, DiscreteType, EnumDeclaration, EnumSignature, EnumVariant, Expression,
+    ExpressionPrecedence, ForStatement, FunctionDeclaration, FunctionExpr, FunctionSignature,
+    FunctionalType, GenericParameter, Identifier, IfExpression, IndexExpr, InterfaceBody,
+    InterfaceDeclaration, InterfaceProperty, InterfacePropertyType, InterfaceSignature, Keyword::*,
+    LogicExpr, LoopLabel, LoopVariable, MaybeType, MemberType, MethodSignature, ModelBody,
+    ModelDeclaration, ModelProperty, ModelPropertyType, ModelSignature, ModuleAmbience,
+    ModuleDeclaration, NewExpr, Operator::*, Parameter, ReturnStatement, ScopeAddress, ScopeEntry,
+    ScopeType, ShorthandVariableDeclaration, ShorthandVariableSignature, Span, Spannable,
+    Statement, TestDeclaration, ThisExpr, Token, TokenType, TypeDeclaration, TypeExpression,
+    TypeSignature, UnaryExpr, UnionType, UpdateExpr, UseDeclaration, UsePath, UseTarget,
+    UseTargetSignature, VariableDeclaration, VariablePattern, VariableSignature, WhileStatement,
+    WhirlBoolean, WhirlNumber, WhirlString,
 };
 use errors::{self as errors, expected, ParseError};
 use lexer::Lexer;
@@ -279,7 +279,7 @@ impl<L: Lexer> Parser<L> {
             TokenType::Keyword(New) => self.new_expression(),
             TokenType::Keyword(If) => self.if_expression(),
             TokenType::Keyword(_this) => self.this_expression(),
-            TokenType::Operator(op @ (Exclamation | Not | Plus | Minus | Ampersand | Asterisk)) => {
+            TokenType::Operator(op @ (Exclamation | Not | Plus | Minus)) => {
                 self.unary_expression(op)
             }
             TokenType::Ident(_) => {
@@ -869,7 +869,6 @@ impl<L: Lexer> Parser<L> {
         let precedence = match operator {
             Exclamation | Not => ExpressionPrecedence::Negation,
             Plus | Minus => ExpressionPrecedence::UnaryPlusOrMinus,
-            Ampersand | Asterisk => ExpressionPrecedence::Referencing,
             _ => unreachable!("How did you end up parsing {operator:?} as a unary start?"),
         };
         expect_or_return!(TokenType::Operator(operator), self);
@@ -3235,8 +3234,6 @@ impl<L: Lexer> Parser<L> {
                 self.type_reparse(node)?
             }
             TokenType::Ident(_) => self.regular_type_or_union()?,
-            // &borrowed types.
-            TokenType::Operator(Ampersand) => self.borrowed_type()?,
             // ?optional types.
             TokenType::Operator(QuestionMark) => self.optional_type()?,
             // Support for an array type.
@@ -3282,30 +3279,11 @@ impl<L: Lexer> Parser<L> {
         Ok(self.type_reparse(discrete)?)
     }
 
-    /// Parses a borrowed type. Assumes that `&` is the next token.
-    fn borrowed_type(&self) -> Fallible<TypeExpression> {
-        let start = self.token().unwrap().span.start;
-        self.advance(); // Move past &
-        self.push_precedence(ExpressionPrecedence::Referencing);
-        let value = Box::new(match self.token() {
-            Some(Token {
-                _type: TokenType::Keyword(This),
-                ..
-            }) => self.this_type()?,
-            _ => self.type_expression()?,
-        });
-        let end = value.span().end;
-        let span = Span { start, end };
-        self.precedence_stack.borrow_mut().pop();
-        let node = TypeExpression::BorrowedType(BorrowedType { value, span });
-        Ok(self.type_reparse(node)?)
-    }
-
     /// Parses an optional type. Assumes that `?` is the current token.
     fn optional_type(&self) -> Fallible<TypeExpression> {
         let start = self.token().unwrap().span.start;
         self.advance(); // Move past &
-        self.push_precedence(ExpressionPrecedence::Referencing); // todo: not the correct precedence.
+        self.push_precedence(ExpressionPrecedence::Option); // todo: not the correct precedence.
         let value = Box::new(self.type_expression()?);
         let end = value.span().end;
         let span = Span { start, end };
@@ -3367,7 +3345,6 @@ impl<L: Lexer> Parser<L> {
         // Only discrete types and other member types cant serve as namespaces.
         if let TypeExpression::Functional(_)
         | TypeExpression::Union(_)
-        | TypeExpression::BorrowedType(_)
         | TypeExpression::Array(_)
         | TypeExpression::Optional(_) = namespace
         {

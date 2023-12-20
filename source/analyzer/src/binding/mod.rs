@@ -3393,16 +3393,6 @@ mod types {
                 meaning: binder.this_type.last().copied(),
                 span: *span,
             },
-            TypeExpression::BorrowedType(borrowedtype) => IntermediateType::BorrowedType {
-                value: Box::new(bind_type_expression(
-                    &borrowedtype.value,
-                    binder,
-                    symbol_library,
-                    errors,
-                    ambience,
-                )),
-                span: borrowedtype.span,
-            },
             TypeExpression::Optional(m) => IntermediateType::MaybeType {
                 value: Box::new(bind_type_expression(
                     &m.value,

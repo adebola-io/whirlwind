@@ -343,10 +343,6 @@ impl SymbolLibrary {
                 let symbol = self.get(*base).unwrap();
                 string.push_str(&symbol.name);
             }
-            EvaluatedType::Borrowed { base } => {
-                string.push('&');
-                string.push_str(&self.format_evaluated_type(base));
-            }
             EvaluatedType::OpaqueTypeInstance {
                 collaborators,
                 aliased_as,

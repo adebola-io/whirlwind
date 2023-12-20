@@ -250,9 +250,6 @@ pub fn coerce(typ: EvaluatedType, args: &Vec<(SymbolIndex, EvaluatedType)>) -> E
             }
             EvaluatedType::HardGeneric { base }
         }
-        EvaluatedType::Borrowed { base } => EvaluatedType::Borrowed {
-            base: Box::new(coerce(*base, args)),
-        },
         // todo: opaque type coercion.
         _ => typ,
     }
@@ -879,14 +876,6 @@ pub fn get_type_generics_mut<'a>(
 // Calculates the size of an inferred type.
 pub fn get_size_of_type(_inferred_type: EvaluatedType, _name: SymbolIndex) -> Result<i32, String> {
     Ok(0)
-}
-
-/// Unrolls a borrowed evaluated type.
-pub fn deref_type(mut typ: EvaluatedType) -> EvaluatedType {
-    while let EvaluatedType::Borrowed { base } = typ {
-        typ = *base;
-    }
-    return typ;
 }
 
 /// Creates an instance of Bool.

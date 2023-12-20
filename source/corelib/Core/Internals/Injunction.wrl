@@ -39,10 +39,10 @@ public enum Injunction {
     StrTrimStart(String),
     StrTrimEnd(String),
     // Eventuals.
-    EventAwait(&Sequence),
-    EventAbort(&Sequence),
-    EventCreate(&Prospect),
-    SeqId(&Sequence)
+    EventAwait(Sequence),
+    EventAbort(Sequence),
+    EventCreate(Prospect),
+    SeqId(Sequence)
 }
 
 /// Function to perform intrinsic and builtin operations.

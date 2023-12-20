@@ -102,7 +102,7 @@ public model Prospect<T> {
     /// before the eventual can be resolved, it is abruptly aborted.
     public function Timeout(ms: UnsignedInt): Prospect<T> {
         Todo();
-        return *this;
+        return this;
     }
     /// Attaches a callback that should run if the execution of the prospect fails.
     public function Recover(callback: fn(errorMessage?: String)) {
@@ -169,7 +169,7 @@ public model Eventual<T> implements Guaranteed<T> {
     /// Whether or not the eventual has been aborted.
     var aborted: Bool;
     /// A reference to the parent sequence in charge of this eventual.
-    public var sequence: &Sequence;
+    public var sequence: Sequence;
     /// The final value to be produced. 
     /// Until the eventual is resolved, the value remains empty (points to Nullptr).
     var value: T;
@@ -302,7 +302,7 @@ public function ToSync<T>(prospect: Prospect<T>): T {
 
 /// The current running sequence for an instruction.
 public model CurrentSequence {
-    var handle: &Sequence;
+    var handle: Sequence;
     /// Forces the current running sequence to halt for a duration.
     public static function Sleep(timeout: UnsignedInt) {
         Todo()

@@ -69,8 +69,8 @@ public interface Iteratable<I> {
     /// Assert(divBy4.Next()).Equals(Some(40));
     /// Assert(divBy4.Next()).Equals(Some(60));
     /// ```
-    public function Filter(predicate: fn(value: &I): Bool): Filter<I, This> {
-        return new Filter(*this, predicate);
+    public function Filter(predicate: fn(value: I): Bool): Filter<I, This> {
+        return new Filter(this, predicate);
     }
     /// The `.Map()` method is an iterator adapter that allows the creation of a new iterator by applying a
     /// given function to every element of the current iterator as it runs.
@@ -82,7 +82,7 @@ public interface Iteratable<I> {
     /// Assert(listTransformed).Equals([3, 6, 9, 12]);
     /// ```
     public function Map<O>(transformer: fn(value: I): O): Map<I, O, This> {
-        return new Map(*this, transformer);
+        return new Map(this, transformer);
     }
     /// Checks if any of the elements produced by the iterator matches a predicate.
     /// 
@@ -125,7 +125,7 @@ public interface Iteratable<I> {
     /// Assert(iter.Next()).Equals(Some(18));
     /// Assert(iter.Next()).Equals(Some(20));
     /// ```
-    public function All(predicate: fn(value: &I): Bool): Bool {
+    public function All(predicate: fn(value: I): Bool): Bool {
         // while true {
         //     next := this.Next();
         //     if next.IsNone() {
@@ -142,7 +142,7 @@ public interface Iteratable<I> {
     /// ```
     /// ```
     public function Enumerate(): Enumerate<I, This> {
-        return new Enumerate(*this);
+        return new Enumerate(this);
     }
     /// Finds the first item in an iterator that matches a predicate.
     /// 
@@ -158,7 +158,7 @@ public interface Iteratable<I> {
     /// Assert(namesIter.Next()).Equals(Some("Fatima"));
     /// Assert(namesIter.Next()).Equals(Some("Bao"));
     /// ```
-    public function Find(predicate: fn(value: &I): Bool): ?I {
+    public function Find(predicate: fn(value: I): Bool): ?I {
         Todo()
     }
     /// Collects the next _n_ elements from the iterator into an array.
@@ -200,8 +200,8 @@ public interface Iteratable<I> {
     /// AssertThat(iter.Next() == Some(14));
     /// AssertThat(iter.Next() == None()); // 16 is printed.
     /// ```
-    public function While(condition: fn(value: &I): Bool, catch?: fn(value: I)): While<I, This> {
-        return new While(*this, condition, catch);
+    public function While(condition: fn(value: I): Bool, catch?: fn(value: I)): While<I, This> {
+        return new While(this, condition, catch);
     }
     /// Returns an iterator that produces elements from both iterators as a tuple.
     /// 
@@ -218,7 +218,7 @@ public interface Iteratable<I> {
     /// Assert(numbersAndWords.Next()).Equals(Some(Pair(2, "two")));
     /// ```
     public function Zip<J, Other implements Iteratable<J>>(that: Other): Zip<I, This, J, Other> {
-        return new Zip(*this, that);
+        return new Zip(this, that);
     }
     /// An iterative adapter that adds a fallback value in between the items produced from the iteration.
     /// 
@@ -232,7 +232,7 @@ public interface Iteratable<I> {
     /// Assert(numbersWith5).Equals([1, 5, 2, 5, 3, 5, 4, 5]);
     /// ```
     public function Interleave(value: I): Interleave<I, This> {
-        return new Interleave(*this, value);
+        return new Interleave(this, value);
     }
 
     /// Creates a new iterator that skips over the first _n_ elements in the iteration,
@@ -272,7 +272,7 @@ public interface Iteratable<I> {
     /// Assert(chained.Collect()).Equals([1, 2, 3, 4, 5, 6]);
     /// ```
     public function Chain<That implements Iteratable<I>>(that: That): Chain<I, This, That> {
-        return new Chain(*this, that);
+        return new Chain(this, that);
     }
 }
 
@@ -293,14 +293,14 @@ public model Enumerate<I, J implements Iteratable<I>> implements Iteratable<Tupl
 
 public model Filter<I, J implements Iteratable<I>> implements Iteratable<I> {
     var iterator: J;
-    var predicate: fn(value: &I): Bool;
-    new(iterator: J, predicate: fn(value: &I): Bool){
+    var predicate: fn(value: I): Bool;
+    new(iterator: J, predicate: fn(value: I): Bool){
         this.iterator = iterator;
         this.predicate = predicate;
     }
     public function [Iteratable.Next](): ?I {
         value := this.iterator.Next()?;
-        while !this.predicate(&value) {
+        while !this.predicate(value) {
             value = this.iterator.Next()?;
         }
         return Some(value);
@@ -308,10 +308,10 @@ public model Filter<I, J implements Iteratable<I>> implements Iteratable<I> {
 }
 public model While<I, J implements Iteratable<I>> implements Iteratable<I> {
     var iterator: J;
-    var condition: fn(value: &I): Bool;
+    var condition: fn(value: I): Bool;
     var catch: ?fn(value: I);
     var ended: Bool;
-    new(iterator: J, condition: fn(value: &I): Bool, catch?: fn(value: I)) {
+    new(iterator: J, condition: fn(value: I): Bool, catch?: fn(value: I)) {
         this.iterator = iterator;
         this.condition = condition;
         this.catch = catch;
@@ -322,7 +322,7 @@ public model While<I, J implements Iteratable<I>> implements Iteratable<I> {
             return None();
         };
         nextItem := this.iterator.Next()?;
-        if this.condition(&nextItem) {
+        if this.condition(nextItem) {
             return Some(nextItem);
         }
         this.ended = true;
@@ -383,19 +383,19 @@ public model Interleave<I, J implements Iteratable<I>> implements Iteratable<I> 
     }
 }
 
-public model Reversed<I> implements Iteratable<&I> {
-    var array: &[]I;
+public model Reversed<I> implements Iteratable<I> {
+    var array: []I;
     var idx: UnsignedInt;
-    new(array: &[]I) {
+    new(array: []I) {
         this.array = array;
         this.idx = array.Length();
     }
-    public function [Iteratable.Next](): Maybe<&I> {
+    public function [Iteratable.Next](): Maybe<I> {
         if this.idx == 0 {
             None()
         } else {
             this.idx -= 1;
-            return Some(&this.array[this.idx]);
+            return Some(this.array[this.idx]);
         }
     }
 }
@@ -431,7 +431,7 @@ public model OnEnd<I, J implements Iteratable<I>> implements Iteratable<I> {
     }
     public function [Iteratable.Next](): ?I {
         nextItem := this.iterator.Next();
-        if nextItem.IsNone() && !this.ended {
+        if nextItem.IsNone() and !this.ended {
             this.callback();
             this.ended = true;
         }
@@ -466,5 +466,5 @@ public model Chain<I, J implements Iteratable<I>, K implements Iteratable<I>> im
 /// This interface specifies that a model can be made into an iterator.
 public interface AsIterator<I, T implements Iteratable<I>> {
     /// Turn a model into an iterator.
-    public function IntoIter(): T;
+    public function Iter(): T;
 }
