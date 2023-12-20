@@ -278,7 +278,7 @@ public model Eventual<T> implements Guaranteed<T> {
         if this.aborted {
             Fatal(Some("Called Unwrap() on an aborted eventual."));
         };
-        if not this.resolved or this.value is Core.Internals.Nullptr {
+        if not this.resolved or this.value == Core.Internals.Nullptr {
             Fatal(Some("Called Unwrap() on an unresolved eventual."));
         };
         return this.value;

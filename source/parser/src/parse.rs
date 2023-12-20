@@ -566,7 +566,7 @@ impl<L: Lexer> Parser<L> {
                 TokenType::Bracket(LSquare) => self.index_expression(exp),
                 TokenType::Operator(Dot) => self.access_expression(exp),
                 TokenType::Operator(
-                    op @ (Asterisk | Divide | Carat | Ampersand | BitOr | Is | Equal | NotEqual
+                    op @ (Asterisk | Divide | Carat | Ampersand | BitOr | Equal | NotEqual
                     | LesserThan | GreaterThan | LesserThanOrEqual | GreaterThanOrEqual
                     | Percent | Plus | Minus | Range),
                 ) => self.binary_expression(exp, op),

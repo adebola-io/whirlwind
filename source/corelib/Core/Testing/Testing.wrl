@@ -54,17 +54,6 @@ public model Assertion<T implements Display> {
         };
         return this;
     }
-    /// Checks that two values refer to the same place in memory.
-    public function Is(other: T): This {
-        if other is this.value {} else {
-            message := AssertionMessage(
-                        "Assertion failed on reference equality.", 
-                        this.value, 
-                        other);
-            FatalOnCaller(message);
-        };
-        return this;
-    }
     /// Checks that an array is empty.
     public static function ArrayIsEmpty<T>(arr: Array<T>) {
         if arr.Length() != 0 {

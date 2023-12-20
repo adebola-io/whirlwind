@@ -62,7 +62,7 @@ public var NULLPTR = 0;
 /// Assert(IsNull(NULLPTR));
 /// ```
 public function IsNull<T>(value: T): Bool {
-    return value is NULLPTR;
+    return value == NULLPTR;
 }
 
 /// A running set of instructions.

@@ -59,20 +59,9 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// 
     /// AssertThat(array.Contains(str));
     /// ```
-    /// The method checks referential equality, meaning it will only return true
-    /// if the checked item is in the array,
-    /// and **not** if it is equivalent to an item in the array.
-    /// 
-    /// ```
-    /// num := 24;
-    /// array := [24];
-    /// 
-    /// AssertThat(array.Contains(num)) // This will fail, because the 24 in the array is different from the num 24.
-    /// ```
-    /// To check for comparative equality, consider using `.Iter().Any(...)`.
     public function Contains(value: T): Bool {
         for element in this.Iter() {
-            if element is value {
+            if element == value {
                 return true;
             };
         }
@@ -105,8 +94,6 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     }
     /// Returns the zero-based index of a value in the array.
     /// 
-    /// Like the `.Contains` method, this method checks 
-    /// for referential equality.
     /// ### Usage
     /// ```
     /// str1 := "Hello, world!";
@@ -119,7 +106,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     public function IndexOf(value: T): ?UnsignedInt {
         for { a as index, b as element } in this.Iter().Enumerate() 
         {
-            if element is value {
+            if element  == value {
                 return Some(index);
             };
         }

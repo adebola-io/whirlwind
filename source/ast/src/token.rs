@@ -99,7 +99,6 @@ pub enum Operator {
     Equal,              // ==
     LesserThan,         // <
     GreaterThan,        // >
-    Is,                 // is
 }
 
 impl From<Operator> for ExpressionPrecedence {
@@ -124,7 +123,6 @@ impl From<Operator> for ExpressionPrecedence {
             | Operator::GreaterThanOrEqual
             | Operator::LesserThan
             | Operator::GreaterThan => Self::Ordering,
-            Operator::Is => Self::ReferentialEquality,
             _ => panic!("Cannot convert {:?} to precedence.", value),
         }
     }
@@ -137,7 +135,6 @@ impl From<Operator> for BinOperator {
             Operator::Divide => Self::Divide,
             Operator::Carat => Self::PowerOf,
             Operator::Ampersand => Self::BitAnd,
-            Operator::Is => Self::Is,
             Operator::Equal => Self::Equals,
             Operator::NotEqual => Self::NotEquals,
             Operator::Percent => Self::Remainder,

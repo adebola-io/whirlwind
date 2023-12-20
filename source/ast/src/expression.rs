@@ -162,7 +162,6 @@ pub enum BinOperator {
     PowerOf,             // a ^ b
     BitAnd,              // a & b
     BitOr,               // a | b
-    Is,                  // a is b
     Equals,              // a == b
     NotEquals,           // a != b
     Remainder,           // a % b
@@ -223,12 +222,12 @@ pub enum ExpressionPrecedence {
     BitShift = 13,                  // a << b, a >> b
     Ordering = 14,                  // a > b, a < b, a >= b, a <= b
     Equality = 15,                  // a == b, a != b,
-    ReferentialEquality = 16,       // a is b
-    BitLogic = 17,                  // a | b, a & b
-    Logic = 18,                     // a || b, a && b, a and b, a or b
-    Assignment = 19,                // a = b, a += b, a -= b,
-    TypeUnion = 20,                 // A | B
-    Pseudo = 99,                    // placeholder operator.
+    // ReferentialEquality = 16,       // a is b
+    BitLogic = 17,   // a | b, a & b
+    Logic = 18,      // a || b, a && b, a and b, a or b
+    Assignment = 19, // a = b, a += b, a -= b,
+    TypeUnion = 20,  // A | B
+    Pseudo = 99,     // placeholder operator.
 }
 
 impl Spannable for Expression {

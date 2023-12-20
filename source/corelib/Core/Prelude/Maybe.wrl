@@ -102,6 +102,16 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
         this.IsSome() and predicate(this.Unwrap())
     }
     /// Performs a computation if there is an internal value contained.
+    /// ### Usage
+    /// ```
+    /// use Core.Io.Fmt;
+    /// maybeValue := Some(42);
+    /// 
+    /// maybeValue.IsSomeThen(fn(value) {
+    ///     message := Fmt("The value is %").Add(value);
+    ///     Print(message);
+    /// })
+    /// ```
     public function IsSomeThen(consequent: fn(value: T)) {
         if this.IsNone() {
             return;

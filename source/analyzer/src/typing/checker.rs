@@ -1313,7 +1313,7 @@ mod expressions {
             match binexp.operator {
                 // equality operations.
                 // valid if a and b refer to the same base type.
-                ast::BinOperator::Is | ast::BinOperator::Equals | ast::BinOperator::NotEquals => {
+                ast::BinOperator::Equals | ast::BinOperator::NotEquals => {
                     let mut unification = unifier(&left, &right);
                     // for numeric type, unification should be possible in both directions.
                     let is_numeric =
