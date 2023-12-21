@@ -132,6 +132,11 @@ pub enum Opcode {
     ///
     /// Format: `[Printacc64]`
     Printacc64,
+    /// Prints a value in the stack frame to the console.
+    /// The next 4 bytes correspond to the index in the frame.
+    /// The following one byte indicates the type of data to read.
+    /// Format: `[Printacc64] [addr: [a, b, c, d]] [0x00|0x01|0x02]`
+    Printframe,
     /// Prints the value in the constptra register.
     ///
     /// Format: `[Printconstptra]`
@@ -306,7 +311,8 @@ impl From<u8> for Opcode {
 
             25 => Opcode::Printacc8,
             28 => Opcode::Printacc64,
-            29 => Opcode::Printconstptra,
+            29 => Opcode::Printframe,
+            30 => Opcode::Printconstptra,
             31 => Opcode::Addacc,
 
             35 => Opcode::Sqrtacc,
@@ -353,7 +359,8 @@ impl From<Opcode> for u8 {
             Opcode::Printacc16 => todo!(),
             Opcode::Printacc32 => todo!(),
             Opcode::Printacc64 => 28,
-            Opcode::Printconstptra => 29,
+            Opcode::Printframe => 29,
+            Opcode::Printconstptra => 30,
             Opcode::Printconstptrb => todo!(),
             Opcode::Addacc => 31,
             Opcode::AddaccToframe => todo!(),

@@ -120,7 +120,9 @@ impl Sequence {
             Opcode::LoadIr16 => self.load_ir16(),
             Opcode::LoadIr32 => self.load_ir32(),
             Opcode::LoadIr64 => self.load_ir64(),
-            Opcode::LoadIframe => self.load_iframe(),
+            Opcode::LoadIframe => {
+                self.load_iframe()?;
+            }
             Opcode::LoadIconstptra => self.load_iconstptra(),
 
             Opcode::LoadIacc8 => self.loadiacc8(),
@@ -137,20 +139,9 @@ impl Sequence {
                 }
             }
             Opcode::Call => {
-                let function_idx = u32::from_be_bytes(self.next_four_bytes()) as usize;
-                let function = &mut vm.functions[function_idx];
-                function.calls += 1;
-                if let Err(error) = self.stack.allocate_new_frame(&function, self.pc) {
-                    return ControlFlow::Break(match error {
-                        StackError::StackOverflow => {
-                            SequenceStatus::Crashed(ExecutionError::StackOverflow)
-                        }
-                        StackError::IllegalMemoryAccess => {
-                            SequenceStatus::Crashed(ExecutionError::IllegalMemoryAccess)
-                        }
-                    });
+                if let Some(value) = self.call(vm) {
+                    return value;
                 }
-                self.pc = function.start;
             }
             Opcode::Stall => {}
             Opcode::Return => {
@@ -168,9 +159,36 @@ impl Sequence {
                     self.pc = jumpdest
                 }
             }
+            Opcode::Printframe => {
+                let frameaddr = u32::from_be_bytes(self.next_four_bytes()) as usize;
+                match self.next_byte() {
+                    0 => unsafe {
+                        let StackValue { byte } = self.stack.read(frameaddr);
+                        write!(&mut stdout().lock(), "{byte}\n").unwrap();
+                    },
+                    _ => todo!(),
+                }
+            }
             _ => unimplemented!("Runtime does not support instruction {opcode:?}!!"),
         }
         ControlFlow::Continue(())
+    }
+
+    #[inline]
+    fn call(&mut self, vm: &mut VM) -> Option<ControlFlow<SequenceStatus>> {
+        let function_idx = u32::from_be_bytes(self.next_four_bytes()) as usize;
+        let function = &mut vm.functions[function_idx];
+        function.calls += 1;
+        if let Err(error) = self.stack.allocate_new_frame(&function, self.pc) {
+            return Some(ControlFlow::Break(match error {
+                StackError::StackOverflow => SequenceStatus::Crashed(ExecutionError::StackOverflow),
+                StackError::IllegalMemoryAccess => {
+                    SequenceStatus::Crashed(ExecutionError::IllegalMemoryAccess)
+                }
+            }));
+        }
+        self.pc = function.start;
+        None
     }
 
     /// Executes the [`Opcode::Eqacc`] instruction.
@@ -367,11 +385,28 @@ impl Sequence {
 
     /// Load a range of bytes into the frameptr.
     #[inline]
-    fn load_iframe(&mut self) {
+    fn load_iframe(&mut self) -> ControlFlow<SequenceStatus, ()> {
         let blob = self.instructions();
         let bytes = self.next_four_bytes();
         let start = u32::from_be_bytes(bytes) as usize;
         let load_type = self.next_byte();
+        match load_type {
+            0 => {
+                let value = self.next_byte().into();
+                if let Err(error) = self.stack.write(start, value) {
+                    return ControlFlow::Break(match error {
+                        StackError::StackOverflow => {
+                            SequenceStatus::Crashed(ExecutionError::StackOverflow)
+                        }
+                        StackError::IllegalMemoryAccess => {
+                            SequenceStatus::Crashed(ExecutionError::IllegalMemoryAccess)
+                        }
+                    });
+                }
+            }
+            _ => todo!(),
+        };
+        ControlFlow::Continue(())
     }
 
     #[inline]

@@ -59,6 +59,11 @@ impl Default for StackValue {
         StackValue { byte: 0 }
     }
 }
+impl From<u8> for StackValue {
+    fn from(value: u8) -> Self {
+        Self { byte: value }
+    }
+}
 
 impl CallFrame {
     /// Creates a new call frame.
