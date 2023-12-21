@@ -3,6 +3,7 @@ use crate::{
     sequence::{Sequence, SequenceId, SequenceRequest, SequenceStatus},
 };
 use analyzer::SymbolIndex;
+use bytecode::Constants;
 use std::{
     alloc::Layout,
     any::Any,
@@ -27,7 +28,7 @@ pub struct VM {
     queue: Vec<SequenceRequest>,
     pub instructions: Vec<u8>,
     pub size_registry: SizeRegistry,
-    pub constants: Vec<Constant>,
+    pub constants: Constants,
     pub running_sequences: usize,
     pub functions: Vec<Function>,
     pub exited: bool,
@@ -56,28 +57,6 @@ impl Function {
     }
 }
 
-pub enum Constant {
-    String(String),
-    Number(f64),
-    Bool(bool),
-}
-
-impl Display for Constant {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Constant::String(s) => write!(f, "{s}"),
-            Constant::Number(n) => write!(f, "{n}"),
-            Constant::Bool(b) => write!(f, "{b}"),
-        }
-    }
-}
-
-impl From<String> for Constant {
-    fn from(value: String) -> Self {
-        Constant::String(value)
-    }
-}
-
 #[derive(Debug, Clone, Copy)]
 pub enum ExecutionError {
     MainCrashed,
@@ -94,7 +73,7 @@ impl VM {
             instructions: vec![],
             exited: false,
             size_registry: SizeRegistry::empty(),
-            constants: vec![],
+            constants: Constants::new(),
             running_sequences: 0,
         };
         vm.queue.push(SequenceRequest {
@@ -109,15 +88,6 @@ impl VM {
         self.functions.insert(0, function);
     }
 
-    /// Adds a new constant and return its index.
-    // TODO: Interning.
-    pub fn add_constant<T: Into<Constant>>(&mut self, constant: T) -> usize {
-        let constant = constant.into();
-        let index = self.constants.len();
-        self.constants.push(constant);
-        return index;
-    }
-
     /// The entry execution function for a virtual machine.
     pub fn run(&mut self) -> Result<usize, ExecutionError> {
         let main_function = self
@@ -126,6 +96,7 @@ impl VM {
             .ok_or(ExecutionError::MainFunctionNotDefined)?;
         let main_sequence = Sequence::new(None, SequenceId(0), main_function, 2);
         let mut sequence_pool = vec![main_sequence];
+        let time = std::time::Instant::now();
         'runtime: loop {
             let mut i = 0;
             while i < sequence_pool.len() {
@@ -159,6 +130,7 @@ impl VM {
                     }
                 }
                 if self.exited {
+                    println!("Program exited in {:?}", time.elapsed());
                     utils::success("Program exited successfully.");
                     break 'runtime;
                 } else {

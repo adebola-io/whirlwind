@@ -1,10 +1,11 @@
 use crate::{
     predefined::{INSTRUCTION_START, MAX_STACK_SLICE_SIZE},
     stack::{Block, Stack, StackError, StackValue},
-    vm::{Constant, ExecutionError, Function, VM},
+    vm::{ExecutionError, Function, VM},
 };
-use bytecode::{AccValue, Opcode, RegisterList};
+use bytecode::{AccValue, Constant, Opcode, RegisterList};
 use std::{
+    arch::asm,
     io::{stdout, Write},
     ops::ControlFlow,
     time::Duration,
@@ -41,6 +42,26 @@ pub struct Sequence {
     time: Option<std::time::Instant>,
     blob: Option<*const [u8]>,
     pub status: SequenceStatus,
+}
+
+/// A fragment of a sequence with a defined start and end instruction.
+pub struct Subsequence<'a> {
+    sequence: &'a mut Sequence,
+    pc: usize,
+    count: usize,
+    end: usize,
+}
+impl<'a> Subsequence<'a> {
+    fn run(&mut self, vm: &mut VM) -> ControlFlow<SequenceStatus, ()> {
+        'predefined: for _ in 0..self.count {
+            while self.sequence.pc != self.end {
+                if let ControlFlow::Break(status) = self.sequence.decode_next(vm) {
+                    return ControlFlow::Break(status);
+                }
+            }
+        }
+        ControlFlow::Continue(())
+    }
 }
 
 impl Sequence {
@@ -80,56 +101,166 @@ impl Sequence {
                 self.status = SequenceStatus::Paused;
                 return;
             }
-            let opcode = self.next_byte().into();
-            match opcode {
-                Opcode::Exit => {
-                    vm.exited = true;
-                    break 'instruction_cycle;
-                }
-                Opcode::LoadIr8 => self.loadir8(),
-                Opcode::LoadIr16 => self.load_ir16(),
-                Opcode::LoadIr32 => self.load_ir32(),
-                Opcode::LoadIr64 => self.load_ir64(),
-                Opcode::LoadIframe => self.load_iframe(),
-                Opcode::LoadIconstptra => self.load_iconstptra(),
-
-                Opcode::LoadIacc8 => self.loadiacc8(),
-
-                Opcode::Printacc8 => self.printacc8(),
-                Opcode::Printacc64 => self.printacc64(),
-
-                Opcode::Printconstptra => self.printconstptra(vm),
-                Opcode::Addacc => self.addacc(),
-                Opcode::Sqrtacc => self.sqrtacc(),
-                Opcode::Call => {
-                    let function_idx = u32::from_be_bytes(self.next_four_bytes()) as usize;
-                    let function = &mut vm.functions[function_idx];
-                    function.calls += 1;
-                    if let Err(error) = self.stack.allocate_new_frame(&function, self.pc) {
-                        self.status = match error {
-                            StackError::StackOverflow => {
-                                SequenceStatus::Crashed(ExecutionError::StackOverflow)
-                            }
-                            StackError::IllegalMemoryAccess => {
-                                SequenceStatus::Crashed(ExecutionError::IllegalMemoryAccess)
-                            }
-                        };
-                        return;
-                    }
-                    self.pc = function.start;
-                }
-                Opcode::Return => {
-                    // TODO: Where to store return values?
-                    let return_address = self
-                        .stack
-                        .deallocate_current_frame()
-                        .expect("No valid return address!");
-                    self.pc = return_address;
-                }
-                _ => unimplemented!("Runtime does not support instruction {opcode:?}!!"),
+            if let ControlFlow::Break(status) = self.decode_next(vm) {
+                self.status = status;
+                return;
             }
         }
-        self.status = SequenceStatus::Resolved;
+    }
+
+    #[inline]
+    pub fn decode_next(&mut self, vm: &mut VM) -> ControlFlow<SequenceStatus, ()> {
+        let opcode = self.next_byte().into();
+        match opcode {
+            Opcode::Exit => {
+                vm.exited = true;
+                return ControlFlow::Break(SequenceStatus::Resolved);
+            }
+            Opcode::LoadIr8 => self.loadir8(),
+            Opcode::LoadIr16 => self.load_ir16(),
+            Opcode::LoadIr32 => self.load_ir32(),
+            Opcode::LoadIr64 => self.load_ir64(),
+            Opcode::LoadIframe => self.load_iframe(),
+            Opcode::LoadIconstptra => self.load_iconstptra(),
+
+            Opcode::LoadIacc8 => self.loadiacc8(),
+
+            Opcode::Printacc8 => self.printacc8(),
+            Opcode::Printacc64 => self.printacc64(),
+
+            Opcode::Printconstptra => self.printconstptra(vm),
+            Opcode::Addacc => self.addacc(),
+            Opcode::Sqrtacc => self.sqrtacc(),
+            Opcode::LoopFor => {
+                if let Some(value) = self.loop_for(vm) {
+                    return value;
+                }
+            }
+            Opcode::Call => {
+                let function_idx = u32::from_be_bytes(self.next_four_bytes()) as usize;
+                let function = &mut vm.functions[function_idx];
+                function.calls += 1;
+                if let Err(error) = self.stack.allocate_new_frame(&function, self.pc) {
+                    return ControlFlow::Break(match error {
+                        StackError::StackOverflow => {
+                            SequenceStatus::Crashed(ExecutionError::StackOverflow)
+                        }
+                        StackError::IllegalMemoryAccess => {
+                            SequenceStatus::Crashed(ExecutionError::IllegalMemoryAccess)
+                        }
+                    });
+                }
+                self.pc = function.start;
+            }
+            Opcode::Stall => {}
+            Opcode::Return => {
+                // TODO: Where to store return values?
+                let return_address = self
+                    .stack
+                    .deallocate_current_frame()
+                    .expect("No valid return address!");
+                self.pc = return_address;
+            }
+            Opcode::Eqacc => self.eqacc(),
+            Opcode::JumpIfTrue => {
+                let jumpdest = usize::from_be_bytes(self.next_eight_bytes());
+                if self.registers().boola {
+                    self.pc = jumpdest
+                }
+            }
+            _ => unimplemented!("Runtime does not support instruction {opcode:?}!!"),
+        }
+        ControlFlow::Continue(())
+    }
+
+    /// Executes the [`Opcode::Eqacc`] instruction.
+    #[inline]
+    fn eqacc(&mut self) {
+        let byte = self.next_byte();
+        match byte {
+            0 => match self.next_byte() {
+                0 => {
+                    self.registers_mut().boola =
+                        self.registers_mut().acc8 == self.registers_mut().r8
+                }
+                1 => {
+                    let address = u32::from_be_bytes(self.next_four_bytes()) as usize;
+                    self.stack.write(address, StackValue { byte });
+                    // todo: handle failure.
+                }
+                _ => unreachable!("Invalid instruction format."),
+            },
+            1 => {}
+            _ => todo!(),
+        }
+    }
+
+    /// Executes the [`Opcode::LoopFor`] instruction.
+    fn loop_for(&mut self, vm: &mut VM) -> Option<ControlFlow<SequenceStatus>> {
+        let start = usize::from_be_bytes(self.next_eight_bytes());
+        let end = usize::from_be_bytes(self.next_eight_bytes());
+        let count = usize::from_be_bytes(self.next_eight_bytes());
+        self.stack.allocate_block();
+        let next = self.pc + 1;
+        {
+            let mut i = 0;
+            while i + 8 < count {
+                i += 8;
+                self.pc = start;
+                while self.pc < end + 1 {
+                    if let ControlFlow::Break(status) = self.decode_next(vm) {
+                        return Some(ControlFlow::Break(status));
+                    }
+                }
+                while self.pc < end + 1 {
+                    if let ControlFlow::Break(status) = self.decode_next(vm) {
+                        return Some(ControlFlow::Break(status));
+                    }
+                }
+                while self.pc < end + 1 {
+                    if let ControlFlow::Break(status) = self.decode_next(vm) {
+                        return Some(ControlFlow::Break(status));
+                    }
+                }
+                while self.pc < end + 1 {
+                    if let ControlFlow::Break(status) = self.decode_next(vm) {
+                        return Some(ControlFlow::Break(status));
+                    }
+                }
+                while self.pc < end + 1 {
+                    if let ControlFlow::Break(status) = self.decode_next(vm) {
+                        return Some(ControlFlow::Break(status));
+                    }
+                }
+                while self.pc < end + 1 {
+                    if let ControlFlow::Break(status) = self.decode_next(vm) {
+                        return Some(ControlFlow::Break(status));
+                    }
+                }
+                while self.pc < end + 1 {
+                    if let ControlFlow::Break(status) = self.decode_next(vm) {
+                        return Some(ControlFlow::Break(status));
+                    }
+                }
+                while self.pc < end + 1 {
+                    if let ControlFlow::Break(status) = self.decode_next(vm) {
+                        return Some(ControlFlow::Break(status));
+                    }
+                }
+            }
+            while i < count {
+                i += 1;
+                self.pc = start;
+                while self.pc < end + 1 {
+                    if let ControlFlow::Break(status) = self.decode_next(vm) {
+                        return Some(ControlFlow::Break(status));
+                    }
+                }
+            }
+        };
+        self.stack.deallocate_block();
+        self.pc = next;
+        None
     }
 
     /// Sets up the sequence to begin execution.
@@ -152,9 +283,8 @@ impl Sequence {
     }
 
     /// Executes the [`Opcode::Sqrtacc`] instruction.
-    ///
+    #[inline]
     fn sqrtacc(&mut self) {
-        println!("Squaring...");
         let byte = self.next_byte();
         match byte {
             0 => match self.next_byte() {
@@ -174,8 +304,8 @@ impl Sequence {
     }
 
     /// Executes the [`Opcode::Addacc`] instruction.
+    #[inline]
     fn addacc(&mut self) {
-        println!("Adding...");
         let byte = self.next_byte();
         match byte {
             0 => match self.next_byte() {
@@ -194,7 +324,7 @@ impl Sequence {
 
     #[inline]
     fn printconstptra(&mut self, vm: &mut VM) {
-        let constant = &vm.constants[self.registers().constptra];
+        let constant = &vm.constants.list[self.registers().constptra];
         let lock = &mut stdout().lock();
         match constant {
             Constant::String(c) => lock.write(c.as_bytes()),
@@ -233,7 +363,6 @@ impl Sequence {
         let bytes = self.next_eight_bytes();
         let value = usize::from_be_bytes(bytes);
         self.registers_mut().constptra = value;
-        println!("Loaded {:?} into constptra", self.registers().constptra);
     }
 
     /// Load a range of bytes into the frameptr.

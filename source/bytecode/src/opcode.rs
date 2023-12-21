@@ -1,5 +1,5 @@
 /// Bytecode Operations in Whirlwind.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Opcode {
     // LOAD/MOVE OPCODES
     // --
@@ -310,9 +310,13 @@ impl From<u8> for Opcode {
             31 => Opcode::Addacc,
 
             35 => Opcode::Sqrtacc,
+            42 => Opcode::Eqacc,
+            45 => Opcode::JumpIfTrue,
+            47 => Opcode::LoopFor,
+            48 => Opcode::Stall,
             51 => Opcode::Call,
             52 => Opcode::Return,
-            _ => unimplemented!(),
+            _ => unimplemented!("{value}"),
         }
     }
 }
@@ -362,13 +366,13 @@ impl From<Opcode> for u8 {
             Opcode::Incacc => todo!(),
             Opcode::RShacc => todo!(),
             Opcode::LShacc => todo!(),
-            Opcode::Eqacc => todo!(),
+            Opcode::Eqacc => 42,
             Opcode::Neacc => todo!(),
             Opcode::Storeacc => todo!(),
-            Opcode::JumpIfTrue => todo!(),
+            Opcode::JumpIfTrue => 45,
             Opcode::JumpConditional => todo!(),
-            Opcode::LoopFor => todo!(),
-            Opcode::Stall => todo!(),
+            Opcode::LoopFor => 47,
+            Opcode::Stall => 48,
             Opcode::BreakLoop => todo!(),
             Opcode::Goto => todo!(),
             Opcode::Call => 51,

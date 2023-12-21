@@ -1,10 +1,10 @@
 use crate::{
     predefined::PAD,
-    vm::{Constant, Function, SizeRegistry, VM},
+    vm::{Function, SizeRegistry, VM},
 };
 use bytecode::Opcode;
 
-fn run<const T: usize>(instructions: [u8; T]) {
+fn run(instructions: &[u8]) {
     print_instructions(&instructions);
     let mut vm = VM::new();
     vm.instructions = instructions.to_vec();
@@ -22,7 +22,7 @@ fn print_instructions(instructions: &[u8]) {
 
 #[test]
 fn test_runtime_exit() {
-    run([PAD, Opcode::Exit.into()]);
+    run(&[PAD, Opcode::Exit.into()]);
 }
 
 #[test]
@@ -47,15 +47,14 @@ fn test_runtime_hello_world() {
     let mut vm = VM::new();
     vm.define_main_function(Function::main());
     vm.instructions = instructions;
-    vm.constants
-        .push(Constant::String(String::from("Hello, world.\n")));
+    vm.constants.add(String::from("Hello, world.\n"));
     vm.run().unwrap();
 }
 
 #[test]
 fn test_runtime_add_numbers() {
     // Print 4 + 5;
-    run([
+    run(&[
         PAD,
         Opcode::LoadIacc8.into(),
         4,
@@ -70,9 +69,9 @@ fn test_runtime_add_numbers() {
 }
 
 #[test]
-fn test_square_root_of_number() {
+fn test_runtime_square_root_of_number() {
     // Print sqrt(4);
-    run([
+    run(&[
         PAD,
         Opcode::LoadIacc8.into(),
         4,
@@ -85,7 +84,7 @@ fn test_square_root_of_number() {
 }
 
 #[test]
-fn test_function_call_and_return() {
+fn test_runtime_function_call_and_return() {
     let mut vm = VM::new();
     vm.define_main_function(Function::main());
     vm.functions.push(Function {
@@ -96,7 +95,8 @@ fn test_function_call_and_return() {
     });
     let function_idx = 1u32.to_be_bytes();
     let constidx = vm
-        .add_constant(String::from("Hello from inside a function()!\n"))
+        .constants
+        .add(String::from("Hello from inside a function()!\n"))
         .to_be_bytes();
     vm.instructions = vec![
         PAD,
@@ -125,11 +125,58 @@ fn test_function_call_and_return() {
 }
 
 #[test]
+fn test_runtime_loops() {
+    let mut start = 26usize.to_be_bytes();
+    let end = 26usize.to_be_bytes();
+    let count = 100_000_000usize.to_be_bytes();
+
+    let mut instructions = vec![PAD, Opcode::LoopFor.into()];
+    instructions.append(&mut start.to_vec());
+    instructions.append(&mut end.to_vec());
+    instructions.append(&mut count.to_vec());
+    instructions.append(&mut vec![Opcode::Stall.into(), Opcode::Exit.into()]);
+
+    run(instructions.as_slice());
+}
+
+#[test]
+fn test_runtime_if_else() {
+    let jumpdest = 23usize.to_be_bytes();
+    let code = vec![
+        PAD,
+        Opcode::LoadIacc8.into(),
+        10,
+        Opcode::LoadIr8.into(),
+        20,
+        Opcode::Addacc.into(),
+        0,
+        0,
+        Opcode::LoadIr8.into(),
+        30,
+        Opcode::Eqacc.into(),
+        0,
+        0,
+        Opcode::JumpIfTrue.into(),
+        jumpdest[0],
+        jumpdest[1],
+        jumpdest[2],
+        jumpdest[3],
+        jumpdest[4],
+        jumpdest[5],
+        jumpdest[6],
+        jumpdest[7],
+        Opcode::Printacc8.into(),
+        Opcode::Exit.into(),
+    ];
+    run(&code);
+}
+
+#[test]
 #[should_panic]
 fn test_stack_overflow() {
     // Call Main() recursively.
     let func_idx = 0usize.to_be_bytes();
-    run([
+    run(&[
         PAD,
         Opcode::Call.into(),
         func_idx[0],
