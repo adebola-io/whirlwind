@@ -4,6 +4,8 @@ use Core.Prelude.Bool;
 use Core.Prelude.Todo;
 use Core.Process.FatalOnCaller;
 use Core.Io.Fmt;
+use Core.Primitives.String;
+use Core.Primitives.UInt8;
 use Core.Prelude.Display;
 
 /// Creates an assertion object.

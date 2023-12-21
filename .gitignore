@@ -1,4 +1,5 @@
 target
+release
 node_modules
 .Deps
 .env

@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 #[derive(Clone, Copy)]
 pub struct Register(pub f64);
 
@@ -13,23 +15,28 @@ pub enum AccValue {
 
 #[derive(Default, Debug)]
 pub struct RegisterList {
+    pub r8: i8,
     pub acc8: i8,
+
+    pub r16: i16,
     pub acc16: i16,
+
+    pub r32: f32,
     pub acc32: f32,
+
+    pub r64: f64,
     pub acc64: f64,
 
-    pub boolx: bool,
+    pub boola: bool,
+    pub boolb: bool,
 
-    pub r8: i8,
-    pub r16: i16,
-    pub r32: f32,
-    pub r64: f64,
-
-    pub frameptr: usize,
-    pub constptr: usize,
-
+    pub constptra: usize,
+    pub constptrb: usize,
+    
     pub addressptr: u64,
     pub loopcounter: usize,
+
+    pub frameptr: Range<usize>,
 }
 
 impl RegisterList {

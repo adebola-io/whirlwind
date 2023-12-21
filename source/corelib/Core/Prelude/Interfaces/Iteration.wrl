@@ -15,11 +15,11 @@ use Core.Collections.Tuple;
 /// The Iteratable interface is a common abstraction that allows different types of collections to be traversed in a uniform way. 
 /// It defines a set of methods that can be used to access and manipulate the elements of a collection, such as arrays, lists, sets, maps, etc.
 ///
-/// It is usually specified as a generic parameter or an associated type. 
+/// It is specified with an associated type. 
 /// The `Next()` method is the core method that moves the iterator forward and returns the next element, 
 /// or `None` if there are no more elements.
 /// 
-/// The Iteratable interface also provides many other methods that are implemented based on the next method. 
+/// The Iteratable interface also provides many other methods that are implemented based on the `Next` method. 
 /// These methods can perform various operations on the elements of the iterator, 
 /// such as filtering, mapping, folding, counting, etc.
 ///  

@@ -4,7 +4,7 @@ module Async;
 
 use Core.Process.Fatal;
 use Core.Prelude.{Some, Array, Todo, Bool, Guaranteed, String};
-use Core.Internals.{Injunction, Invoke, Sequence};
+use Core.Internals.{Injunction, Invoke, StackTrace};
 use Core.Primitives.UnsignedInt;
 
 /// Asynchronous functions do not run automatically in Whirlwind. 
@@ -105,7 +105,7 @@ public model Prospect<T> {
         return this;
     }
     /// Attaches a callback that should run if the execution of the prospect fails.
-    public function Recover(callback: fn(errorMessage?: String)) {
+    public function Recover(callback: fn(error: SequenceError)) {
         Todo();
     }
     /// Races a prospect against another.
@@ -307,4 +307,25 @@ public model CurrentSequence {
     public static function Sleep(timeout: UnsignedInt) {
         Todo()
     }
+}
+
+/// A running set of instructions.
+public model Sequence {
+    /// Returns the id of the sequence.
+    /// The id of the main sequence is always 0.
+    function GetId(): UnsignedInt {
+        return Invoke(Injunction.SeqId(this));
+    }
+}
+
+public model SequenceError {
+    public var errorType: SequenceErrorType;
+    public var message: ?String;
+    public var stackTrace: StackTrace;
+}
+
+public enum SequenceErrorType {
+    StackOverflow,
+    CastingError,
+    FatalError,
 }

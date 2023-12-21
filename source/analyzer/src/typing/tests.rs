@@ -4,7 +4,7 @@ use crate::{EvaluatedType, Module, SemanticSymbolKind, Standpoint, CORE_LIBRARY_
 
 use std::path::PathBuf;
 
-macro_rules! text_produces_errors{
+macro_rules! _text_produces_errors{
     ($text: expr, $errors: expr) => {{
         let mut module = Module::from_text($text.to_string());
         module.module_path = Some(PathBuf::from("testing://Test.wrl"));

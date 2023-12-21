@@ -326,7 +326,7 @@ public model String
     /// 
     /// Assert(str.Slice(0..5)).Equals(Some("Hello")); // index 0 to 4.
     /// ```
-    public function Slice(bounds: Range<UnsignedInt>): Maybe<String> {
+    public function Slice(bounds: Range<UnsignedInt>): ?String {
         return Invoke(Injunction.StrSlice(this, bounds));
     }
     /// Divides the string into a list of substrings based on a delimeter.
@@ -337,7 +337,7 @@ public model String
     /// 
     /// Assert(words).Equals(["Ring", "Around", "The", "Rosy"]);
     /// ```
-    public function Split(delim: String): Array<String> {
+    public function Split(delim: String): []String {
         return Invoke(Injunction.StrSplit(this, delim));
     }
     /// Divides the string into a list of substrings based on a predicate.

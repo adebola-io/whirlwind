@@ -2,14 +2,14 @@ module Injunction;
 
 use Core.{
     Prelude.Range,
-    Async.{Eventual, Prospect},
+    Async.{Eventual, Prospect, Sequence},
     Primitives.{
         String,
         Int,
         UnsignedInt,
     }
 };
-use Internals.{never, Sequence};
+use Internals.{never};
  
 /// List of variants that can be called with `Invoke()`.
 public enum Injunction {

@@ -1,7 +1,7 @@
 module Outcome;
 
 use Core.{
-    Primitives.Bool,
+    Primitives.{String, Bool},
     Prelude.{ Try, Guaranteed, Maybe, Todo },
     Internals.{never, Injunction, Invoke},
     Process.FatalOnCaller

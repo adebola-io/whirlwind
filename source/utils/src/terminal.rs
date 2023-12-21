@@ -117,11 +117,7 @@ pub fn success<T>(message: T)
 where
     T: Display,
 {
-    print!(
-        "{} {}",
-        Colored::from(" SUCCESS: ").bg_green().white().bold(),
-        Colored::from(message).green()
-    )
+    println!("{}", Colored::from(message).green().bold())
 }
 
 /// Clear all text from the terminal.

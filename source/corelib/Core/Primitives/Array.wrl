@@ -83,12 +83,12 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// ### Usage
     /// ```
     /// arr := [20, 30, 40, 50, 60];
-    /// Assert(arr.First()).Equals(Some(20));
+    /// Assert(arr.First().Unwrap()).Equals(20);
     /// 
     /// empty: []Int := [];
-    /// Assert(empty.First()).Equals(None());
+    /// AssertThat(empty.First() == None());
     /// ```
-    public function First(): Maybe<T> {
+    public function First(): ?T {
         if this.length == 0 { None() } 
         else Some(this[0])
     }
@@ -217,7 +217,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
         }
     }
     /// Returns a reference to the last item in the array.
-    public function Last(): Maybe<T> {
+    public function Last(): ?T {
         if this.length == 0 { None() } 
         else Some(this[this.length - 1])
     }

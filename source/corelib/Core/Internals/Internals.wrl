@@ -2,7 +2,9 @@ module Internals;
 
 use Core.Primitives.Bool;
 use Core.Prelude.UnsignedInt;
+use Core.Prelude.Display;
 public use Injunction.{ Injunction, Invoke };
+
 
 /// ### The Never Type
 /// `never` is a type representing the set of values that _cannot_ occur.
@@ -65,11 +67,7 @@ public function IsNull<T>(value: T): Bool {
     return value == NULLPTR;
 }
 
-/// A running set of instructions.
-public model Sequence {
-    /// Returns the id of the sequence.
-    /// The id of the main sequence is always 0.
-    function GetId(): UnsignedInt {
-        return Invoke(Injunction.SeqId(this));
-    }
+
+public model StackTrace implements Display {
+    // todo.    
 }

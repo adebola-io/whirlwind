@@ -2,6 +2,7 @@ mod container;
 mod fs;
 mod partial;
 mod stringmutator;
+mod terminal;
 mod threadpool;
 mod unorderedmap;
 
@@ -13,6 +14,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 pub use stringmutator::*;
+pub use terminal::*;
 pub use threadpool::*;
 pub use unorderedmap::*;
 

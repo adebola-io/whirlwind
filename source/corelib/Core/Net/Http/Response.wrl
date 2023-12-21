@@ -2,13 +2,14 @@ module Response;
 use Request.HttpRequest;
 
 use Core.Prelude.{String, UnsignedInt, Maybe, Todo};
+use Core.Data.JsonValue;
 
 /// The headers on a 
 public model ResponseHeaders {
     public function Set(key: String, value: String) {
         Todo()
     }
-    public function Get(key: String): Maybe<String> {
+    public function Get(key: String): ?String {
         Todo()
     }
 }
@@ -22,7 +23,7 @@ public model HttpResponse {
         return Todo();
     }
     /// Returns the content type set in the response header.
-    public function ContentType(): Maybe<String> {
+    public function ContentType(): ?String {
         this.headers.Get("Content-Type")
     }
     /// Sets the status code value of the response.
@@ -34,6 +35,10 @@ public model HttpResponse {
     public function Html(string: String): This {
         this.headers.Set("Content-Type", "text/html");
         this.data = string;
+        return this;
+    }
+    public function Json<J implements JsonValue>(json: J): This {
+        this.headers.Set("Content-Type", "application/json");
         return this;
     }
 }

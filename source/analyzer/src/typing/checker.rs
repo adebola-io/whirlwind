@@ -1296,8 +1296,8 @@ mod expressions {
         symbollib: &mut SymbolLibrary,
     ) -> EvaluatedType {
         binexp.inferred_type = (|| {
-            let mut left = typecheck_expression(&mut binexp.left, checker_ctx, symbollib);
-            let mut right = typecheck_expression(&mut binexp.left, checker_ctx, symbollib);
+            let left = typecheck_expression(&mut binexp.left, checker_ctx, symbollib);
+            let right = typecheck_expression(&mut binexp.left, checker_ctx, symbollib);
             let _is_numeric =
                 is_numeric_type(&left, symbollib) && is_numeric_type(&right, symbollib);
             let mut generic_hashmap = HashMap::new();
@@ -2083,7 +2083,7 @@ mod expressions {
                 typecheck_expression(&mut indexexp.object, checker_ctx, symbollib);
             let type_of_indexer = typecheck_expression(&mut indexexp.index, checker_ctx, symbollib);
             // todo: handle Index interfaceface overloading.
-            let mut ptr = type_of_indexed;
+            let ptr = type_of_indexed;
             if !is_array(&ptr, &symbollib) {
                 if !is_array(&ptr, symbollib) {
                     checker_ctx.add_error(errors::invalid_index_subject(
