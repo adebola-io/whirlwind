@@ -1,7 +1,7 @@
 use crate::{
     predefined::{INSTRUCTION_START, MAX_STACK_SLICE_SIZE},
-    stack::{Block, Stack, StackValue},
-    vm::{Constant, VM},
+    stack::{Block, Stack, StackError, StackValue},
+    vm::{Constant, ExecutionError, Function, VM},
 };
 use bytecode::{AccValue, Opcode, RegisterList};
 use std::{
@@ -27,7 +27,7 @@ pub enum SequenceStatus {
     Running,
     Waiting,
     Aborted,
-    Crashed,
+    Crashed(ExecutionError),
     Resolved,
     Paused,
 }
@@ -38,145 +38,158 @@ pub struct Sequence {
     pub id: SequenceId,
     pub pc: usize,
     stack: Stack,
+    time: Option<std::time::Instant>,
     blob: Option<*const [u8]>,
     pub status: SequenceStatus,
 }
 
 impl Sequence {
-    /// Creates the main sequence.
-    pub fn main() -> Self {
-        let mut main_seq = Self {
-            parent: None,
-            id: SequenceId(0),
-            pc: INSTRUCTION_START,
-            stack: Stack::new(),
-            blob: None,
-            status: SequenceStatus::Idle,
-        };
-        main_seq.stack.allocate_new_frame(1, 0).unwrap();
-        main_seq
-    }
-
-    pub fn new(parent: Option<SequenceId>, id: SequenceId) -> Self {
-        Self {
+    pub fn new(
+        parent: Option<SequenceId>,
+        id: SequenceId,
+        function: &Function,
+        return_address: usize,
+    ) -> Self {
+        let mut sequence = Self {
             parent,
             id,
-            pc: 0,
+            pc: function.start,
             blob: None,
+            time: None,
             stack: Stack::new(),
             status: SequenceStatus::Idle,
-        }
-    }
-
-    pub fn clear(&mut self) {
-        *self = Sequence::new(self.parent, self.id);
+        };
+        sequence
+            .stack
+            .allocate_new_frame(function, return_address)
+            .unwrap();
+        sequence
     }
 
     /// Advances the execution in the sequence.
-    pub fn step(&mut self, blob: &[u8], pc: usize, vm: &mut VM) {
-        self.status = SequenceStatus::Running;
-        self.pc = pc;
-        self.blob = Some(blob as *const [u8]);
-        let time = std::time::Instant::now();
-        loop {
-            // Yield after 10microsecs.
-            if time.elapsed() >= Duration::from_micros(10) && vm.running_sequences > 1 {
+    pub fn resume(&mut self, pc: usize, vm: &mut VM) {
+        self.setup(pc, vm);
+        'instruction_cycle: loop {
+            // Yield after 10us, but only if there are other sequences to run.
+            // It is a crude way of implementing concurrency. It will be improved.
+            if vm.running_sequences > 1
+                && self
+                    .time
+                    .is_some_and(|time| time.elapsed() >= Duration::from_micros(10))
+            {
                 self.status = SequenceStatus::Paused;
                 return;
             }
             let opcode = self.next_byte().into();
-            if let ControlFlow::Break(_) = self.decode(opcode, vm) {
-                break;
+            match opcode {
+                Opcode::Exit => {
+                    vm.exited = true;
+                    break 'instruction_cycle;
+                }
+                Opcode::LoadIr8 => self.loadir8(),
+                Opcode::LoadIr16 => self.load_ir16(),
+                Opcode::LoadIr32 => self.load_ir32(),
+                Opcode::LoadIr64 => self.load_ir64(),
+                Opcode::LoadIframe => self.load_iframe(),
+                Opcode::LoadIconstptra => self.load_iconstptra(),
+
+                Opcode::LoadIacc8 => self.loadiacc8(),
+
+                Opcode::Printacc8 => self.printacc8(),
+                Opcode::Printacc64 => self.printacc64(),
+
+                Opcode::Printconstptra => self.printconstptra(vm),
+                Opcode::Addacc => self.addacc(),
+                Opcode::Sqrtacc => self.sqrtacc(),
+                Opcode::Call => {
+                    let function_idx = u32::from_be_bytes(self.next_four_bytes()) as usize;
+                    let function = &mut vm.functions[function_idx];
+                    function.calls += 1;
+                    if let Err(error) = self.stack.allocate_new_frame(&function, self.pc) {
+                        self.status = match error {
+                            StackError::StackOverflow => {
+                                SequenceStatus::Crashed(ExecutionError::StackOverflow)
+                            }
+                            StackError::IllegalMemoryAccess => {
+                                SequenceStatus::Crashed(ExecutionError::IllegalMemoryAccess)
+                            }
+                        };
+                        return;
+                    }
+                    self.pc = function.start;
+                }
+                Opcode::Return => {
+                    // TODO: Where to store return values?
+                    let return_address = self
+                        .stack
+                        .deallocate_current_frame()
+                        .expect("No valid return address!");
+                    self.pc = return_address;
+                }
+                _ => unimplemented!("Runtime does not support instruction {opcode:?}!!"),
             }
         }
         self.status = SequenceStatus::Resolved;
     }
 
+    /// Sets up the sequence to begin execution.
     #[inline]
-    fn decode(&mut self, opcode: Opcode, vm: &mut VM) -> ControlFlow<()> {
-        match opcode {
-            Opcode::Exit => {
-                vm.exited = true;
-                return ControlFlow::Break(());
-            }
-            Opcode::LoadIr8 => {
-                self.registers_mut().r8 = self.next_byte() as i8;
-                println!("Loaded {:?} into r8", self.registers().r8);
-            }
-            Opcode::LoadIr16 => self.load_ir16(),
-            Opcode::LoadIr32 => self.load_ir32(),
-            Opcode::LoadIr64 => self.load_ir64(),
-            Opcode::LoadIframe => self.load_iframe(),
-            Opcode::LoadIconstptra => self.load_iconstptra(),
-            // // Opcode::LoadImToFramePtr
-            // 0x05 => self.load_immediate_frameptr(),
-            // // Opcode::LoadImToConstPtr
-            // 0x06 => self.load_immediate_constptr(),
-            Opcode::LoadIacc8 => {
-                self.registers_mut().acc8 = self.next_byte() as i8;
-                println!("Loaded {:?} into acc8", self.registers().acc8);
-            }
-            // // Opcode::LoadAcc16
-            // 0x09 => self.block().acc16 = self.block().r16,
-            // // Opcode::LoadAcc32
-            // 0x10 => self.block().acc32 = self.block().r32,
-            // // Opcode::LoadAcc64
-            // 0x11 => self.block().acc64 = self.block().r64,
-            Opcode::Printacc8 => self.printacc8(),
-            // // Opcode::PrintAcc16
-            // 0x12 => self.printacc16(),
-            // // Opcode::PrintAcc32
-            // 0x12 => self.printacc32(),
-            // // Opcode::PrintAcc64
-            // 0x10 => self.printacc64(),
-            // // Opcode::PrintConstPtr
-            Opcode::Printconstptra => self.printconstptra(vm),
-            Opcode::Addacc => {
-                println!("Adding...");
-                let byte = self.next_byte();
-                match byte {
-                    0 => match self.next_byte() {
-                        0 => self.registers_mut().acc8 += self.registers_mut().r8,
-                        1 => {
-                            let address = u32::from_be_bytes(self.next_four_bytes()) as usize;
-                            self.stack.write(address, StackValue { byte });
-                            // todo: handle failure.
-                        }
-                        _ => unreachable!("Invalid instruction format."),
-                    },
-                    1 => {}
-                    _ => todo!(),
+    fn setup(&mut self, pc: usize, vm: &mut VM) {
+        self.status = SequenceStatus::Running;
+        self.pc = pc;
+        self.blob = Some(vm.instructions.as_slice() as *const [u8]);
+        self.time = Some(std::time::Instant::now());
+    }
+
+    #[inline]
+    fn loadiacc8(&mut self) {
+        self.registers_mut().acc8 = self.next_byte() as i8;
+    }
+
+    #[inline]
+    fn loadir8(&mut self) {
+        self.registers_mut().r8 = self.next_byte() as i8;
+    }
+
+    /// Executes the [`Opcode::Sqrtacc`] instruction.
+    ///
+    fn sqrtacc(&mut self) {
+        println!("Squaring...");
+        let byte = self.next_byte();
+        match byte {
+            0 => match self.next_byte() {
+                0 => {
+                    self.registers_mut().acc64 = (self.registers().acc8 as f64).sqrt();
                 }
-            }
-            // // Opcode::MoveAcc8To16
-            // 0x12 => {
-            //     self.block().acc16 = self.block().acc8 as i16;
-            // }
-            // // Opcode::MoveAcc8To32
-            // 0x13 => {
-            //     self.block().acc32 = self.block().acc8 as f32;
-            // }
-            // // Opcode::MoveAcc8To64
-            // 0x14 => {
-            //     self.block().acc64 = self.block().acc8 as f64;
-            // }
-            // // Opcode::MoveAcc16To32
-            // 0x15 => {
-            //     self.block().acc32 = self.block().acc16 as f32;
-            // }
-            // // Opcode::MoveAcc16To64
-            // 0x16 => {
-            //     self.block().acc64 = self.block().acc16 as f64;
-            // }
-            // // Opcode::MoveAcc32To64
-            // 0x17 => {
-            //     self.block().acc64 = self.block().acc32 as f64;
-            // }
-            // Opcode::Call
-            // 0x22 =>
-            _ => unimplemented!("Unsupported instruction {opcode:?}!!"),
+                1 => {
+                    let address = u32::from_be_bytes(self.next_four_bytes()) as usize;
+                    // todo: handle failure.
+                    self.stack.write(address, StackValue { byte });
+                }
+                _ => unreachable!("Invalid instruction format."),
+            },
+            1 => {}
+            _ => todo!(),
         }
-        ControlFlow::Continue(())
+    }
+
+    /// Executes the [`Opcode::Addacc`] instruction.
+    fn addacc(&mut self) {
+        println!("Adding...");
+        let byte = self.next_byte();
+        match byte {
+            0 => match self.next_byte() {
+                0 => self.registers_mut().acc8 += self.registers_mut().r8,
+                1 => {
+                    let address = u32::from_be_bytes(self.next_four_bytes()) as usize;
+                    self.stack.write(address, StackValue { byte });
+                    // todo: handle failure.
+                }
+                _ => unreachable!("Invalid instruction format."),
+            },
+            1 => {}
+            _ => todo!(),
+        }
     }
 
     #[inline]

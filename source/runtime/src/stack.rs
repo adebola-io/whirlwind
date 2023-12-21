@@ -1,7 +1,10 @@
-use crate::predefined::MAX_STACK_SLICE_SIZE;
+use crate::{predefined::MAX_STACK_SLICE_SIZE, vm::Function};
+use analyzer::PathIndex;
+use ast::Span;
 use bytecode::RegisterList;
 use std::{
     ops::Range,
+    panic::Location,
     sync::{Arc, Mutex},
 };
 
@@ -21,54 +24,6 @@ pub union StackValue {
     pub heap_pointer: *mut u8,
     pub byte: u8,
 }
-
-impl Default for StackValue {
-    fn default() -> Self {
-        StackValue { byte: 0 }
-    }
-}
-
-/// A call frame represents an area within the stack that is
-/// peculiar to a function call. It consist of the range in the stack,
-/// the return address from the call and the inner stack of expression
-/// blocks.
-pub struct CallFrame {
-    range: Range<usize>,
-    return_address: usize,
-    blocks: Vec<Block>,
-}
-impl CallFrame {
-    /// Creates a new call frame.
-    /// By default, it starts with a single block, corresponding to the
-    /// block of the function itself.
-    pub fn new(range: Range<usize>, return_address: usize) -> Self {
-        CallFrame {
-            range,
-            return_address,
-            blocks: vec![Block::new()],
-        }
-    }
-    /// Translates an address in the frame to an address in the overall stack.
-    #[inline]
-    pub fn translate(&self, index: usize) -> usize {
-        self.range.start + index
-    }
-}
-/// A block corresponds semantically to a block
-/// of expression code in the source.
-#[derive(Debug)]
-pub struct Block {
-    registers: RegisterList,
-}
-
-impl Block {
-    pub fn new() -> Self {
-        Self {
-            registers: RegisterList::new(),
-        }
-    }
-}
-
 /// A stack for memory management in a sequence.
 pub struct Stack {
     /// A pointer to the top of the stack.
@@ -82,7 +37,54 @@ pub struct Stack {
     /// Additional space for the stack if the slice is filled.
     adjunct: Option<Vec<StackValue>>,
 }
+/// A call frame represents an area within the stack that is
+/// peculiar to a function call. It consist of the range in the stack,
+/// the return address from the call and the inner stack of expression
+/// blocks.
+pub struct CallFrame {
+    call_address: usize,
+    range: Range<usize>,
+    return_address: usize,
+    blocks: Vec<Block>,
+}
+/// A block corresponds semantically to a block
+/// of expression code in the source.
+#[derive(Debug)]
+pub struct Block {
+    registers: RegisterList,
+}
 
+impl Default for StackValue {
+    fn default() -> Self {
+        StackValue { byte: 0 }
+    }
+}
+
+impl CallFrame {
+    /// Creates a new call frame.
+    /// By default, it starts with a single block, corresponding to the
+    /// block of the function itself.
+    pub fn new(call_address: usize, range: Range<usize>, return_address: usize) -> Self {
+        CallFrame {
+            call_address,
+            range,
+            return_address,
+            blocks: vec![Block::new()],
+        }
+    }
+    /// Translates an address in the frame to an address in the overall stack.
+    #[inline]
+    pub fn translate(&self, index: usize) -> usize {
+        self.range.start + index
+    }
+}
+impl Block {
+    pub fn new() -> Self {
+        Self {
+            registers: RegisterList::new(),
+        }
+    }
+}
 impl Stack {
     /// Returns a new stack.
     pub fn new() -> Self {
@@ -99,15 +101,18 @@ impl Stack {
     #[inline]
     pub fn allocate_new_frame(
         &mut self,
-        size: usize,
+        function: &Function,
         return_address: usize,
     ) -> Result<(), StackError> {
+        let size = function.frame_size;
+        // The call address is always the return address - 1 instruction.
+        let call_address = return_address - 1;
         // Allocate on the slice
         if self.pointer + size > MAX_STACK_SLICE_SIZE {
             return Err(StackError::StackOverflow);
         }
         let range = self.pointer..(self.pointer + size);
-        let new_frame = CallFrame::new(range, return_address);
+        let new_frame = CallFrame::new(call_address, range, return_address);
         self.frames.push(new_frame);
         self.pointer += size;
         Ok(())

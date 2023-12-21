@@ -169,11 +169,12 @@ pub enum Opcode {
     /// The schema & format is the same as AddAcc.
     MulAcc,
     /// Takes the square root of the value in the accumulator.
-    /// The schema & format is the same as AddAcc.
+    /// The schema & format is the same as AddAcc,
+    /// WITH THE EXCEPTION THAT THE IMPLICIT RESULT (0) IS ALWAYS STORED IN ACC64.
     Sqrtacc,
     /// Divides the value in an accumulator by the value in a register.
     /// and stores the result in the accumulator.
-    /// The schema & format is the same as AddAcc.
+    /// WITH THE EXCEPTION THAT THE IMPLICIT RESULT (0) IS ALWAYS STORED IN ACC64.
     Divacc,
     /// Performs a modulus operation on the value in the accumulator using the
     /// value in a register.
@@ -304,8 +305,13 @@ impl From<u8> for Opcode {
             11 => Opcode::LoadIconstptrb,
 
             25 => Opcode::Printacc8,
+            28 => Opcode::Printacc64,
             29 => Opcode::Printconstptra,
             31 => Opcode::Addacc,
+
+            35 => Opcode::Sqrtacc,
+            51 => Opcode::Call,
+            52 => Opcode::Return,
             _ => unimplemented!(),
         }
     }
@@ -342,14 +348,14 @@ impl From<Opcode> for u8 {
             Opcode::Printacc8 => 25,
             Opcode::Printacc16 => todo!(),
             Opcode::Printacc32 => todo!(),
-            Opcode::Printacc64 => todo!(),
+            Opcode::Printacc64 => 28,
             Opcode::Printconstptra => 29,
             Opcode::Printconstptrb => todo!(),
             Opcode::Addacc => 31,
             Opcode::AddaccToframe => todo!(),
             Opcode::Subacc => todo!(),
             Opcode::MulAcc => todo!(),
-            Opcode::Sqrtacc => todo!(),
+            Opcode::Sqrtacc => 35,
             Opcode::Divacc => todo!(),
             Opcode::Modacc => todo!(),
             Opcode::Decacc => todo!(),
@@ -365,8 +371,8 @@ impl From<Opcode> for u8 {
             Opcode::Stall => todo!(),
             Opcode::BreakLoop => todo!(),
             Opcode::Goto => todo!(),
-            Opcode::Call => todo!(),
-            Opcode::Return => todo!(),
+            Opcode::Call => 51,
+            Opcode::Return => 52,
             Opcode::EndBlock => todo!(),
             Opcode::MarkForHeap => todo!(),
             Opcode::NewOpaque => todo!(),

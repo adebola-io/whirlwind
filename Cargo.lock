@@ -118,7 +118,6 @@ name = "cli"
 version = "0.1.0"
 dependencies = [
  "analyzer",
- "vm",
 ]
 
 [[package]]
@@ -499,6 +498,16 @@ name = "repl"
 version = "0.1.0"
 
 [[package]]
+name = "runtime"
+version = "0.1.0"
+dependencies = [
+ "analyzer",
+ "ast",
+ "bytecode",
+ "utils",
+]
+
+[[package]]
 name = "rustc-demangle"
 version = "0.1.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -822,15 +831,6 @@ name = "version_check"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
-
-[[package]]
-name = "vm"
-version = "0.1.0"
-dependencies = [
- "analyzer",
- "bytecode",
- "utils",
-]
 
 [[package]]
 name = "wasi"

@@ -1,5 +1,5 @@
 [package]
-name = "vm"
+name = "runtime"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,4 +8,5 @@ edition = "2021"
 [dependencies]
 analyzer = {version = "*", path = "../analyzer"}
 bytecode = {version = "*", path = "../bytecode"}
+ast = {version = "*", path = "../ast"}
 utils = {version = "*", path = "../utils"}
