@@ -4,4 +4,7 @@ use Core.Prelude.Display;
 
 public model Bool implements Display {
     // compiler built-in.
+    public function [Display.ToStr](): String {
+        if this {"true"} else "false"
+    }
 }

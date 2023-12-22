@@ -61,7 +61,7 @@ public model String
     ///     Print(char);
     /// }
     /// ```
-    public function [AsIterator.IntoIter](): Chars {
+    public function [AsIterator.Iter](): Chars {
         return this.Chars();
     }
     /// Returns a `Maybe` with the character at a zero based index in the string.

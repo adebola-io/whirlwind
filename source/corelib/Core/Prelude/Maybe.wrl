@@ -6,7 +6,7 @@ use Core.{
     Process.{FatalOnCaller, Todo},
 };
 use Outcome.{ Ok, Err, Outcome }; 
-use Interfaces.{ Guaranteed, Try.Try, Default.Default };
+use Interfaces.{ Guaranteed.Guaranteed, Try.Try, Default.Default };
 
 /// Creates a `Maybe` with no value.
 public function None<T>(): ?T {

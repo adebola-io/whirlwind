@@ -21,7 +21,7 @@
       "description": "Public Function Definition"
    },
    "Use Statement": {
-      "prefix": "use",
+      "prefix": "use ",
       "body": ["use $0;"],
       "description": "Use external module"
    },
@@ -79,10 +79,18 @@
       ],
       "description": "If-Else Expression"
    },
+   "Return Statement": {
+      "prefix": "ret",
+      "body": "return ${1};"
+   },
    "New Statement": {
       "prefix": "new",
       "body": ["${1:name} := new ${2:Model}(${3:arguments});$0"],
       "description": "New Statement"
+   },
+   "Variable Declaration": {
+      "prefix": "var ",
+      "body": "var ${1:name} = ${2:value};"
    },
    "While Statement": {
       "prefix": "while",

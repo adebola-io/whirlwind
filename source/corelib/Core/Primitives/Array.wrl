@@ -134,6 +134,29 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     public function Prepend(prefix: []T) {
         Invoke(Injunction.ArrPrepend(prefix, this));
     }
+    /// Divides the array into two new arrays: one containing elements that pass
+    /// a test function, and another with elements that don't.
+    /// ### Usage
+    /// ```
+    /// arr := ["Arnold", "Daniel", "Harriet", "Donald", "Dele"];
+    /// 
+    /// var [startsWithD, others] = arr.Partition(fn(x) x.StartsWith("D"));
+    /// 
+    /// AssertThat(startsWithD == ["Donald", "Dele", "Daniel"]);
+    /// AsserThat(others == ["Arnold", "Harriet"]);
+    /// ```
+    public function Partition(check: fn(item: T): Bool): [][]T {
+        trueItems := [];
+        falseItems := [];
+        for item in this {
+            if check(item) {
+                trueItems.Push(item);
+            } else {
+                falseItems.Push(item);
+            }
+        }
+        return [trueItems, falseItems];
+    }
     /// Returns the number of items in the array.
     /// ### Usage
     /// ```
@@ -186,6 +209,24 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     public function Reverse(): Reversed<T> {
         return new Reversed(this);
     }
+    /// Randomly selects a specific number of elements from
+    /// the array.
+    /// 
+    /// If the length given is larger than the length of the
+    /// original array, then it will be ignored, and a shuffled
+    /// version of the whole array will be returned.
+    /// ### Usage
+    /// ```
+    /// arr := [1, 2, 3, 4, 5];
+    /// 
+    /// twoItems := arr.Sample(2);
+    /// ```
+    public function Sample(n: UnsignedInt): []T {
+        if n > this.Length() {
+            return this.Shuffled();
+        };
+        Todo()
+    }
     /// Removes the first item in the array
     /// and shifts all the other items backward
     /// by one index.
@@ -215,6 +256,16 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
         } else {
             Todo()
         }
+    }
+    /// Returns a new, shuffled version of the array.
+    /// ### Usage
+    /// ```
+    /// arr := [1, 2, 3];
+    /// 
+    /// shuffledArray := arr.Shuffled();
+    /// ```
+    public function Shuffled(): []T {
+        Todo()
     }
     /// Returns a reference to the last item in the array.
     public function Last(): ?T {
@@ -366,7 +417,7 @@ public model ArrayIter<T> implements Iteratable<T> {
         this.idx = 0;
     }
 
-    public function [Iteratable.Next](): Maybe<T> {
+    public function [Iteratable.Next](): ?T {
         length := this.array.Length();
         if length == this.idx {
             return None();

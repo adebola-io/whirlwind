@@ -63,7 +63,7 @@ public interface Iteratable<I> {
     /// ```
     /// values := [20, 30, 40, 50, 60, 70];
     /// // Produce only elements divisible by 4.
-    /// divBy4 := values.IntoIter().Filter(fn(x) x % 4 == 0);
+    /// divBy4 := values.Iter().Filter(fn(x) x % 4 == 0);
     /// 
     /// Assert(divBy4.Next()).Equals(Some(20));
     /// Assert(divBy4.Next()).Equals(Some(40));
@@ -90,7 +90,7 @@ public interface Iteratable<I> {
     /// after the target element is found, the iterator can still be used.
     /// ### Usage
     /// ```
-    /// iterator := [11, 12, 13, 14, 15].IntoIter();
+    /// iterator := [11, 12, 13, 14, 15].Iter();
     /// 
     /// AssertThat(iterator.Any(fn(x) x % 2 == 0)); // Returns true at 12.
     /// // Iterator can still be used.
@@ -111,14 +111,14 @@ public interface Iteratable<I> {
     /// Returns true if all the elements produced by the iterator match a predicate.
     /// ### Usage
     /// ```
-    /// iter := [3, 6, 9, 12, 15].IntoIter();
+    /// iter := [3, 6, 9, 12, 15].Iter();
     /// 
     /// AssertThat(iter.All(fn(x) x % 3 == 0)) // Consumes the entire iterator and returns true.
     /// ```
     /// Like the `.Any()` method, `.All()` is also shortcircuiting, meaning it will stop advancing after the first
     /// false item, whether or not there are still items in the iterator.
     /// ```
-    /// iter := [12, 14, 15, 17, 18, 20].IntoIter();
+    /// iter := [12, 14, 15, 17, 18, 20].Iter();
     /// 
     /// AssertThat(!iter.All(fn(x) x > 16)); // Halts at 17 and returns false.
     /// // Iterator can still be used.
@@ -166,13 +166,13 @@ public interface Iteratable<I> {
     /// ### Usage
     /// ```
     /// numbers := [2, 4, 6, 8, 10];
-    /// firstThree := numbers.IntoIter().Take(3);
+    /// firstThree := numbers.Iter().Take(3);
     /// 
     /// Assert(firstThree).Equals([2, 4, 6]);
     /// ```
     /// If the iterator ends before the array is filled, then the incomplete array is returned.
     /// ```
-    /// firstTen := numbers.IntoIter().Take(10);
+    /// firstTen := numbers.Iter().Take(10);
     /// 
     /// Assert(firstTen).Equals([2, 4, 6, 8, 10]);
     /// ```
@@ -191,7 +191,7 @@ public interface Iteratable<I> {
     /// ### Usage
     /// ```
     /// numbers := [10, 12, 14, 16, 18, 20];
-    /// iter := numbers.IntoIter();
+    /// iter := numbers.Iter();
     /// 
     /// iter.While(fn(x) x < 15, Some(fn(y) Print(y)));
     /// 
@@ -209,8 +209,8 @@ public interface Iteratable<I> {
     /// 
     /// ### Usage
     /// ```
-    /// numbers := [1, 2, 3, 4, 5].IntoIter();
-    /// words := ["one", "two", "three", "four", "five"].IntoIter();
+    /// numbers := [1, 2, 3, 4, 5].Iter();
+    /// words := ["one", "two", "three", "four", "five"].Iter();
     /// 
     /// numbersAndWords := numbers.Zip(words);
     /// 
@@ -226,7 +226,7 @@ public interface Iteratable<I> {
     /// ### Usage
     /// ```
     /// numbers := [1, 2, 3, 4];
-    /// iter := numbers.IntoIter().Interleave(5);
+    /// iter := numbers.Iter().Interleave(5);
     /// 
     /// numbersWith5 := iter.Collect();
     /// Assert(numbersWith5).Equals([1, 5, 2, 5, 3, 5, 4, 5]);
@@ -241,7 +241,7 @@ public interface Iteratable<I> {
     /// ```
     /// fruits := ["apple", "banana", "cherry", "date", "elderberry"];
     /// 
-    /// iter := fruits.IntoIter().Skip(2);
+    /// iter := fruits.Iter().Skip(2);
     /// 
     /// Assert(iter.Collect()).Equals(["cherry", "date", "elderberry"]);
     /// ```
@@ -264,8 +264,8 @@ public interface Iteratable<I> {
     /// 
     /// ### Usage
     /// ```
-    /// numIter := [1, 2, 3].IntoIter();
-    /// numIter2 := [4, 5, 6].IntoIter();
+    /// numIter := [1, 2, 3].Iter();
+    /// numIter2 := [4, 5, 6].Iter();
     /// 
     /// chained := numIter.Chain(numIter2);
     /// 
@@ -390,7 +390,7 @@ public model Reversed<I> implements Iteratable<I> {
         this.array = array;
         this.idx = array.Length();
     }
-    public function [Iteratable.Next](): Maybe<I> {
+    public function [Iteratable.Next](): ?I {
         if this.idx == 0 {
             None()
         } else {

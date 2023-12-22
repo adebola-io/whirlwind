@@ -89,11 +89,11 @@ fn test_runtime_function_call_and_return() {
     vm.define_main_function(Function::main());
     vm.functions.push(Function {
         name: "AnotherFunction".to_owned(),
-        start: 7,
+        start: 11,
         frame_size: 8,
         calls: 0,
     });
-    let function_idx = 1u32.to_be_bytes();
+    let function_idx = 1usize.to_be_bytes();
     let constidx = vm
         .constants
         .add(String::from("Hello from inside a function()!\n"))
@@ -106,6 +106,10 @@ fn test_runtime_function_call_and_return() {
         function_idx[1],
         function_idx[2],
         function_idx[3],
+        function_idx[4],
+        function_idx[5],
+        function_idx[6],
+        function_idx[7],
         Opcode::Exit.into(),
         // AnotherFunction:
         Opcode::LoadIconstptra.into(),
@@ -187,6 +191,10 @@ fn test_stack_overflow() {
         func_idx[1],
         func_idx[2],
         func_idx[3],
+        func_idx[4],
+        func_idx[5],
+        func_idx[6],
+        func_idx[7],
         Opcode::Exit.into(),
     ])
 }

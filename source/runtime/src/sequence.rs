@@ -176,7 +176,7 @@ impl Sequence {
 
     #[inline]
     fn call(&mut self, vm: &mut VM) -> Option<ControlFlow<SequenceStatus>> {
-        let function_idx = u32::from_be_bytes(self.next_four_bytes()) as usize;
+        let function_idx = usize::from_be_bytes(self.next_eight_bytes());
         let function = &mut vm.functions[function_idx];
         function.calls += 1;
         if let Err(error) = self.stack.allocate_new_frame(&function, self.pc) {

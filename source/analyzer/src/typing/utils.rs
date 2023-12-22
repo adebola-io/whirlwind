@@ -1,6 +1,7 @@
 use crate::{
-    evaluate, unify_generic_arguments, EvaluatedType, LiteralMap, ParameterType,
+    evaluate, unify_generic_arguments, unify_types, EvaluatedType, LiteralMap, ParameterType,
     SemanticSymbolKind, SymbolIndex, SymbolLibrary, TypecheckerContext, TypedExpression,
+    UnifyOptions,
 };
 use errors::{TypeError, TypeErrorType};
 /// Returns an intrinsic symbol from the symbol table or returns an unknown type.
@@ -746,31 +747,72 @@ pub fn update_expression_type(
     caller: &mut TypedExpression,
     symbollib: &mut SymbolLibrary,
     generic_arguments: &Vec<(SymbolIndex, EvaluatedType)>,
+    // In case the types match each other directly, to prevent double nesting.
+    optional_type: Option<&EvaluatedType>,
 ) {
     match caller {
         TypedExpression::Identifier(ident) => {
-            let ident_symbol = symbollib.get_mut(ident.value).unwrap();
-            if let SemanticSymbolKind::Variable { inferred_type, .. }
-            | SemanticSymbolKind::Constant { inferred_type, .. } = &mut ident_symbol.kind
+            // DOUBLED SO SYMBOLLIB CAN BE BORROWED IMMUTABLY.
+            let mut unified_type = None;
+            let ident_symbol = symbollib.get(ident.value).unwrap();
+            if let SemanticSymbolKind::Variable {
+                inferred_type,
+                declared_type,
+                ..
+            } = &ident_symbol.kind
             {
+                // Identifiers with declared types cannot be updated.
+                if declared_type.is_some() {
+                    return;
+                }
+                unified_type = optional_type
+                    .map(|opt_type| {
+                        unify_types(
+                            inferred_type,
+                            opt_type,
+                            symbollib,
+                            UnifyOptions::Conform,
+                            None,
+                        )
+                        .ok()
+                    })
+                    .flatten();
+            }
+
+            let ident_symbol = symbollib.get_mut(ident.value).unwrap();
+            if let SemanticSymbolKind::Variable { inferred_type, .. } = &mut ident_symbol.kind {
+                if let Some(unified_type) = unified_type {
+                    *inferred_type = unified_type;
+                }
                 let mut empty = vec![];
-                let inferred_type_generics = get_type_generics_mut(inferred_type, &mut empty);
-                for (generic_idx, generic_solution) in inferred_type_generics {
-                    if let Some((_, newsolution)) =
-                        generic_arguments.iter().find(|(a, _)| a == generic_idx)
-                    {
-                        if !newsolution.is_unknown() {
-                            *generic_solution = newsolution.clone();
+                if inferred_type.contains_child_for_which(&|child| {
+                    matches!(child, EvaluatedType::Generic { .. })
+                }) {
+                    let inferred_type_generics = get_type_generics_mut(inferred_type, &mut empty);
+                    for (generic_idx, generic_solution) in inferred_type_generics {
+                        if let Some((_, newsolution)) = generic_arguments
+                            .iter()
+                            .rev()
+                            .find(|(a, _)| a == generic_idx)
+                        {
+                            if !newsolution.is_unknown() {
+                                *generic_solution = newsolution.clone();
+                            }
                         }
                     }
                 }
             }
         }
         TypedExpression::CallExpr(call) => {
-            update_expression_type(&mut call.caller, symbollib, generic_arguments);
-            call.arguments
-                .iter_mut()
-                .for_each(|arg| update_expression_type(arg, symbollib, generic_arguments));
+            update_expression_type(
+                &mut call.caller,
+                symbollib,
+                generic_arguments,
+                optional_type,
+            );
+            call.arguments.iter_mut().for_each(|arg| {
+                update_expression_type(arg, symbollib, generic_arguments, optional_type)
+            });
         }
         TypedExpression::AccessExpr(access) => {
             let empty = LiteralMap::new();
@@ -783,28 +825,38 @@ pub fn update_expression_type(
                 prior_generics,
                 generic_arguments,
                 symbollib,
-                crate::UnifyOptions::None,
+                UnifyOptions::None,
                 None,
             ) {
                 Ok(generics) => generics,
                 _ => return,
             };
-            update_expression_type(&mut access.object, symbollib, &generic_args);
+            update_expression_type(&mut access.object, symbollib, &generic_args, optional_type);
         }
-        TypedExpression::ArrayExpr(array) => array
-            .elements
-            .iter_mut()
-            .for_each(|exp| update_expression_type(exp, symbollib, generic_arguments)),
+        TypedExpression::ArrayExpr(array) => array.elements.iter_mut().for_each(|exp| {
+            update_expression_type(exp, symbollib, generic_arguments, optional_type)
+        }),
         TypedExpression::IndexExpr(index) => {
-            update_expression_type(&mut index.object, symbollib, generic_arguments);
+            update_expression_type(
+                &mut index.object,
+                symbollib,
+                generic_arguments,
+                optional_type,
+            );
             // todo: allow index overloading?
         }
-        TypedExpression::UnaryExpr(unary) => {
-            update_expression_type(&mut unary.operand, symbollib, generic_arguments)
-        }
-        TypedExpression::UpdateExpr(exp) => {
-            update_expression_type(&mut exp.operand, symbollib, generic_arguments)
-        }
+        TypedExpression::UnaryExpr(unary) => update_expression_type(
+            &mut unary.operand,
+            symbollib,
+            generic_arguments,
+            optional_type,
+        ),
+        TypedExpression::UpdateExpr(exp) => update_expression_type(
+            &mut exp.operand,
+            symbollib,
+            generic_arguments,
+            optional_type,
+        ),
         _ => {}
     }
 }

@@ -14,10 +14,10 @@ public model Path {
     public function ToAbsolute(): Outcome<Path, IoError> {
         Todo()
     }
-    public function Extname(): Maybe<String> {
+    public function Extname(): ?String {
         Todo()
     }
-    public function Basename(): Maybe<String> {
+    public function Basename(): ?String {
         Todo()
     }
 }

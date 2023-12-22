@@ -1080,7 +1080,7 @@ mod statements {
                     if let Some(expr) = retstat.value.as_mut() {
                         let empty = vec![];
                         let generic_arguments = get_type_generics(&typ, &empty);
-                        update_expression_type(expr, symbollib, generic_arguments);
+                        update_expression_type(expr, symbollib, generic_arguments, Some(&typ));
                     }
                     prior_evaluated_type.return_type = typ;
                 }
@@ -1223,6 +1223,7 @@ mod statements {
 }
 
 mod expressions {
+
     use super::*;
 
     /// Typechecks an expression.
@@ -1322,13 +1323,19 @@ mod expressions {
                         unification = unification.or(unifier(&right, &left));
                     };
                     match unification {
-                        Ok(_) => {
+                        Ok(result_type) => {
                             let generic_arguments = generic_hashmap.into_iter().collect::<Vec<_>>();
-                            update_expression_type(&mut binexp.left, symbollib, &generic_arguments);
+                            update_expression_type(
+                                &mut binexp.left,
+                                symbollib,
+                                &generic_arguments,
+                                Some(&result_type),
+                            );
                             update_expression_type(
                                 &mut binexp.right,
                                 symbollib,
                                 &generic_arguments,
+                                Some(&result_type),
                             );
                             if let Some(bool) = symbollib.bool {
                                 return boolean_instance(bool);
@@ -1674,7 +1681,7 @@ mod expressions {
                 typecheck_expression(&mut assexp.right, checker_ctx, symbollib)
             };
             let mut generic_hashmap = HashMap::new();
-            match &left_type {
+            let result_type = match &left_type {
                 EvaluatedType::ModelInstance { .. }
                 | EvaluatedType::EnumInstance { .. }
                 | EvaluatedType::Unknown
@@ -1837,7 +1844,7 @@ mod expressions {
 
             // Update value of left hand side based on the inferred type.
             let generics = generic_hashmap.into_iter().collect::<Vec<_>>();
-            update_expression_type(&mut assexp.left, symbollib, &generics);
+            update_expression_type(&mut assexp.left, symbollib, &generics, Some(&result_type));
             return EvaluatedType::Void;
         })();
         assexp.inferred_type.clone()
@@ -2429,7 +2436,12 @@ mod expressions {
             &mut generic_arguments,
         );
         callexp.inferred_type = coerce(return_type, &generic_arguments);
-        update_expression_type(&mut callexp.caller, symbollib, &generic_arguments);
+        update_expression_type(
+            &mut callexp.caller,
+            symbollib,
+            &generic_arguments,
+            Some(&callexp.inferred_type),
+        );
         callexp.inferred_type.clone()
     }
 
@@ -3252,7 +3264,12 @@ mod expressions {
                             typecheck_expression(expression, checker_ctx, symbollib);
                         let empty = vec![];
                         let generics = get_type_generics(&expression_type, &empty);
-                        update_expression_type(expression, symbollib, generics);
+                        update_expression_type(
+                            expression,
+                            symbollib,
+                            generics,
+                            Some(&expression_type),
+                        );
                         return expression_type;
                     } else if let TypedStmnt::ReturnStatement(retstat) = statement {
                         statements::typecheck_return_statement(retstat, checker_ctx, symbollib);

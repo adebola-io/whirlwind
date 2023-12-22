@@ -1,0 +1,11 @@
+module runtime;
+
+
+model Component {
+    var name: String;
+}
+
+use Core.Net.Http.HttpServer;
+function Main() {
+    array := 'hello'.Chars().Interleave("hello").Collect();
+}
