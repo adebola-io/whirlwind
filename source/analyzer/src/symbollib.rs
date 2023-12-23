@@ -206,10 +206,36 @@ impl SymbolLibrary {
     pub fn remove_module_table(&mut self, module_path: PathIndex) -> Option<SymbolTable> {
         Some(std::mem::take(self.tables.get_mut(&module_path).unwrap()))
     }
-    /// Get a list of at most five related symbols for a symbol at an index.
-    pub fn get_relations(&self, _index: SymbolIndex) -> Option<Vec<&SemanticSymbol>> {
-        todo!()
-    }
+    // /// Returns a list of symbols that are "related" to another symbol.
+    // pub fn get_type_relations_into<'a>(
+    //     &'a self,
+    //     relations: &mut Vec<&'a SemanticSymbol>,
+    //     evaluated_type: EvaluatedType,
+    // ) -> Option<()> {
+    //     if relations.len() >= RELATION_COUNT as usize {
+    //         return Some(());
+    //     }
+    //     // match evaluated_type {
+    //     //     EvaluatedType::Partial { types } => todo!(),
+    //     //     EvaluatedType::ModelInstance { model, is_invariant, generic_arguments } => todo!(),
+    //     //     EvaluatedType::InterfaceInstance { interface_, is_invariant, generic_arguments } => todo!(),
+    //     //     EvaluatedType::EnumInstance { enum_, is_invariant, generic_arguments } => todo!(),
+    //     //     EvaluatedType::FunctionInstance { function, is_invariant, generic_arguments } => todo!(),
+    //     //     EvaluatedType::FunctionExpressionInstance { is_async, is_invariant, params, return_type, generic_args } => todo!(),
+    //     //     EvaluatedType::MethodInstance { method, is_invariant, generic_arguments } => todo!(),
+    //     //     EvaluatedType::Model(_) => todo!(),
+    //     //     EvaluatedType::Interface(_) => todo!(),
+    //     //     EvaluatedType::Enum(_) => todo!(),
+    //     //     EvaluatedType::Module(_) => todo!(),
+    //     //     EvaluatedType::OpaqueTypeInstance { available_methods, available_interfaces, aliased_as, collaborators, generic_arguments } => todo!(),
+    //     //     EvaluatedType::Void => todo!(),
+    //     //     EvaluatedType::Never => todo!(),
+    //     //     EvaluatedType::Unknown => todo!(),
+    //     //     EvaluatedType::HardGeneric { base } => todo!(),
+    //     //     EvaluatedType::Generic { base } => todo!(),
+    //     // }
+    //     Some(())
+    // }
     /// Returns the number of symbols in the table.
     pub fn len(&self) -> usize {
         self.tables

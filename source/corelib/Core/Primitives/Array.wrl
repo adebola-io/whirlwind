@@ -1,24 +1,27 @@
 module Array;
 
 use Bool.Bool;
-use Numeric.{ Int, UnsignedInt };
-use Ops.{ Orderable, Addition };
-use Core.Prelude.{ AsIterator, Maybe, None, Some, Todo, String, Default };
-use Core.Prelude.Iteration.Reversed;
-use Core.Prelude.Iteratable;
-use Core.Prelude.Display;
-use Core.Math.{ Max, Min };
-use Core.Internals.{ Injunction, Invoke };
+use Numeric.{Int, UnsignedInt};
+use Ops.{Orderable, Addition};
+use Core.Prelude.{
+    Iteration.Reversed,
+    AsIterator, Maybe, None, Some, Todo, 
+    String, Default, Iteratable, Display
+};
+use Core.Math.{Max, Min};
+use Core.Internals.{Injunction, Invoke};
 
 /// A contiguous, growable list of items.
 public model Array<T> implements AsIterator<T, ArrayIter<T>> {
-    var length: UnsignedInt;
-    new() {
-        this.length = 0;
-    }
     /// Returns an iterator over elements in this array.
     /// ### Usage
     /// ```
+    /// arr := [1, 2, 3];
+    /// arrIter := arr.Iter();
+    /// 
+    /// AssertThat(arrIter.Next() == Some(1));
+    /// AssertThat(arrIter.Next() == Some(2));
+    /// AssertThat(arrIter.Next() == Some(3));
     /// ```
     public function [AsIterator.Iter](): ArrayIter<T> {
         new ArrayIter(this)
@@ -40,11 +43,11 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// ```
     public function At(index: Int): Maybe<T> {
         i := if index < 0 {
-            this.length + index
+            this.Length() + index
         } else {
             index
         };
-        if i > this.length or i < 0 {
+        if i > this.Length() or i < 0 {
             return None();
         };
         a := this[i.Unsigned()];
@@ -89,8 +92,25 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// AssertThat(empty.First() == None());
     /// ```
     public function First(): ?T {
-        if this.length == 0 { None() } 
+        if this.Length() == 0 { None() } 
         else Some(this[0])
+    }
+    /// Determines whether a given sub-array is contained within
+    /// a main array. The order in the sub-array must be preserved
+    /// in the main array for the result to be true.
+    /// 
+    /// ### Usage
+    /// ```
+    /// mainArray := [1, 2, 3, 4, 5, 6];
+    /// subArray := [4, 5, 6];
+    /// 
+    /// AssertThat(mainArray.Includes(subArray));
+    /// 
+    /// anotherSubArray := [4, 6, 5];
+    /// AssertThat(!mainArray.Includes(anotherSubArray));
+    /// ```
+    public function Includes(subarray: []T): Bool {
+        Todo()
     }
     /// Returns the zero-based index of a value in the array.
     /// 
@@ -164,7 +184,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// Assert(arr.Length()).Equals(4);
     /// ```
     public function Length(): UnsignedInt {
-        return this.length;
+        return Invoke(Injunction.ArrLen(this));
     }
     /// Adds an item to the end of the array.
     /// ### Usage
@@ -251,7 +271,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// Assert(firstItem).Equals(None());
     /// ```
     public function Shift(): ?T {
-        if this.length == 0 {
+        if this.Length() == 0 {
             return None();
         } else {
             Todo()
@@ -269,8 +289,8 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     }
     /// Returns a reference to the last item in the array.
     public function Last(): ?T {
-        if this.length == 0 { None() } 
-        else Some(this[this.length - 1])
+        if this.Length() == 0 { None() } 
+        else Some(this[this.Length() - 1])
     }
     /// Converts an array to a string representation,
     /// given that its elements implement `Display`.
@@ -301,7 +321,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// Array.Sort(arr)
     /// Assert(arr).Equals([11, 20, 21, 34, 46, 89]);
     /// ```
-    public static function Sort<T implements Orderable>(array: Array<T>) {
+    public static function Sort<T implements Orderable>(array: []T) {
         Todo()
     }
     /// Returns a Sorted version of an array
@@ -316,7 +336,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// 
     /// Assert(arrSorted).Equals([1, 10, 12, 16, 26, 35, 87]);
     /// ```
-    public static function Sorted<T implements Orderable>(array: Array<T>): Array<T> {
+    public static function Sorted<T implements Orderable>(array: []T): []T {
         Todo()
     }
     /// Fills an array with default values, given that the element type can be defaulted.
@@ -326,7 +346,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// Array.Reset(arr);
     /// Assert(arr).Equals([0, 0, 0])
     /// ```
-    public static function Reset<T implements Default>(array: Array<T>) {
+    public static function Reset<T implements Default>(array: []T) {
         i := 0;
         while i < array.Length() {
             var def: T;
@@ -342,7 +362,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// 
     /// Assert(largest == Some(7));
     /// ```
-    public static function Max<T implements Orderable>(array: Array<T>): ?T {
+    public static function Max<T implements Orderable>(array: []T): ?T {
         max := array.First()?;
         array.Iter().ForEach(fn(value) max = Max(max, value));
         Some(max)
@@ -357,7 +377,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// 
     /// Assert(smallest == Some(2));
     /// ```
-    public static function Min<T implements Orderable>(array: Array<T>): ?T {
+    public static function Min<T implements Orderable>(array: []T): ?T {
         min := array.First()?;
         array.Iter().ForEach(fn(value) min = Min(min, value));
         Some(min)
@@ -372,13 +392,15 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// summed = Array.Sum(array)
     /// 
     /// AssertThat(summed == 10);
+    /// 
+    /// array2 := [""]
     /// ```
-    public static function Sum<T implements Addition + Default>(array: Array<T>): T {
+    public static function Sum<T implements Addition + Default>(array: []T): T {
         var sum: T;
         array.Iter().ForEach(fn(item) sum += item);
         sum
     }
-    /// Joins all the elements in an array into one string and returns it.
+    /// Concatenates the elements in an array into one string and returns it.
     /// 
     /// If no separator argument is specified, a single whitespace will be used instead.
     /// ### Usage
@@ -393,7 +415,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// 
     /// AssertThat(joined2 == "1+2+3+4+5");
     /// ```
-    public static function Join<T implements Display>(array: Array<T>, separator?: String): String {
+    public static function Join<T implements Display>(array: []T, separator?: String): String {
         separatorValue := separator.UnwrapOr(" ");
         string := new String();
         for { a as i, b as element } in array.Iter().Enumerate() 
@@ -408,7 +430,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
 }
 
 
-/// An owned iterator built from the elements of an array.
+/// An iterator built from the elements of an array.
 public model ArrayIter<T> implements Iteratable<T> {
     var array: Array<T>;
     var idx: UnsignedInt;
@@ -426,18 +448,6 @@ public model ArrayIter<T> implements Iteratable<T> {
             this.idx += 1;
             return Some(nextItem);
         }
-    }
-}
-
-public model ArrayRefIter<T> implements Iteratable<T> {
-    var array: Array<T>;
-    var idx: UnsignedInt;
-    new(array: Array<T>) {
-        this.array = array;
-        this.idx = 0;
-    }
-    public function [Iteratable.Next](): Maybe<T> {
-        Todo()
     }
 }
 

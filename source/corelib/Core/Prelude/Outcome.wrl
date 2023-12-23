@@ -2,15 +2,15 @@ module Outcome;
 
 use Core.{
     Primitives.{String, Bool},
-    Prelude.{ Try, Guaranteed, Maybe, Todo },
+    Prelude.{Try, Guaranteed, Maybe, Todo},
     Internals.{never, Injunction, Invoke},
     Process.FatalOnCaller
 };
 
-/// An `Outcome` is a generic (enumerated) model 
+/// An `Outcome` is a generic model 
 /// that represents the possible results of an operation. 
 /// 
-/// It has two possible inner variants:
+/// It has two possible states:
 /// - `Ok(T)`: The operation was successful and returned a value of type `T`.
 /// - `Err(E)`: The operation failed and returned an error of type `E`.
 /// 
@@ -23,7 +23,10 @@ use Core.{
 /// 
 /// It presents a way to handle errors predictably.
 public model Outcome<T, E> implements Guaranteed<T> + Try<T, Outcome<never, E>> {
-    var value: OutcomeVal;
+    /// flag representing the type of outcome.
+    var flag: OutcomeType;
+    var value: T | E;
+
     /// Implementation of the Guarantee interface.
     function [Guaranteed.Guarantee](): T {
         this.Unwrap()
@@ -36,6 +39,7 @@ public model Outcome<T, E> implements Guaranteed<T> + Try<T, Outcome<never, E>> 
             return Todo();
         }
     }
+    
     /// Returns the inner value if the operation was a success, or causes a runtime error otherwise.
     /// ### Usage
     /// ```
@@ -75,7 +79,7 @@ public model Outcome<T, E> implements Guaranteed<T> + Try<T, Outcome<never, E>> 
     /// AssertThat(outcome.IsOk())
     /// ```
     public function IsOk(): Bool {
-        return this.value == OutcomeVal.Ok;
+        return this.flag == OutcomeType.Ok;
     }
 
     /// Returns true if the outcome is an `Err`.
@@ -86,7 +90,7 @@ public model Outcome<T, E> implements Guaranteed<T> + Try<T, Outcome<never, E>> 
     /// AssertThat(outcome.IsErr())
     /// ```
     public function IsErr(): Bool {
-        return this.value == OutcomeVal.Err;
+        return this.flag == OutcomeType.Err;
     }
     /// Checks if the outcome was successful and checks its internal value as well.
     /// ### Usage
@@ -95,11 +99,7 @@ public model Outcome<T, E> implements Guaranteed<T> + Try<T, Outcome<never, E>> 
     /// AssertThat(outcome.IsOkAnd(fn(value) value == 42));
     /// ```
     public function IsOkAnd(predicate: fn(value: T): Bool): Bool {
-        // return this.inner => {
-        //     .Ok(value) => predicate(value),
-        //     _ => false,
-        // };
-        Todo()
+        this.IsOk() and predicate(this.Unwrap())
     }
     /// Checks if the outcome failed and checks the error value as well.
     /// ### Usage
@@ -108,19 +108,11 @@ public model Outcome<T, E> implements Guaranteed<T> + Try<T, Outcome<never, E>> 
     /// AssertThat(outcome.IsErrAnd(fn(e) e == "Something went wrong."));
     /// ```
     public function IsErrAnd(predicate: fn(value: E): Bool): Bool {
-        // return this.inner => {
-        //     .Err(error) => predicate(error),
-        //     _ => false,
-        // };
-        Todo()
+        this.IsErr() and predicate(this.AsErr())
     }
     /// Converts an `Outcome<T, E>` to a `Maybe<T>`.
     public function Ok(): ?T {
-        if this.IsOk() {
-            return Some(this.Unwrap());
-        } else {
-            return None();
-        }
+        if this.IsOk() { Some(this.Unwrap()) } else { None() }
     }
     /// Converts an `Outcome<T, E>` to an `Outcome<U, E>` by applying a function.
     /// ### Usage
@@ -140,7 +132,7 @@ public model Outcome<T, E> implements Guaranteed<T> + Try<T, Outcome<never, E>> 
 
 }
 
-enum OutcomeVal {
+enum OutcomeType {
     Ok,
     Err
 }

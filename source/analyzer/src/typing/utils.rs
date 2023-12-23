@@ -925,11 +925,6 @@ pub fn get_type_generics_mut<'a>(
     }
 }
 
-// Calculates the size of an inferred type.
-pub fn get_size_of_type(_inferred_type: EvaluatedType, _name: SymbolIndex) -> Result<i32, String> {
-    Ok(0)
-}
-
 /// Creates an instance of Bool.
 pub fn boolean_instance(bool_symbol: SymbolIndex) -> EvaluatedType {
     EvaluatedType::ModelInstance {

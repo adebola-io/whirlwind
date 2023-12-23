@@ -171,7 +171,12 @@ public model Eventual<T> implements Guaranteed<T> {
     /// A reference to the parent sequence in charge of this eventual.
     public var sequence: Sequence;
     /// The final value to be produced. 
-    /// Until the eventual is resolved, the value remains empty (points to Nullptr).
+    /// 
+    /// Until the eventual is resolved, the value remains uninitialized, as with
+    /// the value in `Maybe`.
+    /// 
+    /// Trying to read it while it does not exist will lead to a runtime error in
+    /// the VM.
     var value: T;
     /// Returns true if the eventual has been resolved to a value.
     public function IsResolved(): Bool {

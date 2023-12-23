@@ -1,13 +1,13 @@
 use crate::{
-    predefined::{INSTRUCTION_START, MAX_STACK_SLICE_SIZE},
-    stack::{Block, Stack, StackError, StackValue},
+    predefined::{INSTRUCTION_START, MAX_STACK_SIZE},
+    stack::{Block, Stack, StackError},
     vm::{ExecutionError, Function, VM},
 };
-use bytecode::{AccValue, Constant, Opcode, RegisterList};
+use bytecode::{Constant, HeapPointer, Opcode, RegisterList, Value};
 use std::{
-    arch::asm,
     io::{stdout, Write},
     ops::ControlFlow,
+    sync::{Arc, Mutex},
     time::Duration,
 };
 
@@ -42,26 +42,6 @@ pub struct Sequence {
     time: Option<std::time::Instant>,
     blob: Option<*const [u8]>,
     pub status: SequenceStatus,
-}
-
-/// A fragment of a sequence with a defined start and end instruction.
-pub struct Subsequence<'a> {
-    sequence: &'a mut Sequence,
-    pc: usize,
-    count: usize,
-    end: usize,
-}
-impl<'a> Subsequence<'a> {
-    fn run(&mut self, vm: &mut VM) -> ControlFlow<SequenceStatus, ()> {
-        'predefined: for _ in 0..self.count {
-            while self.sequence.pc != self.end {
-                if let ControlFlow::Break(status) = self.sequence.decode_next(vm) {
-                    return ControlFlow::Break(status);
-                }
-            }
-        }
-        ControlFlow::Continue(())
-    }
 }
 
 impl Sequence {
@@ -126,24 +106,27 @@ impl Sequence {
             Opcode::LoadIconstptra => self.load_iconstptra(),
 
             Opcode::LoadIacc8 => self.loadiacc8(),
+            Opcode::LoadIacc16 => self.loadiacc16(),
+            Opcode::LoadIacc32 => self.loadiacc32(),
+            Opcode::LoadIacc64 => self.loadiacc64(),
 
             Opcode::Printacc8 => self.printacc8(),
             Opcode::Printacc64 => self.printacc64(),
 
             Opcode::Printconstptra => self.printconstptra(vm),
             Opcode::Addacc => self.addacc(),
-            Opcode::Sqrtacc => self.sqrtacc(),
+            Opcode::Sqrtacc64 => self.sqrtacc(),
             Opcode::LoopFor => {
                 if let Some(value) = self.loop_for(vm) {
                     return value;
                 }
             }
-            Opcode::Call => {
+            Opcode::CallNamedFunction => {
                 if let Some(value) = self.call(vm) {
                     return value;
                 }
             }
-            Opcode::Stall => {}
+            Opcode::Stall => return ControlFlow::Continue(()),
             Opcode::Return => {
                 // TODO: Where to store return values?
                 let return_address = self
@@ -161,23 +144,40 @@ impl Sequence {
             }
             Opcode::Printframe => {
                 let frameaddr = u32::from_be_bytes(self.next_four_bytes()) as usize;
-                match self.next_byte() {
-                    0 => unsafe {
-                        let StackValue { byte } = self.stack.read(frameaddr);
-                        write!(&mut stdout().lock(), "{byte}\n").unwrap();
-                    },
-                    _ => todo!(),
-                }
+                let byte = self.stack.read(frameaddr);
+                write!(&mut stdout().lock(), "{byte}\n").unwrap();
             }
-            _ => unimplemented!("Runtime does not support instruction {opcode:?}!!"),
+            Opcode::NewInstanceValueA => {
+                let layout = usize::from_be_bytes(self.next_eight_bytes());
+                let layout = &vm.layouts[layout];
+                let mut space = Vec::with_capacity(layout.size);
+                while space.len() < layout.size {
+                    space.push(Value::None);
+                }
+                let value = Value::HeapPointer(HeapPointer(Arc::new(Mutex::new(space))));
+                self.registers_mut().vala = Some(value)
+            }
+            Opcode::StoreValueAToFrame => {
+                let dest = u32::from_be_bytes(self.next_four_bytes()) as usize;
+                let value = self
+                    .registers_mut()
+                    .vala
+                    .take()
+                    .expect("No value in addra register!");
+                self.stack.write(dest, value).unwrap();
+            }
+            Opcode::StartBlock => self.stack.allocate_block(),
+            Opcode::EndBlock => self.stack.deallocate_block(),
+            _ => unimplemented!("Runtime does not support instruction Opcode::{opcode:?}!!"),
         }
         ControlFlow::Continue(())
     }
 
+    /// Executes the [`Opcode::Call`] instruction.
     #[inline]
     fn call(&mut self, vm: &mut VM) -> Option<ControlFlow<SequenceStatus>> {
         let function_idx = usize::from_be_bytes(self.next_eight_bytes());
-        let function = &mut vm.functions[function_idx];
+        let function = &mut vm.vtable[function_idx];
         function.calls += 1;
         if let Err(error) = self.stack.allocate_new_frame(&function, self.pc) {
             return Some(ControlFlow::Break(match error {
@@ -196,6 +196,7 @@ impl Sequence {
     fn eqacc(&mut self) {
         let byte = self.next_byte();
         match byte {
+            // Check u8.
             0 => match self.next_byte() {
                 0 => {
                     self.registers_mut().boola =
@@ -203,7 +204,7 @@ impl Sequence {
                 }
                 1 => {
                     let address = u32::from_be_bytes(self.next_four_bytes()) as usize;
-                    self.stack.write(address, StackValue { byte });
+                    self.stack.write(address, byte.into());
                     // todo: handle failure.
                 }
                 _ => unreachable!("Invalid instruction format."),
@@ -296,53 +297,93 @@ impl Sequence {
     }
 
     #[inline]
+    fn loadiacc16(&mut self) {
+        self.registers_mut().acc16 = u16::from_be_bytes(self.next_two_bytes()) as i16;
+    }
+
+    #[inline]
+    fn loadiacc32(&mut self) {
+        self.registers_mut().acc32 = f32::from_be_bytes(self.next_four_bytes());
+    }
+
+    #[inline]
+    fn loadiacc64(&mut self) {
+        self.registers_mut().acc64 = f64::from_be_bytes(self.next_eight_bytes());
+    }
+
+    #[inline]
     fn loadir8(&mut self) {
         self.registers_mut().r8 = self.next_byte() as i8;
     }
 
-    /// Executes the [`Opcode::Sqrtacc`] instruction.
+    /// Executes the [`Opcode::Sqrtacc64`] instruction.
     #[inline]
     fn sqrtacc(&mut self) {
-        let byte = self.next_byte();
-        match byte {
-            0 => match self.next_byte() {
-                0 => {
-                    self.registers_mut().acc64 = (self.registers().acc8 as f64).sqrt();
-                }
-                1 => {
-                    let address = u32::from_be_bytes(self.next_four_bytes()) as usize;
-                    // todo: handle failure.
-                    self.stack.write(address, StackValue { byte });
-                }
-                _ => unreachable!("Invalid instruction format."),
-            },
-            1 => {}
-            _ => todo!(),
+        let destination = self.next_byte();
+        match destination {
+            // store in place.
+            0 => self.registers_mut().acc64 = self.registers_mut().acc64.sqrt(),
+            // store on stack.
+            1 => {
+                let result = self.registers_mut().acc64.sqrt();
+                let address = self.next_four_bytes_as_usize();
+                self.stack.write(address, Value::Number(result));
+                // todo: handle failure.
+            }
+            _ => panic!("Invalid instruction format!"),
         }
     }
-
     /// Executes the [`Opcode::Addacc`] instruction.
     #[inline]
     fn addacc(&mut self) {
-        let byte = self.next_byte();
-        match byte {
-            0 => match self.next_byte() {
-                0 => self.registers_mut().acc8 += self.registers_mut().r8,
-                1 => {
-                    let address = u32::from_be_bytes(self.next_four_bytes()) as usize;
-                    self.stack.write(address, StackValue { byte });
-                    // todo: handle failure.
-                }
-                _ => unreachable!("Invalid instruction format."),
-            },
-            1 => {}
-            _ => todo!(),
+        let registers = self.next_byte();
+        let destination = self.next_byte();
+        match (registers, destination) {
+            // u8 registers, store in place.
+            (0, 0) => self.registers_mut().acc8 += self.registers_mut().r8,
+            // u8 registers, store on stack.
+            (0, 1) => {
+                let result = self.registers_mut().acc8 + self.registers_mut().r8;
+                let address = self.next_four_bytes_as_usize();
+                self.stack.write(address, Value::Number(result as f64));
+                // todo: handle failure.
+            }
+            // u16 registers, store in place.
+            (1, 0) => self.registers_mut().acc16 += self.registers_mut().r16,
+            // u16 registers, store on stack.
+            (1, 1) => {
+                let result = self.registers_mut().acc16 + self.registers_mut().acc16;
+                let address = self.next_four_bytes_as_usize();
+                self.stack.write(address, Value::Number(result as f64));
+            }
+            // u32 registers, store in place.
+            (2, 0) => self.registers_mut().acc32 += self.registers_mut().r32,
+            // u32 registers, store on stack.
+            (2, 1) => {
+                let result = self.registers_mut().acc32 + self.registers_mut().acc32;
+                let address = self.next_four_bytes_as_usize();
+                self.stack.write(address, Value::Number(result as f64));
+            }
+            // u64 registers, store in place.
+            (3, 0) => self.registers_mut().acc64 += self.registers_mut().acc64,
+            // u64 registers, store on stack.
+            (3, 1) => {
+                let result = self.registers_mut().acc64 + self.registers_mut().acc64;
+                let address = self.next_four_bytes_as_usize();
+                self.stack.write(address, Value::Number(result));
+            }
+            _ => panic!("Invalid instruction format!"),
         }
+    }
+
+    #[inline]
+    fn next_four_bytes_as_usize(&mut self) -> usize {
+        u32::from_be_bytes(self.next_four_bytes()) as usize
     }
 
     #[inline]
     fn printconstptra(&mut self, vm: &mut VM) {
-        let constant = &vm.constants.list[self.registers().constptra];
+        let constant = &vm.constant_pool.list[self.registers().constptra];
         let lock = &mut stdout().lock();
         match constant {
             Constant::String(c) => lock.write(c.as_bytes()),

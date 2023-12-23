@@ -3,34 +3,27 @@ use crate::{
     sequence::{Sequence, SequenceId, SequenceRequest, SequenceStatus},
 };
 use analyzer::SymbolIndex;
-use bytecode::Constants;
+use bytecode::ConstantPool;
 use std::{
-    alloc::Layout,
     any::Any,
     collections::HashMap,
     fmt::Display,
     io::{stdout, Write},
 };
 
-pub struct SizeRegistry {
-    map: HashMap<SymbolIndex, Layout>,
-}
-impl SizeRegistry {
-    pub fn empty() -> SizeRegistry {
-        Self {
-            map: HashMap::new(),
-        }
-    }
+pub struct Layout {
+    pub size: usize,
+    pub property_offsets: Vec<usize>,
 }
 
 /// An instance of the Whirlwind runtime.
 pub struct VM {
     queue: Vec<SequenceRequest>,
     pub instructions: Vec<u8>,
-    pub size_registry: SizeRegistry,
-    pub constants: Constants,
+    pub layouts: Vec<Layout>,
+    pub constant_pool: ConstantPool,
     pub running_sequences: usize,
-    pub functions: Vec<Function>,
+    pub vtable: Vec<Function>,
     pub exited: bool,
 }
 
@@ -41,8 +34,6 @@ pub struct Function {
     pub name: String,
     /// The instruction address of the first instruction in the function.
     pub start: usize,
-    /// The size of the call frame.
-    pub frame_size: usize,
     /// The number of calls made to this function for debug purposes.
     pub calls: usize,
 }
@@ -51,7 +42,6 @@ impl Function {
         Self {
             name: String::from("Main"),
             start: 1,
-            frame_size: 1024,
             calls: 0,
         }
     }
@@ -69,11 +59,11 @@ impl VM {
     pub fn new() -> Self {
         let mut vm = VM {
             queue: Vec::new(),
-            functions: vec![],
+            vtable: vec![],
             instructions: vec![],
             exited: false,
-            size_registry: SizeRegistry::empty(),
-            constants: Constants::new(),
+            layouts: vec![],
+            constant_pool: ConstantPool::new(),
             running_sequences: 0,
         };
         vm.queue.push(SequenceRequest {
@@ -85,13 +75,13 @@ impl VM {
 
     /// Defines the function with which to start execution.
     pub fn define_main_function(&mut self, function: Function) {
-        self.functions.insert(0, function);
+        self.vtable.insert(0, function);
     }
 
     /// The entry execution function for a virtual machine.
     pub fn run(&mut self) -> Result<usize, ExecutionError> {
         let main_function = self
-            .functions
+            .vtable
             .get(0)
             .ok_or(ExecutionError::MainFunctionNotDefined)?;
         let main_sequence = Sequence::new(None, SequenceId(0), main_function, 2);

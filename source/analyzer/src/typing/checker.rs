@@ -3,9 +3,9 @@ use crate::{
     unify::{unify_freely, unify_types},
     utils::{
         arrify, boolean_instance, coerce, coerce_all_generics, ensure_assignment_validity,
-        evaluate_generic_params, get_implementation_of, get_numeric_type, get_size_of_type,
-        get_type_generics, infer_ahead, is_array, is_boolean, is_numeric_type, maybify,
-        prospectify, symbol_to_type, update_expression_type,
+        evaluate_generic_params, get_implementation_of, get_numeric_type, get_type_generics,
+        infer_ahead, is_array, is_boolean, is_numeric_type, maybify, prospectify, symbol_to_type,
+        update_expression_type,
     },
     EvaluatedType, Literal, LiteralMap, ParameterType, PathIndex, ProgramError, ScopeId,
     SemanticSymbolKind, SymbolIndex, SymbolLibrary, TypedAccessExpr, TypedAssignmentExpr,
@@ -288,6 +288,7 @@ mod statements {
             let pattern_type = if let SemanticSymbolKind::LoopVariable {
                 pattern_type,
                 inferred_type,
+                ..
             } = &mut symbol.kind
             {
                 if pattern_type.is_normal() {
@@ -516,7 +517,6 @@ mod statements {
         //     ..
         // } = &model_symbol.kind
         // {}
-        let mut _model_size = 0;
         for property in &mut model.body.properties {
             match &mut property._type {
                 crate::TypedModelPropertyType::TypedAttribute => {
@@ -531,18 +531,13 @@ mod statements {
                         SemanticSymbolKind::Attribute { declared_type, .. } => declared_type,
                         _ => continue,
                     };
-                    let inferred_type = evaluate(declared_type, symbollib, None, &mut None, 0);
-                    let size_of_attribute = get_size_of_type(inferred_type, model.name);
-                    _model_size += match size_of_attribute {
-                        Ok(size) => size,
-                        Err(error) => {
-                            checker_ctx.add_error(errors::invalid_size(
-                                error,
-                                attribute_symbol.origin_span,
-                            ));
-                            0
-                        }
-                    };
+                    evaluate(
+                        declared_type,
+                        symbollib,
+                        None,
+                        &mut checker_ctx.tracker(),
+                        0,
+                    );
                 }
                 // todo: compare with interface definition.
                 crate::TypedModelPropertyType::TypedMethod { body }

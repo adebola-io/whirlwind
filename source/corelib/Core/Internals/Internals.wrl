@@ -53,18 +53,11 @@ public use Injunction.{ Injunction, Invoke };
 /// As a matter of fact, `never` types are preemptively disallowed in variable type labels.
 /// They are only allowed in return types for functions.
 public type never = never;
-/// The null pointer.
-/// The actual value will be filled in at runtime.
-public var NULLPTR = 0;
+
 
 /// Returns true if a value is the null pointer.
-/// ### Usage
-/// ```
-/// use Internals.{IsNull, NULLPTR};
-/// Assert(IsNull(NULLPTR));
-/// ```
 public function IsNull<T>(value: T): Bool {
-    return value == NULLPTR;
+    return Invoke(Injunction.IsNull(value));
 }
 
 

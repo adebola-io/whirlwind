@@ -1,7 +1,7 @@
-use crate::{predefined::MAX_STACK_SLICE_SIZE, vm::Function};
+use crate::{predefined::MAX_STACK_SIZE, vm::Function};
 use analyzer::PathIndex;
 use ast::Span;
-use bytecode::RegisterList;
+use bytecode::{RegisterList, Value};
 use std::{
     ops::Range,
     panic::Location,
@@ -16,26 +16,12 @@ pub enum StackError {
 pub const NO_FRAME_ERR: &'static str = "No frames allocated on stack.";
 pub const NO_BLOCK_ERR: &'static str = "No blocks allocated in frame";
 
-/// A value stored on the stack.
-/// It can either be a pointer to a heap value or
-/// a stream of bytes stored inline on the stack.
-#[derive(Clone, Copy)]
-pub union StackValue {
-    pub heap_pointer: *mut u8,
-    pub byte: u8,
-}
 /// A stack for memory management in a sequence.
 pub struct Stack {
-    /// A pointer to the top of the stack.
-    pointer: usize,
     /// An inner stack of call frames.
     frames: Vec<CallFrame>,
-    /// The initial space for stack allocation.
-    slice: [StackValue; MAX_STACK_SLICE_SIZE],
-    /// Flag indicating whether the slice has been filled.
-    filled: bool,
-    /// Additional space for the stack if the slice is filled.
-    adjunct: Option<Vec<StackValue>>,
+    /// The space for stack allocation.
+    space: Vec<Value>,
 }
 /// A call frame represents an area within the stack that is
 /// peculiar to a function call. It consist of the range in the stack,
@@ -43,7 +29,8 @@ pub struct Stack {
 /// blocks.
 pub struct CallFrame {
     call_address: usize,
-    range: Range<usize>,
+    // The start of the frame in the stack.
+    start: usize,
     return_address: usize,
     blocks: Vec<Block>,
 }
@@ -54,25 +41,14 @@ pub struct Block {
     registers: RegisterList,
 }
 
-impl Default for StackValue {
-    fn default() -> Self {
-        StackValue { byte: 0 }
-    }
-}
-impl From<u8> for StackValue {
-    fn from(value: u8) -> Self {
-        Self { byte: value }
-    }
-}
-
 impl CallFrame {
     /// Creates a new call frame.
     /// By default, it starts with a single block, corresponding to the
     /// block of the function itself.
-    pub fn new(call_address: usize, range: Range<usize>, return_address: usize) -> Self {
+    pub fn new(call_address: usize, start: usize, return_address: usize) -> Self {
         CallFrame {
             call_address,
-            range,
+            start,
             return_address,
             blocks: vec![Block::new()],
         }
@@ -80,7 +56,7 @@ impl CallFrame {
     /// Translates an address in the frame to an address in the overall stack.
     #[inline]
     pub fn translate(&self, index: usize) -> usize {
-        self.range.start + index
+        self.start + index
     }
 }
 impl Block {
@@ -94,11 +70,8 @@ impl Stack {
     /// Returns a new stack.
     pub fn new() -> Self {
         Self {
-            pointer: 0,
             frames: vec![],
-            slice: [StackValue { byte: 0 }; MAX_STACK_SLICE_SIZE],
-            filled: false,
-            adjunct: None,
+            space: Vec::with_capacity(MAX_STACK_SIZE),
         }
     }
 
@@ -109,17 +82,18 @@ impl Stack {
         function: &Function,
         return_address: usize,
     ) -> Result<(), StackError> {
-        let size = function.frame_size;
         // The call address is always the return address - 1 instruction.
         let call_address = return_address - 1;
-        // Allocate on the slice
-        if self.pointer + size > MAX_STACK_SLICE_SIZE {
+        let stack_pointer = self.space.len();
+        if stack_pointer == MAX_STACK_SIZE {
             return Err(StackError::StackOverflow);
         }
-        let range = self.pointer..(self.pointer + size);
-        let new_frame = CallFrame::new(call_address, range, return_address);
+        let new_frame = CallFrame::new(call_address, stack_pointer, return_address);
         self.frames.push(new_frame);
-        self.pointer += size;
+        // It may be possible to create empty frames recursively.
+        if self.frames.len() > 8192 {
+            return Err(StackError::StackOverflow);
+        }
         Ok(())
     }
 
@@ -127,49 +101,36 @@ impl Stack {
     #[inline]
     pub fn deallocate_current_frame(&mut self) -> Option<usize> {
         let frame = self.frames.pop()?;
-        let size = frame.range.end - frame.range.start;
-        self.pointer -= size;
+        let size = self.space.len() - frame.start;
+        println!("{size}, {}", self.space.len());
+        let shrink = self.space.len() - size;
+        while self.space.len() > shrink {
+            self.space.pop();
+        }
         Some(frame.return_address)
     }
 
     /// Write an index in the current frame with a value.
     #[inline]
-    pub fn write(&mut self, index: usize, value: StackValue) -> Result<(), StackError> {
+    pub fn write(&mut self, index: usize, value: Value) -> Result<(), StackError> {
         let frame = self.frames.last().expect("No frames allocated on stack.");
         let index = frame.translate(index);
-        if index > frame.range.end {
-            return Err(StackError::IllegalMemoryAccess);
+        if index > MAX_STACK_SIZE {
+            return Err(StackError::StackOverflow);
         }
-        self.slice[index] = value;
-        Ok(())
-    }
-
-    /// Writes a range in the current frame with a set of values.
-    #[inline]
-    pub fn write_from<const T: usize>(
-        &mut self,
-        index: usize,
-        values: [StackValue; T],
-    ) -> Result<(), StackError> {
-        let frame = self.frames.last().expect("No frames allocated on stack.");
-        let mut index = frame.translate(index);
-        let end = index + values.len();
-        if end > frame.range.end {
-            return Err(StackError::IllegalMemoryAccess);
+        while self.space.len() < index + 1 {
+            self.space.push(Value::None);
         }
-        values.into_iter().for_each(|value| {
-            self.slice[index] = value;
-            index += 1;
-        });
+        self.space[index] = value;
         Ok(())
     }
 
     /// Reads the value at an address in the stack.
     #[inline]
-    pub fn read(&self, index: usize) -> StackValue {
+    pub fn read(&self, index: usize) -> &Value {
         let current_frame = self.frames.last().expect(NO_FRAME_ERR);
         let index = current_frame.translate(index);
-        return self.slice[index];
+        return &self.space[index];
     }
 
     /// Creates a new block in the current frame.
@@ -182,6 +143,10 @@ impl Stack {
         current_frame.blocks.push(Block::new());
     }
 
+    /// Deallocates the current block in the current frame.
+    ///
+    /// # Panics
+    /// It panics if there are no blocks in the frame or frames on the stack.
     #[inline]
     pub fn deallocate_block(&mut self) {
         let current_frame = self.frames.last_mut().expect(NO_FRAME_ERR);
@@ -198,14 +163,6 @@ impl Stack {
     #[inline]
     pub fn registers_mut(&mut self) -> Option<&mut RegisterList> {
         Some(&mut self.frames.last_mut()?.blocks.last_mut()?.registers)
-    }
-
-    /// Reads a range of values in the stack.
-    #[inline]
-    pub fn read_from(&self, index: usize, length: usize) -> &[StackValue] {
-        let current_frame = self.frames.last().expect("No frames allocated on stack");
-        let index = current_frame.translate(index);
-        return &self.slice[index..(index + length)];
     }
 }
 

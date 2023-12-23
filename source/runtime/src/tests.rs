@@ -1,6 +1,6 @@
 use crate::{
     predefined::PAD,
-    vm::{Function, SizeRegistry, VM},
+    vm::{Function, Layout, VM},
 };
 use bytecode::Opcode;
 
@@ -13,8 +13,10 @@ fn run(instructions: &[u8]) {
 }
 
 fn print_instructions(instructions: &[u8]) {
-    print!("Running ");
-    for byte in instructions {
+    for (index, byte) in instructions.iter().enumerate() {
+        if index % 10 == 0 {
+            print!("\n")
+        }
         print!("{:02X} ", byte);
     }
     print!("\n\n");
@@ -47,7 +49,7 @@ fn test_runtime_hello_world() {
     let mut vm = VM::new();
     vm.define_main_function(Function::main());
     vm.instructions = instructions;
-    vm.constants.add(String::from("Hello, world.\n"));
+    vm.constant_pool.add(String::from("Hello, world.\n"));
     vm.run().unwrap();
 }
 
@@ -70,13 +72,19 @@ fn test_runtime_add_numbers() {
 
 #[test]
 fn test_runtime_square_root_of_number() {
-    // Print sqrt(4);
+    let four_64_bit = 25f64.to_be_bytes();
     run(&[
         PAD,
-        Opcode::LoadIacc8.into(),
-        4,
-        Opcode::Sqrtacc.into(),
-        0,
+        Opcode::LoadIacc64.into(),
+        four_64_bit[0],
+        four_64_bit[1],
+        four_64_bit[2],
+        four_64_bit[3],
+        four_64_bit[4],
+        four_64_bit[5],
+        four_64_bit[6],
+        four_64_bit[7],
+        Opcode::Sqrtacc64.into(),
         0,
         Opcode::Printacc64.into(),
         Opcode::Exit.into(),
@@ -87,21 +95,20 @@ fn test_runtime_square_root_of_number() {
 fn test_runtime_function_call_and_return() {
     let mut vm = VM::new();
     vm.define_main_function(Function::main());
-    vm.functions.push(Function {
-        name: "AnotherFunction".to_owned(),
+    vm.vtable.push(Function {
+        name: String::from("AnotherFunction"),
         start: 11,
-        frame_size: 8,
         calls: 0,
     });
     let function_idx = 1usize.to_be_bytes();
     let constidx = vm
-        .constants
-        .add(String::from("Hello from inside a function()!\n"))
+        .constant_pool
+        .add(String::from("Hello from inside a function!\n"))
         .to_be_bytes();
     vm.instructions = vec![
         PAD,
         // Main:
-        Opcode::Call.into(),
+        Opcode::CallNamedFunction.into(),
         function_idx[0],
         function_idx[1],
         function_idx[2],
@@ -125,6 +132,7 @@ fn test_runtime_function_call_and_return() {
         Opcode::Return.into(),
     ];
     print_instructions(&vm.instructions);
+    println!("Size: {}bytes", vm.instructions.len());
     vm.run().unwrap();
 }
 
@@ -180,13 +188,13 @@ fn test_runtime_if_else() {
 }
 
 #[test]
-#[should_panic]
+#[should_panic = "called `Result::unwrap()` on an `Err` value: StackOverflow"]
 fn test_stack_overflow() {
     // Call Main() recursively.
     let func_idx = 0usize.to_be_bytes();
     run(&[
         PAD,
-        Opcode::Call.into(),
+        Opcode::CallNamedFunction.into(),
         func_idx[0],
         func_idx[1],
         func_idx[2],
@@ -216,7 +224,53 @@ fn test_runtime_variable_init() {
         zeroaddr[1],
         zeroaddr[2],
         zeroaddr[3],
-        0,
         Opcode::Exit.into(),
     ]);
+}
+
+#[test]
+fn create_instance_on_heap() {
+    let mut vm = VM::new();
+    vm.define_main_function(Function::main());
+    // model Person {
+    //   var id: UInt8;
+    //   new() {
+    //     this.id = 0;
+    //   }
+    // }
+    // new Person();
+    vm.layouts.push(Layout {
+        size: 24 * 1,
+        property_offsets: vec![0],
+    });
+    let layoutidx = 0usize.to_be_bytes();
+    let frameaddr = 0u32.to_be_bytes();
+    let instructions = vec![
+        PAD,
+        Opcode::StartBlock.into(),
+        Opcode::NewInstanceValueA.into(),
+        layoutidx[0],
+        layoutidx[1],
+        layoutidx[2],
+        layoutidx[3],
+        layoutidx[4],
+        layoutidx[5],
+        layoutidx[6],
+        layoutidx[7],
+        Opcode::StoreValueAToFrame.into(),
+        frameaddr[0],
+        frameaddr[1],
+        frameaddr[2],
+        frameaddr[3],
+        Opcode::Printframe.into(),
+        frameaddr[0],
+        frameaddr[1],
+        frameaddr[2],
+        frameaddr[3],
+        Opcode::EndBlock.into(),
+        Opcode::Exit.into(),
+    ];
+    print_instructions(&instructions);
+    vm.instructions = instructions;
+    vm.run().unwrap();
 }

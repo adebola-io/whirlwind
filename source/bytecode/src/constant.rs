@@ -1,13 +1,13 @@
 use std::{collections::HashMap, fmt::Display};
 
 /// A smart list of unique constant values.
-pub struct Constants {
+pub struct ConstantPool {
     pub list: Vec<Constant>,
     /// The router redirects LiteralIndex requests to the new unique values.
     pub router: HashMap<usize, usize>,
 }
 
-impl Constants {
+impl ConstantPool {
     /// Creates a new constant list.
     pub fn new() -> Self {
         Self {

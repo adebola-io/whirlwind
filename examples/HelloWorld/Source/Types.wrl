@@ -1,0 +1,6 @@
+module Types;
+
+
+type Point = Tuple<Int, Int>;
+
+

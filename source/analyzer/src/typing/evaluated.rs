@@ -2,7 +2,7 @@ use crate::{
     unify_generic_arguments, unify_types,
     utils::{arrify, get_interface_types_from_symbol, get_method_types_from_symbol, maybify},
     IntermediateType, ParameterType, PathIndex, ProgramError, SemanticSymbolKind, SymbolIndex,
-    SymbolLibrary, TypecheckerContext, UnifyOptions,
+    SymbolLibrary, TypecheckerContext, UnifyOptions, EVALUATION_DEPTH,
 };
 use ast::Span;
 use errors::{
@@ -340,7 +340,7 @@ pub fn evaluate(
     // A value that safe guards against infinitely recursive union types, or indirect recursion in type aliases.
     mut recursion_depth: u64,
 ) -> EvaluatedType {
-    if recursion_depth == 200 {
+    if recursion_depth == EVALUATION_DEPTH {
         return EvaluatedType::Never;
     } else {
         recursion_depth += 1;

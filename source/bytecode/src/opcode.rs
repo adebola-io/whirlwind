@@ -40,8 +40,19 @@ pub enum Opcode {
     /// Loads an immediate value into an address in the current frame.
     /// The following byte is the index to start writing from.
     /// if the next byte is n, it loads the next 2^n bytes into the frame.
-    /// Format: `[0x05] [start: [a, b, c, d]] [len] [...data]`
+    /// Format: `[LoadIframe] [start: [a, b, c, d]] [len] [...data]`
     LoadIframe,
+    /// Loads an immediate value into an address into the ret register.
+    /// If the next byte is n, it loads the next 2^n bytes into the frame.
+    ///
+    /// Format: `[LoadIret] [start: [a, b, c, d]]`
+    LoadIret,
+    /// Loads a value from the frame into the this register.
+    ///
+    /// The next four bytes represent the address in the frame.
+    ///
+    /// Format: `[LoadthisFromFrame] [address: [a, b, c, d]]`
+    LoadthisFromFrame,
     /// Loads the next eight bytes as a usize into the constptra register.
     ///
     /// Format: `[LoadIconstptra] [index: [a, b, c, d, e, f, g, h]]`
@@ -134,8 +145,7 @@ pub enum Opcode {
     Printacc64,
     /// Prints a value in the stack frame to the console.
     /// The next 4 bytes correspond to the index in the frame.
-    /// The following one byte indicates the type of data to read.
-    /// Format: `[Printacc64] [addr: [a, b, c, d]] [0x00|0x01|0x02]`
+    /// Format: `[Printacc64] [addr: [a, b, c, d]]`
     Printframe,
     /// Prints the value in the constptra register.
     ///
@@ -173,10 +183,13 @@ pub enum Opcode {
     /// Multiplies the value in the register by the value in the accumulator.
     /// The schema & format is the same as AddAcc.
     MulAcc,
-    /// Takes the square root of the value in the accumulator.
-    /// The schema & format is the same as AddAcc,
-    /// WITH THE EXCEPTION THAT THE IMPLICIT RESULT (0) IS ALWAYS STORED IN ACC64.
-    Sqrtacc,
+    /// Takes the square root of the value IN THE ACC64 ACCUMULATOR.
+    ///
+    /// If the next byte is 0, then the result is stored back in the accumulator.
+    /// If it is 1, the result is stored in a frame address.
+    ///
+    /// Format: `[Sqrtacc64] [[0] | [1] [address: [a, b, c, d]]]`
+    Sqrtacc64,
     /// Divides the value in an accumulator by the value in a register.
     /// and stores the result in the accumulator.
     /// WITH THE EXCEPTION THAT THE IMPLICIT RESULT (0) IS ALWAYS STORED IN ACC64.
@@ -248,32 +261,66 @@ pub enum Opcode {
     ///
     /// Format: `[Goto] [destination: [a, b, c, d, e, f, g, h]]`
     Goto,
-    /// Calls a function.
-    /// The next 4 bytes correspond to the index of the function in the function registry.
+    /// Calls a named function or a method.
+    /// The next 8 bytes correspond to the index of the function in the function registry.
     ///
-    /// Format: `[Call]`
-    Call,
+    /// Format: `[CallNamedFunction] [function: [a..h]]`
+    CallNamedFunction,
+    /// Calls an anonymous function.
+    /// It assumes that the value in the vala register is a Value::Function and will panic
+    /// otherwise.
+    ///
+    /// Format: `[CallAnonymousFunction]`
+    CallAnonymousFunction,
+    /// Calls a function from
+    CallDynamicFunction,
     /// Returns to the caller block of the current function and continues execution.
     ///
     /// Format: `[Return]`
     Return,
-    /// Signals to the virtual machine to move heap marked objects.
+    /// Creates a new block scope within the current frame.
+    ///
+    /// Format: `[CreateBlock]`
+    StartBlock,
+    /// Deallocates the current block in the current frame and all its registers.
     ///
     /// Format: `[EndBlock]`
     EndBlock,
 
     // MEMORY ALLOCATION OPCODES.
-    // --
-    /// Marks a value slice in the frame to be moved to the heap as an `Object` when the block ends.
-    /// The next 4 bytes correspond to the start of the slice.
-    /// The 4 bytes after correspond to the end of the slice.
+    /// Creates a new instance on the heap, and stores a pointer to it in
+    /// the _vala_ register.
+    /// The next eight bytes correspond to the index of the layout to allocate in the table.
     ///
-    /// Format: `[MarkForHeap] [start: [a, b, c, d]] [end: [e, f, g, h]]`
-    MarkForHeap,
-    /// Given an opaque value id, creates an instance of the value on the stack and stores a reference to it.
-    NewOpaque,
-    /// Creates a new empty array on the heap and stores a reference to it in a register.
-    NewArrLiteral,
+    /// Format: `[NewInstanceValueA] [type: [a, b, c, d, e, f, g, h]]`
+    NewInstanceValueA,
+    /// Loads the value in the addra register to the stack.
+    /// The next four bytes correspond to the index in the stack frame.
+    ///
+    /// Format: `[LoadAddrAToFrame] [dest: [a, b, c, d]]`
+    StoreValueAToFrame,
+    /// Creates a new instance of a model on the heap, and stores a pointer to it in
+    /// the _valb_ register.
+    /// The next eight bytes correspond to the index of the layout to allocate in the table.
+    ///
+    /// Format: `[NewInstanceValueB] [type: [a, b, c, d, e, f, g, h]]`
+    NewInstanceValueB,
+    /// Creates a new array on the heap and stores a pointer to it in the addra register.
+    ///
+    /// Format: `[NewArrayAddr] [type: [a, b, c, d, e, f, g, h]]`
+    NewArrayAddrA,
+    /// Creates a new array on the heap and stores a pointer to it in the addrb register.
+    ///
+    /// Format: `[NewArrayEAddr] [type: [a, b, c, d, e, f, g, h]]`
+    NewArrayAddrE,
+    /// Gets the property beginning at an offset in an instance on the heap and loads it
+    /// into the _vala_ register.
+    ///
+    /// The next four bytes correspond to the start of address of the heap pointer on the stack.
+    /// The four bytes that follow correspond to the offset into the instance.
+    ///
+    /// Format: `[GetPropertyOffset] [stackidx: [a, b, c, d]] [offset: [e, f, g, h]]`
+    GetPropertyOffset,
 
     // SEQUENCE OPCODES.
     // --
@@ -297,6 +344,7 @@ impl From<u8> for Opcode {
     fn from(value: u8) -> Self {
         match value {
             0 => Opcode::Exit,
+
             1 => Opcode::LoadIr8,
             2 => Opcode::LoadIr16,
             3 => Opcode::LoadIr32,
@@ -306,8 +354,9 @@ impl From<u8> for Opcode {
             7 => Opcode::LoadIacc32,
             8 => Opcode::LoadIacc64,
             9 => Opcode::LoadIframe,
-            10 => Opcode::LoadIconstptra,
-            11 => Opcode::LoadIconstptrb,
+            10 => Opcode::LoadIret,
+            11 => Opcode::LoadIconstptra,
+            12 => Opcode::LoadIconstptrb,
 
             25 => Opcode::Printacc8,
             28 => Opcode::Printacc64,
@@ -315,13 +364,17 @@ impl From<u8> for Opcode {
             30 => Opcode::Printconstptra,
             31 => Opcode::Addacc,
 
-            35 => Opcode::Sqrtacc,
+            35 => Opcode::Sqrtacc64,
             42 => Opcode::Eqacc,
             45 => Opcode::JumpIfTrue,
             47 => Opcode::LoopFor,
             48 => Opcode::Stall,
-            51 => Opcode::Call,
+            51 => Opcode::CallNamedFunction,
             52 => Opcode::Return,
+            55 => Opcode::NewInstanceValueA,
+            56 => Opcode::StoreValueAToFrame,
+            57 => Opcode::StartBlock,
+            58 => Opcode::EndBlock,
             _ => unimplemented!("{value}"),
         }
     }
@@ -339,8 +392,9 @@ impl From<Opcode> for u8 {
             Opcode::LoadIacc32 => 7,
             Opcode::LoadIacc64 => 8,
             Opcode::LoadIframe => 9,
-            Opcode::LoadIconstptra => 10,
-            Opcode::LoadIconstptrb => 11,
+            Opcode::LoadIret => 10,
+            Opcode::LoadIconstptra => 11,
+            Opcode::LoadIconstptrb => 12,
             Opcode::Upaccr8 => todo!(),
             Opcode::Uppaccr16 => todo!(),
             Opcode::Upaccr32 => todo!(),
@@ -366,7 +420,7 @@ impl From<Opcode> for u8 {
             Opcode::AddaccToframe => todo!(),
             Opcode::Subacc => todo!(),
             Opcode::MulAcc => todo!(),
-            Opcode::Sqrtacc => 35,
+            Opcode::Sqrtacc64 => 35,
             Opcode::Divacc => todo!(),
             Opcode::Modacc => todo!(),
             Opcode::Decacc => todo!(),
@@ -382,17 +436,24 @@ impl From<Opcode> for u8 {
             Opcode::Stall => 48,
             Opcode::BreakLoop => todo!(),
             Opcode::Goto => todo!(),
-            Opcode::Call => 51,
+            Opcode::CallNamedFunction => 51,
+            Opcode::LoadthisFromFrame => todo!(),
+            Opcode::CallAnonymousFunction => todo!(),
+            Opcode::CallDynamicFunction => todo!(),
             Opcode::Return => 52,
-            Opcode::EndBlock => todo!(),
-            Opcode::MarkForHeap => todo!(),
-            Opcode::NewOpaque => todo!(),
-            Opcode::NewArrLiteral => todo!(),
+            Opcode::NewInstanceValueA => 55,
+            Opcode::StoreValueAToFrame => 56,
+            Opcode::StartBlock => 57,
+            Opcode::EndBlock => 58,
             Opcode::SpawnSeq => todo!(),
             Opcode::SyncSeq => todo!(),
             Opcode::HaltSeq => todo!(),
             Opcode::Invoke => todo!(),
             Opcode::Exit => 0,
+            Opcode::NewInstanceValueB => todo!(),
+            Opcode::NewArrayAddrA => todo!(),
+            Opcode::NewArrayAddrE => todo!(),
+            Opcode::GetPropertyOffset => todo!(),
         }
     }
 }

@@ -380,11 +380,14 @@
             },
             { "include": "#function_type" },
             {
-               "patterns": [{ "include": "#discrete_type" }, { "match": "\\." }]
-            },
-            {
-               "name": "punctuation",
-               "match": "\\|"
+               "patterns": [
+                  { "include": "#discrete_type" },
+                  { "match": "\\." },
+                  {
+                     "name": "punctuation",
+                     "match": "\\|\\s*"
+                  }
+               ]
             }
          ]
       },

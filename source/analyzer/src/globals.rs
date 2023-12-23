@@ -4,6 +4,13 @@ use crate::EvaluatedType;
 /// This is only used in testing.
 /// Its value in production is dependent on the environment.
 pub const CORE_LIBRARY_PATH: &'static str = "../corelib/Core/Core.wrl";
+
+/// The maximum recursion limit for a type evaluation.
+pub const EVALUATION_DEPTH: u64 = 200;
+
+/// The number of related symbols to show in the hover of a symbol.
+pub const RELATION_COUNT: u8 = 5;
+
 /// Signifies the file being parsed.
 /// Useful to pinpoint primitive types without too much build-in into
 /// the compiler.

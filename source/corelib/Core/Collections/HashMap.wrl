@@ -1,6 +1,8 @@
 module HashMap;
 
 use Core.Prelude.Todo;
+use Core.Prelude.Iteratable;
+use Core.Collections.Tuple;
 
 public interface Hash {}
 
@@ -10,12 +12,22 @@ public interface ToMap<K, V> {
     public function ToMap(): HashMap<K, V>;
 }
 
-public model HashMap<K implements Hash, V> {
+public model HashMap<K implements Hash, V> implements Iteratable<Tuple<K, V>> {
     new(){}
     /// Inserts a key-value pair into the hashmap.
     /// 
     /// If the key is already present in the map, then it will be replaced.
+    /// ### Usage
+    /// ```
+    /// ```
     public function Set(key: K, value: V): V {
+        Todo()
+    }
+    /// Retrieves a value from the hashmap.
+    /// ### Usage
+    /// ```
+    /// ```
+    public function Get(key: K): V {
         Todo()
     }
 }

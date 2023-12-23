@@ -56,6 +56,20 @@ public interface Iteratable<I> {
     public function ForEach(callback: fn(value: I)) {
         Todo()
     }
+    /// Reduces an iteratable to a single value by applying a function against an
+    /// accumulator and each element in the sequence. It allows combinatory or aggregative 
+    /// operations to be depicted in a concise and functional way.
+    /// 
+    /// ### Usage
+    /// ```
+    /// arr := ["this", "is", "the", "pathway"];
+    /// arrReduced := arr.Iter().Reduce(fn(acc, word) acc + " " + word);
+    /// 
+    /// Assert(arrReduced).Equals("this is the pathway");
+    /// ```
+    public function Reduce(reducer: fn(acc: I, current: I): I, initial: I): I {
+        Todo()
+    }
     /// Returns an iterator that only yields items that match a predicate.
     /// The predicate returns a boolean value indicating whether the item
     /// should be kept or discarded.
