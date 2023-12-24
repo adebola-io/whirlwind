@@ -1,7 +1,7 @@
-module Try;
+module try;
 
-use Core.Prelude.Outcome;
+use core.prelude.Outcome;
 
 public interface Try<T, U> {
-    function Try(): Outcome<T, U>;
+    function try(): Outcome<T, U>;
 }

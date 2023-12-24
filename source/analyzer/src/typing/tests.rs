@@ -72,7 +72,7 @@ fn it_creates_intrinsic_instances() {
         "
     module Testing;
 
-    function Main() {
+    function main() {
         boolean := true;
         str := \"Hello, World\";
         num := 34;
@@ -95,7 +95,7 @@ fn it_creates_instances() {
         }
     }
 
-    function Main() {
+    function main() {
         var person = new Person();
         var { name as personName } = new Person(\"John Doe\");
     }    

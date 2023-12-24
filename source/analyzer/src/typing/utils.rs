@@ -833,9 +833,22 @@ pub fn update_expression_type(
             };
             update_expression_type(&mut access.object, symbollib, &generic_args, optional_type);
         }
-        TypedExpression::ArrayExpr(array) => array.elements.iter_mut().for_each(|exp| {
-            update_expression_type(exp, symbollib, generic_arguments, optional_type)
-        }),
+        TypedExpression::ArrayExpr(array) => {
+            if optional_type.is_some_and(|optional_type| is_array(optional_type, symbollib)) {
+                let optional_type = optional_type.map(|opt_type| match opt_type {
+                    EvaluatedType::ModelInstance {
+                        generic_arguments, ..
+                    } => &generic_arguments[0].1,
+                    _ => opt_type,
+                });
+                array.elements.iter_mut().for_each(|exp| {
+                    update_expression_type(exp, symbollib, generic_arguments, optional_type)
+                })
+            }
+            array.elements.iter_mut().for_each(|exp| {
+                update_expression_type(exp, symbollib, generic_arguments, optional_type)
+            });
+        }
         TypedExpression::IndexExpr(index) => {
             update_expression_type(
                 &mut index.object,

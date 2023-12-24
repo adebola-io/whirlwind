@@ -1,4 +1,4 @@
-module Default;
+module default;
 
 /// This is a language level interface to be implemented by types that can have default values when they are not initialized.
 /// ## Usage
@@ -11,11 +11,11 @@ module Default;
 ///       this.x = x; 
 ///       this.y = y; 
 ///    }
-///    public static function Origin(): This {
+///    public static function origin(): This {
 ///        new Position(0, 0)
 ///    }
 /// }
-/// var p1 = Position.Origin();
+/// var p1 = Position.origin();
 /// ```
 /// Using the Default interface, it would instead be:
 /// ```
@@ -26,12 +26,12 @@ module Default;
 ///       this.x = x; 
 ///       this.y = y; 
 ///    }
-///    static function [Default.Init](): This {
+///    static function [Default.init](): This {
 ///       new Position(0, 0)
 ///    }
 /// }
 /// var p1: Position; /// Is automatically assigned (0, 0)
 public interface Default {
     /// Returns the default instance of the implementing model.
-    static function Init(): This;
+    static function init(): This;
 }

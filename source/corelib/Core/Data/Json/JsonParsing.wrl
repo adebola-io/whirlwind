@@ -1,18 +1,17 @@
-module JsonParsing;
+module jsonParsing;
 
-use Super.Serializeable;
-use Super.RawJsonVal;
-use Core.Prelude.String;
-use Core.Prelude.Outcome;
-use Core.Prelude.Todo;
+use super.Serializeable;
+use super.RawJsonVal;
+use core.prelude.String;
+use core.prelude.Outcome;
+use core.prelude.todo;
 
 public model JsonParseError {
 
 }
 
 /// Converts an object that implements `Serializeable` into a JSON value.
-public function Stringify<T implements Serializeable>(value: T)
-    : Outcome<RawJsonVal, JsonParseError> 
+public function stringify<T implements Serializeable>(value: T): Outcome<RawJsonVal, JsonParseError> 
 {
-    return Todo();
+    return todo();
 }

@@ -1,7 +1,7 @@
-module OrderedSet;
+module orderedSet;
 
-use Core.Prelude.Todo;
-use Core.Primitives.Ops.Addition;
+use core.prelude.todo;
+use core.primitives.ops.Addition;
 
 
 /// A simple ordered pair of items. Elements within a tuple can be of any type,
@@ -17,24 +17,24 @@ public model Tuple<T, U> {
     /// Returns a new tuple with the position of the two items in the tuple reversed.
     /// ### Usage
     /// ```
-    /// use Core.Collections.Tuple;
+    /// use core.collections.Tuple;
     /// 
     /// tuple := new Tuple(true, "story");
-    /// swapped := tuple.Swap();
-    /// Assert(swapped).Equals(new Tuple("story", true));
+    /// swapped := tuple.swap();
+    /// assertThat(swapped == new Tuple("story", true));
     /// ```
-    public function Swap(): Tuple<U, T> {
+    public function swap(): Tuple<U, T> {
         new Tuple(this.b, this.a)
     }
     /// Concatenates the elements of the pair into one.
     /// ### Usage
     /// ```
-    /// tuple := Pair("John ", "Doe");
-    /// joined := Tuple.Join(tuple);
+    /// tuple := pair("John ", "Doe");
+    /// joined := Tuple.join(tuple);
     /// 
-    /// Assert(joined).Equals("John Doe");
+    /// assert(joined).equals("John Doe");
     /// ```
-    public static function Join<T implements Addition>(tuple: Tuple<T, T>): T {
+    public static function join<T implements Addition>(tuple: Tuple<T, T>): T {
         tuple.a + tuple.b
     }
 }
@@ -45,17 +45,17 @@ public model Tuple<T, U> {
 /// 
 /// ### Usage
 /// ```
-/// pair1 := Pair(1, "apple");
-/// pair2 := Pair(true, [1, 2, 3]);
+/// pair1 := pair(1, "apple");
+/// pair2 := pair(true, [1, 2, 3]);
 /// 
 /// // Accessing elements of the tuple.
 /// first := pair1.a; 
-/// Assert(first).Equals(1);
+/// assert(first).equals(1);
 /// 
 /// second := pair1.b;
-/// Assert(second).Equals("apple");
+/// assert(second).equals("apple");
 /// ```
-public function Pair<T, U>(a: T, b: U): Tuple<T, U> {
+public function pair<T, U>(a: T, b: U): Tuple<T, U> {
     return new Tuple(a, b);
 }
 
@@ -88,15 +88,15 @@ public model Quadruple<T, U, V, S> {
     /// Groups the items in the quadruple to two tuples.
     /// ###  Usage
     /// ```
-    /// use Core.Collections.{Quadruple, Tuple};
+    /// use core.collections.{Quadruple, Tuple};
     /// 
     /// quadruple := new Quadruple(1, "Sefunmi", true, [35.5]);
-    /// var { a as first, b as second } = quadruple.ToTuple();
+    /// var { a as first, b as second } = quadruple.toTuple();
     /// 
-    /// Assert(first).Equals(new Tuple(1, "Sefunmi"));
-    /// Assert(second).Equals(new Tuple(true, [35.5]));
+    /// assert(first == new Tuple(1, "Sefunmi"));
+    /// assert(second == new Tuple(true, [35.5]));
     /// ```
-    public function ToTuple(): Tuple<Tuple<T, U>, Tuple<V, S>> {
-        return Pair(Pair(this.a, this.b), Pair(this.c, this.d));
+    public function toTuple(): Tuple<Tuple<T, U>, Tuple<V, S>> {
+        return pair(pair(this.a, this.b), pair(this.c, this.d));
     }
 }

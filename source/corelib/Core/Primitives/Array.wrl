@@ -1,15 +1,15 @@
-module Array;
+module array;
 
-use Bool.Bool;
-use Numeric.{Int, UnsignedInt};
-use Ops.{Orderable, Addition};
-use Core.Prelude.{
-    Iteration.Reversed,
-    AsIterator, Maybe, None, Some, Todo, 
+use bool.Bool;
+use numeric.{Int, UnsignedInt};
+use ops.{Orderable, Addition};
+use core.prelude.{
+    iteration.Reversed,
+    AsIterator, Maybe, none, some, todo, 
     String, Default, Iteratable, Display
 };
-use Core.Math.{Max, Min};
-use Core.Internals.{Injunction, Invoke};
+use core.math.{max, min};
+use core.internals.{Injunction, invoke};
 
 /// A contiguous, growable list of items.
 public model Array<T> implements AsIterator<T, ArrayIter<T>> {
@@ -17,13 +17,13 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// ### Usage
     /// ```
     /// arr := [1, 2, 3];
-    /// arrIter := arr.Iter();
+    /// arrIter := arr.iter();
     /// 
-    /// AssertThat(arrIter.Next() == Some(1));
-    /// AssertThat(arrIter.Next() == Some(2));
-    /// AssertThat(arrIter.Next() == Some(3));
+    /// assertThat(arrIter.next() == some(1));
+    /// assertThat(arrIter.next() == some(2));
+    /// assertThat(arrIter.next() == some(3));
     /// ```
-    public function [AsIterator.Iter](): ArrayIter<T> {
+    public function [AsIterator.iter](): ArrayIter<T> {
         new ArrayIter(this)
     }
     /// Returns the item at a particular index in the array, if it exists.
@@ -31,39 +31,39 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// ### Usage
     /// ```
     /// arr := [1, 2, 3, 4];
-    /// Assert(arr.At(0)).Equals(Some(1));
-    /// Assert(arr.Ar(1)).Equals(Some(2));
+    /// assertThat(arr.At(0) == some(1));
+    /// assertThat(arr.Ar(1) == some(2));
     /// ```
     /// Elements can also be indexed from behind the array.
     /// Backward indexes are one-based, meaning the index -1 is the
     /// last item in the array.
     /// ```
     /// arr := [15, 25, 35, 45, 55];
-    /// Assert(arr.At(-1)).Equals(Some(55))
+    /// assert(arr.at(-1) == some(55))
     /// ```
-    public function At(index: Int): Maybe<T> {
+    public function at(index: Int): Maybe<T> {
         i := if index < 0 {
-            this.Length() + index
+            this.length() + index
         } else {
             index
         };
-        if i > this.Length() or i < 0 {
-            return None();
+        if i > this.length() or i < 0 {
+            return none();
         };
-        a := this[i.Unsigned()];
-        return Some(a);
+        a := this[i.unsigned()];
+        return some(a);
     }
     /// Checks if an item is contained in the array.
     /// ### Usage
     /// ```
     /// str := "Hello, world";
     /// array := [];
-    /// array.Push(str);
+    /// array.push(str);
     /// 
-    /// AssertThat(array.Contains(str));
+    /// assertThat(array.contains(str));
     /// ```
-    public function Contains(value: T): Bool {
-        for element in this.Iter() {
+    public function contains(value: T): Bool {
+        for element in this.iter() {
             if element == value {
                 return true;
             };
@@ -75,25 +75,25 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// ```
     /// arr := [1, 2, 3, 4];
     /// 
-    /// arr.Clear();
-    /// AssertThat(arr.Length() == 0);
-    /// AssertThat(arr == []);
+    /// arr.clear();
+    /// assertThat(arr.length() == 0);
+    /// assertThat(arr == []);
     /// ```
-    public function Clear() {
-        Invoke(Injunction.ArrClear(this));
+    public function clear() {
+        invoke(Injunction.ArrClear(this));
     }
     /// Returns a reference to the first item in the array, if it exists.
     /// ### Usage
     /// ```
     /// arr := [20, 30, 40, 50, 60];
-    /// Assert(arr.First().Unwrap()).Equals(20);
+    /// assert(arr.first().unwrap()).equals(20);
     /// 
     /// empty: []Int := [];
-    /// AssertThat(empty.First() == None());
+    /// assertThat(empty.first() == none());
     /// ```
-    public function First(): ?T {
-        if this.Length() == 0 { None() } 
-        else Some(this[0])
+    public function first(): ?T {
+        if this.length() == 0 { none() } 
+        else some(this[0])
     }
     /// Determines whether a given sub-array is contained within
     /// a main array. The order in the sub-array must be preserved
@@ -104,13 +104,13 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// mainArray := [1, 2, 3, 4, 5, 6];
     /// subArray := [4, 5, 6];
     /// 
-    /// AssertThat(mainArray.Includes(subArray));
+    /// assertThat(mainArray.includes(subArray));
     /// 
     /// anotherSubArray := [4, 6, 5];
-    /// AssertThat(!mainArray.Includes(anotherSubArray));
+    /// assertThat(!mainArray.includes(anotherSubArray));
     /// ```
-    public function Includes(subarray: []T): Bool {
-        Todo()
+    public function includes(subarray: []T): Bool {
+        todo()
     }
     /// Returns the zero-based index of a value in the array.
     /// 
@@ -121,38 +121,38 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// str3 := "This is the future!";
     /// 
     /// arr := [str1, str2, str3];
-    /// Assert(arr.IndexOf(str2)).Equals(Some(1)).
+    /// assert(arr.IndexOf(str2) == some(1)).
     /// ```
-    public function IndexOf(value: T): ?UnsignedInt {
-        for { a as index, b as element } in this.Iter().Enumerate() 
+    public function indexOf(value: T): ?UnsignedInt {
+        for { a as index, b as element } in this.iter().enumerate() 
         {
             if element  == value {
-                return Some(index);
+                return some(index);
             };
         }
-        return None();
+        return none();
     }
     /// Inserts an element at an index in the array,
     /// shifting all suceeding elements forward.
     /// ### Usage
     /// ```
     /// arr := [1, 3, 4, 5];
-    /// arr.Insert(1, 2);
-    /// Assert(arr.At(1)).Equals(Some(2));
+    /// arr.insert(1, 2);
+    /// assert(arr.at(1) == some(2));
     /// ```
-    public function Insert(index: UnsignedInt, value: T) {
-        Invoke(Injunction.ArrInsert(index, value, this));
+    public function insert(index: UnsignedInt, value: T) {
+        invoke(Injunction.ArrInsert(index, value, this));
     }
     /// Inserts all the items from another array at the start of this array,
     /// shifting all its prior elements forward.
     /// ### Usage
     /// ```
     /// arr := [5, 6, 7, 8];
-    /// arr.Prepend([1, 2, 3, 4]);
-    /// Assert(arr).Equals([1, 2, 3, 4, 5, 6, 7, 8]);
+    /// arr.prepend([1, 2, 3, 4]);
+    /// assert(arr == [1, 2, 3, 4, 5, 6, 7, 8]);
     /// ```
-    public function Prepend(prefix: []T) {
-        Invoke(Injunction.ArrPrepend(prefix, this));
+    public function prepend(prefix: []T) {
+        invoke(Injunction.ArrPrepend(prefix, this));
     }
     /// Divides the array into two new arrays: one containing elements that pass
     /// a test function, and another with elements that don't.
@@ -160,19 +160,19 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// ```
     /// arr := ["Arnold", "Daniel", "Harriet", "Donald", "Dele"];
     /// 
-    /// var [startsWithD, others] = arr.Partition(fn(x) x.StartsWith("D"));
+    /// var [startsWithD, others] = arr.partition(fn(x) x.startsWith("D"));
     /// 
-    /// AssertThat(startsWithD == ["Donald", "Dele", "Daniel"]);
-    /// AsserThat(others == ["Arnold", "Harriet"]);
+    /// assertThat(startsWithD == ["Donald", "Dele", "Daniel"]);
+    /// assertThat(others == ["Arnold", "Harriet"]);
     /// ```
-    public function Partition(check: fn(item: T): Bool): [][]T {
+    public function partition(check: fn(item: T): Bool): [][]T {
         trueItems := [];
         falseItems := [];
         for item in this {
             if check(item) {
-                trueItems.Push(item);
+                trueItems.push(item);
             } else {
-                falseItems.Push(item);
+                falseItems.push(item);
             }
         }
         return [trueItems, falseItems];
@@ -181,52 +181,52 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// ### Usage
     /// ```
     /// arr := [1, 2, 3, 4];
-    /// Assert(arr.Length()).Equals(4);
+    /// assert(arr.length()).equals(4);
     /// ```
-    public function Length(): UnsignedInt {
-        return Invoke(Injunction.ArrLen(this));
+    public function length(): UnsignedInt {
+        return invoke(Injunction.ArrLen(this));
     }
     /// Adds an item to the end of the array.
     /// ### Usage
     /// ```
     /// array := [2, 4, 6, 8];
-    /// Assert(array.Length()).Equals(4);
+    /// assert(array.length()).equals(4);
     /// 
-    /// array.Push(10);
-    /// Assert(array).Equals([2, 4, 5, 8, 10]);
-    /// Assert(array.Length()).Equals(5);
+    /// array.push(10);
+    /// assert(array).equals([2, 4, 5, 8, 10]);
+    /// assert(array.length()).equals(5);
     /// ```
-    public function Push(value: T) {
-        Todo()
+    public function push(value: T) {
+        todo()
     }
     /// Removes an item from the end of the array.
     /// ### Usage
     /// ```
     /// array := [1, 2, 3];
     /// 
-    /// array.Pop();
-    /// Assert(array).Equals([1, 2]);
+    /// array.pop();
+    /// assert(array).equals([1, 2]);
     /// 
-    /// array.Pop();
-    /// Assert(array).Equals([1]);
+    /// array.pop();
+    /// assert(array).equals([1]);
     /// ```
-    public function Pop(): ?T {
-        Todo()
+    public function pop(): ?T {
+        todo()
     }
     /// Returns an iterator that produces elements from the end of the array
     /// to the start.
     /// ### Usage
     /// ```
     /// array := [7, 8, 9];
-    /// rev := array.Reverse();
+    /// rev := array.reverse();
     /// 
-    /// Assert(rev.Next()).Equals(Some(9));
-    /// Assert(rev.Next()).Equals(Some(8));
-    /// Assert(rev.Next()).Equals(Some(7));
+    /// assert(rev.next()).equals(some(9));
+    /// assert(rev.next()).equals(some(8));
+    /// assert(rev.next()).equals(some(7));
     /// 
-    /// Assert(rev.Next()).Equals(None());
+    /// assert(rev.next()).equals(none());
     /// ```
-    public function Reverse(): Reversed<T> {
+    public function reverse(): Reversed<T> {
         return new Reversed(this);
     }
     /// Randomly selects a specific number of elements from
@@ -239,13 +239,13 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// ```
     /// arr := [1, 2, 3, 4, 5];
     /// 
-    /// twoItems := arr.Sample(2);
+    /// twoItems := arr.sample(2);
     /// ```
-    public function Sample(n: UnsignedInt): []T {
-        if n > this.Length() {
-            return this.Shuffled();
+    public function sample(n: UnsignedInt): []T {
+        if n > this.length() {
+            return this.shuffled();
         };
-        Todo()
+        todo()
     }
     /// Removes the first item in the array
     /// and shifts all the other items backward
@@ -255,26 +255,26 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// ### Usage
     /// ```
     /// arr := [1, 2, 3, 4];
-    /// firstItem := arr.Shift();
+    /// firstItem := arr.shift();
     /// 
-    /// Assert(arr).Equals([2, 3, 4]);
-    /// Assert(firstItem).Equals(Some(1));
+    /// assert(arr).equals([2, 3, 4]);
+    /// assert(firstItem).equals(some(1));
     /// ```
     /// If there is no element in the array,
-    /// then None() is returned, and the operation 
+    /// then none() is returned, and the operation 
     /// does nothing.
     /// ```
     /// arr := [];
-    /// firstItem := arr.Shift();
+    /// firstItem := arr.shift();
     /// 
-    /// Assert(arr).Equals([]);
-    /// Assert(firstItem).Equals(None());
+    /// assert(arr).equals([]);
+    /// assert(firstItem).equals(none());
     /// ```
-    public function Shift(): ?T {
-        if this.Length() == 0 {
-            return None();
+    public function shift(): ?T {
+        if this.length() == 0 {
+            return none();
         } else {
-            Todo()
+            todo()
         }
     }
     /// Returns a new, shuffled version of the array.
@@ -282,47 +282,47 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// ```
     /// arr := [1, 2, 3];
     /// 
-    /// shuffledArray := arr.Shuffled();
+    /// shuffledArray := arr.shuffled();
     /// ```
-    public function Shuffled(): []T {
-        Todo()
+    public function shuffled(): []T {
+        todo()
     }
     /// Returns a reference to the last item in the array.
-    public function Last(): ?T {
-        if this.Length() == 0 { None() } 
-        else Some(this[this.Length() - 1])
+    public function last(): ?T {
+        if this.length() == 0 { none() } 
+        else some(this[this.length() - 1])
     }
     /// Converts an array to a string representation,
     /// given that its elements implement `Display`.
     /// ### Usage
     /// ```
     /// arr := [1, 6, 7, 8, 10];
-    /// arrAsStr := Array.ToStr(arr);
+    /// arrAsStr := Array.toStr(arr);
     /// 
-    /// Assert(arrAsStr).Equals("[1, 6, 7, 8, 10]");
+    /// assert(arrAsStr).equals("[1, 6, 7, 8, 10]");
     /// ```
-    public static function ToStr<T implements Display>(array: Array<T>): String {
+    public static function toStr<T implements Display>(array: Array<T>): String {
         string := "[";
         i := 0;
-        for { a as index, b as item } in array.Iter().Enumerate() 
+        for { a as index, b as item } in array.iter().enumerate() 
         {
-            string.Append(item.ToStr());
+            string.append(item.toStr());
             if index + 1 != array.length {
-                string.Append(",")
+                string.append(",")
             }
         }
-        string.Append("]");
+        string.append("]");
         return string;
     }
     /// Sorts an array in place, given that its elements are orderable.
     /// ### Usage
     /// ```
     /// arr := [34, 21, 89, 11, 20, 46];
-    /// Array.Sort(arr)
-    /// Assert(arr).Equals([11, 20, 21, 34, 46, 89]);
+    /// Array.sort(arr)
+    /// assert(arr).equals([11, 20, 21, 34, 46, 89]);
     /// ```
-    public static function Sort<T implements Orderable>(array: []T) {
-        Todo()
+    public static function sort<T implements Orderable>(array: []T) {
+        todo()
     }
     /// Returns a Sorted version of an array
     /// given that its elements are orderable.
@@ -332,23 +332,23 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// ### Usage
     /// ```
     /// arr := [26, 10, 35, 16, 87, 1, 12];
-    /// arrSorted := Array.Sorted(arr);
+    /// arrSorted := Array.sorted(arr);
     /// 
-    /// Assert(arrSorted).Equals([1, 10, 12, 16, 26, 35, 87]);
+    /// assert(arrSorted).equals([1, 10, 12, 16, 26, 35, 87]);
     /// ```
-    public static function Sorted<T implements Orderable>(array: []T): []T {
-        Todo()
+    public static function sorted<T implements Orderable>(array: []T): []T {
+        todo()
     }
     /// Fills an array with default values, given that the element type can be defaulted.
     /// ### Usage
     /// ```
     /// arr := [1, 2, 3];
-    /// Array.Reset(arr);
-    /// Assert(arr).Equals([0, 0, 0])
+    /// Array.reset(arr);
+    /// assert(arr).equals([0, 0, 0])
     /// ```
-    public static function Reset<T implements Default>(array: []T) {
+    public static function reset<T implements Default>(array: []T) {
         i := 0;
-        while i < array.Length() {
+        while i < array.length() {
             var def: T;
             array[i] = def;
         }
@@ -358,14 +358,14 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// ### Usage
     /// ```
     /// array := [2, 3, 4, 5, 6, 7];
-    /// largest := Array.Max(array);
+    /// largest := Array.max(array);
     /// 
-    /// Assert(largest == Some(7));
+    /// assert(largest == some(7));
     /// ```
-    public static function Max<T implements Orderable>(array: []T): ?T {
-        max := array.First()?;
-        array.Iter().ForEach(fn(value) max = Max(max, value));
-        Some(max)
+    public static function max<T implements Orderable>(array: []T): ?T {
+        maximum := array.first()?;
+        array.iter().forEach(fn(value) maximum = max(maximum, value));
+        some(maximum)
     }
 
     /// Returns the smallest value in an array.
@@ -373,14 +373,14 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// ### Usage
     /// ```
     /// array := [2, 3, 4, 5, 6, 7];
-    /// smallest := Array.Min(array);
+    /// smallest := Array.min(array);
     /// 
-    /// Assert(smallest == Some(2));
+    /// assert(smallest == some(2));
     /// ```
-    public static function Min<T implements Orderable>(array: []T): ?T {
-        min := array.First()?;
-        array.Iter().ForEach(fn(value) min = Min(min, value));
-        Some(min)
+    public static function min<T implements Orderable>(array: []T): ?T {
+        minimum := array.first()?;
+        array.iter().forEach(fn(value) minimum = min(minimum, value));
+        some(minimum)
     }
 
     /// Returns the sum of all the elements in the array.
@@ -389,15 +389,15 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// ### Usage
     /// ```
     /// array := [1, 2, 3, 4];
-    /// summed = Array.Sum(array)
+    /// summed = Array.sum(array)
     /// 
-    /// AssertThat(summed == 10);
+    /// assertThat(summed == 10);
     /// 
     /// array2 := [""]
     /// ```
-    public static function Sum<T implements Addition + Default>(array: []T): T {
+    public static function sum<T implements Addition + Default>(array: []T): T {
         var sum: T;
-        array.Iter().ForEach(fn(item) sum += item);
+        array.iter().forEach(fn(item) sum += item);
         sum
     }
     /// Concatenates the elements in an array into one string and returns it.
@@ -406,22 +406,22 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// ### Usage
     /// ```
     /// array := ["Best", "believe", "I'm", "still", "bejeweled"];
-    /// joined := Array.Join(array);
+    /// joined := Array.join(array);
     /// 
-    /// AssertThat(joined == "Best believe I'm still bejeweled");
+    /// assertThat(joined == "Best believe I'm still bejeweled");
     /// 
     /// array2 := [1, 2, 3, 4, 5];
-    /// joined2 := Array.Join(array2, "+");
+    /// joined2 := Array.join(array2, "+");
     /// 
-    /// AssertThat(joined2 == "1+2+3+4+5");
+    /// assertThat(joined2 == "1+2+3+4+5");
     /// ```
-    public static function Join<T implements Display>(array: []T, separator?: String): String {
-        separatorValue := separator.UnwrapOr(" ");
+    public static function join<T implements Display>(array: []T, separator?: String): String {
+        separatorValue := separator.unwrapOr(" ");
         string := new String();
-        for { a as i, b as element } in array.Iter().Enumerate() 
+        for { a as i, b as element } in array.iter().enumerate() 
         {
-            string += element.ToStr();
-            if i + 1 != array.length {
+            string += element.toStr();
+            if i + 1 != array.length() {
                 string += separatorValue;
             }
         }
@@ -439,14 +439,14 @@ public model ArrayIter<T> implements Iteratable<T> {
         this.idx = 0;
     }
 
-    public function [Iteratable.Next](): ?T {
-        length := this.array.Length();
+    public function [Iteratable.next](): ?T {
+        length := this.array.length();
         if length == this.idx {
-            return None();
+            return none();
         } else {
             nextItem := this.array[this.idx];
             this.idx += 1;
-            return Some(nextItem);
+            return some(nextItem);
         }
     }
 }

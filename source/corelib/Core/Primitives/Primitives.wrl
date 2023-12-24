@@ -1,11 +1,11 @@
-module Primitives;
+module primitives;
 
-public use String.{String, Chars};
-public use Array.Array;
-public use Bool.Bool;
-public use Numeric;
-public use Ops;
-public use Numeric.{
+public use string.{String, Chars};
+public use array.Array;
+public use bool.Bool;
+public use numeric;
+public use ops;
+public use numeric.{
     UInt8,
     UInt16,
     UInt32,

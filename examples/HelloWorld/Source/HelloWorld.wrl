@@ -1,39 +1,39 @@
-module HelloWorld;
+module helloWorld;
 
 /// A function that prints "Hello, world" to the terminal.
-function HelloWorld() {
-    Print("Hello, world!");
+function helloWorld() {
+    print("Hello, world!");
 }
 
 /// A function that calculates the factorial of a given number.
-function Factorial(n: Number): Number {
-    if n == 1 or n == 0 { 1 } else n * Factorial(n - 1)
+function factorial(n: Number): Number {
+    if n == 1 or n == 0 { 1 } else n * factorial(n - 1)
 }
 
 /// A function that returns true if a string is a palindrome.
-var IsPalindrome = fn(str: String) str == str.Reverse();
+var IsPalindrome = fn(str: String) str == str.reverse();
 // var EvenSquares = fn(numbers: []Number) numbers.Iter().Filter(fn(num) num % 2 == 0).Map(fn(num) num ^ 2);
 
 /// Returns the nth Fibonacci number.
-function Fibonacci(n: Number): Number {
+function fibonacci(n: Number): Number {
     if n == 0 {0} 
     else if n == 1 {1} 
-    else Fibonacci(n-1) + Fibonacci(n-2)
+    else fibonacci(n-1) + fibonacci(n-2)
 }
 
-use Core.Io.IoError;
-use Core.Fs;
+use core.io.IoError;
+use core.fs;
 /// Function to display content from a file.
-function ReadToString(path: Fs.PathLike): Outcome<String, IoError> {
-    return Todo();
+function readToString(path: fs.PathLike): Outcome<String, IoError> {
+    return todo();
 }
 
-use Core.Net.Http.HttpServer;
+use core.net.http.HttpServer;
 /// Server that returns hello world.
-function HelloWorldServer() {
+function helloWorldServer() {
     app := new HttpServer("new-server", 8080);
-    app.Get("/", async fn(request) {
-        Ok(request.Respond().Html("<h1>Hello, world!</h1>"))
+    app.get("/", async fn(request) {
+        ok(request.respond().html("<h1>Hello, world!</h1>"))
     });
-    app.Start().Run().Await();
+    app.start().run().await();
 }

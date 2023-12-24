@@ -1,13 +1,13 @@
-module Numeric;
+module numeric;
 
-use Core.Prelude.{Display, Default};
-use Core.Internals.{Invoke, Injunction};
-use String.String;
-use Ops.{Addition, Sequenced};
+use core.prelude.{Display, Default};
+use core.internals.{invoke, Injunction};
+use string.String;
+use ops.{Addition, Sequenced};
 
 /// An interface to be implemented by values that can be cast to an unsigned integer.
 interface Unsigned {
-    public function Unsigned(): UnsignedInt;
+    public function unsigned(): UnsignedInt;
 }
 
 /// An unsigned 8-bit integer.

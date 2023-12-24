@@ -1,15 +1,15 @@
-module Injunction;
+module injunction;
 
-use Core.{
-    Prelude.Range,
-    Async.{Eventual, Prospect, Sequence},
-    Primitives.{
+use core.{
+    prelude.Range,
+    concurrent.{Eventual, Prospect, Sequence},
+    primitives.{
         String,
         Int,
         UnsignedInt,
     }
 };
-use Internals.{never};
+use internals.{never};
  
 /// List of variants that can be called with `Invoke()`.
 public enum Injunction {
@@ -46,9 +46,9 @@ public enum Injunction {
 }
 
 /// Function to perform intrinsic and builtin operations.
-public function Invoke(command: Injunction): never {
+public function invoke(command: Injunction): never {
    // The recursion here is false, and only exists to satisfy the
    // typechecker. Technically, all calls to `Invoke` are handled
    // outside the Whirlwind runtime.
-   return Invoke(command);
+   return invoke(command);
 }

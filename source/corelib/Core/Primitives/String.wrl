@@ -1,15 +1,15 @@
-module String;
+module string;
 
-use Ops.{Addition, Sequenced};
-use Bool.Bool;
-use Core.{ 
-    Internals.{Invoke, Injunction}, 
-    Collections.Hash,
-    Prelude.{Maybe, AsIterator, Iteratable, Range, Display, Some, None, Default},
-    Process.Todo,
+use ops.{Addition, Sequenced};
+use bool.Bool;
+use core.{ 
+    internals.{invoke, Injunction}, 
+    collections.Hash,
+    prelude.{Maybe, AsIterator, Iteratable, Range, Display, some, none, Default},
+    process.todo,
 };
-use Numeric.{Int, UnsignedInt, UInt8, UInt16};
-use Array.Array;
+use numeric.{Int, UnsignedInt, UInt8, UInt16};
+use array.Array;
 
 /// Model for creating, manipulating and formatting text sequences.
 public model String 
@@ -25,27 +25,27 @@ public model String
         this.arr = [];
     }
     /// Returns the next character alphabetically in a sequence.
-    function [Sequenced.NextItem](): ?String {
-        if this.arr.Length() > 1 { None() } else { Todo() }
+    function [Sequenced.nextItem](): ?String {
+        if this.arr.length() > 1 { none() } else { todo() }
     }
     /// Implementation of the Display trait.
-    public function [Display.ToStr](): String {
+    public function [Display.toStr](): String {
         return this;
     }
     /// Implementation of the Default trait.
-    static function [Default.Init](): This {
+    static function [Default.init](): This {
         return new String();
     }
     /// Adds two strings together.
     /// ## Usage
     /// ```
     /// str := "Hello" + ", world!";
-    /// Assert(str).Equals("Hello, world!");
+    /// assert(str).equals("Hello, world!");
     /// ```
-    function [Addition.Add](other: This): This {
+    function [Addition.add](other: This): This {
         newStr := this;
         for char in other.arr {
-            newStr.arr.Push(char);
+            newStr.arr.push(char);
         }
         return newStr;
     }
@@ -55,10 +55,10 @@ public model String
     /// str := "This is a string";
     /// 
     /// for char in str {
-    ///     Print(char);
+    ///     print(char);
     /// }
     /// ```
-    public function [AsIterator.Iter](): Chars {
+    public function [AsIterator.iter](): Chars {
         return new Chars(this);
     }
     /// Returns a `Maybe` with the character at a zero based index in the string.
@@ -68,55 +68,55 @@ public model String
     /// ```
     /// str := "This is a string";
     /// 
-    /// Assert(str.At(0)).Equals(Some("T"));
-    /// Assert(str.At(8)).Equals(Some("a"));
-    /// Assert(str.At(11)).Equals(Some("t"));
+    /// assert(str.at(0)).equals(some("T"));
+    /// assert(str.at(8)).equals(some("a"));
+    /// assert(str.at(11)).equals(some("t"));
     /// ```
     /// _Indexing from behind:_
     /// 
     /// ```
-    /// Assert(str.At(-1)).Equals(Some("g"));
-    /// Assert(str.At(-3)).Equals(Some("i"));
+    /// assert(str.at(-1)).equals(some("g"));
+    /// assert(str.at(-3)).equals(some("i"));
     /// ```
     /// It will return no value if the length of the string is exceeded.
-    public function At(position: Int): ?String {
-        Some(this.arr.At(position)?.ToStr())
+    public function at(position: Int): ?String {
+        some(this.arr.at(position)?.toStr())
     }
     /// Adds text to the end of the string.
     /// ## Usage
     /// ```
     /// str := "Hello";
     /// 
-    /// str.Append(", world!");
+    /// str.append(", world!");
     /// 
-    /// Assert(Str).Equals("Hello, world!");
+    /// assert(str).equals("Hello, world!");
     /// ```
-    public function Append(suffix: String) {
+    public function append(suffix: String) {
         for unit in suffix.arr {
-            this.arr.Push(unit);
+            this.arr.push(unit);
         }
     }
     /// Changes the first character of every word in the string to upper case.
     /// ## Usage
     /// ```
     /// str := "jonathan is a boy";
-    /// str2 := str.CapitalCase();
+    /// str2 := str.capitalCase();
     /// 
-    /// Assert(str2).Equals("Jonathan Is A Boy");
+    /// assert(str2).equals("Jonathan Is A Boy");
     /// ```
-    public function CapitalCase(): String {
-        return Invoke(Injunction.StrCapitalCase(this));
+    public function capitalCase(): String {
+        return invoke(Injunction.StrCapitalCase(this));
     }
     /// Returns an iterator over the valid characters in the string.
     /// ## Usage
     /// ```
     /// str := "adebola.io"
     /// 
-    /// for char in str.Chars() {
-    ///     Print(char);
+    /// for char in str.chars() {
+    ///     print(char);
     /// }
     /// ```
-    public function Chars(): Chars {
+    public function chars(): Chars {
         return new Chars(this);
     }
     /// Empties the string of its characters.
@@ -124,38 +124,38 @@ public model String
     /// ```
     /// str := "tralalalalaleeday";
     /// 
-    /// str.Clear();
+    /// str.clear();
     /// 
-    /// Assert(str).Equals("");
-    /// Assert(str.Length()).Equals(0);
+    /// assert(str).equals("");
+    /// assert(str.length()).equals(0);
     /// ```
-    public function Clear() {
-        Invoke(Injunction.StrClear(this))
+    public function clear() {
+        invoke(Injunction.StrClear(this))
     }
     /// Returns true if a substring is contained within the string.
     /// ## Usage
     /// ```
     /// str := "This is a world premiere.";
     /// 
-    /// AssertThat(str.Contains("world"));
-    /// AssertThat(str.Contains("premiere"));
+    /// assertThat(str.contains("world"));
+    /// assertThat(str.contains("premiere"));
     /// ```
-    public function Contains(substr: String): Bool {
-       this.arr.Includes(substr.arr)
+    public function contains(substr: String): Bool {
+       this.arr.includes(substr.arr)
     }
     /// Returns true if the string ends with a given pattern.
     /// ### Usage
     /// ```
     /// name := "Michael";
-    /// AssertThat(name.EndsWith("l"));
-    /// AssertThat(name.StartsWith("ael"));
+    /// assertThat(name.endsWith("l"));
+    /// assertThat(name.startsWith("ael"));
     /// ```
-    public function EndsWith(pat: String): Bool {
-        if pat.arr.Length() > this.arr.Length() {
+    public function endsWith(pat: String): Bool {
+        if pat.arr.length() > this.arr.length() {
             return false;
         }
         for { a as ch1, b as ch2 } 
-          in this.arr.Reverse().Zip(pat.arr.Reverse()) 
+          in this.arr.reverse().zip(pat.arr.reverse()) 
         {
             if ch1 != ch2 {
                 return false;
@@ -167,101 +167,101 @@ public model String
     /// ## Usage
     /// ```
     /// str := "helloworld1234";
-    /// AssertThat(str.IsAlphanumeric());
+    /// assertThat(str.isAlphanumeric());
     /// 
     /// str2 := "%hello_world$";
-    /// AssertThat(!str2.IsAlphanumeric());
+    /// assertThat(!str2.isAlphanumeric());
     /// ```
-    public function IsAlphanumeric(): Bool {
-        return Invoke(Injunction.StrIsAlphanum(this));
+    public function isAlphanumeric(): Bool {
+        return invoke(Injunction.StrIsAlphanum(this));
     }
     /// Returns true if the string has no characters.
     /// ## Usage
     /// ```
     /// str := "";
-    /// AssertThat(str.IsEmpty());
+    /// assertThat(str.isEmpty());
     /// 
-    /// str.Append("Hello");
-    /// AssertThat(!str.IsEmpty());
+    /// str.append("Hello");
+    /// assertThat(!str.isEmpty());
     /// ```
-    public function IsEmpty(): Bool {
-        return this.arr.Length() == 0;
+    public function isEmpty(): Bool {
+        return this.arr.length() == 0;
     }
     /// Returns the number of characters in the string.
     /// ## Usage
     /// ```
     /// str := "Hello";
     /// 
-    /// Assert(str.Length()).Equals(5);
+    /// assert(str.length()).equals(5);
     /// ```
-    public function Length(): UnsignedInt {
-        this.arr.Length()
+    public function length(): UnsignedInt {
+        this.arr.length()
     }
     /// Changes the case of all letters in the string to lower case.
     /// ## Usage
     /// ```
     /// str := "HELLO, WORLD!";
-    /// str2 := str.LowerCase();
+    /// str2 := str.lowerCase();
     /// 
-    /// Assert(str2).Equals("hello, world!");
+    /// assert(str2).equals("hello, world!");
     /// ```
-    public function LowerCase(): String {
-        return Invoke(Injunction.StrLowercase(this));
+    public function lowerCase(): String {
+        return invoke(Injunction.StrLowercase(this));
     }
     /// Returns a version of the string with padding on both sides.
     /// ## Usage
     /// ```
     /// str := "Alright";
-    /// str2 := str.Pad(3);
+    /// str2 := str.pad(3);
     /// 
-    /// Assert(str2).Equals("   Alright   "); // 3 spaces before and after.
+    /// assert(str2).equals("   Alright   "); // 3 spaces before and after.
     /// ```
-    public function Pad(count: UnsignedInt): String {
-        return Invoke(Injunction.StrPad(this, count));
+    public function pad(count: UnsignedInt): String {
+        return invoke(Injunction.StrPad(this, count));
     }
     /// Returns a version of the string with left padding.
     /// ## Usage
     /// ```
     /// str := "Alright";
-    /// str2 := str.PadLeft(3);
+    /// str2 := str.padLeft(3);
     /// 
-    /// Assert(str2).Equals("   Alright"); // 3 spaces before.
+    /// assert(str2).equals("   Alright"); // 3 spaces before.
     /// ```
-    public function PadLeft(count: UnsignedInt): String {
-        return Invoke(Injunction.StrPadLeft(this, count));
+    public function padLeft(count: UnsignedInt): String {
+        return invoke(Injunction.StrPadLeft(this, count));
     }
     /// Returns a version of the string with left padding.
     /// ## Usage
     /// ```
     /// str := "Alright";
-    /// str2 := str.PadRight(3);
+    /// str2 := str.padRight(3);
     /// 
-    /// Assert(str2).Equals("Alright   "); // 3 spaces before.
+    /// assert(str2).equals("Alright   "); // 3 spaces before.
     /// ```
-    public function PadRight(count: UnsignedInt): String {
-        return Invoke(Injunction.StrPadRight(this, count));
+    public function padRight(count: UnsignedInt): String {
+        return invoke(Injunction.StrPadRight(this, count));
     }
     /// Pads the string in place with whitespace on the left and right sides.
     /// ## Usage
     /// ```
     /// str := "Hello, world!";
-    /// str.PadInPlace(3);
+    /// str.padInPlace(3);
     /// 
-    /// Assert(str).Equals("   Hello, world!   ");
+    /// assert(str).equals("   Hello, world!   ");
     /// ```
-    public function PadInPlace(count: UnsignedInt) {
-        Invoke(Injunction.StrPadInPlace(this, count));
+    public function padInPlace(count: UnsignedInt) {
+        invoke(Injunction.StrPadInPlace(this, count));
     }
     /// Adds text to the start of the string.
     /// ## Usage
     /// ```
     /// str := "world!"
-    /// str.Prepend("Hello, ");
+    /// str.prepend("Hello, ");
     /// 
-    /// Assert(str).Equals("Hello, world!");
+    /// assert(str).equals("Hello, world!");
     /// ```
-    public function Prepend(prefix: String) {
-        this.arr.Prepend(prefix.arr);
+    public function prepend(prefix: String) {
+        this.arr.prepend(prefix.arr);
     }
     /// Returns a String value that is made from a number of copies of the original string.
     /// If count is 0, the empty string is returned.
@@ -269,16 +269,16 @@ public model String
     /// ```
     /// str := "Whirlwind";
     /// 
-    /// str2 := str.Repeat(3);
-    /// Assert(str2).Equals("WhirlwindWhirlwindWhirlwind"); // 3 copies.
+    /// str2 := str.repeat(3);
+    /// assert(str2).equals("WhirlwindWhirlwindWhirlwind"); // 3 copies.
     /// 
-    /// str3 := str.Repeat(1);
-    /// Assert(str3).Equals("Whirlwind"); // One copy.
+    /// str3 := str.repeat(1);
+    /// assert(str3).equals("Whirlwind"); // One copy.
     /// 
-    /// str3 := str.Repeat(0);
-    /// AssertThat(str2.IsEmpty()); // No copies.
+    /// str3 := str.repeat(0);
+    /// assertThat(str2.IsEmpty()); // No copies.
     /// ```
-    public function Repeat(count: UnsignedInt): String {
+    public function repeat(count: UnsignedInt): String {
         str := new String();
         // for {} in 0..count {
         //    str.Append(this);
@@ -290,26 +290,26 @@ public model String
     /// ```
     /// str := "John goes to school. John buys a book.";
     /// 
-    /// str2 := str.Replace("John", "Mike");
+    /// str2 := str.replace("John", "Mike");
     /// 
-    /// Assert(str2).Equals("Mike goes to school. Mike buys a book.")
+    /// assert(str2).equals("Mike goes to school. Mike buys a book.")
     /// ```
-    public function Replace(substr: String, newstr: String): String {
-        return Invoke(Injunction.StrReplace(this, substr, newstr));
+    public function replace(substr: String, newstr: String): String {
+        return invoke(Injunction.StrReplace(this, substr, newstr));
     }
     /// Returns a reversed version of the string.
     /// ## Usage
     /// ```
     /// str := "pandemonium";
     /// 
-    /// str2 := str.Reverse();
+    /// str2 := str.reverse();
     /// 
-    /// Assert(str2).Equals("muinomednap");
+    /// assert(str2).equals("muinomednap");
     /// ```
-    public function Reverse(): String {
+    public function reverse(): String {
         newStr := new String();
-        for unit in this.arr.Reverse() {
-            newStr.arr.Push(unit);
+        for unit in this.arr.reverse() {
+            newStr.arr.push(unit);
         }
         return newStr;
     }
@@ -319,109 +319,109 @@ public model String
     /// ```
     /// str := "Hello, world!";
     /// 
-    /// Assert(str.Slice(0..5)).Equals(Some("Hello")); // index 0 to 4.
+    /// assert(str.slice(0..5)).equals(some("Hello")); // index 0 to 4.
     /// ```
-    public function Slice(bounds: Range<UnsignedInt>): ?String {
-        return Invoke(Injunction.StrSlice(this, bounds));
+    public function slice(bounds: Range<UnsignedInt>): ?String {
+        return invoke(Injunction.StrSlice(this, bounds));
     }
     /// Divides the string into a list of substrings based on a delimeter.
     /// ## Usage
     /// ```
     /// str := "Ring around the rosy";
-    /// words := str.Split(" ");
+    /// words := str.split(" ");
     /// 
-    /// Assert(words).Equals(["Ring", "Around", "The", "Rosy"]);
+    /// assert(words).equals(["Ring", "Around", "The", "Rosy"]);
     /// ```
-    public function Split(delim: String): []String {
-        return Invoke(Injunction.StrSplit(this, delim));
+    public function split(delim: String): []String {
+        return invoke(Injunction.StrSplit(this, delim));
     }
     /// Divides the string into a list of substrings based on a predicate.
     /// ## Usage
     /// ```
     /// str := "Hello world. My name is James.";
-    /// sentences := str.SplitAt(fn(pat) pat == ". ");
+    /// sentences := str.splitAt(fn(pat) pat == ". ");
     /// 
-    /// Assert(sentences).Equals(["Hello world", "My name is James."]);
+    /// assert(sentences).equals(["Hello world", "My name is James."]);
     /// ```
-    public function SplitAt(predicate: fn(pattern: String): Bool): This {
-        return Invoke(Injunction.StrSplitAt(this, predicate));
+    public function splitAt(predicate: fn(pattern: String): Bool): This {
+        return invoke(Injunction.StrSplitAt(this, predicate));
     }
     /// Changes only the first character in the string to upper case.
     /// ## Usage
     /// ```
     /// str := "nice to meet you, where you been?";
-    /// str2 := str.SentenceCase();
+    /// str2 := str.sentenceCase();
     /// 
-    /// Assert(str2).Equals("Nice to meet you, where you been?");
+    /// assert(str2).equals("Nice to meet you, where you been?");
     /// ```
-    public function SentenceCase(): String {
-        return Invoke(Injunction.StrSentenceCase(this));
+    public function sentenceCase(): String {
+        return invoke(Injunction.StrSentenceCase(this));
     }
     /// Returns a version of the string without left or right whitespace padding.
     /// ## Usage
     /// ```
     /// str := "\n\n\nWhat then shall we say?  \n\n\n\r\t";
     /// 
-    /// Assert(str.Trim()).Equals("What then shall we say?");
+    /// assert(str.trim()).equals("What then shall we say?");
     /// ```
-    public function Trim(): String {
-        return Invoke(Injunction.StrTrim(this));
+    public function trim(): String {
+        return invoke(Injunction.StrTrim(this));
     }  
     /// Mutates the string in place and removes left or right whitespace padding.
     /// ## Usage
     /// ```
     /// str := "\n\n\nWhat then shall we say?  \n\n\n\r\t";
     /// 
-    /// str.TrimInPlace();
+    /// str.trimInPlace();
     /// 
-    /// Assert(str).Equals("What then shall we say?");
+    /// assert(str).equals("What then shall we say?");
     /// ```
     // !::mutable::!
-    public function TrimInPlace(): String {
-        return Invoke(Injunction.StrTrimInPlace(this));
+    public function trimInPlace(): String {
+        return invoke(Injunction.StrTrimInPlace(this));
     }   
     /// Returns a version of the string without left whitespace padding.
     /// ## Usage
     /// ```
     /// str := "\n\n\nWhat then shall we say?\n";
     /// 
-    /// Assert(str.TrimStart()).Equals("What then shall we say?\n");
+    /// assert(str.trimStart()).equals("What then shall we say?\n");
     /// ```
-    public function TrimStart(): String {
-        return Invoke(Injunction.StrTrimStart(this));
+    public function trimStart(): String {
+        return invoke(Injunction.StrTrimStart(this));
     } 
     /// Returns a version of the string without right whitespace padding.
     /// ## Usage
     /// ```
     /// str := "\nWhat then shall we say?\n\n\n";
     /// 
-    /// Assert(str.TrimEnd()).Equals("\nWhat then shall we say?");
+    /// assert(str.trimEnd()).equals("\nWhat then shall we say?");
     /// ```
-    public function TrimEnd(): String {
-        return Invoke(Injunction.TrimEnd(this));
+    public function trimEnd(): String {
+        return invoke(Injunction.TrimEnd(this));
     }
     /// Changes the case of all letters in the string to upper case.
     /// ## Usage
     /// ```
     /// str := "hello, world!";
-    /// Assert(str.UpperCase()).Equals("HELLO, WORLD!");
+    /// assert(str.upperCase()).equals("HELLO, WORLD!");
     /// ```
-    public function UpperCase(): String {
-        return Invoke(Injunction.StrUppercase(this));
+    public function upperCase(): String {
+        return invoke(Injunction.StrUppercase(this));
     }
     /// Returns true if the string starts with a given pattern.
     /// 
     /// ### Usage
     /// ```
     /// name := "Joshua";
-    /// AssertThat(name.StartsWith("J"));
-    /// AssertThat(name.StartsWith("Jo"));
+    /// assertThat(name.startsWith("J"));
+    /// assertThat(name.startsWith("Jo"));
     /// ```
-    public function StartsWith(pat: String): Bool {
-        if pat.arr.Length() > this.arr.Length() {
+    public function startsWith(pat: String): Bool {
+        if pat.arr.length() > this.arr.length() {
             return false;
         }
-        for { a, b } in this.arr.Iter().Zip(pat.arr.Iter()) 
+        for { a, b } in this.arr.iter().zip(pat.arr.iter()) 
         {
             if a != b {
                 return false;
@@ -433,12 +433,12 @@ public model String
     /// ## Usage
     /// ```
     /// value := 1234;
-    /// valueStr := String.From(value);
+    /// valueStr := String.from(value);
     /// 
-    /// Assert(valueStr).Equals("1234");
+    /// assert(valueStr).equals("1234");
     /// ```
-    public static function From<T implements Display>(value: T): This {
-        value.ToStr()
+    public static function from<T implements Display>(value: T): This {
+        value.toStr()
     }
 }
 
@@ -452,14 +452,14 @@ public model Chars implements Iteratable<String> {
         this.string = string;
     }
     /// Returns the next character.
-    public function [Iteratable.Next](): ?String {
-        nextChar := this.string.At(this.idx)?;
+    public function [Iteratable.next](): ?String {
+        nextChar := this.string.at(this.idx)?;
         this.idx += 1;
-        return Some(nextChar);
+        return some(nextChar);
     }
 }
 
 /// Calculates the edit distance between two strings using the [Levenshtein's Algorithm](http://example.com).
 public function LevenshteinEditRatio(str1: String, str2: String): Int {
-    Todo()
+    todo()
 }

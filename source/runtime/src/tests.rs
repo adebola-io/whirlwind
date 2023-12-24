@@ -190,7 +190,7 @@ fn test_runtime_if_else() {
 #[test]
 #[should_panic = "called `Result::unwrap()` on an `Err` value: StackOverflow"]
 fn test_stack_overflow() {
-    // Call Main() recursively.
+    // Call main() recursively.
     let func_idx = 0usize.to_be_bytes();
     run(&[
         PAD,

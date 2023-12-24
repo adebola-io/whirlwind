@@ -1,10 +1,10 @@
-module Bool;
-use Core.Prelude.Display;
+module bool;
+use core.prelude.Display;
 
 
 public model Bool implements Display {
     // compiler built-in.
-    public function [Display.ToStr](): String {
+    public function [Display.toStr](): String {
         if this {"true"} else "false"
     }
 }

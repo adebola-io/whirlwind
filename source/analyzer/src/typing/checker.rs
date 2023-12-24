@@ -1684,12 +1684,6 @@ mod expressions {
                 | EvaluatedType::Generic { .. }
                 | EvaluatedType::OpaqueTypeInstance { .. }
                 | EvaluatedType::FunctionExpressionInstance { .. } => {
-                    if matches!(left_type, EvaluatedType::EnumInstance { .. })
-                        && !assexp.left.is_identifier()
-                    {
-                        checker_ctx.add_error(errors::invalid_assignment_target(assexp.span));
-                        return EvaluatedType::Unknown;
-                    }
                     match unify_types(
                         &left_type,
                         &right_type,
@@ -1889,7 +1883,6 @@ mod expressions {
                     || matches!(accessexp.object, TypedExpression::ThisExpr(_))
             }
             TypedExpression::IndexExpr(indexp) => is_valid_lhs(&indexp.object),
-
             _ => false,
         }
     }

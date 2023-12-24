@@ -546,7 +546,7 @@ mod bind_utils {
                 (CurrentModuleType::String, "String") => &mut symbol_library.string,
                 (CurrentModuleType::Array, "Array") => &mut symbol_library.array,
                 (CurrentModuleType::Bool, "Bool") => &mut symbol_library.bool,
-                (CurrentModuleType::Async, "Prospect") => &mut symbol_library.prospect,
+                (CurrentModuleType::Concurrent, "Prospect") => &mut symbol_library.prospect,
                 (CurrentModuleType::Maybe, "Maybe") => &mut symbol_library.maybe,
                 (CurrentModuleType::Numeric, _) => match entry.name() {
                     "Int" => &mut symbol_library.int,
@@ -564,8 +564,7 @@ mod bind_utils {
                 (CurrentModuleType::Internal, _) => match entry.name() {
                     "never" => &mut symbol_library.never,
                     "Injunction" => &mut symbol_library.injunction,
-                    "Invoke" => &mut symbol_library.invoke,
-                    "NULLPTR" => &mut symbol_library.nullptr,
+                    "invoke" => &mut symbol_library.invoke,
                     _ => return index,
                 },
                 (CurrentModuleType::Iteration, _) => match entry.name() {
@@ -578,7 +577,6 @@ mod bind_utils {
                 (CurrentModuleType::Range, "Range") => &mut symbol_library.range,
                 (CurrentModuleType::Default, "Default") => &mut symbol_library.default,
                 (CurrentModuleType::Ops, "Addition") => &mut symbol_library.addition,
-                // CurrentModuleType::Iteratable => todo!(),
                 _ => return index,
             }) = Some(index);
         }
@@ -631,8 +629,8 @@ mod bind_utils {
                     if let Some(index) = binder.lookup_generic_parameter(&name.name) {
                         return index;
                     }
-                    // Is it the Core library?
-                    if name.name == "Core" {
+                    // Is it the core library?
+                    if name.name == "core" {
                         if let Some(symbol_idx) = binder.corelib_symbol_idx {
                             return symbol_idx;
                         }
@@ -1459,7 +1457,10 @@ mod statements {
                 errors,
                 errors::duplicate_property(attribute.name.to_owned()),
             );
-            let symbol_index = *binder.known_values.get(&first_instance.name.span).unwrap();
+            let symbol_index = *binder
+                .known_values
+                .get(&first_instance.name.span)
+                .expect(&first_instance.name.name);
             let symbol = symbol_library.get_mut(symbol_index).unwrap();
             symbol.add_reference(binder.path, method.name.span);
             symbol_index

@@ -1,10 +1,10 @@
-module Sort;
+module sort;
 
-use Core.Primitives.Ops.Orderable;
-use Core.Memory.Swap;
-use Core.Primitives.Array;
+use core.primitives.ops.Orderable;
+use core.memory.swap;
+use core.primitives.Array;
 
 /// Implementation of the QuickSort algorithm in Whirlwind.
-public function QuickSort<T implements Orderable>(array: Array<T>) {
+public function quickSort<T implements Orderable>(array: Array<T>) {
 
 }

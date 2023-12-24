@@ -1,19 +1,19 @@
-module Range;
+module range;
 
-use Core.Prelude.Iteratable;
-use Core.Prelude.{Maybe, None, Some};
-use Core.Primitives.Ops.Sequenced;
+use core.prelude.Iteratable;
+use core.prelude.{Maybe, none, some};
+use core.primitives.ops.Sequenced;
 
 public model Range<T implements Sequenced> implements Iteratable<T> {
     public var start: T;
     public var end: T;
 
-    public function [Iteratable.Next](): ?T {
+    public function [Iteratable.next](): ?T {
         // this.start = this.start.NextItem().Unwrap();
         if this.start == this.end {
-            None()
+            none()
         } else {
-            Some(this.start)
+            some(this.start)
         }
     }
 }

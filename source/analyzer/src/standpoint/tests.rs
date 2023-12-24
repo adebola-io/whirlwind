@@ -8,7 +8,7 @@ fn bind_variables_and_constants() {
     let text = "
             module Test; 
 
-            public function Main() {
+            public function main() {
                 greeting := \"Say Hello\";
                 const CONSTANT: Number = 9090;
             }
@@ -48,9 +48,9 @@ fn bind_call_expression() {
     let text = "
             module Test;
 
-            public function Main() {
+            public function main() {
                 greeting := \"Say Hello\";
-                Println(greeting);
+                println(greeting);
             }
         ";
     let mut module = Module::from_text(text);
@@ -59,7 +59,7 @@ fn bind_call_expression() {
     assert!(standpoint.errors.len() == 1);
     assert!(standpoint
         .symbol_library
-        .find(|symbol| symbol.name == "Println")
+        .find(|symbol| symbol.name == "println")
         .is_some());
     assert!(standpoint
         .symbol_library
@@ -75,10 +75,10 @@ fn bind_models() {
             public model Car {
                 var make: String,
                 var year: UnsignedInt,
-                public function Honk() {
+                public function honk() {
 
                 }
-                public function [Vehicle.Start]<U>() {
+                public function [Vehicle.start]<U>() {
 
                 }
             }
@@ -92,7 +92,7 @@ fn bind_models() {
         .is_some());
     assert!(standpoint
         .symbol_library
-        .find(|symbol| symbol.name == "Honk")
+        .find(|symbol| symbol.name == "honk")
         .is_some());
     println!("{:#?}", standpoint.symbol_library);
 }
@@ -103,7 +103,7 @@ fn bind_interfaces() {
             module Test;
 
             public interface Vehicle {
-                public function Start(): This;
+                public function start(): This;
             }
         ";
     let mut module = Module::from_text(text);
@@ -115,7 +115,7 @@ fn bind_interfaces() {
         .is_some());
     assert!(standpoint
         .symbol_library
-        .find(|symbol| symbol.name == "Start")
+        .find(|symbol| symbol.name == "start")
         .is_some());
     println!("{:#?}", standpoint.symbol_library);
 }
@@ -126,7 +126,7 @@ fn bind_this() {
             module Test;
 
             public model Unit {
-                public function Clone(): This {
+                public function clone(): This {
                     return this;
                 }
             }
@@ -175,7 +175,7 @@ fn test_fn_expr() {
     let text = "
             module Test;
 
-            function Main() {
+            function main() {
                 square := fn(a) a * 2;
             }
         ";
@@ -206,10 +206,10 @@ fn test_use_import() {
     let text = "
             module Test;
 
-            use Core.Io.Println;
+            use core.io.println;
 
-            function Main() {
-                Println(\"Hello, world!\");
+            function main() {
+                println(\"Hello, world!\");
             }
         ";
     let mut module = Module::from_text(text);
@@ -217,11 +217,11 @@ fn test_use_import() {
     let standpoint = Standpoint::build_from_module(module, false).unwrap();
     assert!(standpoint
         .symbol_library
-        .find(|symbol| symbol.name == "Println")
+        .find(|symbol| symbol.name == "println")
         .is_some());
     assert!(standpoint
         .symbol_library
-        .find(|symbol| symbol.name == "Main")
+        .find(|symbol| symbol.name == "main")
         .is_some());
     assert!(standpoint.errors.len() == 0);
     println!(
@@ -239,7 +239,7 @@ fn test_function() {
     let text = "
         module Main;
 
-function Main() {
+function main() {
 }
 
 /// Adds two numbers together.
@@ -266,9 +266,9 @@ fn show_imports() {
     let text = "
         module Test;
 
-        use Utils.Sum;
+        use utils.sum;
 
-        public function Main() {
+        public function main() {
             return Sum(1, 2);
         }
         ";
@@ -291,7 +291,7 @@ fn resolve_single_module_imports() {
     let module0_text = "
     module Main;
 
-    use Test.Utils.Add;
+    use Test.utils.add;
 
     
         ";
@@ -300,7 +300,7 @@ fn resolve_single_module_imports() {
 
     type Int = Int;
 
-    public function Add(a: Int, b: Int): Int {
+    public function add(a: Int, b: Int): Int {
         return a + b;
     }
     ";
@@ -311,7 +311,7 @@ fn resolve_single_module_imports() {
     public use Utils;
     public use Utils.Add;
 
-    public function Main() {
+    public function main() {
         return Add(1, 2);
     }
     ";
@@ -372,7 +372,7 @@ fn resolve_mutliple_module_imports() {
 
     public type Function = fn (a: Function): Function;
 
-    public function Main() {
+    public function main() {
         return Add(1, 2);
     }
     ";
@@ -423,7 +423,7 @@ fn test_variable_binding() {
 
             type String = String;
 
-            public function Main() {
+            public function main() {
                 var { x, y }: Position;
                 var name: String = \"Sefunmi\";
                 var [arrayItem1, arrayItem2] = new Array().FillWith(0, 3);
@@ -440,7 +440,7 @@ fn test_forloop_binding() {
     let text = "
             module Test;
 
-            public function Main() {
+            public function main() {
                 a := [1, 2, 3];
                 for { num as n } in a {
                     
@@ -482,7 +482,7 @@ fn refreshing() {
         "
     module Test;
 
-    public function Main() {
+    public function main() {
         
     }
     ",

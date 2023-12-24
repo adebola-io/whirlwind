@@ -1,8 +1,8 @@
 /// This module defines intrinsic interfaces
-module Interfaces;
+module interfaces;
 
-public use Display;
-public use Default;
-public use Guaranteed;
-public use Iteration;
-public use Try;
+public use display;
+public use default;
+public use guaranteed;
+public use iteration;
+public use try;

@@ -1,5 +1,5 @@
-module Guaranteed;
+module guaranteed;
 
 public interface Guaranteed<T> {
-    function Guarantee(): T;
+    function guarantee(): T;
 }

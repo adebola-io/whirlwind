@@ -122,11 +122,11 @@ impl Standpoint {
     ) -> Option<PathIndex> {
         let (name, dir_map) = if name == "Package" {
             return Some(self.entry_module);
-        } else if name == "Super" {
+        } else if name == "super" {
             let parent_folder_of_dir = get_parent_dir(dir)?;
             let dir_map = self.directories.get(parent_folder_of_dir)?;
             (parent_folder_of_dir.file_stem()?.to_str()?, dir_map)
-        } else if name == "Core" && self.corelib_path.is_some() {
+        } else if name == "core" && self.corelib_path.is_some() {
             return self.corelib_path;
         } else {
             // todo: Packages. namespace.
@@ -572,7 +572,7 @@ impl Standpoint {
                 let path_str = path.to_string_lossy().replace("\\", "/");
                 match path_str.as_str() {
                     Self::ARRAY => CurrentModuleType::Array,
-                    Self::ASYNC => CurrentModuleType::Async,
+                    Self::CONCURRENT => CurrentModuleType::Concurrent,
                     Self::BOOL => CurrentModuleType::Bool,
                     Self::NUMERIC => CurrentModuleType::Numeric,
                     Self::INTERNAL => CurrentModuleType::Internal,

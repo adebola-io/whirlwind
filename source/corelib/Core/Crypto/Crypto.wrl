@@ -1,11 +1,11 @@
-module Crypto;
+module crypto;
 
-use Core.Prelude.Todo;
-use Core.Prelude.String;
+use core.prelude.todo;
+use core.prelude.String;
 
 public model JwtEncryptor {
     /// Verify 
-    public static function Decode(name: String, secret: String): String {
-        Todo()
+    public static function decode(name: String, secret: String): String {
+        todo()
     }
 }

@@ -1,9 +1,9 @@
 /// This module contains useful.
-module Collections;
+module collections;
 
-public use OrderedSet.Tuple;
-public use OrderedSet.Quadruple;
-public use OrderedSet.Pair;
-public use ArrayStack.ArrayStack;
-public use HashMap.{HashMap, Hash, ToMap};
-public use Sort.{QuickSort};
+public use orderedSet.Tuple;
+public use orderedSet.Quadruple;
+public use orderedSet.pair;
+public use arrayStack.ArrayStack;
+public use hashMap.{HashMap, Hash, ToMap};
+public use sort.{quickSort};

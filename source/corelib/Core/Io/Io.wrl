@@ -1,31 +1,31 @@
 /// ## Input/Output in Whirlwind
 /// 
-/// The `Io` module provides a set of tools for fundamental input/output operations and streams.
+/// The `io` module provides a set of tools for fundamental input/output operations and streams.
 /// These tools facilitate reading and writing data to various sources, such as files, 
 /// network connections, or in-memory buffers. 
 /// 
 /// It abstracts the underlying details of the data source, allowing
 /// for a consistent interface.
-module Io;
+module io;
 
-use Core.Primitives.String;
-use Core.Prelude.Display;
-use Core.Internals.Invoke;
-use Core.Internals.Injunction;
-use Core.Prelude.Todo;
-use Core.Prelude.UnsignedInt;
-use Core.Collections.HashMap;
+use core.primitives.String;
+use core.prelude.Display;
+use core.internals.invoke;
+use core.internals.Injunction;
+use core.prelude.todo;
+use core.prelude.UnsignedInt;
+use core.collections.HashMap;
 
 /// Prints a message or an object to the console, terminal or any predefined output interface.
-public function Print<T implements Display>(data: T) {
-    dataStr := data.ToStr();
-    Invoke(Injunction.Print(dataStr));
+public function print<T implements Display>(data: T) {
+    dataStr := data.toStr();
+    invoke(Injunction.Print(dataStr));
 }
 
 /// Prints a message or an object to the console, terminal, or any predefined output interface.
-public function PrintFmt<T implements Display>(data: T) {
-    dataStr := data.ToFmtStr();
-    Invoke(Injunction.Print(dataStr));
+public function printFmt<T implements Display>(data: T) {
+    dataStr := data.toFmtStr();
+    invoke(Injunction.Print(dataStr));
 }
 
 public interface Writer {}
@@ -35,7 +35,7 @@ public interface IoError {}
 
 
 /// Creates a new formattable template.
-public function Fmt(template: String): Template {
+public function fmt(template: String): Template {
     new Template(template)
 }
 
@@ -55,8 +55,8 @@ public model Template implements Display {
         this.transforms = [];
         this.arguments = [];
     }
-    public function [Display.ToStr](): String {
-        return this.Finish();
+    public function [Display.toStr](): String {
+        return this.finish();
     }
     /// Sets an argument based on the list of named parameters in the template string.
     /// ### Usage
@@ -64,25 +64,25 @@ public model Template implements Display {
     /// weather := "bright";
     /// emotion := "happy";
     /// 
-    /// template := Core.Io.Fmt(
+    /// template := core.io.fmt(
     ///            "The day is %{weather}, 
     ///             It's bright and fair,
     ///             Oh %{emotion} day,
     ///             The day of joy!");
     /// 
     /// completed := template
-    ///                 .Set("weather", weather)
-    ///                 .Set("emotion", emotion)
-    ///                 .Finish();
+    ///                 .set("weather", weather)
+    ///                 .set("emotion", emotion)
+    ///                 .finish();
     /// 
-    /// Assert(completed)
-    ///    .Equals("The day is bright, 
+    /// assert(completed)
+    ///    .equals("The day is bright, 
     ///             It's bright and fair,
     ///             Oh happy day,
     ///             The day of joy!");
     /// ```
-    public function Set<T implements Display>(param: String, value: T): This {
-        this.map.Set(param, value.ToStr());
+    public function set<T implements Display>(param: String, value: T): This {
+        this.map.set(param, value.toStr());
         return this;
     }
     /// Adds an argument according to the list of positional parameters
@@ -92,27 +92,27 @@ public model Template implements Display {
     /// name := "Sefunmi";
     /// age := 21;
     /// 
-    /// template := Core.Io.Fmt("My name is % and I am % years old.");
-    /// completed := template.Add(name).Add(age).Finish();
+    /// template := core.io.fmt("My name is % and I am % years old.");
+    /// completed := template.add(name).add(age).finish();
     /// 
-    /// Core.Io.Print(completed); // Will print out "My name is Sefunmi and I am 21 years old."
+    /// core.io.print(completed); // Will print out "My name is Sefunmi and I am 21 years old."
     /// ```
-    public function Add<T implements Display>(value: T): This {
-        this.arguments.Push(value.ToStr());
+    public function add<T implements Display>(value: T): This {
+        this.arguments.push(value.toStr());
         return this;
     }
     /// Appends new template text to the end of the template.
     /// ### Usage
     /// ```
-    /// name := Core.Io.Fmt("Welcome, %!");
-    /// name.Add("Mark");
+    /// name := core.io.fmt("Welcome, %!");
+    /// name.add("Mark");
     /// 
-    /// name.Extend(" Good %.");
-    /// name.Add("Morning");
+    /// name.extend(" Good %.");
+    /// name.add("Morning");
     /// 
-    /// Assert(name.Finish()).Equals("Welcome, Mark! Good Morning.");
+    /// assert(name.finish()).equals("Welcome, Mark! Good Morning.");
     /// ```
-    public function Extend(suffix: String): This {
+    public function extend(suffix: String): This {
         this.template += suffix;
         return this;
     }
@@ -124,27 +124,27 @@ public model Template implements Display {
     /// transformer is ignored until it is.
     /// ### Usage
     /// ```
-    /// template := Core.Io.Fmt("Hello %!");
+    /// template := core.io.fmt("Hello %!");
     /// 
-    /// template.Transform(0, fn(x) x.CapitalCase());
-    /// template.Add("john");
+    /// template.transform(0, fn(x) x.capitalCase());
+    /// template.add("john");
     /// 
-    /// Assert(template.Finish()).Equals("Hello, John!");
+    /// assert(template.finish()).equals("Hello, John!");
     /// ```
-    public function Transform(arg: UnsignedInt, transformer: fn(x: String): String): This {
-        this.transforms.Push(transformer);
+    public function transform(arg: UnsignedInt, transformer: fn(x: String): String): This {
+        this.transforms.push(transformer);
         return this;
     }
     /// Builds a string from the template with all the inputted values.
-    public function Finish(): String {
-        Todo()
+    public function finish(): String {
+        todo()
     }
 }
 
 test "create templates" {
-    use Core.Testing.Assert;
+    use core.testing.assert;
 
     template := new Template("Hello, %!");
-    template.Add("world");
-    Print(template)
+    template.add("world");
+    print(template)
 }

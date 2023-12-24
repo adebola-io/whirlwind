@@ -1,30 +1,30 @@
-module Testing;
+module testing;
 
-use Core.Prelude.Bool;
-use Core.Prelude.Todo;
-use Core.Process.FatalOnCaller;
-use Core.Io.Fmt;
-use Core.Primitives.String;
-use Core.Primitives.UInt8;
-use Core.Prelude.Display;
+use core.prelude.Bool;
+use core.prelude.todo;
+use core.process.fatalOnCaller;
+use core.io.fmt;
+use core.primitives.String;
+use core.primitives.UInt8;
+use core.prelude.Display;
 
 /// Creates an assertion object.
-public function Assert<T implements Display>(value: T): Assertion<T> {
+public function assert<T implements Display>(value: T): Assertion<T> {
     return new Assertion(value);
 }
 
 /// Tests that a condition is true.
-public function AssertThat(proposition: Bool) {
+public function assertThat(proposition: Bool) {
     if !proposition {
-        FatalOnCaller("Assertion failed due to false proposition.");
+        fatalOnCaller("Assertion failed due to false proposition.");
     }
 }
 
 /// Generates a string of an assertion error.
-function AssertionMessage<T implements Display>(mainMessage: String, left: T, right: T): String {
-    template := Fmt(mainMessage);
-    template.Extend("Contained value: %\nOther: %");
-    return template.Add(left).Add(right).Finish();
+function assertionMessage<T implements Display>(mainMessage: String, left: T, right: T): String {
+    template := fmt(mainMessage);
+    template.extend("Contained value: %\nOther: %");
+    return template.add(left).add(right).finish();
 }
 
 /// This model represents an assertion object, 
@@ -35,33 +35,33 @@ public model Assertion<T implements Display> {
         this.value = value;
     }
     /// Checks if the contained value equals another.
-    public function Equals(other: T): This {
+    public function equals(other: T): This {
         if other != this.value {
-            message := AssertionMessage(
+            message := assertionMessage(
                         "Assertion failed on equality.", 
                         this.value, 
                         other);
-            FatalOnCaller(message);
+            fatalOnCaller(message);
         };
         return this;
     }
     /// Checks that the contained value does not equal another.
-    public function DoesNotEqual(other: T): This {
+    public function doesNotEqual(other: T): This {
         if other == this.value {
-            message := AssertionMessage(
+            message := assertionMessage(
                         "Assertion failed on inequality.", 
                         this.value, 
                         other);
-            FatalOnCaller(message);
+            fatalOnCaller(message);
         };
         return this;
     }
     /// Checks that an array is empty.
-    public static function ArrayIsEmpty<T>(arr: Array<T>) {
-        if arr.Length() != 0 {
-            message := Core.Io.Fmt("Assertion failed because array is not empty.");
-            message.Extend("Array Length: %").Add(arr.Length());
-            FatalOnCaller(message.Finish());
+    public static function arrayIsEmpty<T>(arr: Array<T>) {
+        if arr.length() != 0 {
+            message := core.io.fmt("Assertion failed because array is not empty.");
+            message.extend("Array Length: %").add(arr.length());
+            fatalOnCaller(message.finish());
         }
     }
 }

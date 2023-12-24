@@ -1,44 +1,44 @@
-module Response;
-use Request.HttpRequest;
+module response;
+use request.HttpRequest;
 
-use Core.Prelude.{String, UnsignedInt, Maybe, Todo};
-use Core.Data.JsonValue;
+use core.prelude.{String, UnsignedInt, Maybe, todo};
+use core.data.JsonValue;
 
 /// The headers on a 
 public model ResponseHeaders {
-    public function Set(key: String, value: String) {
-        Todo()
+    public function set(key: String, value: String) {
+        todo()
     }
-    public function Get(key: String): ?String {
-        Todo()
+    public function get(key: String): ?String {
+        todo()
     }
 }
 
 public model HttpResponse {
-    var status: UnsignedInt;
+    var _status: UnsignedInt;
     var headers: ResponseHeaders;
     var data: String;
     /// Build a response object from a request.
-    public static function From(request: HttpRequest): This {
-        return Todo();
+    public static function from(request: HttpRequest): This {
+        return todo();
     }
     /// Returns the content type set in the response header.
-    public function ContentType(): ?String {
-        this.headers.Get("Content-Type")
+    public function contentType(): ?String {
+        this.headers.get("Content-Type")
     }
     /// Sets the status code value of the response.
-    public function Status(value: UnsignedInt): This {
-        this.status = value;
+    public function status(value: UnsignedInt): This {
+        this._status = value;
         return this;
     }
     /// Sets the response type to HTML Text.
-    public function Html(string: String): This {
-        this.headers.Set("Content-Type", "text/html");
+    public function html(string: String): This {
+        this.headers.set("Content-Type", "text/html");
         this.data = string;
         return this;
     }
-    public function Json<J implements JsonValue>(json: J): This {
-        this.headers.Set("Content-Type", "application/json");
+    public function json<J implements JsonValue>(json: J): This {
+        this.headers.set("Content-Type", "application/json");
         return this;
     }
 }

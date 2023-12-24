@@ -1,67 +1,67 @@
 module Lib;
 
 test "Testing types." {
-    use Core.Testing.Assert;
-    use Core.Collections.Tuple;
+    use core.testing.assert;
+    use core.collections.Tuple;
 
     /// Returns the value itself.
-    function Identity<T>(value: T): T {
+    function identity<T>(value: T): T {
         return value;
     }
     /// Swaps the elements of a tuple.
     function Swap<T, U>(tuple: Tuple<T, U>): Tuple<U, T> {
-        tuple.Swap()
+        tuple.swap()
     }
     // swapping variables.
     tuple := new Tuple(true, "hello");
-    swapped := tuple.Swap();
+    swapped := tuple.swap();
     // Assert(tuple.Swap()).Equals(swapped);
     // Assert(Swap(tuple)).Equals(tuple.Swap());
  
     // Coercion.
-    stringItself := Identity("String"); // Should have type String.
-    result := Err(true);
-    result = Ok(None());
-    result = Ok(Some("hello, world"));
+    stringItself := identity("String"); // Should have type String.
+    result := err(true);
+    result = ok(none());
+    result = ok(some("hello, world"));
     // result should coerce to type Outcome<Maybe<String>, Bool>;
 
     // Opaque types.
     model Football {
         new(){}
         /// Bounce for a football.
-        public function Bounce(): String {
+        public function bounce(): String {
             return "Football is bouncing...";
         }
     }
     model Tennisball {
         new(){}
         /// Bounce for a tennisball.
-        public function Bounce() : String {
+        public function bounce() : String {
             return "Tennisball is bouncing...";
         }
     }
     model Basketball {
         new(){}
         /// Bounce for a basketball.
-        public function Bounce(): String {
+        public function bounce(): String {
             return "Basketball is bouncing...";
         }
     }
     type Ball = Football | Tennisball | Basketball;
     ball: Ball := new Football();
-    ball.Bounce();
+    ball.bounce();
     ball = new Basketball();
-    ball.Bounce();
+    ball.bounce();
 
     interface Bounceable {
-        public function Bounce(): String;
+        public function bounce(): String;
     }
     function Nested<T implements Bounceable>(newBall: T) {
         type InnerBall = T | Ball;
         ball: InnerBall := new Football();
-        ball.Bounce();
+        ball.bounce();
         ball = newBall;
-        ball.Bounce();
+        ball.bounce();
     }
 
     // Opaque types with interfaces.
@@ -71,13 +71,13 @@ test "Testing types." {
     model Box<T> implements TransformableTo<T> {
         new(value: T){}
         public function [TransformableTo.Transform](): T {
-            Todo()
+            todo()
         }
     }
     model Sphere<T> implements TransformableTo<T> {
         new(value: T){}
         public function [TransformableTo.Transform](): T {
-            Todo()
+            todo()
         }
     }
     type Transformable<T> = Box<T> | Sphere<T>;
@@ -90,14 +90,14 @@ test "Testing types." {
 
     // function type coercion.
     strArray := ["hello", "world"];
-    strArrayHasHello := strArray.Iter().Any(fn(element) element == "hello");
-    functor: fn(): fn(value: String): String := fn() fn(value) value.ToStr();
+    strArrayHasHello := strArray.iter().any(fn(element) element == "hello");
+    functor: fn(): fn(value: String): String := fn() fn(value) value.toStr();
     // Auto inferred generics.
     arr := [];
     arr = ["Hello", "world"]; // arr should infer type Array<String>
     firstItem := arr[0]; // Should infer type string.
     arr2 := [];
-    arr2.Push(Some(true)); // arr2 should infer type Array<Maybe<Bool>>.
+    arr2.push(some(true)); // arr2 should infer type Array<Maybe<Bool>>.
     arr3 := [];
     num: Number := 99;
     arr3[0] = num; // arr3 should infer type Array<Number> 
@@ -108,7 +108,7 @@ test "Testing types." {
         public var age: UInt8; // Set automatically.
         new(name: String, age?: UInt8) {
             this.name = name;
-            this.age = Maybe.UnwrapOrDefault(age);
+            this.age = Maybe.unwrapOrDefault(age);
         }
         static function [Default.Init](): This {
             return new Person("{unknown}");
@@ -121,13 +121,13 @@ test "Testing types." {
     // Destructuring in loops.
     people := [new Person("Susan Micheals"), new Person("Aaron Michaels")];
     for { name} in people {
-        Print(name)
+        print(name)
     }
 
-    function AnyType<T>(value: T) {}
+    function anyType<T>(value: T) {}
 
     // Generic Invariance.
-    function Hello<T>(value: T, factory: fn(value: T): T): T {
+    function hello<T>(value: T, factory: fn(value: T): T): T {
         value = factory(value); // valid.
         if true {
             return value; // valid.

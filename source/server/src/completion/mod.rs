@@ -526,7 +526,7 @@ impl<'a> CompletionFinder<'a> {
                 .prelude_path
                 .is_some_and(|prelude| symbol.was_declared_in(prelude)))
         {
-            data = Some(Value::String(String::from("use Core.Io.Stuff;")));
+            data = Some(Value::String(String::from("use core.io.Stuff;")));
         }
         Some(CompletionItem {
             label,

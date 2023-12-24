@@ -1,10 +1,10 @@
-module Data;
+module data;
 
 
-public use Serialize.{Serializeable, Deserializeable};
-public use Json;
-public use Db;
-public use Json.{
+public use serialize.{Serializeable, Deserializeable};
+public use json;
+public use db;
+public use json.{
     JsonValue, JsonValueType, RawJsonVal, JsonString,
     JsonNumber, JsonArray, JsonObject, JsonBool, JsonParseError,
 };

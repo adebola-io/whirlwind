@@ -1,16 +1,16 @@
-module Display;
+module display;
 
-use Core.Prelude.String;
-use Core.Internals.{Invoke, Injunction};
+use core.prelude.String;
+use core.internals.{invoke, Injunction};
 
 /// The `Display` interface defines a contract for the conversion of models into string representations.
 /// This allows objects of different types to be seamlessly integrated into textual contexts,
 /// particularly for user-facing interfaces.
 /// 
-/// Models that implements Display can be printed using the `Core.Io.Print` method.
+/// Models that implements Display can be printed using the `core.io.Print` method.
 /// ## Usage
 /// ```
-/// use Core.Io.Fmt;
+/// use core.io.fmt;
 /// // Implementing Display on a model.
 /// model Rectangle implements Display {
 ///     var length: UInt32;
@@ -21,9 +21,9 @@ use Core.Internals.{Invoke, Injunction};
 ///         this.width = width;
 ///     }
 /// 
-///     public function [Display.ToStr](): String {
-///         template := Fmt("Rectangle { length: %, breadth: % }");
-///         template.Add(this.length).Add(this.breadth).Finish()
+///     public function [Display.toStr](): String {
+///         template := fmt("Rectangle { length: %, breadth: % }");
+///         template.add(this.length).add(this.breadth).finish()
 ///     }
 /// }
 /// 
@@ -45,11 +45,11 @@ use Core.Internals.{Invoke, Injunction};
 /// ```
 public interface Display {
     /// Converts the implementing type to a string.
-    public function ToStr(): String {
-        return Invoke(Injunction.Display(this));
+    public function toStr(): String {
+        return invoke(Injunction.Display(this));
     }
     /// Converts the implementing type to a formatted string.
-    public function ToFmtStr(): String {
-        return this.ToStr();
+    public function toFmtStr(): String {
+        return this.toStr();
     }
 }

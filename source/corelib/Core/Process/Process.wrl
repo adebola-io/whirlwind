@@ -1,17 +1,17 @@
-module Process;
+module process;
 
-use Core.{
-    Primitives.String,
-    Primitives.UnsignedInt,
-    Primitives.UInt8,
-    Prelude.Maybe,
-    Async.CurrentSequence,
-    Internals.{Invoke, Injunction},
+use core.{
+    primitives.String,
+    primitives.UnsignedInt,
+    primitives.UInt8,
+    prelude.Maybe,
+    concurrent.CurrentSequence,
+    internals.{invoke, Injunction},
 };
 
 /// Unwinds the stack by one frame and crashes with a fatal error.
-public function FatalOnCaller(message: String): never  {
-    return Invoke(Injunction.SeqFatalOneStep(message));
+public function fatalOnCaller(message: String): never  {
+    return invoke(Injunction.SeqFatalOneStep(message));
 }
 
 /// Indicates that the current piece of code is unfinished.
@@ -22,16 +22,16 @@ public function FatalOnCaller(message: String): never  {
 /// This function will *always* cause the sequence to crash.
 /// ### Usage
 /// ```
-/// function PositiveSquare(a: Int): Outcome<Int, String> {
+/// function positiveSquare(a: Int): Outcome<Int, String> {
 ///     if a >= 0 {
-///         return Ok(a * a);
+///         return ok(a * a);
 ///     } else {
 ///         Todo() // will implement later.
 ///     }
 /// }
 /// ```
-public function Todo(message?: String): never {
-    return FatalOnCaller(message.UnwrapOr("Entered unfinished code."));
+public function todo(message?: String): never {
+    return fatalOnCaller(message.unwrapOr("Entered unfinished code."));
 }
 
 /// Called when an execution sequence encounters an unrecoverable or
@@ -44,32 +44,32 @@ public function Todo(message?: String): never {
 ///
 /// ### Usage
 /// ```
-/// function Divide(number: Int, divisor: Int): Float {
+/// function divide(number: Int, divisor: Int): Float {
 ///     if divisor == 0 {
-///         Fatal("Cannot divide by zero!");
+///         fatal("Cannot divide by zero!");
 ///     } else {
 ///         return a / b;
 ///     }
 /// }
 /// ```
-public function Fatal(message?: String): never {
-    return Invoke(Injunction.SeqFatal(message));
+public function fatal(message?: String): never {
+    return invoke(Injunction.SeqFatal(message));
 }
 
 /// Closes all sequences and exits the program with a given code.
 /// ### Usage
 /// ```
-/// use Core.Process.Exit;
+/// use core.process.exit;
 /// 
-/// Exit(0);
+/// exit(0);
 /// ```
-public function Exit(code: UInt8): never {
-    return Invoke(Injunction.Exit);
+public function exit(code: UInt8): never {
+    return invoke(Injunction.Exit);
 }
 
 /// Returns the value of an environment variable.
-public function GetEnv(varName: String): ?String {
-    Todo()
+public function getEnv(varName: String): ?String {
+    todo()
 }
 
 
@@ -77,15 +77,15 @@ const CURRENT_WORKING_DIRECTORY: String = "";
 /// Returns a string value corresponding to the path of the current working directory.
 /// ### Usage
 /// ```
-/// currentDir := Core.Process.Cwd();
-/// Print("The current directory is " + currentDir);
+/// currentDir := core.process.cwd();
+/// print("The current directory is " + currentDir);
 /// ```
-public function Cwd(): String {
+public function cwd(): String {
     return CURRENT_WORKING_DIRECTORY;
 }
 
 /// Schedules a function to run after a duration elapses.
-public function WaitThen(callback: fn(), timeout: UnsignedInt) {
-    CurrentSequence.Sleep(timeout);
+public function waitThen(callback: fn(), timeout: UnsignedInt) {
+    CurrentSequence.sleep(timeout);
     callback();
 }

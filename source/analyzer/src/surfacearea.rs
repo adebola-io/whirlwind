@@ -406,9 +406,9 @@ mod tests {
         let text = String::from(
             "
     module Test;
-    use Core.Io.Fmt;
+    use core.io.Fmt;
 
-    public function Main() {
+    public function main() {
         Print(\'Hello, world!\')
     }
 

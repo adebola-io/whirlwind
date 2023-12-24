@@ -1,10 +1,10 @@
-module Request;
+module request;
 
-use Core.Prelude.{Todo, String, Bool, Maybe, UnsignedInt, Outcome, Display};
-use Core.Memory.Buffer;
-use Core.Collections.HashMap;
-use Core.Io.IoError;
-use Response.HttpResponse;
+use core.prelude.{todo, String, Bool, Maybe, UnsignedInt, Outcome, Display};
+use core.memory.Buffer;
+use core.collections.HashMap;
+use core.io.IoError;
+use response.HttpResponse;
 
 public enum HttpMethod {
     Get,
@@ -14,45 +14,45 @@ public enum HttpMethod {
 }
   
 public model HttpRequest {
-    var url: String;
+    var _url: String;
     var data: HashMap<String, String>;
     new(url: String) {
-        this.url = url;
+        this._url = url;
         this.data = new HashMap();
     }
-    public function PathParams(): RequestParams {
-        Todo()
+    public function pathParams(): RequestParams {
+        todo()
     }
     /// Returns the method of the request,
-    public function Method(): String {
-        Todo()
+    public function method(): String {
+        todo()
     }
     /// Returns the URL route of the request.
-    public function Url(): String {
-        return this.url;
+    public function url(): String {
+        return this._url;
     }
     /// Gets the complete body buffer of the string asynchronously.
-    public async function Body(): Buffer {
-        Todo()
+    public async function body(): Buffer {
+        todo()
     }
     /// Returns true if the request was completed successfully.
-    public function IsCompleted(): Bool {
-        Todo()
+    public function isCompleted(): Bool {
+        todo()
     }
     /// Returns the headers stored in the request.
-    public function Headers(): RequestHeaders {
-        Todo()
+    public function headers(): RequestHeaders {
+        todo()
     }
     /// Stores data on the request object.
-    public function StoreData(key: String, value: String) {
-        this.data.Set(key, value);
+    public function storeData(key: String, value: String) {
+        this.data.set(key, value);
     }
     /// Creates a new response model from the request.
-    public function Respond(): HttpResponse {
-        return HttpResponse.From(this);
+    public function respond(): HttpResponse {
+        return HttpResponse.from(this);
     }
     /// Returns an error based on this request.
-    public function CreateError(
+    public function createError(
         message: String, 
         statusCode?: UnsignedInt
     ): HttpRequestError {
@@ -61,28 +61,28 @@ public model HttpRequest {
 }
 
 public model RequestHeaders {
-    function Get(name: String): ?String {
-        Todo()
+    function get(name: String): ?String {
+        todo()
     }
-    function Has(name: String): Bool {
-        Todo()
+    function has(name: String): Bool {
+        todo()
     }
     /// Returns the 
-    public function GetOrErr(name: String): Outcome<String, HttpRequestError> 
+    public function getOrErr(name: String): Outcome<String, HttpRequestError> 
     {
-        Todo()
+        todo()
     }
 }
 public model RequestParams {
-    public function Get(name: String): ?String {
-        Todo()
+    public function get(name: String): ?String {
+        todo()
     }
-    public function GetOrErr(name: String): Outcome<String, HttpRequestError> 
+    public function getOrErr(name: String): Outcome<String, HttpRequestError> 
     {
-        Todo()
+        todo()
     }
-    function Has(name: String): Bool {
-        Todo()
+    function has(name: String): Bool {
+        todo()
     }
 }
 
@@ -97,10 +97,10 @@ public model HttpRequestError implements IoError + Display {
     var statusCode: UnsignedInt;
     new(message: String, request: HttpRequest, statusCode?: UnsignedInt) {
         this.message = message;
-        this.route = request.Url();
-        this.statusCode = statusCode.UnwrapOr(400);
+        this.route = request.url();
+        this.statusCode = statusCode.unwrapOr(400);
     }
-    public function [Display.ToStr](): String {
+    public function [Display.toStr](): String {
         return "Error: " + this.message;
     }
 }

@@ -32,9 +32,9 @@ function Add(a: Int, b: Int): Int {
 }
 
 /// Entry to the program.
-function Main() {
+function main() {
    c := Add(2, 3);
-   Core.Io.Println(c);
+   core.io.Println(c);
 }
 ```
 

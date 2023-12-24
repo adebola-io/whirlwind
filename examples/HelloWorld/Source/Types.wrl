@@ -1,6 +1,21 @@
 module Types;
 
 
-type Point = Tuple<Int, Int>;
+function main() {
+    // state := State.Moving;    
+}
+
+model Star {
+    var state: State;
+    new() {
+        Array;
+        this.state = State.Moving;
+    }
+}
 
 
+
+enum State {
+    Moving,
+    Stopped,
+}

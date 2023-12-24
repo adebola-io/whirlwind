@@ -2,83 +2,83 @@
 module Main;
 
 // Import necessary modules from the Core library.
-use Core.{
-    Net.Http.{
+use core.{
+    net.http.{
         HttpServer, ServerOutcome, HttpRequest, HttpResponse,
         Middleware, MiddlewareResponse, HttpRequestError
     },
-    Io.{Fmt, Print},
-    Crypto.JwtEncryptor,
-    Process.GetEnv
+    io.{fmt, print},
+    crypto.JwtEncryptor,
+    process.getEnv
 };
 
 /// Entry point into the program.
-public function Main() { 
+public function main() { 
     // Set up server configurations.
     name := "simple-server";
     port := 8080;
     app := new HttpServer(name, port);
     middleware := new Middleware();
     printMessage := fn() {
-        template := Fmt("% is listening on %.");
-        message := template.Add(name).Add(port).Finish();
-        Print(message)
+        template := fmt("% is listening on %.");
+        message := template.add(name).add(port).finish();
+        print(message)
     };
     // Register authentication.
-    middleware.Use(AuthenticationHandler);
+    middleware.useHandler(authenticationHandler);
     // Apply middleware to the server.
-    app.UseMiddleware(middleware);
+    app.useMiddleware(middleware);
     // Define routes.
     // Route 1: Basic "Hello, World!" response.
-    app.Get("/hello", HelloHandler);
+    app.get("/hello", helloHandler);
     // Route 2: Parameterized greeting.
-    app.Get("/greet/:name", GreetHandler);
+    app.get("/greet/:name", greetHandler);
     // Route 3: Static file serving.
-    app.Get("/static/::filename", StaticFileHandler);
+    app.get("/static/::filename", staticFileHandler);
     // Start the server and handle subsequent actions.
-    app.Start().Then(printMessage).Run();
+    app.start().then(printMessage).run();
 }
 
 /// Handler function for the "/hello" endpoint.
-async function HelloHandler(request: HttpRequest): ServerOutcome {
-    response := HttpResponse.From(request);
-    response.Status(200).Html(`<h1>Hello, world!</h1>`);
-    Ok(response)
+async function helloHandler(request: HttpRequest): ServerOutcome {
+    response := HttpResponse.from(request);
+    response.status(200).html(`<h1>Hello, world!</h1>`);
+    ok(response)
 }
 
 /// Handler function for authenticating users.
-async function AuthenticationHandler(req: HttpRequest): MiddlewareResponse {
-    if req.Url().StartsWith("/user/") {
-        auth := req.Headers().GetOrErr("auth")?;
-        token := if !auth.StartsWith("Bearer ") {
-            return Err(req.CreateError("Invalid authentication header."));
+async function authenticationHandler(req: HttpRequest): MiddlewareResponse {
+    if req.url().startsWith("/user/") {
+        auth := req.headers().getOrErr("auth")?;
+        token := if !auth.startsWith("Bearer ") {
+            return err(req.createError("Invalid authentication header."));
         } else {
-            auth.Slice(7..auth.Length()).Unwrap()
+            auth.slice(7..auth.Length()).unwrap()
         };
-        maybeSecret := GetEnv("JWT_SECRET");
-        if maybeSecret.IsNone() {
-            return Err(req.CreateError("Unauthorized Request."));
+        maybeSecret := getEnv("JWT_SECRET");
+        if maybeSecret.isNone() {
+            return err(req.createError("Unauthorized Request."));
         };
-        secret := maybeSecret.Unwrap();
-        decoded := JwtEncryptor.Decode(token, secret);
-        req.StoreData("user-id", decoded);
-        return Ok(req);
+        secret := maybeSecret.unwrap();
+        decoded := JwtEncryptor.decode(token, secret);
+        req.storeData("user-id", decoded);
+        return ok(req);
     }
-    return Ok(req);
+    return ok(req);
 }
 
 /// Handler function for the "/greet/:name" endpoint.
-async function GreetHandler(req: HttpRequest): ServerOutcome {
-    name := req.PathParams().GetOrErr("name")?;
-    response := req.Respond();
-    response.Status(200).Html(`<h1>Hello, ` + name + `!</h1>`);
-    return Ok(response);
+async function greetHandler(req: HttpRequest): ServerOutcome {
+    name := req.pathParams().getOrErr("name")?;
+    response := req.respond();
+    response.status(200).html(`<h1>Hello, ` + name + `!</h1>`);
+    return ok(response);
 }
 
 // Handler function for serving static files.
-async function StaticFileHandler(req: HttpRequest): ServerOutcome {
-    filename := req.PathParams().Get("filename");
+async function staticFileHandler(req: HttpRequest): ServerOutcome {
+    filename := req.pathParams().get("filename");
     // Implement logic to read and serve the specified static file.
-    response := req.Respond();
-    return Ok(response);
+    response := req.respond();
+    return ok(response);
 }

@@ -3,7 +3,7 @@ use crate::EvaluatedType;
 /// The path to the entry file.
 /// This is only used in testing.
 /// Its value in production is dependent on the environment.
-pub const CORE_LIBRARY_PATH: &'static str = "../corelib/Core/Core.wrl";
+pub const CORE_LIBRARY_PATH: &'static str = "../corelib/core/core.wrl";
 
 /// The maximum recursion limit for a type evaluation.
 pub const EVALUATION_DEPTH: u64 = 200;
@@ -20,7 +20,7 @@ pub enum CurrentModuleType {
     Array,
     Bool,
     Numeric,
-    Async,
+    Concurrent,
     Internal,
     Ops,
     Interfaces,
@@ -32,21 +32,21 @@ pub enum CurrentModuleType {
     Maybe,
 }
 pub trait IntrinsicPaths {
-    const PRELUDE: &'static str = "Prelude/Prelude.wrl";
-    const STRING: &'static str = "Primitives/String.wrl";
-    const ARRAY: &'static str = "Primitives/Array.wrl";
-    const BOOL: &'static str = "Primitives/Bool.wrl";
-    const NUMERIC: &'static str = "Primitives/Numeric.wrl";
-    const ASYNC: &'static str = "Async/Async.wrl";
-    const INTERNAL: &'static str = "Internals/Internals.wrl";
-    const OPS: &'static str = "Primitives/Ops.wrl";
-    const INTERFACES: &'static str = "Prelude/Interfaces.wrl";
-    const RANGE: &'static str = "Prelude/Range.wrl";
-    const ITERATABLE: &'static str = "Prelude/Interfaces/Iteration.wrl";
-    const TRY: &'static str = "Prelude/Interfaces/Try.wrl";
-    const GUARANTEED: &'static str = "Prelude/Interfaces/Guaranteed.wrl";
-    const DEFAULT: &'static str = "Prelude/Interfaces/Default.wrl";
-    const MAYBE: &'static str = "Prelude/Maybe.wrl";
+    const PRELUDE: &'static str = "prelude/prelude.wrl";
+    const STRING: &'static str = "primitives/string.wrl";
+    const ARRAY: &'static str = "primitives/array.wrl";
+    const BOOL: &'static str = "primitives/bool.wrl";
+    const NUMERIC: &'static str = "primitives/numeric.wrl";
+    const CONCURRENT: &'static str = "concurrent/concurrent.wrl";
+    const INTERNAL: &'static str = "internals/internals.wrl";
+    const OPS: &'static str = "primitives/ops.wrl";
+    const INTERFACES: &'static str = "prelude/interfaces.wrl";
+    const RANGE: &'static str = "prelude/range.wrl";
+    const ITERATABLE: &'static str = "prelude/interfaces/iteration.wrl";
+    const TRY: &'static str = "prelude/interfaces/try.wrl";
+    const GUARANTEED: &'static str = "prelude/interfaces/guaranteed.wrl";
+    const DEFAULT: &'static str = "prelude/interfaces/default.wrl";
+    const MAYBE: &'static str = "prelude/maybe.wrl";
 }
 
 pub const UNKNOWN: EvaluatedType = EvaluatedType::Unknown;

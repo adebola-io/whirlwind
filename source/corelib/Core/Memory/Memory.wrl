@@ -1,26 +1,26 @@
-module Memory;
+module memory;
 
-use Core.{
-    Primitives.{UInt8, UnsignedInt},
-    Prelude.{
-        Iteratable, Maybe, None, Some, Display, 
-        String, Todo, Bool
+use core.{
+    primitives.{UInt8, UnsignedInt},
+    prelude.{
+        Iteratable, Maybe, none, some, Display, 
+        String, todo, Bool
     },
 };
 
 /// Swaps the address of two values.
 /// # Usage
 /// ```
-/// use Core.Memory.Swap;
+/// use core.memory.wwap;
 /// 
 /// a := 9;
 /// b := 12;
-/// Swap(a, b);
+/// swap(a, b);
 /// 
-/// Assert(a).Equals(12);
-/// Assert(b).Equals(9);
+/// assert(a).equals(12);
+/// assert(b).equals(9);
 /// ```
-public function Swap<T>(a: T, b: T) {
+public function swap<T>(a: T, b: T) {
     temp := a;
     a = b;
     b = temp;
@@ -31,10 +31,10 @@ public model WeakRef<T> {
     var reference: T;
     var exists: Bool;
     /// Retrieves the value in the reference.
-    public function Value(): ?T {
+    public function value(): ?T {
         if this.exists {
-            return Some(this.reference);
-        } else None()
+            return some(this.reference);
+        } else none()
     }
 }
 
@@ -48,16 +48,16 @@ public model Buffer implements Iteratable<UInt8> + Display {
         this.idx = 0;
     }
 
-    public function [Iteratable.Next](): ?UInt8 {
-        if this.idx == this.values.Length() {
-            return None();
+    public function [Iteratable.next](): ?UInt8 {
+        if this.idx == this.values.length() {
+            return none();
         };
         nextByte := this.values[this.idx];
         this.idx += 1;
-        return Some(nextByte);
+        return some(nextByte);
     }
 
-    public function [Display.ToStr](): String {
-        return Todo();
+    public function [Display.toStr](): String {
+        return todo();
     }
 }

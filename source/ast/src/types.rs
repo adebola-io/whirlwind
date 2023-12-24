@@ -92,7 +92,7 @@ pub struct FunctionalType {
     pub span: Span,
 }
 
-/// A type that is part of an member expression. e.g. `type Error = Core.Io.Error`;
+/// A type that is part of an member expression. e.g. `type Error = core.io.Error`;
 #[derive(Debug, PartialEq, Clone, Hash)]
 pub struct MemberType {
     pub namespace: Box<TypeExpression>,

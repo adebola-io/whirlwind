@@ -1,30 +1,28 @@
-module Http;
+module http;
 
-use Core.Prelude.{
-    Bool, Todo, Outcome, Prospect, String,
-    Maybe, UnsignedInt, Some, Array, None, Fatal,
+use core.prelude.{
+    Bool, todo, Outcome, Prospect, String,
+    Maybe, UnsignedInt, some, Array, none, fatal,
     Display,
 };
-use Core.Primitives.Ops.Addition;
-public use Request.{
-    RequestParams, 
-    HttpRequest, 
-    HttpMethod, 
+use core.primitives.ops.Addition;
+public use request.{
+    RequestParams, HttpRequest, HttpMethod, 
     HttpRequestError,
 };
-public use Response.HttpResponse;
+public use response.HttpResponse;
 
 model Endpoints {
     new() {
 
     }
     /// Registers a GET route.
-    public function Register(
+    public function register(
         method: HttpMethod, 
         route: String, 
         handler: fn(request: HttpRequest): Prospect<ServerOutcome>
     ) {
-        Todo()
+        todo()
     }
 }
 
@@ -43,41 +41,41 @@ public model HttpServer {
         this.port = port;
     }
     /// Registers a route for a request with a `GET` method. 
-    public function Get(
+    public function get(
         route: String,
         handler: fn(request: HttpRequest): Prospect<ServerOutcome>
     ): This {
-        this.AssertInert();
-        this.endpoints.Register(HttpMethod.Get, route, handler);
+        this.assertInert();
+        this.endpoints.register(HttpMethod.Get, route, handler);
         return this;
     }
     /// Registers a route for a request with a `POST` method.
-    public function Post(
+    public function post(
         route: String, 
         handler: fn(request: HttpRequest): Prospect<ServerOutcome>
     ): This {
-        this.AssertInert();
-        this.endpoints.Register(HttpMethod.Post, route, handler);
+        this.assertInert();
+        this.endpoints.register(HttpMethod.Post, route, handler);
         return this;
     }
     /// Asserts that the server is not yet running.
-    function AssertInert() {
+    function assertInert() {
         if this.isRunning {
-            Fatal(Some("Server is already running."));
+            fatal(some("Server is already running."));
         }
     }
     /// Starts the server by listening at the specified port for changes.
-    public async function Start() {
-        this.AssertInert();
+    public async function start() {
+        this.assertInert();
         this.isRunning = true;
         while true {
-            Todo()
+            todo()
         }
     }
     /// Registers a middleware for use in the server.
     /// Middlewares are executed in the order in which they are registered.
-    public function UseMiddleware(middleware: Middleware) {
-        this.middleware.Push(middleware)
+    public function useMiddleware(middleware: Middleware) {
+        this.middleware.push(middleware)
     }
 }
 
@@ -89,7 +87,7 @@ public model Middleware {
         this.handlers = [];
     }
     /// Registers a middleware handler.
-    public function Use(handler: fn(request: HttpRequest): Prospect<MiddlewareResponse>) {
-        this.handlers.Push(handler);
+    public function useHandler(handler: fn(request: HttpRequest): Prospect<MiddlewareResponse>) {
+        this.handlers.push(handler);
     }
 }

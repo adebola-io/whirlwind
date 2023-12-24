@@ -32,12 +32,12 @@
    },
    "Print warning": {
       "prefix": "warn",
-      "body": ["Core.Io.PrintWarn($1);", "$0"],
+      "body": ["core.io.PrintWarn($1);", "$0"],
       "description": "Print warning"
    },
    "Print error": {
       "prefix": "err",
-      "body": ["Core.Io.PrintErr($1);", "$0"],
+      "body": ["core.io.PrintErr($1);", "$0"],
       "description": "Print an error"
    },
    "Panic": {

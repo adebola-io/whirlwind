@@ -8,7 +8,7 @@ fn retrieves_main_module() {
         "
     module Main;
 
-    public function Main() {
+    public function main() {
         
     }
     ",

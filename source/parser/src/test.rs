@@ -62,7 +62,7 @@ fn parsing_functions_with_types() {
 
 #[test]
 fn parsing_functions_with_member_types() {
-    let mut parser = parse_text("function WriteFile(path: Core.Io.Path) {}");
+    let mut parser = parse_text("function WriteFile(path: core.io.Path) {}");
     let statement = parser.next().unwrap().unwrap();
 
     assert!(parser
@@ -646,14 +646,14 @@ fn parses_use_import() {
     );
 
     // One item.
-    parser = parse_text("use Core.Math;");
+    parser = parse_text("use core.Math;");
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::UseDeclaration(UseDeclaration {
             addresses: vec![[0, 0, 0].into()],
             target: UseTarget {
                 name: Identifier {
-                    name: format!("Core"),
+                    name: format!("core"),
                     span: [1, 5, 1, 9].into()
                 },
                 path: UsePath::Item(Box::new(UseTarget {
@@ -1282,17 +1282,17 @@ fn parse_logical_expression() {
 #[test]
 fn parse_dot_expression() {
     // Simple
-    let mut parser = parse_text("Core.Fmt");
+    let mut parser = parse_text("core.fmt");
     parser.debug_allow_global_expressions = true;
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::FreeExpression(Expression::AccessExpr(Box::new(AccessExpr {
             object: Expression::Identifier(Identifier {
-                name: format!("Core"),
+                name: format!("core"),
                 span: [1, 1, 1, 5].into()
             }),
             property: Expression::Identifier(Identifier {
-                name: format!("Fmt"),
+                name: format!("fmt"),
                 span: [1, 6, 1, 9].into()
             }),
             span: [1, 1, 1, 9].into()
@@ -1300,7 +1300,7 @@ fn parse_dot_expression() {
     );
 
     // nested
-    parser = parse_text("Core.Fmt.Println()");
+    parser = parse_text("core.Fmt.Println()");
     parser.debug_allow_global_expressions = true;
     assert_eq!(
         parser.next().unwrap().unwrap(),
@@ -1308,7 +1308,7 @@ fn parse_dot_expression() {
             caller: Expression::AccessExpr(Box::new(AccessExpr {
                 object: Expression::AccessExpr(Box::new(AccessExpr {
                     object: Expression::Identifier(Identifier {
-                        name: format!("Core"),
+                        name: format!("core"),
                         span: [1, 1, 1, 5].into()
                     }),
                     property: Expression::Identifier(Identifier {
@@ -1428,7 +1428,7 @@ fn parse_update_expression() {
 fn parse_complex_program() {
     let parser = parse_text(
         "
-use Core.{
+use core.{
   Math.Random,
   Fmt
 };
@@ -1827,7 +1827,7 @@ fn parse_interface_declarations() {
     // With a method signature and a method.
     parser = parse_text(
         "
-    public interface Addition implements Core.General {
+    public interface Addition implements core.General {
         function Add(other: This): This;
         function Add2(other: This) : This {
             // Stuff.
@@ -1906,7 +1906,7 @@ public model Stack<T> {
 
     new(capacity?: Int) {
         this.items = [];
-        this.capacity = capacity.UnwrapOr(Core.Math.INFINITY);
+        this.capacity = capacity.UnwrapOr(core.Math.INFINITY);
     }
 
     /// Dynamically change the number of items in the stack.
@@ -2245,13 +2245,13 @@ fn parse_break_statement() {
 // #[test]
 // fn parse_expression_statement() {
 //     let mut parser = parse_text(
-//         "public function Main() {
+//         "public function main() {
 //     app := new Server(\"main-app\", 8080);
 
 //     app.Get(\"/user\", CreateUser)!;
 
 //     // app.Start().Then(fn() {
-//     //     Core.Io.Printf(\"Server is listening on port %d\" + app.port);
+//     //     core.io.Printf(\"Server is listening on port %d\" + app.port);
 //     // }).Run().Await()!;
 
 //     app.Start();
