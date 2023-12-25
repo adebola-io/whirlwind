@@ -1,4 +1,4 @@
-module Lib;
+module lib;
 
 test "Testing types." {
     use core.testing.assert;

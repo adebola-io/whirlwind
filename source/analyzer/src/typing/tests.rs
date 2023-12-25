@@ -40,17 +40,8 @@ macro_rules! check_types {
                             unreachable!("Symbol for {symbol_name} is not a variable or constant.")
                         }
                     };
-                    let inferred_type_symbol = match inferred_type {
-                        EvaluatedType::ModelInstance { model, .. } => {
-                            symbol_library.get(*model).unwrap()
-                        }
-                        other => {
-                            println!("{symbol:#?}");
-                            println!("Errors: {:#?}", standpoint.errors);
-                            unreachable!("Inferred type for {symbol_name} is {other:?}, not a model instance.")
-                        }
-                    };
-                    assert_eq!(&inferred_type_symbol.name, type_value);
+                    let inferred_type_symbol = symbol_library.format_evaluated_type(inferred_type);
+                    assert_eq!(&inferred_type_symbol, type_value);
                 }
             }
         }
@@ -70,7 +61,7 @@ fn it_solves_assignment() {}
 fn it_creates_intrinsic_instances() {
     check_types!(
         "
-    module Testing;
+    module Test;
 
     function main() {
         boolean := true;
@@ -86,7 +77,7 @@ fn it_creates_intrinsic_instances() {
 fn it_creates_instances() {
     check_types!(
         "
-    module Testing;
+    module Test;
 
     model Person {
         public var name: String;
@@ -198,3 +189,23 @@ fn it_errors_on_attribute_usage_before_assign() {}
 
 #[test]
 fn it_errors_on_recursive_models() {}
+
+#[test]
+fn it_creates_enum_instances() {
+    check_types!(
+        "
+    module Test;
+
+    enum Room {
+        Kitchen,
+        Bathroom,
+        Bedroom,
+    }
+    function main() {
+        room := Room.Kitchen;
+        room = Room.Bathroom;
+    }
+    ",
+        &[("room", "Room")]
+    );
+}

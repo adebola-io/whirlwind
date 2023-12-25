@@ -3000,7 +3000,46 @@ mod expressions {
                 }
                 None
             }
-            EvaluatedType::Enum(_) => Some(EvaluatedType::Unknown),
+            EvaluatedType::Enum(enum_) => {
+                let enum_symbol = match symbollib.get(enum_) {
+                    Some(enum_symbol) => enum_symbol,
+                    None => return EvaluatedType::Unknown,
+                };
+                let mut target = None;
+                if let SemanticSymbolKind::Enum {
+                    generic_params,
+                    variants,
+                    ..
+                } = &enum_symbol.kind
+                {
+                    for variant in variants {
+                        let variant_symbol = ast::unwrap_or_continue!(symbollib.get(*variant));
+                        let property_symbol =
+                            ast::unwrap_or_continue!(symbollib.get(property_symbol_idx));
+                        if variant_symbol.name == property_symbol.name {
+                            target =
+                                Some((*variant, evaluate_generic_params(generic_params, false)));
+                            break;
+                        };
+                    }
+                }
+                if let Some((variant, generic_arguments)) = target {
+                    let variant_symbol = symbollib.get_mut(variant).unwrap();
+                    variant_symbol.add_reference(checker_ctx.path_idx, property_span);
+                    let property_symbol = symbollib.get_mut(property_symbol_idx).unwrap();
+                    if let SemanticSymbolKind::Property { resolved, .. } = &mut property_symbol.kind
+                    {
+                        *resolved = Some(variant)
+                    }
+                    Some(EvaluatedType::EnumInstance {
+                        enum_,
+                        is_invariant: false,
+                        generic_arguments,
+                    })
+                } else {
+                    None
+                }
+            }
             EvaluatedType::Generic { base } | EvaluatedType::HardGeneric { base } => {
                 search_for_property(
                     checker_ctx,

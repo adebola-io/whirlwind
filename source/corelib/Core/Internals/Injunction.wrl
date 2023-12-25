@@ -19,40 +19,6 @@ use core.{
 };
 use never.never;
  
-// /// List of variants that can be called with `Invoke()`.
-// public enum Injunction {
-//     // Strings.
-//     StrAdd(String, String),
-//     StrAt(String, Int),
-//     StrAppend(String, String),
-//     StrBytes(String),
-//     StrClear(String),
-//     StrContains(String, String),
-//     StrPad(String, UnsignedInt),
-//     StrPadLeft(String, UnsignedInt),
-//     StrPadRight(String, UnsignedInt),
-//     StrPadInPlace(String, UnsignedInt),
-//     StrPrepend(String, String),
-//     StrRepeat(String, UnsignedInt),
-//     StrReplace(String, String, String),
-//     StrReverse(String),
-//     StrSlice(String, Range<Int>),
-//     StrSplit(String, String),
-//     StrLowercase(String),
-//     StrCapitalCase(String),
-//     StrSentenceCase(String),
-//     StrUppercase(String),
-//     StrTrim(String),
-//     StrTrimInPlace(String),
-//     StrTrimStart(String),
-//     StrTrimEnd(String),
-//     // Eventuals.
-//     EventAwait(Sequence),
-//     EventAbort(Sequence),
-//     EventCreate(Prospect),
-//     SeqId(Sequence)
-// }
-
 /// The `Injunction` interface allows its implementers to directly interact with, or
 /// operate outside the runtime. It can be implemented by any model that maps to a
 /// foreign function, or a Whirlwind internal feature.
@@ -88,7 +54,48 @@ public enum InjunctionType {
     ArrayContains,
     ArrayClear,
     ArrayIndexOf,
+    ArrayIncludes,
     ArrayInsert,
+    ArrayPrepend,
+    ArrPartition,
+    ArrLen,
+    ArrayPush,
+    ArrayPop,
+
+    // Eventuals
+    EventualCreate,
+    EventualAbort,
+    EventualAwait,
+
+    MaybeNone,
+    MaybeSome,
+    
+    OutcomeUnwrap,
+    OutcomeUnwrapError,
+    
+    SequenceId,
+    SequenceCrashOneStep,
+    SequenceCrash,
+
+    StringCapitalCase,
+    StringIsAlphanumeric,
+    StringLowercase,
+    StringPad,
+    StringPadLeft,
+    StringPadRight,
+    StringPadInPlace,
+    StringReplace,
+    StringSlice,
+    StringSplit,
+    StringSplitAt,
+    StringSentenceCase,
+    StringTrim,
+    StringTrimStart,
+    StringTrimEnd,
+    StringUpperCase,
+
+    Print,
+    SequenceExit,
 
     Custom(String)
 }

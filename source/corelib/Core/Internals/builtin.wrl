@@ -135,10 +135,6 @@ public model strings {
         invoke(builtin(InjunctionType.StringPadRight), some(string), some(count))
     }
 
-    public static function padInPlace(string: String, count: UnsignedInt): String {
-        invoke(builtin(InjunctionType.StringPadInPlace), some(string), some(count))
-    }
-
     public static function replace(string: String, subStr: String, newStr: String): String {
         invoke(builtin(InjunctionType.StringReplace), some(string), some(subStr), some(newStr))
     }

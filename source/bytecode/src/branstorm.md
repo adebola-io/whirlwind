@@ -1,8 +1,19 @@
 ## Blocking Cyclic Types?
 
+To simplify reference count in memory management, Whirlwind does not allow cyclic or recursive model types.
+This means that:
+
+```wrl
+    model Node {
+        var parent: Node;
+    }
+```
+
+will not compile.
+
 ## Representation of Opaque Types in Memory
 
--  An opaque type
+-  An opaque type has the size of its largest possible value.
 
 ## Creating an Instance.
 
