@@ -2,10 +2,11 @@ module outcome;
 
 use core.{
     primitives.{String, Bool},
-    prelude.{Try, Guaranteed, Maybe, todo},
-    internals.{never, Injunction, invoke},
+    prelude.{Try, Guaranteed, todo},
+    internals.{never, builtin},
     process.fatalOnCaller
 };
+use maybe.{Maybe, some, none};
 
 /// An `Outcome` is a generic model 
 /// that represents the possible results of an operation. 
@@ -56,7 +57,7 @@ public model Outcome<T, E> implements Guaranteed<T> + Try<T, Outcome<never, E>> 
         if this.isErr() {
             fatalOnCaller("Called Unwrap on an Err value.")
         }
-        return invoke(Injunction.OutcUnwrap(this));
+        return builtin.outcome.unwrap(this);
     }
     /// Returns the inner error value if the outcome is an error, or causes a runtime error otherwise.
     /// ### Usage
@@ -69,7 +70,7 @@ public model Outcome<T, E> implements Guaranteed<T> + Try<T, Outcome<never, E>> 
         if this.isOk() {
             fatalOnCaller("Called AsErr on an Ok value.");
         }
-        return invoke(Injunction.OutcErr(this));
+        return builtin.outcome.unwrapError(this);
     }
     /// Returns true if the outcome is `ok` 
     /// i.e. The operation was successful.

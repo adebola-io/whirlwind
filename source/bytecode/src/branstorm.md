@@ -2,6 +2,8 @@
 
 ## Representation of Opaque Types in Memory
 
+-  An opaque type
+
 ## Creating an Instance.
 
 -  To create an instance of a model:
@@ -22,4 +24,6 @@
 
 ## Calling a Method.
 
--  The same as calling a function, but the `this` register must be loaded first.
+-  The same as calling a function, but the `this` value is loaded as the first parameter.
+
+## Creating an array.

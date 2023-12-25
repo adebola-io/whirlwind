@@ -8,31 +8,55 @@
 /// for a consistent interface.
 module io;
 
-use core.primitives.String;
-use core.prelude.Display;
+use core.collections.HashMap;
 use core.internals.invoke;
 use core.internals.Injunction;
+use core.primitives.String;
+use core.prelude.{Display, Outcome, UInt8};
 use core.prelude.todo;
 use core.prelude.UnsignedInt;
-use core.collections.HashMap;
+use core.internals.builtin;
 
-/// Prints a message or an object to the console, terminal or any predefined output interface.
+/// Prints a message or an object to the console, terminal 
+/// or any predefined output interface.
 public function print<T implements Display>(data: T) {
     dataStr := data.toStr();
-    invoke(Injunction.Print(dataStr));
+    builtin.print(dataStr);
 }
 
-/// Prints a message or an object to the console, terminal, or any predefined output interface.
+/// Displays an optional message to the console, terminal or
+/// any predefined input interface, prompting the user to enter
+/// text.
+public function prompt(message?: String): String {
+    todo()
+}
+
+/// Prints a message or an object to the console, terminal, 
+/// or any predefined output interface.
 public function printFmt<T implements Display>(data: T) {
     dataStr := data.toFmtStr();
-    invoke(Injunction.Print(dataStr));
+    builtin.print(dataStr)
 }
 
-public interface Writer {}
-public interface Reader {}
+/// This interface is implemented by any entity that can write
+/// to streams of data.
+public interface Writer {
+    /// Writes into a byte stream and returns the number of bytes written.
+    public async function write(bytes: []UInt8): Outcome<UnsignedInt, IoError>;
+}
 
-public interface IoError {}
+/// This interface is implemented by any entity that is capable of
+/// reading streams of data. The primary method provided is the 
+/// `.read` method, which reads bytes into a provided byte array.
+public interface Reader {
+    /// Reads data from a specified source.
+    public async function read(bytes: []UInt8, offset?: UnsignedInt, length?: UnsignedInt);
+}
 
+public model IoError {
+    var errorType: IoErrorType;
+}
+enum IoErrorType {}
 
 /// Creates a new formattable template.
 public function fmt(template: String): Template {
@@ -49,9 +73,9 @@ public model Template implements Display {
     var map: HashMap<String, String>;
     var transforms: []fn(x: String): String;
     
-    new(template: String) {
+    new(origin: String) {
         this.map = new HashMap();
-        this.template = template;
+        this.template = origin;
         this.transforms = [];
         this.arguments = [];
     }

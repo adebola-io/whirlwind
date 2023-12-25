@@ -1,54 +1,94 @@
+/// This module provides the fundamental mechanisms for Whirlwind programs to
+/// interact with the outside world, including the runtime environment, external
+/// systems and foreign functions. It enables developers to:
+/// - perform actions not directly supported by the language itself. e.g. create
+///   an array, print to the standard output, etc.
+/// - modify program behaviour or execute computations outside Whirlwind's scope, and
+/// - interface with external resources.
 module injunction;
 
 use core.{
-    prelude.Range,
+    prelude.{Range, Bool, Array, todo, some},
+    collections.OrderedSet,
     concurrent.{Eventual, Prospect, Sequence},
     primitives.{
+        UnsignedInt,
         String,
         Int,
-        UnsignedInt,
     }
 };
-use internals.{never};
+use never.never;
  
-/// List of variants that can be called with `Invoke()`.
-public enum Injunction {
-    // Strings.
-    StrAdd(String, String),
-    StrAt(String, Int),
-    StrAppend(String, String),
-    StrBytes(String),
-    StrClear(String),
-    StrContains(String, String),
-    StrPad(String, UnsignedInt),
-    StrPadLeft(String, UnsignedInt),
-    StrPadRight(String, UnsignedInt),
-    StrPadInPlace(String, UnsignedInt),
-    StrPrepend(String, String),
-    StrRepeat(String, UnsignedInt),
-    StrReplace(String, String, String),
-    StrReverse(String),
-    StrSlice(String, Range<Int>),
-    StrSplit(String, String),
-    StrLowercase(String),
-    StrCapitalCase(String),
-    StrSentenceCase(String),
-    StrUppercase(String),
-    StrTrim(String),
-    StrTrimInPlace(String),
-    StrTrimStart(String),
-    StrTrimEnd(String),
-    // Eventuals.
-    EventAwait(Sequence),
-    EventAbort(Sequence),
-    EventCreate(Prospect),
-    SeqId(Sequence)
+// /// List of variants that can be called with `Invoke()`.
+// public enum Injunction {
+//     // Strings.
+//     StrAdd(String, String),
+//     StrAt(String, Int),
+//     StrAppend(String, String),
+//     StrBytes(String),
+//     StrClear(String),
+//     StrContains(String, String),
+//     StrPad(String, UnsignedInt),
+//     StrPadLeft(String, UnsignedInt),
+//     StrPadRight(String, UnsignedInt),
+//     StrPadInPlace(String, UnsignedInt),
+//     StrPrepend(String, String),
+//     StrRepeat(String, UnsignedInt),
+//     StrReplace(String, String, String),
+//     StrReverse(String),
+//     StrSlice(String, Range<Int>),
+//     StrSplit(String, String),
+//     StrLowercase(String),
+//     StrCapitalCase(String),
+//     StrSentenceCase(String),
+//     StrUppercase(String),
+//     StrTrim(String),
+//     StrTrimInPlace(String),
+//     StrTrimStart(String),
+//     StrTrimEnd(String),
+//     // Eventuals.
+//     EventAwait(Sequence),
+//     EventAbort(Sequence),
+//     EventCreate(Prospect),
+//     SeqId(Sequence)
+// }
+
+/// The `Injunction` interface allows its implementers to directly interact with, or
+/// operate outside the runtime. It can be implemented by any model that maps to a
+/// foreign function, or a Whirlwind internal feature.
+/// 
+/// Injunctions are utilized by being passed to the `invoke` function.
+/// 
+public interface Injunction {
+    /// Returns the type of the injunction.
+    public function getType(): InjunctionType;
 }
 
+
 /// Function to perform intrinsic and builtin operations.
-public function invoke(command: Injunction): never {
-   // The recursion here is false, and only exists to satisfy the
-   // typechecker. Technically, all calls to `Invoke` are handled
-   // outside the Whirlwind runtime.
-   return invoke(command);
+public function invoke
+    <T implements Injunction, U, V, W, X>
+    (
+        command: T, 
+        firstValue?: U, 
+        secondValue?: V, 
+        thirdValue?: W, 
+        fourthValue?: X
+    )
+    : never 
+{
+    // The recursion here is spurious, and only exists to satisfy the
+    // typechecker. Technically, all calls to `invoke` are handled
+    // outside the runtime, in the implementation language.
+    return invoke(command, firstValue, secondValue, thirdValue, fourthValue);
+}
+
+public enum InjunctionType {
+    // Arrays.
+    ArrayContains,
+    ArrayClear,
+    ArrayIndexOf,
+    ArrayInsert,
+
+    Custom(String)
 }

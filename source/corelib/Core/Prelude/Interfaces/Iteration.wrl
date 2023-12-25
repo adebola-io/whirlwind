@@ -8,7 +8,7 @@
 /// a more finegrained control over iteration.
 module iteration;
 
-use core.prelude.{Array, Bool, todo, Maybe, some, none};
+use core.prelude.{Array, Bool, todo, Maybe, some, none, UnsignedInt};
 use core.collections.Tuple;
 
 /// ## The Iteratable interface
@@ -83,7 +83,7 @@ public interface Iteratable<I> {
     /// assert(divBy4.next()).equals(some(40));
     /// assert(divBy4.next()).equals(some(60));
     /// ```
-    public function Filter(predicate: fn(value: I): Bool): Filter<I, This> {
+    public function filter(predicate: fn(value: I): Bool): Filter<I, This> {
         return new Filter(this, predicate);
     }
     /// The `.map()` method is an iterator adapter that allows the creation of a new iterator by applying a
@@ -207,7 +207,7 @@ public interface Iteratable<I> {
     /// numbers := [10, 12, 14, 16, 18, 20];
     /// iter := numbers.iter();
     /// 
-    /// iter.until(fn(x) x < 15, some(fn(y) print(y)));
+    /// iter.until(fn(x) x > 15, some(fn(y) print(y)));
     /// 
     /// assertThat(iter.next() == some(10));
     /// assertThat(iter.next() == some(12));
@@ -228,8 +228,8 @@ public interface Iteratable<I> {
     /// 
     /// numbersAndWords := numbers.zip(words);
     /// 
-    /// assert(numbersAndWords.next()).equals(some(pair(1, "one")));
-    /// assert(numbersAndWords.next()).equals(some(pair(2, "two")));
+    /// assertThat(numbersAndWords.next() == some(pair(1, "one")));
+    /// assertThat(numbersAndWords.next() == some(pair(2, "two")));
     /// ```
     public function zip<J, Other implements Iteratable<J>>(that: Other): Zip<I, This, J, Other> {
         return new Zip(this, that);

@@ -5,20 +5,49 @@ function helloWorld() {
     print("Hello, world!");
 }
 
+use core.io.fmt;
+/// Greets a person.
+function greeting(name: String) {
+    print(fmt("Good day, %!").add(name))
+}
+
 /// A function that calculates the factorial of a given number.
 function factorial(n: Number): Number {
     if n == 1 or n == 0 { 1 } else n * factorial(n - 1)
 }
 
+enum Operation {
+    Add,
+    Subtract,
+    Minus,
+    Divide
+}
+/// A simple calculator in Whirlwind.
+function calculator(operation: Operation, a: Number, b: Number): Number {
+    if operation == Operation.Add {
+        a + b
+    } else if operation == Operation.Subtract {
+        a - b
+    } else if operation == Operation.Minus {
+        a * b
+    } else {
+        a % b
+    };
+    todo()
+}
+
 /// A function that returns true if a string is a palindrome.
-var IsPalindrome = fn(str: String) str == str.reverse();
+function isPalindrome(str: String): Bool {
+    return str == str.reverse();
+}
+
 // var EvenSquares = fn(numbers: []Number) numbers.Iter().Filter(fn(num) num % 2 == 0).Map(fn(num) num ^ 2);
 
 /// Returns the nth Fibonacci number.
 function fibonacci(n: Number): Number {
-    if n == 0 {0} 
-    else if n == 1 {1} 
-    else fibonacci(n-1) + fibonacci(n-2)
+    if n == 0 { 0 } 
+    else if n == 1 { 1 } 
+    else fibonacci(n - 1) + fibonacci(n - 2)
 }
 
 use core.io.IoError;
@@ -32,8 +61,6 @@ use core.net.http.HttpServer;
 /// Server that returns hello world.
 function helloWorldServer() {
     app := new HttpServer("new-server", 8080);
-    app.get("/", async fn(request) {
-        ok(request.respond().html("<h1>Hello, world!</h1>"))
-    });
+    app.get("/", async fn(req) ok(req.respond().html(`<h1>Hello, world!</h1>`)));
     app.start().run().await();
 }

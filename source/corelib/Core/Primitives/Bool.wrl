@@ -1,5 +1,6 @@
 module bool;
 use core.prelude.Display;
+use string.String;
 
 
 public model Bool implements Display {

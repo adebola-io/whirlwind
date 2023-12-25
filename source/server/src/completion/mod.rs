@@ -36,6 +36,7 @@ pub enum Trigger {
     None,
     TypeLabel,
     Implements,
+    Module,
 }
 
 #[derive(Clone, Copy)]

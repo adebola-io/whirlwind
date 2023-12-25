@@ -47,6 +47,8 @@ pub struct Binder {
     corelib_symbol_idx: Option<SymbolIndex>,
     // The index of the core library prelude module, if it is allowed.
     prelude_symbol_idx: Option<SymbolIndex>,
+    // Whether or not the prelude is even useful.
+    allow_global: bool,
     // The nature of the module, whether intrinsic or otherwise.
     current_module_type: CurrentModuleType,
 }
@@ -82,6 +84,8 @@ pub fn bind(
     prelude_symbol_idx: Option<SymbolIndex>,
     // The nature of the module being bound.
     current_module_type: CurrentModuleType,
+    // Whether or not this module supports the global prelude symbols.
+    allow_global: bool,
 ) -> Option<TypedModule> {
     bind_utils::collect_prior_errors(path_idx, &mut module, errors);
     let path_buf = module.module_path?;
@@ -90,6 +94,7 @@ pub fn bind(
         current_module_type,
         corelib_symbol_idx,
         prelude_symbol_idx,
+        allow_global,
     );
     let line_lengths = module._line_lens;
 
@@ -562,11 +567,11 @@ mod bind_utils {
                     _ => return index,
                 },
                 (CurrentModuleType::Internal, _) => match entry.name() {
-                    "never" => &mut symbol_library.never,
                     "Injunction" => &mut symbol_library.injunction,
                     "invoke" => &mut symbol_library.invoke,
                     _ => return index,
                 },
+                (CurrentModuleType::Never, "never") => &mut symbol_library.never,
                 (CurrentModuleType::Iteration, _) => match entry.name() {
                     "Iteratable" => &mut symbol_library.iteratable,
                     "AsIterator" => &mut symbol_library.asiter,
@@ -635,22 +640,25 @@ mod bind_utils {
                             return symbol_idx;
                         }
                     }
-                    // As a last resort, check the public declarations in the prelude.
-                    if let Some(idx) = binder.prelude_symbol_idx {
-                        let prelude_module_symbol = symbol_library.get(idx).expect("Something went wrong. Loaded prelude module but could not retrive it as a symbol.");
-                        if let SemanticSymbolKind::Module {
-                            global_declaration_symbols: symbols,
-                            ..
-                        } = &prelude_module_symbol.kind
-                        {
-                            for symbol_idx in symbols {
-                                let declared_symbol_in_prelude = symbol_library
-                                    .get(*symbol_idx)
-                                    .expect("Found unresolvable symbol in module symbol list.");
-                                if declared_symbol_in_prelude.name == name.name
-                                    && declared_symbol_in_prelude.kind.is_public()
-                                {
-                                    return *symbol_idx;
+                    // As a last resort, check the public declarations in the prelude (if it is allowed).
+
+                    if binder.allow_global {
+                        if let Some(idx) = binder.prelude_symbol_idx {
+                            let prelude_module_symbol = symbol_library.get(idx).expect("Something went wrong. Loaded prelude module but could not retrive it as a symbol.");
+                            if let SemanticSymbolKind::Module {
+                                global_declaration_symbols: symbols,
+                                ..
+                            } = &prelude_module_symbol.kind
+                            {
+                                for symbol_idx in symbols {
+                                    let declared_symbol_in_prelude = symbol_library
+                                        .get(*symbol_idx)
+                                        .expect("Found unresolvable symbol in module symbol list.");
+                                    if declared_symbol_in_prelude.name == name.name
+                                        && declared_symbol_in_prelude.kind.is_public()
+                                    {
+                                        return *symbol_idx;
+                                    }
                                 }
                             }
                         }
@@ -3557,6 +3565,7 @@ impl Binder {
         current_module_type: CurrentModuleType,
         corelib_symbol_idx: Option<SymbolIndex>,
         prelude_symbol_idx: Option<SymbolIndex>,
+        allow_global: bool,
     ) -> Self {
         Self {
             path,
@@ -3571,6 +3580,7 @@ impl Binder {
             corelib_symbol_idx,
             prelude_symbol_idx,
             current_module_type,
+            allow_global,
         }
     }
 }

@@ -2,7 +2,7 @@ module math;
 
 use core.primitives.ops.{Orderable, Ordering};
 use core.primitives.numeric.{Float64, Number, Int, UnsignedInt};
-use core.prelude.todo;
+use core.prelude.{todo, Bool};
 use core.internals.{Injunction, invoke};
 
 /// Returns the minimum of two values that implement Orderable.
@@ -88,5 +88,16 @@ public function floor(x: Number): Int {
 /// Assert(max(10)).equals(10);
 /// ```
 public function abs(a: Number): UnsignedInt {
+    todo()
+}
+
+/// Determines if a number is prime.
+public function isPrime(x: Number): Bool {
+    todo()
+}
+
+/// Euclidean algorithm for calculating the greatest common divisor of
+/// two numbers.
+public function gcd(a: Number, b: Number): Number {
     todo()
 }

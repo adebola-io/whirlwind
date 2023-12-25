@@ -23,7 +23,7 @@ public use core.{
     concurrent.{Eventual, Prospect, toSync},
     primitives.{
         String, Array, Number, Int, Float, UnsignedInt,
-        Bool, UInt8, UInt16, UInt32, UInt64, Chars
+        UInt, Bool, UInt8, UInt16, UInt32, UInt64, Chars
     },
     process.{todo, fatal},
     internals.never,

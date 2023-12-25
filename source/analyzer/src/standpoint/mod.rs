@@ -566,9 +566,14 @@ impl Standpoint {
             .and_then(|module| get_parent_dir(&module.path_buf))
             .and_then(|folder| folder.to_str());
 
+        let mut allow_global = true;
         // intrinsic paths.
         let current_module_type = if let Some(folder) = core_path_folder {
             if let Ok(path) = module_path.strip_prefix(folder) {
+                // To prevent unecessary import errors, global prelude symbols are not
+                // allowed to be accessed anywhere else inside the code of the core
+                // library.
+                allow_global = false;
                 let path_str = path.to_string_lossy().replace("\\", "/");
                 match path_str.as_str() {
                     Self::ARRAY => CurrentModuleType::Array,
@@ -585,6 +590,7 @@ impl Standpoint {
                     Self::TRY => CurrentModuleType::Try,
                     Self::GUARANTEED => CurrentModuleType::Guaranteed,
                     Self::MAYBE => CurrentModuleType::Maybe,
+                    Self::NEVER => CurrentModuleType::Never,
                     Self::PRELUDE => {
                         is_prelude = true;
                         CurrentModuleType::Regular
@@ -608,6 +614,7 @@ impl Standpoint {
             corelib_symbol_idx,
             prelude_symbol_idx,
             current_module_type,
+            allow_global,
         )?;
 
         // Module names and file names must be equal.

@@ -1219,6 +1219,8 @@ mod statements {
 
 mod expressions {
 
+    use crate::IntermediateType;
+
     use super::*;
 
     /// Typechecks an expression.
@@ -2467,7 +2469,7 @@ mod expressions {
             // Everything else is free real estate.
             let mut parameter_type = parameter_types[i].inferred_type.clone();
             let caller_is_invariant = caller_type.is_invariant();
-            let unification_option = if caller_is_invariant {
+            let mut unification_option = if caller_is_invariant {
                 UnifyOptions::Conform
             } else {
                 // If a parameter is a hard generic (or contains a hard generic),
@@ -2527,6 +2529,22 @@ mod expressions {
                     break;
                 }
             };
+            // --- hmm.
+            let is_hard_generic =
+                |child: &EvaluatedType| matches!(child, EvaluatedType::HardGeneric { .. });
+            if is_hard_generic(&argument_type) {
+                if !(parameter_type.is_generic()
+                    || parameter_types[i]
+                        .type_label
+                        .as_ref()
+                        .is_some_and(|declared_type| {
+                            matches!(declared_type, IntermediateType::This { .. })
+                        }))
+                {
+                    unification_option = UnifyOptions::Conform;
+                }
+            }
+            // ---
             if is_optional {
                 parameter_type = maybify(parameter_type, symbollib);
             }

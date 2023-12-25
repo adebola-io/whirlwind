@@ -7,6 +7,7 @@ public use numeric;
 public use ops;
 public use numeric.{
     UInt8,
+    UInt,
     UInt16,
     UInt32,
     UInt64,

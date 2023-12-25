@@ -4,7 +4,7 @@ module concurrent;
 
 use core.process.fatal;
 use core.prelude.{some, Array, todo, Bool, Guaranteed, String};
-use core.internals.{Injunction, invoke, StackTrace};
+use core.internals.{builtin, StackTrace};
 use core.primitives.UnsignedInt;
 
 /// Asynchronous functions do not run automatically in Whirlwind. 
@@ -96,7 +96,7 @@ public model Prospect<T> {
             fatal(some("Cannot rerun a consumed Prospect."));
         }
         this.consumed = true;
-        return invoke(Injunction.EventCreate(this));
+        return builtin.eventual.create(this);
     }
     /// Sets a timeout on the prospect's eventual execution. If the duration elapses 
     /// before the eventual can be resolved, it is abruptly aborted.
@@ -210,11 +210,12 @@ public model Eventual<T> implements Guaranteed<T> {
     public function tryAbort(): Bool {
         if this.aborted {
             return true;
-        }
+        };
+        builtin.eventual.abort(this);
+        this.aborted = true;
         if this.resolved {
             return false;
         };
-        invoke(Injunction.EventAbort(this.sequence));
         return true;
     }
     /// Cancels the running of the eventual and discards its value.
@@ -229,11 +230,11 @@ public model Eventual<T> implements Guaranteed<T> {
         if this.aborted {
             return;
         };
+        builtin.eventual.abort(this);
+        this.aborted = true;
         if this.resolved {
             fatal(some("Cannot abort an already resolved eventual."));
         };
-        invoke(Injunction.EventAbort(this.sequence));
-        this.aborted = true;
     }
     /// Blocks other operations in the enclosing sequence until the eventual is resolved.
     /// 
@@ -248,7 +249,7 @@ public model Eventual<T> implements Guaranteed<T> {
     /// ### Usage
     /// ```
     /// async function waitASec<T>(x: T): T {
-    ///     core.Time.sleep(1000);
+    ///     core.time.sleep(1000);
     ///     return x;
     /// }
     /// x := 34;
@@ -271,9 +272,8 @@ public model Eventual<T> implements Guaranteed<T> {
         if this.resolved {
             return this.value;
         };
-        this.value = invoke(Injunction.EventAwait(this.sequence));
         this.resolved = true;
-        return this.value; 
+        return builtin.eventual.await(this);
     }
     /// Forces the eventual to be resolved, and panics if it isn't.
     /// 
@@ -319,9 +319,9 @@ public model Sequence {
     /// Returns the id of the sequence.
     /// The id of the main sequence is always 0.
     function getId(): UnsignedInt {
-        return invoke(Injunction.SeqId(this));
+        return builtin.sequence.sequenceId(this);
     }
-}
+} 
 
 public model SequenceError {
     public var errorType: SequenceErrorType;

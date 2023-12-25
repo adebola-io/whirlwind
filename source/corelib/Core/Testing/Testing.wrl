@@ -1,12 +1,10 @@
 module testing;
 
-use core.prelude.Bool;
-use core.prelude.todo;
+use core.prelude.{Bool, Display, Array};
 use core.process.fatalOnCaller;
 use core.io.fmt;
 use core.primitives.String;
 use core.primitives.UInt8;
-use core.prelude.Display;
 
 /// Creates an assertion object.
 public function assert<T implements Display>(value: T): Assertion<T> {
@@ -59,7 +57,7 @@ public model Assertion<T implements Display> {
     /// Checks that an array is empty.
     public static function arrayIsEmpty<T>(arr: Array<T>) {
         if arr.length() != 0 {
-            message := core.io.fmt("Assertion failed because array is not empty.");
+            message := fmt("Assertion failed because array is not empty.");
             message.extend("Array Length: %").add(arr.length());
             fatalOnCaller(message.finish());
         }

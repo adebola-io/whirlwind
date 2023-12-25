@@ -9,7 +9,7 @@ use core.prelude.{
     String, Default, Iteratable, Display
 };
 use core.math.{max, min};
-use core.internals.{Injunction, invoke};
+use core.internals.builtin;
 
 /// A contiguous, growable list of items.
 public model Array<T> implements AsIterator<T, ArrayIter<T>> {
@@ -26,33 +26,33 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     public function [AsIterator.iter](): ArrayIter<T> {
         new ArrayIter(this)
     }
-    /// Returns the item at a particular index in the array, if it exists.
-    /// Indexes are zero-based, meaning that the first item is at index 0.
-    /// ### Usage
-    /// ```
-    /// arr := [1, 2, 3, 4];
-    /// assertThat(arr.At(0) == some(1));
-    /// assertThat(arr.Ar(1) == some(2));
-    /// ```
-    /// Elements can also be indexed from behind the array.
-    /// Backward indexes are one-based, meaning the index -1 is the
-    /// last item in the array.
-    /// ```
-    /// arr := [15, 25, 35, 45, 55];
-    /// assert(arr.at(-1) == some(55))
-    /// ```
-    public function at(index: Int): Maybe<T> {
-        i := if index < 0 {
-            this.length() + index
-        } else {
-            index
-        };
-        if i > this.length() or i < 0 {
-            return none();
-        };
-        a := this[i.unsigned()];
-        return some(a);
-    }
+    // /// Returns the item at a particular index in the array, if it exists.
+    // /// Indexes are zero-based, meaning that the first item is at index 0.
+    // /// ### Usage
+    // /// ```
+    // /// arr := [1, 2, 3, 4];
+    // /// assertThat(arr.At(0) == some(1));
+    // /// assertThat(arr.Ar(1) == some(2));
+    // /// ```
+    // /// Elements can also be indexed from behind the array.
+    // /// Backward indexes are one-based, meaning the index -1 is the
+    // /// last item in the array.
+    // /// ```
+    // /// arr := [15, 25, 35, 45, 55];
+    // /// assert(arr.at(-1) == some(55))
+    // /// ```
+    // public function at(index: Int): Maybe<T> {
+    //     i := if index < 0 {
+    //         this.length() + index
+    //     } else {
+    //         index
+    //     };
+    //     if i > this.length() or i < 0 {
+    //         return none();
+    //     };
+    //     a := this[i.unsigned()?];
+    //     return some(a);
+    // }
     /// Checks if an item is contained in the array.
     /// ### Usage
     /// ```
@@ -63,12 +63,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// assertThat(array.contains(str));
     /// ```
     public function contains(value: T): Bool {
-        for element in this.iter() {
-            if element == value {
-                return true;
-            };
-        }
-        return false;
+        return builtin.arrays.contains(this, value);
     }
     /// Removes all elements in the array.
     /// ### Usage
@@ -80,7 +75,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// assertThat(arr == []);
     /// ```
     public function clear() {
-        invoke(Injunction.ArrClear(this));
+        builtin.arrays.clear(this)
     }
     /// Returns a reference to the first item in the array, if it exists.
     /// ### Usage
@@ -110,7 +105,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// assertThat(!mainArray.includes(anotherSubArray));
     /// ```
     public function includes(subarray: []T): Bool {
-        todo()
+        return builtin.arrays.includes(this, subarray);
     }
     /// Returns the zero-based index of a value in the array.
     /// 
@@ -124,13 +119,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// assert(arr.IndexOf(str2) == some(1)).
     /// ```
     public function indexOf(value: T): ?UnsignedInt {
-        for { a as index, b as element } in this.iter().enumerate() 
-        {
-            if element  == value {
-                return some(index);
-            };
-        }
-        return none();
+        return builtin.arrays.indexOf(this, value);
     }
     /// Inserts an element at an index in the array,
     /// shifting all suceeding elements forward.
@@ -141,7 +130,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// assert(arr.at(1) == some(2));
     /// ```
     public function insert(index: UnsignedInt, value: T) {
-        invoke(Injunction.ArrInsert(index, value, this));
+        builtin.arrays.insert(this, index, value);
     }
     /// Inserts all the items from another array at the start of this array,
     /// shifting all its prior elements forward.
@@ -152,7 +141,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// assert(arr == [1, 2, 3, 4, 5, 6, 7, 8]);
     /// ```
     public function prepend(prefix: []T) {
-        invoke(Injunction.ArrPrepend(prefix, this));
+        builtin.arrays.prepend(this, prefix);
     }
     /// Divides the array into two new arrays: one containing elements that pass
     /// a test function, and another with elements that don't.
@@ -166,16 +155,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// assertThat(others == ["Arnold", "Harriet"]);
     /// ```
     public function partition(check: fn(item: T): Bool): [][]T {
-        trueItems := [];
-        falseItems := [];
-        for item in this {
-            if check(item) {
-                trueItems.push(item);
-            } else {
-                falseItems.push(item);
-            }
-        }
-        return [trueItems, falseItems];
+        return builtin.arrays.partition(this, check);
     }
     /// Returns the number of items in the array.
     /// ### Usage
@@ -184,7 +164,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// assert(arr.length()).equals(4);
     /// ```
     public function length(): UnsignedInt {
-        return invoke(Injunction.ArrLen(this));
+        return builtin.arrays.length(this);
     }
     /// Adds an item to the end of the array.
     /// ### Usage
@@ -197,7 +177,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// assert(array.length()).equals(5);
     /// ```
     public function push(value: T) {
-        todo()
+        builtin.arrays.push(this, value)
     }
     /// Removes an item from the end of the array.
     /// ### Usage
@@ -211,7 +191,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// assert(array).equals([1]);
     /// ```
     public function pop(): ?T {
-        todo()
+        return builtin.arrays.pop(this);
     }
     /// Returns an iterator that produces elements from the end of the array
     /// to the start.
@@ -220,11 +200,11 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// array := [7, 8, 9];
     /// rev := array.reverse();
     /// 
-    /// assert(rev.next()).equals(some(9));
-    /// assert(rev.next()).equals(some(8));
-    /// assert(rev.next()).equals(some(7));
+    /// assertThat(rev.next() == some(9));
+    /// assertThat(rev.next() == some(8));
+    /// assertThat(rev.next() == some(7));
     /// 
-    /// assert(rev.next()).equals(none());
+    /// assertThat(rev.next() == none());
     /// ```
     public function reverse(): Reversed<T> {
         return new Reversed(this);
@@ -347,10 +327,11 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// assert(arr).equals([0, 0, 0])
     /// ```
     public static function reset<T implements Default>(array: []T) {
-        i := 0;
+        i: UnsignedInt := 0;
         while i < array.length() {
-            var def: T;
+            var def: T; // default value.
             array[i] = def;
+            i += 1;
         }
     }
     /// Returns the largest value in an array.

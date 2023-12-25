@@ -80,9 +80,6 @@ pub struct RegisterList {
     pub vala: Option<Value>,
     pub valb: Option<Value>,
 
-    /// The value of this.
-    pub this: Option<Value>,
-
     // The return value of a function call.
     pub ret: Option<Value>,
 }

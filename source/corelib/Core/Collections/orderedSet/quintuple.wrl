@@ -1,0 +1,29 @@
+module quintuple;
+
+use orderedSet.OrderedSet;
+use core.prelude.{never, some};
+
+public model Quintuple<T, U, V, W, X> implements OrderedSet<T, U, V, W, X, never> {
+    public var a: T;
+    public var b: U;
+    public var c: V;
+    public var d: W;
+    public var e: X;
+
+    public function [OrderedSet.first](): ?T {
+        return some(this.a);
+    }
+    public function [OrderedSet.second](): ?U {
+        return some(this.b);
+    }
+    public function [OrderedSet.third](): ?V {
+        return some(this.c);
+    }
+    public function [OrderedSet.fourth](): ?W {
+        return some(this.d);
+    }
+    public function [OrderedSet.fifth](): ?X {
+        return some(this.e);
+    }
+
+}

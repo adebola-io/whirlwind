@@ -6,16 +6,18 @@ use core.{
     process.{fatalOnCaller, todo},
 };
 use outcome.{ok, err, Outcome}; 
+use prelude.{String, fatal};
 use interfaces.{guaranteed.Guaranteed, try.Try, default.Default};
+use core.internals.builtin;
 
 /// Creates a `Maybe` with no value.
 public function none<T>(): ?T {
-    return invoke(Injunction.None);
+    return builtin.maybe.none();
 }
 
 /// Creates a `Maybe` with an internal value.
 public function some<T>(value: T): ?T {
-    return invoke(Injunction.MayCreate(value));
+    return builtin.maybe.some(value);
 }
 
 /// A value that may or may not exist.

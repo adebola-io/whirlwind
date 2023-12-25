@@ -25,13 +25,14 @@ use tower_lsp::{
     jsonrpc::Error,
     lsp_types::{
         request::{GotoDeclarationParams, GotoDeclarationResponse},
-        CompletionContext, CompletionParams, CompletionResponse, Diagnostic,
-        DidChangeTextDocumentParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams,
-        DocumentDiagnosticParams, DocumentDiagnosticReport, DocumentSymbol, DocumentSymbolParams,
-        DocumentSymbolResponse, FoldingRange, FoldingRangeParams, FullDocumentDiagnosticReport,
-        HoverParams, InlayHint, InlayHintKind, InlayHintLabel, InlayHintParams, Location, Position,
-        ReferenceParams, RelatedFullDocumentDiagnosticReport, RenameParams, SymbolKind, TextEdit,
-        Url, WorkspaceDiagnosticParams, WorkspaceDiagnosticReport, WorkspaceDiagnosticReportResult,
+        CompletionContext, CompletionItem, CompletionItemKind, CompletionParams,
+        CompletionResponse, Diagnostic, DidChangeTextDocumentParams, DidOpenTextDocumentParams,
+        DidSaveTextDocumentParams, DocumentDiagnosticParams, DocumentDiagnosticReport,
+        DocumentSymbol, DocumentSymbolParams, DocumentSymbolResponse, FoldingRange,
+        FoldingRangeParams, FullDocumentDiagnosticReport, HoverParams, InlayHint, InlayHintKind,
+        InlayHintLabel, InlayHintParams, Location, Position, ReferenceParams,
+        RelatedFullDocumentDiagnosticReport, RenameParams, SymbolKind, TextEdit, Url,
+        WorkspaceDiagnosticParams, WorkspaceDiagnosticReport, WorkspaceDiagnosticReportResult,
         WorkspaceDocumentDiagnosticReport, WorkspaceEdit, WorkspaceFullDocumentDiagnosticReport,
     },
 };
@@ -372,6 +373,7 @@ impl DocumentManager {
                     "use " => Trigger::UseImport,
                     "new " => Trigger::NewInstance,
                     "implements " => Trigger::Implements,
+                    "module " => Trigger::Module,
                     "." => Trigger::DotAccess,
                     "&" => Trigger::Ampersand,
                     " " => Trigger::WhiteSpace,
@@ -428,6 +430,18 @@ impl DocumentManager {
                     sort_completions(&mut completions);
                     return Some(CompletionResponse::Array(completions));
                 })();
+            }
+            Trigger::Module => {
+                let filename = module.path_buf.file_stem().and_then(|stem| stem.to_str());
+                if let Some(filename) = filename {
+                    let completion_item = CompletionItem {
+                        label: filename.to_string(),
+                        kind: Some(CompletionItemKind::MODULE),
+                        ..Default::default()
+                    };
+                    let response = CompletionResponse::Array(vec![completion_item]);
+                    return (completion_finder.message_store.take(), Some(response));
+                }
             }
             trigger => {
                 // Attempt regular autocomplete.

@@ -90,6 +90,7 @@ name = "bytecode"
 version = "0.1.0"
 dependencies = [
  "analyzer",
+ "ast",
 ]
 
 [[package]]

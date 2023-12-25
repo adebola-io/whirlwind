@@ -44,7 +44,9 @@ module.exports.provideCompletionItem = (
       };
    }
    // Customized completion for use imports.
-   if (beforePosition.endsWith(" use") && whitespaceTrigger) {
+   const beforeIsUse =
+      beforePosition.endsWith(" use") || beforePosition == "use";
+   if (beforeIsUse && whitespaceTrigger) {
       newContext = {
          ...newContext,
          triggerCharacter: "use ",
@@ -70,6 +72,11 @@ module.exports.provideCompletionItem = (
       newContext = {
          ...newContext,
          triggerCharacter: "implements ",
+      };
+   } else if (beforePosition.endsWith("module") && whitespaceTrigger) {
+      newContext = {
+         ...newContext,
+         triggerCharacter: "module ",
       };
    }
    return next(document, position, newContext, token);

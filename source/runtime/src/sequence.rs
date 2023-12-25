@@ -128,7 +128,7 @@ impl Sequence {
             }
             Opcode::Stall => return ControlFlow::Continue(()),
             Opcode::Return => {
-                // TODO: Where to store return values?
+                // Return values should be stored in the ret register.
                 let return_address = self
                     .stack
                     .deallocate_current_frame()

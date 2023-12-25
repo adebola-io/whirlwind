@@ -12,7 +12,12 @@ public type PathLike = String | Buffer | Url;
 public type FileHandle = UnsignedInt;
 
 public model File {
+    public async function open() {
 
+    }
+    public async function close() {
+        
+    }
 }
 
 public model FsError {

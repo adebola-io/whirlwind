@@ -6,12 +6,12 @@ use core.{
     primitives.UInt8,
     prelude.Maybe,
     concurrent.CurrentSequence,
-    internals.{invoke, Injunction},
+    internals.{builtin, never},
 };
 
 /// Unwinds the stack by one frame and crashes with a fatal error.
 public function fatalOnCaller(message: String): never  {
-    return invoke(Injunction.SeqFatalOneStep(message));
+    return builtin.sequence.crashOneStep(message);
 }
 
 /// Indicates that the current piece of code is unfinished.
@@ -53,7 +53,7 @@ public function todo(message?: String): never {
 /// }
 /// ```
 public function fatal(message?: String): never {
-    return invoke(Injunction.SeqFatal(message));
+    return builtin.sequence.crash(message);
 }
 
 /// Closes all sequences and exits the program with a given code.
@@ -63,8 +63,8 @@ public function fatal(message?: String): never {
 /// 
 /// exit(0);
 /// ```
-public function exit(code: UInt8): never {
-    return invoke(Injunction.Exit);
+public function exit(code?: UInt8): never {
+    return builtin.exit(code);
 }
 
 /// Returns the value of an environment variable.

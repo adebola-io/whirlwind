@@ -7,36 +7,63 @@ use ops.{Addition, Sequenced};
 
 /// An interface to be implemented by values that can be cast to an unsigned integer.
 interface Unsigned {
-    public function unsigned(): UnsignedInt;
+    public function unsigned(): ?UnsignedInt;
 }
 
 /// An unsigned 8-bit integer.
-public model UInt8 implements Display + Addition + Sequenced + Default + Unsigned {
+public model UInt8 
+    implements Display 
+        + Addition 
+        + Sequenced 
+        + Default 
+        + Unsigned {
     // Compiler built in.
 }
 
 /// An unsigned 16-bit integer.
-public model UInt16 implements Display + Addition + Sequenced + Default + Unsigned {
+public model UInt16 
+    implements Display 
+        + Addition 
+        + Sequenced 
+        + Default 
+        + Unsigned {
     // Compiler built in.
 }
 
 /// An unsigned 32-bit integer.
-public model UInt32 implements Display + Addition + Sequenced + Default + Unsigned {
+public model UInt32 
+    implements Display 
+        + Addition 
+        + Sequenced 
+        + Default 
+        + Unsigned {
     // Compiler built in.
 }
 
 /// An unsigned 64-bit integer.
-public model UInt64 implements Display + Addition + Sequenced + Default + Unsigned {
+public model UInt64 
+    implements Display 
+        + Addition 
+        + Sequenced 
+        + Default 
+        + Unsigned {
     // Compiler built in.
 }
 
 /// An integer value with a direction sign.
-public model SignedInt implements Display + Addition + Sequenced + Default + Unsigned {
+public model SignedInt 
+    implements Display 
+        + Addition 
+        + Sequenced 
+        + Default 
+        + Unsigned {
     // Compiler built in.
 }
 
 /// A union data type to represent different unsigned integer values.
 public type UnsignedInt = UInt8 | UInt16 | UInt32 | UInt64;
+/// Alias for Unsigned integer.
+public type UInt = UnsignedInt;
 
 /// A union data type to represent different integer values.
 public type Int = UnsignedInt | SignedInt;

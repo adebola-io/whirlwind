@@ -30,6 +30,7 @@ pub enum CurrentModuleType {
     Range,
     Default,
     Maybe,
+    Never,
 }
 pub trait IntrinsicPaths {
     const PRELUDE: &'static str = "prelude/prelude.wrl";
@@ -39,6 +40,7 @@ pub trait IntrinsicPaths {
     const NUMERIC: &'static str = "primitives/numeric.wrl";
     const CONCURRENT: &'static str = "concurrent/concurrent.wrl";
     const INTERNAL: &'static str = "internals/internals.wrl";
+    const NEVER: &'static str = "internals/never.wrl";
     const OPS: &'static str = "primitives/ops.wrl";
     const INTERFACES: &'static str = "prelude/interfaces.wrl";
     const RANGE: &'static str = "prelude/range.wrl";

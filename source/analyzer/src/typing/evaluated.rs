@@ -466,7 +466,7 @@ pub fn evaluate(
                 Some(value) => {
                     let symbol = symbollib.get_forwarded(value).unwrap();
                     // Pertaining to the `This` type, interfaces can be solved as a unique type of generics.
-                    // In the implementing model, `This` should refer to the model itself, not the interface.
+                    // In the implementing model, `This` should refer to the model/generic itself, not the interface.
                     if let Some(prior_generics) = solved_generics.as_ref() {
                         if let Some(solution) = prior_generics.iter().find(|tuple| tuple.0 == value)
                         {
@@ -484,9 +484,7 @@ pub fn evaluate(
                             })
                             .collect(),
 
-                        _ => {
-                            return EvaluatedType::Unknown;
-                        }
+                        _ => vec![],
                     };
                     let intermediate_type = IntermediateType::SimpleType {
                         value,

@@ -3,9 +3,12 @@ module string;
 use ops.{Addition, Sequenced};
 use bool.Bool;
 use core.{ 
-    internals.{invoke, Injunction}, 
+    internals.builtin,
     collections.Hash,
-    prelude.{Maybe, AsIterator, Iteratable, Range, Display, some, none, Default},
+    prelude.{
+        Maybe, AsIterator, Iteratable, 
+        Range, Display, some, none, Default
+    },
     process.todo,
 };
 use numeric.{Int, UnsignedInt, UInt8, UInt16};
@@ -20,7 +23,7 @@ public model String
     + Hash
     + Sequenced
 {
-    var arr: []UInt16;
+    var arr: []UInt8;
     new() {
         this.arr = [];
     }
@@ -61,27 +64,27 @@ public model String
     public function [AsIterator.iter](): Chars {
         return new Chars(this);
     }
-    /// Returns a `Maybe` with the character at a zero based index in the string.
-    ///
-    /// It also supports negative indexes, which will return values in reverse from the end of the string.
-    /// ## Usage
-    /// ```
-    /// str := "This is a string";
-    /// 
-    /// assert(str.at(0)).equals(some("T"));
-    /// assert(str.at(8)).equals(some("a"));
-    /// assert(str.at(11)).equals(some("t"));
-    /// ```
-    /// _Indexing from behind:_
-    /// 
-    /// ```
-    /// assert(str.at(-1)).equals(some("g"));
-    /// assert(str.at(-3)).equals(some("i"));
-    /// ```
-    /// It will return no value if the length of the string is exceeded.
-    public function at(position: Int): ?String {
-        some(this.arr.at(position)?.toStr())
-    }
+    // /// Returns a `Maybe` with the character at a zero based index in the string.
+    // ///
+    // /// It also supports negative indexes, which will return values in reverse from the end of the string.
+    // /// ## Usage
+    // /// ```
+    // /// str := "This is a string";
+    // /// 
+    // /// assert(str.at(0)).equals(some("T"));
+    // /// assert(str.at(8)).equals(some("a"));
+    // /// assert(str.at(11)).equals(some("t"));
+    // /// ```
+    // /// _Indexing from behind:_
+    // /// 
+    // /// ```
+    // /// assert(str.at(-1)).equals(some("g"));
+    // /// assert(str.at(-3)).equals(some("i"));
+    // /// ```
+    // /// It will return no value if the length of the string is exceeded.
+    // public function at(position: Int): ?String {
+    //     some(this.arr.at(position)?.toStr())
+    // }
     /// Adds text to the end of the string.
     /// ## Usage
     /// ```
@@ -96,6 +99,13 @@ public model String
             this.arr.push(unit);
         }
     }
+    /// Returns a copy of the bytes in the string.
+    /// ## Usage
+    /// ```
+    /// ```
+    public function bytes(): []UInt8 {
+        return this.arr;
+    }
     /// Changes the first character of every word in the string to upper case.
     /// ## Usage
     /// ```
@@ -105,7 +115,7 @@ public model String
     /// assert(str2).equals("Jonathan Is A Boy");
     /// ```
     public function capitalCase(): String {
-        return invoke(Injunction.StrCapitalCase(this));
+        return builtin.strings.capitalCase(this);
     }
     /// Returns an iterator over the valid characters in the string.
     /// ## Usage
@@ -130,7 +140,7 @@ public model String
     /// assert(str.length()).equals(0);
     /// ```
     public function clear() {
-        invoke(Injunction.StrClear(this))
+        this.arr = [];
     }
     /// Returns true if a substring is contained within the string.
     /// ## Usage
@@ -148,7 +158,7 @@ public model String
     /// ```
     /// name := "Michael";
     /// assertThat(name.endsWith("l"));
-    /// assertThat(name.startsWith("ael"));
+    /// assertThat(name.endsWith("ael"));
     /// ```
     public function endsWith(pat: String): Bool {
         if pat.arr.length() > this.arr.length() {
@@ -173,7 +183,7 @@ public model String
     /// assertThat(!str2.isAlphanumeric());
     /// ```
     public function isAlphanumeric(): Bool {
-        return invoke(Injunction.StrIsAlphanum(this));
+        return builtin.strings.isAlphanumeric(this);
     }
     /// Returns true if the string has no characters.
     /// ## Usage
@@ -206,7 +216,7 @@ public model String
     /// assert(str2).equals("hello, world!");
     /// ```
     public function lowerCase(): String {
-        return invoke(Injunction.StrLowercase(this));
+        return builtin.strings.lowerCase(this);
     }
     /// Returns a version of the string with padding on both sides.
     /// ## Usage
@@ -217,7 +227,7 @@ public model String
     /// assert(str2).equals("   Alright   "); // 3 spaces before and after.
     /// ```
     public function pad(count: UnsignedInt): String {
-        return invoke(Injunction.StrPad(this, count));
+        return builtin.strings.pad(this, count);
     }
     /// Returns a version of the string with left padding.
     /// ## Usage
@@ -228,7 +238,7 @@ public model String
     /// assert(str2).equals("   Alright"); // 3 spaces before.
     /// ```
     public function padLeft(count: UnsignedInt): String {
-        return invoke(Injunction.StrPadLeft(this, count));
+        return builtin.strings.padLeft(this, count);
     }
     /// Returns a version of the string with left padding.
     /// ## Usage
@@ -239,7 +249,7 @@ public model String
     /// assert(str2).equals("Alright   "); // 3 spaces before.
     /// ```
     public function padRight(count: UnsignedInt): String {
-        return invoke(Injunction.StrPadRight(this, count));
+        return builtin.strings.padRight(this, count);
     }
     /// Pads the string in place with whitespace on the left and right sides.
     /// ## Usage
@@ -250,7 +260,7 @@ public model String
     /// assert(str).equals("   Hello, world!   ");
     /// ```
     public function padInPlace(count: UnsignedInt) {
-        invoke(Injunction.StrPadInPlace(this, count));
+        this = this.pad(count);
     }
     /// Adds text to the start of the string.
     /// ## Usage
@@ -294,8 +304,8 @@ public model String
     /// 
     /// assert(str2).equals("Mike goes to school. Mike buys a book.")
     /// ```
-    public function replace(substr: String, newstr: String): String {
-        return invoke(Injunction.StrReplace(this, substr, newstr));
+    public function replace(subStr: String, newStr: String): String {
+        return builtin.strings.replace(this, subStr, newStr);
     }
     /// Returns a reversed version of the string.
     /// ## Usage
@@ -322,7 +332,7 @@ public model String
     /// assert(str.slice(0..5)).equals(some("Hello")); // index 0 to 4.
     /// ```
     public function slice(bounds: Range<UnsignedInt>): ?String {
-        return invoke(Injunction.StrSlice(this, bounds));
+        return builtin.strings.slice(this, bounds);
     }
     /// Divides the string into a list of substrings based on a delimeter.
     /// ## Usage
@@ -330,10 +340,10 @@ public model String
     /// str := "Ring around the rosy";
     /// words := str.split(" ");
     /// 
-    /// assert(words).equals(["Ring", "Around", "The", "Rosy"]);
+    /// assert(words == ["Ring", "Around", "The", "Rosy"]);
     /// ```
     public function split(delim: String): []String {
-        return invoke(Injunction.StrSplit(this, delim));
+        return builtin.strings.split(this, delim);
     }
     /// Divides the string into a list of substrings based on a predicate.
     /// ## Usage
@@ -343,8 +353,8 @@ public model String
     /// 
     /// assert(sentences).equals(["Hello world", "My name is James."]);
     /// ```
-    public function splitAt(predicate: fn(pattern: String): Bool): This {
-        return invoke(Injunction.StrSplitAt(this, predicate));
+    public function splitAt(predicate: fn(pattern: String): Bool): []String {
+        return builtin.strings.splitAt(this, predicate);
     }
     /// Changes only the first character in the string to upper case.
     /// ## Usage
@@ -355,7 +365,7 @@ public model String
     /// assert(str2).equals("Nice to meet you, where you been?");
     /// ```
     public function sentenceCase(): String {
-        return invoke(Injunction.StrSentenceCase(this));
+        return builtin.strings.sentenceCase(this);
     }
     /// Returns a version of the string without left or right whitespace padding.
     /// ## Usage
@@ -365,7 +375,7 @@ public model String
     /// assert(str.trim()).equals("What then shall we say?");
     /// ```
     public function trim(): String {
-        return invoke(Injunction.StrTrim(this));
+        return builtin.strings.trim(this);
     }  
     /// Mutates the string in place and removes left or right whitespace padding.
     /// ## Usage
@@ -376,9 +386,8 @@ public model String
     /// 
     /// assert(str).equals("What then shall we say?");
     /// ```
-    // !::mutable::!
-    public function trimInPlace(): String {
-        return invoke(Injunction.StrTrimInPlace(this));
+    public function trimInPlace() {
+        this = this.trim()
     }   
     /// Returns a version of the string without left whitespace padding.
     /// ## Usage
@@ -388,7 +397,7 @@ public model String
     /// assert(str.trimStart()).equals("What then shall we say?\n");
     /// ```
     public function trimStart(): String {
-        return invoke(Injunction.StrTrimStart(this));
+        return builtin.strings.trimStart(this);
     } 
     /// Returns a version of the string without right whitespace padding.
     /// ## Usage
@@ -398,7 +407,7 @@ public model String
     /// assert(str.trimEnd()).equals("\nWhat then shall we say?");
     /// ```
     public function trimEnd(): String {
-        return invoke(Injunction.TrimEnd(this));
+        return builtin.strings.trimEnd(this);
     }
     /// Changes the case of all letters in the string to upper case.
     /// ## Usage
@@ -407,7 +416,7 @@ public model String
     /// assert(str.upperCase()).equals("HELLO, WORLD!");
     /// ```
     public function upperCase(): String {
-        return invoke(Injunction.StrUppercase(this));
+        return builtin.strings.trimEnd(this);
     }
     /// Returns true if the string starts with a given pattern.
     /// 
@@ -453,9 +462,10 @@ public model Chars implements Iteratable<String> {
     }
     /// Returns the next character.
     public function [Iteratable.next](): ?String {
-        nextChar := this.string.at(this.idx)?;
-        this.idx += 1;
-        return some(nextChar);
+        // nextChar := this.string.at(this.idx)?;
+        // this.idx += 1;
+        // return some(nextChar);
+        todo()
     }
 }
 
