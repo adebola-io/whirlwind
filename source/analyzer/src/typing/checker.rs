@@ -83,7 +83,7 @@ impl<'a> TypecheckerContext<'a> {
     pub fn add_diagnostic(&mut self, error: TypeError) {
         self.diagnostics.push(ProgramDiagnostic {
             offending_file: self.path_idx,
-            error_type: DiagnosticType::Error(crate::Error::Typing(error)),
+            _type: DiagnosticType::Error(crate::Error::Typing(error)),
         })
     }
     /// Returns a reference to the error list to be passed around by the evaluator.
@@ -148,9 +148,7 @@ pub fn typecheck(
                     let name = symbol.name.to_owned();
                     checker_ctx.diagnostics.push(ProgramDiagnostic {
                         offending_file: checker_ctx.path_idx,
-                        error_type: DiagnosticType::Warning(errors::unused_import_symbol(
-                            name, span,
-                        )),
+                        _type: DiagnosticType::Warning(errors::unused_import_symbol(name, span)),
                     })
                 }
                 _ => {}
@@ -1727,7 +1725,7 @@ mod expressions {
                             for _type in errortypes {
                                 checker_ctx.add_diagnostic(TypeError {
                                     _type,
-                                    span: assexp.span,
+                                    span: checker_ctx.span_of_expr(&assexp.right, symbollib),
                                 })
                             }
                             return EvaluatedType::Unknown;

@@ -471,7 +471,7 @@ fn testing_the_standard_library() {
             offending_module.unwrap(),
             start[0],
             start[1],
-            error.error_type
+            error._type
         );
     }
 }

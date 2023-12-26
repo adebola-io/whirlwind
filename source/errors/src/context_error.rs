@@ -49,6 +49,11 @@ pub enum ContextErrorType {
     DuplicateLoopVariable {
         name: String,
     },
+    NamelessModule,
+    MismatchInName {
+        module_name: String,
+        file_name: String,
+    },
 }
 
 pub fn unknown_value(name: String, span: ast::Span) -> ContextError {
@@ -128,5 +133,26 @@ pub fn duplicate_loop_variable(name: &ast::Identifier) -> ContextError {
             name: name.name.clone(),
         },
         span: name.span,
+    }
+}
+
+pub fn nameless_module() -> ContextError {
+    ContextError {
+        _type: ContextErrorType::NamelessModule,
+        span: ast::Span::default(),
+    }
+}
+
+pub fn mismatched_file_and_module_name(
+    module_name: &str,
+    file_name: &str,
+    span: ast::Span,
+) -> ContextError {
+    ContextError {
+        _type: ContextErrorType::MismatchInName {
+            module_name: module_name.to_string(),
+            file_name: file_name.to_string(),
+        },
+        span,
     }
 }

@@ -72,8 +72,9 @@ public model HttpServer {
     }
     /// Registers a middleware for use in the server.
     /// Middlewares are executed in the order in which they are registered.
-    public function useMiddleware(middleware: Middleware) {
+    public function useMiddleware(middleware: Middleware): This {
         this.middleware.push(middleware)
+        return this;
     }
 }
 
@@ -85,7 +86,7 @@ public model Middleware {
         this.handlers = [];
     }
     /// Registers a middleware handler.
-    public function useHandler(handler: fn(request: HttpRequest): Prospect<MiddlewareResponse>) {
+    public function addHandler(handler: fn(request: HttpRequest): Prospect<MiddlewareResponse>) {
         this.handlers.push(handler);
     }
 }

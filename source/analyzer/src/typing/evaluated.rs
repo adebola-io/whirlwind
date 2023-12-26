@@ -892,7 +892,7 @@ fn add_error_if_possible(
     if let Some((errors, path_idx)) = error_tracker {
         let error = ProgramDiagnostic {
             offending_file: *path_idx,
-            error_type: DiagnosticType::Error(crate::Error::Typing(error)),
+            _type: DiagnosticType::Error(crate::Error::Typing(error)),
         };
         if !errors.iter().any(|prior| *prior == error) {
             errors.push(error);

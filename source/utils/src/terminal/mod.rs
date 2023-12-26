@@ -15,7 +15,7 @@ pub struct Colored {
 
 /// A trait that specifies that a struct can be transformed to a colored string.
 pub trait Colorable {
-    fn fmt(&self) -> Colored;
+    fn color(&self) -> Colored;
 }
 
 impl Colored {
@@ -101,6 +101,10 @@ impl Colored {
     pub fn bg_white(self) -> Self {
         add_format(self, 47)
     }
+
+    pub fn str(&self) -> String {
+        self.to_string()
+    }
 }
 
 fn add_format(mut text: Colored, code: u8) -> Colored {
@@ -175,17 +179,22 @@ pub fn inform<T>(message: T)
 where
     T: Display,
 {
-    println!("{}", Colored::from(message).blue())
+    println!("{}", Colored::from(message).cyan())
 }
 
 impl Colorable for Error {
-    fn fmt(&self) -> Colored {
+    fn color(&self) -> Colored {
         Colored::from(self.to_string())
     }
 }
 
 impl Colorable for String {
-    fn fmt(&self) -> Colored {
+    fn color(&self) -> Colored {
         Colored::from(&self)
+    }
+}
+impl Colorable for &str {
+    fn color(&self) -> Colored {
+        Colored::from(self)
     }
 }

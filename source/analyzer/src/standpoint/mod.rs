@@ -153,7 +153,7 @@ impl Standpoint {
     /// Adds an error to the error list.
     /// Deduplicates doubled import errors.
     fn add_diagnostic(&mut self, error: ProgramDiagnostic) {
-        if matches!(&error.error_type, DiagnosticType::Error(Importing(_))) {
+        if matches!(&error._type, DiagnosticType::Error(Importing(_))) {
             if self
                 .diagnostics
                 .iter()
@@ -169,7 +169,7 @@ impl Standpoint {
     pub fn validate(&mut self) {
         self.diagnostics.retain(|error| {
             !matches!(
-                error.error_type,
+                error._type,
                 DiagnosticType::Error(Error::Typing(_) | Error::Importing(_))
                     | DiagnosticType::Warning(_)
             )
@@ -276,12 +276,10 @@ impl Standpoint {
                         // Unable to resolve the module to a specific path. All is lost.
                         self.add_diagnostic(ProgramDiagnostic {
                             offending_file: root,
-                            error_type: DiagnosticType::Error(Importing(
-                                errors::cannot_find_module(
-                                    target.name.name.clone(),
-                                    target.name.span,
-                                ),
-                            )),
+                            _type: DiagnosticType::Error(Importing(errors::cannot_find_module(
+                                target.name.name.clone(),
+                                target.name.span,
+                            ))),
                         });
                     }
                     return; // todo: fuzzy search suggestions.
@@ -292,7 +290,7 @@ impl Standpoint {
             if phase.is_assessment() {
                 self.add_diagnostic(ProgramDiagnostic {
                     offending_file: root,
-                    error_type: DiagnosticType::Error(Importing(errors::self_import(target))),
+                    _type: DiagnosticType::Error(Importing(errors::self_import(target))),
                 });
             }
             return;
@@ -358,7 +356,7 @@ impl Standpoint {
                         if !symbol.kind.is_public() {
                             self.add_diagnostic(ProgramDiagnostic {
                                 offending_file: root,
-                                error_type: DiagnosticType::Error(Error::Importing(
+                                _type: DiagnosticType::Error(Error::Importing(
                                     errors::private_symbol_leak(
                                         target.name.name.clone(),
                                         sub_target.name.to_owned(),
@@ -444,9 +442,9 @@ impl Standpoint {
                         // error.
                         let error = ProgramDiagnostic {
                             offending_file: root,
-                            error_type: DiagnosticType::Error(Importing(
-                                errors::symbol_not_a_module(target.name.to_owned()),
-                            )),
+                            _type: DiagnosticType::Error(Importing(errors::symbol_not_a_module(
+                                target.name.to_owned(),
+                            ))),
                         };
                         self.add_diagnostic(error);
                     }
@@ -457,7 +455,7 @@ impl Standpoint {
                 if phase.is_assessment() {
                     let error = ProgramDiagnostic {
                         offending_file: root,
-                        error_type: DiagnosticType::Error(Importing(errors::symbol_not_a_module(
+                        _type: DiagnosticType::Error(Importing(errors::symbol_not_a_module(
                             target.name.to_owned(),
                         ))),
                     };
@@ -488,7 +486,7 @@ impl Standpoint {
     pub fn add_import_error(&mut self, error: errors::ImportError) {
         self.add_diagnostic(ProgramDiagnostic {
             offending_file: self.entry_module,
-            error_type: DiagnosticType::Error(Importing(error)),
+            _type: DiagnosticType::Error(Importing(error)),
         })
     }
 
@@ -500,7 +498,7 @@ impl Standpoint {
     ) {
         self.add_diagnostic(ProgramDiagnostic {
             offending_file,
-            error_type: DiagnosticType::Error(Importing(error)),
+            _type: DiagnosticType::Error(Importing(error)),
         })
     }
 
@@ -552,7 +550,7 @@ impl Standpoint {
         if implicitly_named {
             let error = ProgramDiagnostic {
                 offending_file: path_idx,
-                error_type: DiagnosticType::Error(Importing(errors::nameless_module())),
+                _type: DiagnosticType::Error(Error::Context(errors::nameless_module())),
             };
             if !self.diagnostics.iter().any(|prior| *prior == error) {
                 self.diagnostics.push(error)
@@ -631,7 +629,7 @@ impl Standpoint {
         if !implicitly_named && module_name != module_file_name {
             self.diagnostics.push(ProgramDiagnostic {
                 offending_file: path_idx,
-                error_type: DiagnosticType::Error(Importing(
+                _type: DiagnosticType::Error(Error::Context(
                     errors::mismatched_file_and_module_name(
                         &module_name,
                         module_file_name,

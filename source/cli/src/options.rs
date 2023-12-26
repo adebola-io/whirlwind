@@ -1,7 +1,8 @@
-use std::{collections::HashMap, fmt::Display};
+use std::{collections::HashMap, fmt::Display, path::PathBuf};
 
 pub struct CliObject {
     pub command: Option<CliCommand>,
+    pub file: Option<PathBuf>,
     pub arguments: HashMap<String, String>,
 }
 
@@ -20,21 +21,20 @@ pub enum CliCommand {
 pub enum CliError {
     InvalidArgument(String),
     DuplicateOption(String),
+    EntryFileNotSpecified,
 }
 
 impl Display for CliError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                CliError::InvalidArgument(option) => format!("Unknown option: {}", option),
-                CliError::DuplicateOption(option) => format!(
-                    "Duplicate option: {}. The option {} is defined more than once.",
-                    option, option
-                ),
-            }
-        )
+        let message = match self {
+            CliError::InvalidArgument(option) => format!("Unknown option: {}", option),
+            CliError::DuplicateOption(option) => format!(
+                "Duplicate option: {}. The option {} is defined more than once.",
+                option, option
+            ),
+            CliError::EntryFileNotSpecified => format!("Entry file not specified."),
+        };
+        write!(f, "{message}",)
     }
 }
 
@@ -43,6 +43,7 @@ pub fn parse_cli() -> Result<CliObject, CliError> {
     let mut args = std::env::args().skip(1);
 
     let mut arguments = HashMap::new();
+    let mut file = None;
     let command = match args.next().as_ref().map(|a| a.as_str()) {
         Some("run") => CliCommand::Run,
         Some("check") => CliCommand::Check,
@@ -56,10 +57,24 @@ pub fn parse_cli() -> Result<CliObject, CliError> {
         None => {
             return Ok(CliObject {
                 command: None,
+                file: None,
                 arguments,
             })
         }
     };
+
+    if matches!(
+        command,
+        CliCommand::Run | CliCommand::Build | CliCommand::Eval | CliCommand::Test
+    ) {
+        let entry_file = args.next();
+        if entry_file.is_none() {
+            return Err(CliError::EntryFileNotSpecified);
+        }
+        let entry_file = entry_file.unwrap();
+        let path = PathBuf::from(entry_file);
+        file = Some(path);
+    }
 
     for arg in args {
         let tuples = arg.split("=").collect::<Vec<_>>();
@@ -75,6 +90,7 @@ pub fn parse_cli() -> Result<CliObject, CliError> {
     }
     Ok(CliObject {
         command: Some(command),
+        file,
         arguments,
     })
 }

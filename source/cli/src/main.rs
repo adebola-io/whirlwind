@@ -1,10 +1,12 @@
 use crate::options::parse_cli;
-use analyzer::Standpoint;
+use analyzer::{Module, Standpoint};
+use diagnostics::print_diagnostics;
 use help::print_help;
 use options::CliCommand;
 use std::{path::PathBuf, process::exit};
-use utils::terminal::{self, Colored};
+use utils::terminal;
 
+mod diagnostics;
 mod globals;
 mod help;
 mod options;
@@ -18,7 +20,7 @@ fn main() {
         Ok(options) => match &options.command {
             Some(CliCommand::Help) | None => print_help(),
             Some(CliCommand::Version) => {
-                println!("Whirlwind version {VERSION} ({})", std::env::consts::OS)
+                println!("Whirlwind Version {VERSION} ({})", std::env::consts::OS)
             }
             Some(CliCommand::Run | CliCommand::Build | CliCommand::Eval | CliCommand::Test) => {
                 manage(options, &mut code)
@@ -33,6 +35,7 @@ fn main() {
         Err(error) => {
             code = 1;
             terminal::error(error);
+            terminal::inform("Format: whirlwind [command] [file.wrl] [arguments]");
         }
     };
     exit(code);
@@ -54,14 +57,38 @@ fn manage(options: options::CliObject, code: &mut i32) {
                     terminal::error("Invalid core library file.");
                     *code = 1;
                 } else {
-                    let time = std::time::Instant::now();
+                    // ---
                     let mut standpoint = Standpoint::new(true, Some(corelibpath));
+
+                    let entry_path = options.file.unwrap();
+                    match Module::from_path(entry_path) {
+                        Ok(module) => {
+                            standpoint.add_module(module);
+                        }
+                        Err(error) => {
+                            terminal::error(error._type);
+                            *code = 1;
+                            return;
+                        }
+                    };
+
                     standpoint.validate();
-                    let elapsed = time.elapsed();
-                    let mut message = Colored::new().green().bold();
-                    message.text =
-                        format!("   Built {} in {:?}.", standpoint.module_map.len(), elapsed);
-                    println!("{message}");
+
+                    // First boundary.
+                    if standpoint.diagnostics.len() > 0 {
+                        print_diagnostics(&standpoint);
+                    } else {
+                        println!("????")
+                    }
+
+                    // match bytecode::generate_from(&standpoint) {
+                    //     Ok(_) => todo!(),
+                    //     Err(error) => {
+
+                    //     },
+                    // }
+
+                    // --
                 };
             }
             Err(error) => {

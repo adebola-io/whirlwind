@@ -5,7 +5,7 @@ use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range};
 
 /// Convert a program diagnostic to an LSP diagnostic.
 pub fn progdiagnostic_to_diagnostic(diagnostic: &ProgramDiagnostic) -> Diagnostic {
-    let (message, range, severity) = match &diagnostic.error_type {
+    let (message, range, severity) = match &diagnostic._type {
         DiagnosticType::Error(error) => {
             let (message, range) = match error {
                 Error::Lexical(lex_error) => (

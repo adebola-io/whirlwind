@@ -25,7 +25,6 @@ pub enum ImportErrorType {
     NonExistentModule(String),
     DuplicatedModuleNameInSameFolder(String),
     SelfReferentialUse(String),
-    NamelessModule,
     MismatchedModuleCasing {
         mistake: String,
         real: String,
@@ -43,10 +42,6 @@ pub enum ImportErrorType {
     },
     SymbolNotAModule {
         symbolname: String,
-    },
-    MismatchInName {
-        module_name: String,
-        file_name: String,
     },
 }
 
@@ -200,26 +195,5 @@ pub fn private_symbol_leak(modulename: String, symbolname: ast::Identifier) -> I
             symbolname: symbolname.name,
         },
         span: Some(symbolname.span),
-    }
-}
-
-pub fn nameless_module() -> ImportError {
-    ImportError {
-        _type: ImportErrorType::NamelessModule,
-        span: Some(ast::Span::default()),
-    }
-}
-
-pub fn mismatched_file_and_module_name(
-    module_name: &str,
-    file_name: &str,
-    module_ident_span: ast::Span,
-) -> ImportError {
-    ImportError {
-        _type: ImportErrorType::MismatchInName {
-            module_name: module_name.to_string(),
-            file_name: file_name.to_string(),
-        },
-        span: Some(module_ident_span),
     }
 }

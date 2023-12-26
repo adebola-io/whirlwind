@@ -1,7 +1,7 @@
 module response;
 use request.HttpRequest;
 
-use core.prelude.{String, UnsignedInt, todo};
+use core.prelude.{String, UnsignedInt, UInt16, todo};
 use core.data.JsonValue;
 
 /// The headers on a 
@@ -27,8 +27,8 @@ public model HttpResponse {
         this.headers.get("Content-Type")
     }
     /// Sets the status code value of the response.
-    public function status(value: UnsignedInt): This {
-        this._status = value;
+    public function status(code: UInt16): This {
+        this._status = code;
         return this;
     }
     /// Sets the response type to HTML Text.

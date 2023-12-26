@@ -6,5 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+ast = {version = "*", path = "../ast"}
 analyzer = {version = "*", path = "../analyzer"}
+bytecode = {version = "*", path = "../bytecode"}
 utils = {version = "*", path = "../utils"}
+errors = {version = "*", path = "../errors"}
+pretty = {version = "*", path = "../prettyprint"}

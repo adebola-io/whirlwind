@@ -44,6 +44,23 @@ impl Span {
         }
     }
 
+    /// Returns true if the span ranges over multiple lines.
+    pub fn is_multiline(&self) -> bool {
+        self.start[0] != self.end[0]
+    }
+    /// Returns true if the span ranges over a single line.
+    pub fn is_single_line(&self) -> bool {
+        self.start[0] == self.end[0]
+    }
+
+    /// Returns a new span that starts at the first character of the starting line.
+    pub fn from_line_start(&self) -> Span {
+        Span {
+            start: [self.start[0], 1],
+            end: self.end,
+        }
+    }
+
     /// Check if a span is a child of this span.
     pub fn encloses(&self, other: Span) -> bool {
         self.contains(other.start) && self.contains(other.end)

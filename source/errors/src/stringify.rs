@@ -1,9 +1,10 @@
-
-use crate::{LexErrorType, ParserErrorType, TypeErrorType, ImportErrorType, ContextErrorType, WarningType};
+use crate::{
+    ContextErrorType, ImportErrorType, LexErrorType, ParserErrorType, TypeErrorType, WarningType,
+};
 
 impl std::fmt::Display for TypeErrorType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-       let message =  match self {
+        let message =  match self {
                 TypeErrorType::InvalidBinary {
             left,
             operator,
@@ -19,8 +20,7 @@ impl std::fmt::Display for TypeErrorType {
             assigned,
         } => format!("'{name}' expects {expected} generic argument{}, but got {assigned} instead.", if *expected == 1 {""} else {"s"}),
         TypeErrorType::MismatchedAssignment { left, right } => format!(
-            "Expected: '{left}'
-Got: '{right}'.",
+            "Expected: '{left}', Got: '{right}'.",
         ),
         TypeErrorType::InterfaceAsType { name } => {
             format!("{name} refers to a interface, but it is being used as a type here.")
@@ -98,7 +98,7 @@ Got: '{right}'.",
             for (index, error) in sub_errors.iter().enumerate() {
                 string += &error.to_string();
                 if index + 1 != sub_errors.len() {
-                    string += "\n\n"
+                    string += " "
                 }
             }
             string
@@ -114,9 +114,6 @@ Got: '{right}'.",
         write!(f, "{message}")
     }
 }
-
-
-
 
 /// Stringify a parse error
 impl std::fmt::Display for ParserErrorType {
@@ -175,7 +172,7 @@ impl std::fmt::Display for ParserErrorType {
             ParserErrorType::BreakOutsideLoop => format!("break statements can only be used from within a loop."),
             ParserErrorType::NumericValueInArray => format!("Numeric constraints are not supported in array types."),
         };
-    return write!(f, "{message}")
+        return write!(f, "{message}");
     }
 }
 
@@ -198,7 +195,7 @@ impl std::fmt::Display for LexErrorType {
 
 impl std::fmt::Display for ImportErrorType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-      let message = match self {
+        let message = match self {
             ImportErrorType::AmbiguousImport { modulename, offending_files } => format!("There are multiple modules in the current directory that refer to {modulename:?}. Offending files: {:?}", offending_files),
             ImportErrorType::ErrorReadingEntry(err) => format!("Error reading entry file: {err:?}"),
             ImportErrorType::UnknownFileType { path_buf } => format!("Unknown file type for {path_buf:?}"),
@@ -215,35 +212,56 @@ impl std::fmt::Display for ImportErrorType {
             ImportErrorType::ResolvingFromGlobalFile => format!("Cannot resolve from a global file."),
             ImportErrorType::SymbolNotFound { modulename, symbolname } => format!("module '{modulename}' has no public member called '{symbolname}'. "),
             ImportErrorType::SymbolNotAModule { symbolname } => format!("'{symbolname}' is not a module."),
-            ImportErrorType::NamelessModule => format!("All .wrl files must have a module name declaration."),
-            ImportErrorType::MismatchInName { module_name, file_name } => format!("Module name and file names must be equal. This module is named '{module_name}', but the file is named '{file_name}'."),
-            
         };
-        return write!(f, "{message}")
+        return write!(f, "{message}");
     }
 }
 
 impl std::fmt::Display for ContextErrorType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-         let message = match self {
-            ContextErrorType::UnknownValue { name } => format!("Use of undeclared variable '{name}'."),
-            ContextErrorType::UnknownProperty { model_name, property } => format!("No property '{property}' exists on {model_name}."),
-            ContextErrorType::AlreadyDeclaredInScope { name } => format!("Cannot redeclare block scoped value '{name}'."),
-            ContextErrorType::UseBeforeDeclare { name } => format!("Use of block scoped value '{name}' before its declaration."),
-            ContextErrorType::ThisOutsideMethod => format!("The `this` value can only be used in model or interface methods."),
-            ContextErrorType::DuplicateModelProperty { name } => format!("Duplicate model property '{name}'."),
-            ContextErrorType::DuplicateGenericParameter { name } => format!("Duplicate generic parameter '{name}'."),
-            ContextErrorType::DuplicateParameterName { name } => format!("Duplicate parameter name '{name}'."),
-            ContextErrorType::RequiredAfterOptional => format!("A required parameter cannot follow an optional one."),
-            ContextErrorType::DuplicateEnumVariant { name } => format!("Duplicate enum variant '{name}'."),
-            ContextErrorType::DuplicateLoopVariable { name } => format!("Duplicate loop variable '{name}'"),
-            
-                
+        let message = match self {
+            ContextErrorType::UnknownValue { name } => {
+                format!("Use of undeclared variable '{name}'.")
+            }
+            ContextErrorType::UnknownProperty {
+                model_name,
+                property,
+            } => format!("No property '{property}' exists on {model_name}."),
+            ContextErrorType::AlreadyDeclaredInScope { name } => {
+                format!("Cannot redeclare block scoped value '{name}'.")
+            }
+            ContextErrorType::UseBeforeDeclare { name } => {
+                format!("Use of block scoped value '{name}' before its declaration.")
+            }
+            ContextErrorType::ThisOutsideMethod => {
+                format!("The `this` value can only be used in model or interface methods.")
+            }
+            ContextErrorType::DuplicateModelProperty { name } => {
+                format!("Duplicate model property '{name}'.")
+            }
+            ContextErrorType::DuplicateGenericParameter { name } => {
+                format!("Duplicate generic parameter '{name}'.")
+            }
+            ContextErrorType::DuplicateParameterName { name } => {
+                format!("Duplicate parameter name '{name}'.")
+            }
+            ContextErrorType::RequiredAfterOptional => {
+                format!("A required parameter cannot follow an optional one.")
+            }
+            ContextErrorType::DuplicateEnumVariant { name } => {
+                format!("Duplicate enum variant '{name}'.")
+            }
+            ContextErrorType::DuplicateLoopVariable { name } => {
+                format!("Duplicate loop variable '{name}'")
+            }
+            ContextErrorType::NamelessModule => {
+                format!("All .wrl files must have a module name declaration.")
+            }
+            ContextErrorType::MismatchInName { module_name, file_name } => format!("Module name and file names must be equal. This module is named '{module_name}', but the file is named '{file_name}'."),
         };
         write!(f, "{message}")
     }
 }
-
 
 impl std::fmt::Display for WarningType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

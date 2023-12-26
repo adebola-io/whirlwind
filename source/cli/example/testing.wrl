@@ -1,0 +1,9 @@
+module testing;
+
+use core.io.fmt;
+
+function main() {
+    a := ok("baby");
+    a = err(true);
+    x = ok(a).unwrap();
+}

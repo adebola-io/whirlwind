@@ -726,7 +726,7 @@ mod bind_utils {
         l_errors.into_iter().for_each(|lex_error| {
             let lex_error = ProgramDiagnostic {
                 offending_file: path,
-                error_type: DiagnosticType::Error(Error::Lexical(lex_error)),
+                _type: DiagnosticType::Error(Error::Lexical(lex_error)),
             };
             if !errors.iter().any(|error| *error == lex_error) {
                 errors.push(lex_error)
@@ -737,7 +737,7 @@ mod bind_utils {
         p_errors.into_iter().for_each(|parse_error| {
             let parse_error = ProgramDiagnostic {
                 offending_file: path,
-                error_type: DiagnosticType::Error(Error::Syntax(parse_error)),
+                _type: DiagnosticType::Error(Error::Syntax(parse_error)),
             };
             if !errors.iter().any(|error| *error == parse_error) {
                 errors.push(parse_error)
@@ -748,7 +748,7 @@ mod bind_utils {
         i_errors.into_iter().for_each(|import_error| {
             let import_error = ProgramDiagnostic {
                 offending_file: path,
-                error_type: DiagnosticType::Error(Error::Importing(import_error)),
+                _type: DiagnosticType::Error(Error::Importing(import_error)),
             };
             if !errors.iter().any(|error| *error == import_error) {
                 errors.push(import_error)

@@ -1,5 +1,5 @@
 // Define the main module.
-module Main;
+module main;
 
 // Import necessary modules from the Core library.
 use core.{
@@ -25,18 +25,15 @@ public function main() {
         print(message)
     };
     // Register authentication.
-    middleware.useHandler(authenticationHandler);
+    middleware.addHandler(authenticationHandler);
     // Apply middleware to the server.
-    app.useMiddleware(middleware);
-    // Define routes.
-    // Route 1: Basic "Hello, World!" response.
-    app.get("/hello", helloHandler);
-    // Route 2: Parameterized greeting.
-    app.get("/greet/:name", greetHandler);
-    // Route 3: Static file serving.
-    app.get("/static/::filename", staticFileHandler);
-    // Start the server and handle subsequent actions.
-    app.start().then(printMessage).run();
+    app.useMiddleware(middleware)
+        .get("/hello", helloHandler)
+        .get("/greet/:name", greetHandler)
+        .get("/static/::filename", staticFileHandler)
+        .start()
+        .then(printMessage)
+        .run();
 }
 
 /// Handler function for the "/hello" endpoint.
