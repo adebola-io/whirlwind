@@ -1,11 +1,10 @@
 module prospect;
 
 use core.process.fatal;
-use core.prelude.{some, Array, todo, Bool, Guaranteed, String};
-use core.internals.{builtin, StackTrace};
+use core.prelude.{some, Array, todo, Bool};
+use core.internals.builtin;
 use core.primitives.UnsignedInt;
 use eventual.Eventual;
-use concurrent.CurrentSequence;
 use concurrent.SequenceError;
 
 /// Asynchronous functions do not run automatically in Whirlwind. 

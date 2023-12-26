@@ -6,13 +6,13 @@ use core.{
     internals.builtin,
     collections.Hash,
     prelude.{
-        Maybe, AsIterator, Iteratable, 
+        AsIterator, Iteratable, 
         Range, Display, some, none, Default
     },
     process.todo,
 };
-use numeric.{Int, UnsignedInt, UInt8, UInt16};
-use array.Array;
+use numeric.{Int, UnsignedInt, UInt8};
+
 
 /// Model for creating, manipulating and formatting text sequences.
 public model String 

@@ -1,6 +1,5 @@
 module internals;
 
-use core.primitives.Bool;
 use core.prelude.Display;
 
 public use never.never;

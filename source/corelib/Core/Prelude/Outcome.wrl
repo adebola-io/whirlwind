@@ -1,12 +1,12 @@
 module outcome;
 
 use core.{
-    primitives.{String, Bool},
+    primitives.Bool,
     prelude.{Try, Guaranteed, todo},
     internals.{never, builtin},
     process.fatalOnCaller
 };
-use maybe.{Maybe, some, none};
+use maybe.{some, none};
 
 /// An `Outcome` is a generic model 
 /// that represents the possible results of an operation. 

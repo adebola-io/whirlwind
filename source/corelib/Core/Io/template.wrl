@@ -2,13 +2,10 @@ module template;
 
 
 use core.collections.HashMap;
-use core.internals.invoke;
-use core.internals.Injunction;
 use core.primitives.String;
-use core.prelude.{Display, Outcome, UInt8};
+use core.prelude.Display;
 use core.prelude.todo;
 use core.prelude.UnsignedInt;
-use core.internals.builtin;
 
 
 /// The Template model helps in the construction of dynamic strings by 
@@ -119,7 +116,7 @@ public function fmt(template: String): Template {
 }
 
 test "create templates" {
-    use core.testing.assert;
+    // use core.testing.assert;
     use terminal.print;
 
     template := new Template("Hello, %!");

@@ -1,6 +1,6 @@
 module request;
 
-use core.prelude.{todo, String, Bool, Maybe, UnsignedInt, Outcome, Display};
+use core.prelude.{todo, String, Bool, UnsignedInt, Outcome, Display};
 use core.memory.Buffer;
 use core.collections.HashMap;
 use core.io.IoError;

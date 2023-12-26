@@ -1,5 +1,5 @@
 
-use crate::{LexErrorType, ParserErrorType, TypeErrorType, ImportErrorType, ContextErrorType};
+use crate::{LexErrorType, ParserErrorType, TypeErrorType, ImportErrorType, ContextErrorType, WarningType};
 
 impl std::fmt::Display for TypeErrorType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -239,6 +239,16 @@ impl std::fmt::Display for ContextErrorType {
             ContextErrorType::DuplicateLoopVariable { name } => format!("Duplicate loop variable '{name}'"),
             
                 
+        };
+        write!(f, "{message}")
+    }
+}
+
+
+impl std::fmt::Display for WarningType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            WarningType::UnusedImportSymbol(name) => format!("Unused import '{name}'."),
         };
         write!(f, "{message}")
     }

@@ -707,3 +707,31 @@ pub fn indexing_with_illegal_value(indexer: String, span: ast::Span) -> TypeErro
         span,
     }
 }
+
+pub fn implicit_loop_return(rettype: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::ImplicitLoopReturn { rettype },
+        span,
+    }
+}
+
+pub fn illegal_iterator(illegal_type: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::Illegalterator { illegal_type },
+        span,
+    }
+}
+
+pub fn using_this_before_construction(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::UsingThisBeforeConstructor,
+        span,
+    }
+}
+
+pub fn incomparable(left: String, right: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::Incomparable { left, right },
+        span,
+    }
+}

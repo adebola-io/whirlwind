@@ -1,6 +1,6 @@
 use crate::{
     completion::{sort_completions, CompletionFinder, DotCompletionType, Trigger},
-    diagnostic::{error_to_diagnostic, to_range},
+    diagnostic::{progdiagnostic_to_diagnostic, to_range},
     error::DocumentError,
     folding_range::FoldingRangeFinder,
     hover::{HoverFinder, HoverInfo},
@@ -563,10 +563,10 @@ impl DocumentManager {
                 full_document_diagnostic_report: FullDocumentDiagnosticReport {
                     result_id: None,
                     items: standpoint
-                        .errors
+                        .diagnostics
                         .iter()
                         .filter(|error| error.offending_file == path_idx)
-                        .map(|p| error_to_diagnostic(p))
+                        .map(|p| progdiagnostic_to_diagnostic(p))
                         .collect::<Vec<Diagnostic>>(),
                 },
             })
@@ -780,10 +780,10 @@ impl DocumentManager {
                             full_document_diagnostic_report: FullDocumentDiagnosticReport {
                                 result_id: None,
                                 items: standpoint
-                                    .errors
+                                    .diagnostics
                                     .iter()
                                     .filter(|error| error.offending_file == path_idx)
-                                    .map(|p| error_to_diagnostic(p))
+                                    .map(|p| progdiagnostic_to_diagnostic(p))
                                     .collect::<Vec<Diagnostic>>(),
                             },
                         },

@@ -3,8 +3,8 @@ mod typed_module;
 mod typed_statement;
 
 use crate::{
-    CurrentModuleType, IntermediateType, Literal, LiteralIndex, LiteralMap, Module, PathIndex,
-    ProgramError, ProgramErrorType, SemanticSymbol, SemanticSymbolKind, SymbolIndex, SymbolLibrary,
+    CurrentModuleType, Error, IntermediateType, Literal, LiteralIndex, LiteralMap, Module,
+    PathIndex, ProgramDiagnostic, SemanticSymbol, SemanticSymbolKind, SymbolIndex, SymbolLibrary,
     SymbolReferenceList,
 };
 use ast::{
@@ -75,7 +75,7 @@ pub fn bind(
     // The context symbol table.
     symbol_library: &mut SymbolLibrary,
     // The context errors.
-    errors: &mut Vec<ProgramError>,
+    errors: &mut Vec<ProgramDiagnostic>,
     // Literal values.
     literals: &mut LiteralMap,
     // The symbol index of the core library.
@@ -153,14 +153,14 @@ pub fn bind(
 
 mod bind_utils {
     use super::*;
-    use crate::{EvaluatedType, ScopeId, VariablePatternForm};
+    use crate::{DiagnosticType, EvaluatedType, ScopeId, VariablePatternForm};
     use ast::VariablePattern;
 
     /// Bind an entry within a scope.
     pub fn handle_scope_entry(
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         ambience: &ModuleAmbience,
         address: ScopeAddress,
         span: Span,
@@ -220,8 +220,12 @@ mod bind_utils {
     }
 
     /// Pushes an error to the list of context errors.
-    pub fn add_ctx_error(binder: &Binder, errors: &mut Vec<ProgramError>, error: ContextError) {
-        let error = ProgramError::contextual(binder.path, error);
+    pub fn add_ctx_error(
+        binder: &Binder,
+        errors: &mut Vec<ProgramDiagnostic>,
+        error: ContextError,
+    ) {
+        let error = ProgramDiagnostic::contextual(binder.path, error);
         if errors.iter().any(|prior_error| *prior_error == error) {
             return;
         }
@@ -232,7 +236,7 @@ mod bind_utils {
     pub fn error_and_return_first_instance(
         binder: &Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         entry_1: &ScopeEntry,
         entry_2: &ScopeEntry,
     ) -> SymbolIndex {
@@ -259,7 +263,7 @@ mod bind_utils {
     pub fn maybe_bound(
         binder: &Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         entry: &ScopeEntry,
         should_cause_error: bool,
         declaration_range: Span,
@@ -298,7 +302,7 @@ mod bind_utils {
     pub fn bind_signature(
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         ambience: &ModuleAmbience,
         origin_scope_id: Option<ScopeId>,
         entry: &ScopeEntry,
@@ -593,7 +597,7 @@ mod bind_utils {
     pub fn find_or_create(
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         ambience: &ModuleAmbience,
         name: &Identifier,
         in_type_context: bool,
@@ -716,14 +720,14 @@ mod bind_utils {
     pub fn collect_prior_errors(
         path: PathIndex,
         module: &mut Module,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
     ) {
         // Collect lexical errors.
         let l_errors = take(&mut module.lexical_errors);
         l_errors.into_iter().for_each(|lex_error| {
-            let lex_error = ProgramError {
+            let lex_error = ProgramDiagnostic {
                 offending_file: path,
-                error_type: ProgramErrorType::Lexical(lex_error),
+                error_type: DiagnosticType::Error(Error::Lexical(lex_error)),
             };
             if !errors.iter().any(|error| *error == lex_error) {
                 errors.push(lex_error)
@@ -732,9 +736,9 @@ mod bind_utils {
         // Collect syntax errors.
         let p_errors = take(&mut module.syntax_errors);
         p_errors.into_iter().for_each(|parse_error| {
-            let parse_error = ProgramError {
+            let parse_error = ProgramDiagnostic {
                 offending_file: path,
-                error_type: ProgramErrorType::Syntax(parse_error),
+                error_type: DiagnosticType::Error(Error::Syntax(parse_error)),
             };
             if !errors.iter().any(|error| *error == parse_error) {
                 errors.push(parse_error)
@@ -743,9 +747,9 @@ mod bind_utils {
         // Collect import errors.
         let i_errors = take(&mut module.import_errors);
         i_errors.into_iter().for_each(|import_error| {
-            let import_error = ProgramError {
+            let import_error = ProgramDiagnostic {
                 offending_file: path,
-                error_type: ProgramErrorType::Importing(import_error),
+                error_type: DiagnosticType::Error(Error::Importing(import_error)),
             };
             if !errors.iter().any(|error| *error == import_error) {
                 errors.push(import_error)
@@ -772,7 +776,7 @@ mod statements {
         statement: Statement,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedStmnt {
@@ -917,7 +921,7 @@ mod statements {
         test: TestDeclaration,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedTestDeclaration {
@@ -947,7 +951,7 @@ mod statements {
         usedecl: UseDeclaration,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         ambience: &mut ModuleAmbience,
     ) -> TypedUseDeclaration {
         let mut imports = vec![];
@@ -979,7 +983,7 @@ mod statements {
         shorthand: ShorthandVariableDeclaration,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedShorthandVariableDeclaration {
@@ -1013,7 +1017,7 @@ mod statements {
         constant: ConstantDeclaration,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedConstantDeclaration {
@@ -1047,7 +1051,7 @@ mod statements {
         model: ModelDeclaration,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedModelDeclaration {
@@ -1140,7 +1144,7 @@ mod statements {
         constructor_params: Option<Vec<Parameter>>,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> (TypedModelBody, Option<ConstructorParameterList>) {
@@ -1188,7 +1192,7 @@ mod statements {
         owner: SymbolIndex,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedModelProperty {
@@ -1300,7 +1304,7 @@ mod statements {
         owner: SymbolIndex,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         ambience: &ModuleAmbience,
     ) -> TypedModelProperty {
         // Check for duplicates.
@@ -1419,7 +1423,7 @@ mod statements {
         body: Block,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedModelProperty {
@@ -1560,7 +1564,7 @@ mod statements {
         func: ast::FunctionDeclaration,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedFunctionDeclaration {
@@ -1639,7 +1643,7 @@ mod statements {
         params: Vec<Parameter>,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> (TypedBlock, Vec<SymbolIndex>) {
@@ -1723,7 +1727,7 @@ mod statements {
         enumdecl: EnumDeclaration,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         ambience: &ModuleAmbience,
     ) -> TypedEnumDeclaration {
         let binding_result = handle_scope_entry(
@@ -1796,7 +1800,7 @@ mod statements {
         symbol_idx: SymbolIndex,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         ambience: &ModuleAmbience,
     ) -> Vec<SymbolIndex> {
         let mut temp_variants: Vec<TemporaryVariantDetails> = vec![];
@@ -1857,7 +1861,7 @@ mod statements {
         interface_decl: ast::InterfaceDeclaration,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedInterfaceDeclaration {
@@ -1934,7 +1938,7 @@ mod statements {
         owner_idx: SymbolIndex,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedInterfaceBody {
@@ -1963,7 +1967,7 @@ mod statements {
         owner: SymbolIndex,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedInterfaceProperty {
@@ -1999,7 +2003,7 @@ mod statements {
         owner: SymbolIndex,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedInterfaceProperty {
@@ -2134,7 +2138,7 @@ mod statements {
         body: Block,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedInterfaceProperty {
@@ -2257,7 +2261,7 @@ mod statements {
         type_decl: TypeDeclaration,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         ambience: &ModuleAmbience,
     ) -> TypedTypeDeclaration {
         let binding_result = handle_scope_entry(
@@ -2315,7 +2319,7 @@ mod statements {
         while_statement: WhileStatement,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedWhileStatement {
@@ -2345,7 +2349,7 @@ mod statements {
         returnstmnt: ReturnStatement,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedReturnStatement {
@@ -2369,7 +2373,7 @@ mod statements {
         _break: ast::BreakStatement,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         ambience: &ModuleAmbience,
     ) -> TypedBreakStatement {
         TypedBreakStatement {
@@ -2384,7 +2388,7 @@ mod statements {
         cont: ast::ContinueStatement,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         ambience: &ModuleAmbience,
     ) -> TypedContinueStatement {
         TypedContinueStatement {
@@ -2400,7 +2404,7 @@ mod statements {
         variable: ast::VariableDeclaration,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedVariableDeclaration {
@@ -2457,7 +2461,7 @@ mod statements {
         fors: ast::ForStatement,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedForStatement {
@@ -2606,7 +2610,7 @@ mod expressions {
         expression: Expression,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedExpression {
@@ -2740,7 +2744,7 @@ mod expressions {
         identifier: Identifier,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         ambience: &ModuleAmbience,
     ) -> TypedIdent {
         let symbol_index = bind_utils::find_or_create(
@@ -2763,7 +2767,7 @@ mod expressions {
         new_expr: Box<ast::NewExpr>,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedNewExpr {
@@ -2786,7 +2790,7 @@ mod expressions {
         this: ast::ThisExpr,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         ambience: &ModuleAmbience,
     ) -> TypedThisExpr {
         let shadow = ambience.create_shadow(binder.current_scope);
@@ -2819,7 +2823,7 @@ mod expressions {
         call: Box<ast::CallExpr>,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedCallExpr {
@@ -2849,7 +2853,7 @@ mod expressions {
         func: FunctionExpr,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedFnExpr {
@@ -2932,7 +2936,7 @@ mod expressions {
         block: Block,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedBlock {
@@ -2966,7 +2970,7 @@ mod expressions {
         binexp: Box<ast::BinaryExpr>,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> Box<TypedBinExpr> {
@@ -2997,7 +3001,7 @@ mod expressions {
         ifexpr: Box<ast::IfExpression>,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> Box<TypedIfExpr> {
@@ -3039,7 +3043,7 @@ mod expressions {
         array: ast::ArrayExpr,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> TypedArrayExpr {
@@ -3067,7 +3071,7 @@ mod expressions {
         indexexp: Box<ast::IndexExpr>,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> Box<TypedIndexExpr> {
@@ -3097,7 +3101,7 @@ mod expressions {
         assexp: Box<ast::AssignmentExpr>,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> Box<TypedAssignmentExpr> {
@@ -3129,7 +3133,7 @@ mod expressions {
         accessexp: Box<ast::AccessExpr>,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> Box<TypedAccessExpr> {
@@ -3181,7 +3185,7 @@ mod expressions {
         unaryexp: Box<ast::UnaryExpr>,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> Box<TypedUnaryExpr> {
@@ -3204,7 +3208,7 @@ mod expressions {
         logicexp: Box<ast::LogicExpr>,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> Box<TypedLogicExpr> {
@@ -3235,7 +3239,7 @@ mod expressions {
         updateexp: Box<ast::UpdateExpr>,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         literals: &mut LiteralMap,
         ambience: &mut ModuleAmbience,
     ) -> Box<TypedUpdateExpr> {
@@ -3314,7 +3318,7 @@ mod types {
         type_exp: &TypeExpression,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         ambience: &ModuleAmbience,
     ) -> IntermediateType {
         match type_exp {
@@ -3430,7 +3434,7 @@ mod types {
         discrete_type: &ast::DiscreteType,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         ambience: &ModuleAmbience,
     ) -> IntermediateType {
         let symbol_index = bind_utils::find_or_create(
@@ -3464,7 +3468,7 @@ mod types {
         param_list: Option<&Vec<GenericParameter>>,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
         ambience: &ModuleAmbience,
     ) -> Vec<SymbolIndex> {
         let mut symbol_indexes = vec![];
@@ -3523,7 +3527,7 @@ mod types {
         parameter: &GenericParameter,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramError>,
+        errors: &mut Vec<ProgramDiagnostic>,
     ) -> Result<SymbolIndex, SymbolIndex> {
         // Check if a generic parameter with this name already exists in this pool.
         if let Some(index) = binder.lookaround_for_generic_parameter(&parameter.name.name) {

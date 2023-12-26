@@ -1,9 +1,8 @@
 module eventual;
 
 use core.process.fatal;
-use core.prelude.{some, Array, todo, Bool, Guaranteed, String};
-use core.internals.{builtin, StackTrace};
-use core.primitives.UnsignedInt;
+use core.prelude.{some, Bool, Guaranteed};
+use core.internals.{builtin};
 use concurrent.Sequence;
 
 /// An eventual is an asynchronously running operation,

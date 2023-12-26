@@ -527,7 +527,7 @@ pub fn get_numeric_type(
                 Ok(number) => number,
                 Err(error) => {
                     if let Some(ctx) = checker_ctx {
-                        ctx.add_error(TypeError {
+                        ctx.add_diagnostic(TypeError {
                             _type: TypeErrorType::NumericConversionError {
                                 error: error.to_string(),
                             },
@@ -736,9 +736,9 @@ pub fn ensure_assignment_validity(
     span: ast::Span,
 ) {
     if inference_result.is_void() {
-        checker_ctx.add_error(errors::void_assignment(span));
+        checker_ctx.add_diagnostic(errors::void_assignment(span));
     } else if inference_result.is_partial() {
-        checker_ctx.add_error(errors::partial_type_assignment(span));
+        checker_ctx.add_diagnostic(errors::partial_type_assignment(span));
     }
 }
 

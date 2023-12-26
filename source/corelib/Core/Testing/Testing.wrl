@@ -4,7 +4,6 @@ use core.prelude.{Bool, Display, Array};
 use core.process.fatalOnCaller;
 use core.io.fmt;
 use core.primitives.String;
-use core.primitives.UInt8;
 
 /// Creates an assertion object.
 public function assert<T implements Display>(value: T): Assertion<T> {

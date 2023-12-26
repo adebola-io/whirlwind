@@ -16,7 +16,7 @@ fn bind_variables_and_constants() {
     let mut module = Module::from_text(text);
     module.module_path = Some(PathBuf::from("testing://Test.wrl"));
     let standpoint = Standpoint::build_from_module(module, false).unwrap();
-    assert!(standpoint.errors.len() == 1);
+    assert!(standpoint.diagnostics.len() == 1);
     assert!(standpoint
         .symbol_library
         .find(|symbol| symbol.name == "greeting")
@@ -36,7 +36,7 @@ fn bind_variables_and_constants() {
     println!(
         "ERRORS: \n\n\n{:#?}",
         standpoint
-            .errors
+            .diagnostics
             .iter()
             .filter(|error| error.offending_file == PathIndex(0))
             .collect::<Vec<_>>()
@@ -56,7 +56,7 @@ fn bind_call_expression() {
     let mut module = Module::from_text(text);
     module.module_path = Some(PathBuf::from("testing://Test.wrl"));
     let standpoint = Standpoint::build_from_module(module, false).unwrap();
-    assert!(standpoint.errors.len() == 1);
+    assert!(standpoint.diagnostics.len() == 1);
     assert!(standpoint
         .symbol_library
         .find(|symbol| symbol.name == "println")
@@ -134,7 +134,7 @@ fn bind_this() {
     let mut module = Module::from_text(text);
     module.module_path = Some(PathBuf::from("testing://Test.wrl"));
     let standpoint = Standpoint::build_from_module(module, false).unwrap();
-    assert!(standpoint.errors.len() == 0);
+    assert!(standpoint.diagnostics.len() == 0);
 }
 
 #[test]
@@ -162,12 +162,12 @@ fn test_enum_type() {
     println!(
         "ERRORS: \n\n\n{:#?}",
         standpoint
-            .errors
+            .diagnostics
             .iter()
             .filter(|error| error.offending_file == PathIndex(0))
             .collect::<Vec<_>>()
     );
-    assert!(standpoint.errors.len() == 0);
+    assert!(standpoint.diagnostics.len() == 0);
 }
 
 #[test]
@@ -193,12 +193,12 @@ fn test_fn_expr() {
     println!(
         "ERRORS: \n\n\n{:#?}",
         standpoint
-            .errors
+            .diagnostics
             .iter()
             .filter(|error| error.offending_file == PathIndex(0))
             .collect::<Vec<_>>()
     );
-    assert!(standpoint.errors.len() == 0);
+    assert!(standpoint.diagnostics.len() == 0);
 }
 
 #[test]
@@ -223,7 +223,7 @@ fn test_use_import() {
         .symbol_library
         .find(|symbol| symbol.name == "main")
         .is_some());
-    assert!(standpoint.errors.len() == 0);
+    assert!(standpoint.diagnostics.len() == 0);
     println!(
         "{:#?}",
         standpoint
@@ -283,7 +283,7 @@ fn show_imports() {
             .in_module(PathIndex(0))
             .collect::<Vec<_>>()
     );
-    println!("{:#?}", standpoint.errors);
+    println!("{:#?}", standpoint.diagnostics);
 }
 
 #[test]
@@ -336,7 +336,7 @@ fn resolve_single_module_imports() {
             .map(|(_, symbol)| symbol)
             .collect::<Vec<_>>()
     );
-    println!("{:#?}", standpoint.errors);
+    println!("{:#?}", standpoint.diagnostics);
     // assert!(standpoint.errors.len() == 0);
 }
 
@@ -396,7 +396,7 @@ fn resolve_mutliple_module_imports() {
             .map(|(_, symbol)| (&symbol.name, &symbol.references, &symbol.kind))
             .collect::<Vec<_>>()
     );
-    println!("{:#?}", standpoint.errors);
+    println!("{:#?}", standpoint.diagnostics);
     // assert!(standpoint.errors.len() == 0);
 }
 
@@ -460,7 +460,7 @@ fn testing_the_standard_library() {
     let time = std::time::Instant::now();
     standpoint.validate();
     println!("Built Core in {:?}", time.elapsed());
-    for error in standpoint.errors {
+    for error in standpoint.diagnostics {
         let start = error.span().start;
         let offending_module = standpoint
             .module_map

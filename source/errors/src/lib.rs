@@ -4,6 +4,7 @@ mod lex_error;
 mod parse_error;
 mod stringify;
 mod type_error;
+mod warning;
 
 pub use context_error::*;
 pub use import_error::*;
@@ -11,6 +12,7 @@ pub use lex_error::*;
 pub use parse_error::*;
 pub use stringify::*;
 pub use type_error::*;
+pub use warning::*;
 
 /// An error within a module.
 #[derive(Debug)]
@@ -21,30 +23,9 @@ pub enum ModuleError<'a> {
     ImportError(&'a ImportError),
 }
 
-pub fn implicit_loop_return(rettype: String, span: ast::Span) -> TypeError {
-    TypeError {
-        _type: TypeErrorType::ImplicitLoopReturn { rettype },
+pub fn unused_import_symbol(name: String, span: ast::Span) -> Warning {
+    Warning {
         span,
-    }
-}
-
-pub fn illegal_iterator(illegal_type: String, span: ast::Span) -> TypeError {
-    TypeError {
-        _type: TypeErrorType::Illegalterator { illegal_type },
-        span,
-    }
-}
-
-pub fn using_this_before_construction(span: ast::Span) -> TypeError {
-    TypeError {
-        _type: TypeErrorType::UsingThisBeforeConstructor,
-        span,
-    }
-}
-
-pub fn incomparable(left: String, right: String, span: ast::Span) -> TypeError {
-    TypeError {
-        _type: TypeErrorType::Incomparable { left, right },
-        span,
+        warning_type: WarningType::UnusedImportSymbol(name),
     }
 }

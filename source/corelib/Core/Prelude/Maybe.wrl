@@ -2,8 +2,8 @@ module maybe;
 
 use core.{
     primitives.Bool,
-    internals.{never, Injunction, invoke},
-    process.{fatalOnCaller, todo},
+    internals.never,
+    process.fatalOnCaller,
 };
 use outcome.{ok, err, Outcome}; 
 use prelude.{String, fatal};

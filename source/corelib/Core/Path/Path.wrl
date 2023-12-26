@@ -1,7 +1,7 @@
 module path;
 
 use core.io.IoError;
-use core.prelude.{Maybe, Outcome, Bool, todo, String};
+use core.prelude.{Outcome, Bool, todo, String};
 
 public model Path {
     new() {

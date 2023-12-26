@@ -3,7 +3,7 @@ module memory;
 use core.{
     primitives.{UInt8, UnsignedInt},
     prelude.{
-        Iteratable, Maybe, none, some, Display, 
+        Iteratable, none, some, Display, 
         String, todo, Bool
     },
 };

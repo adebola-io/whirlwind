@@ -1,6 +1,5 @@
 module serialize;
 
-use core.prelude.UInt8;
 use core.memory.Buffer;
 use core.process.todo;
 use core.prelude.Outcome;

@@ -8,14 +8,9 @@
 /// for a consistent interface.
 module io;
 
-use core.collections.HashMap;
-use core.internals.invoke;
-use core.internals.Injunction;
-use core.primitives.String;
-use core.prelude.{Display, Outcome, UInt8};
-use core.prelude.todo;
+
+use core.prelude.{Outcome, UInt8};
 use core.prelude.UnsignedInt;
-use core.internals.builtin;
 
 public use terminal.{print, prompt, printFmt};
 public use template.{fmt, Template};

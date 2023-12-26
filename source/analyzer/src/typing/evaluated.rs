@@ -1,8 +1,9 @@
 use crate::{
     unify_generic_arguments, unify_types,
     utils::{arrify, get_interface_types_from_symbol, get_method_types_from_symbol, maybify},
-    IntermediateType, ParameterType, PathIndex, ProgramError, SemanticSymbolKind, SymbolIndex,
-    SymbolLibrary, TypecheckerContext, UnifyOptions, EVALUATION_DEPTH,
+    DiagnosticType, IntermediateType, ParameterType, PathIndex, ProgramDiagnostic,
+    SemanticSymbolKind, SymbolIndex, SymbolLibrary, TypecheckerContext, UnifyOptions,
+    EVALUATION_DEPTH,
 };
 use ast::Span;
 use errors::{
@@ -336,7 +337,7 @@ pub fn evaluate(
     // A map of the solutions for previously encountered generic types.
     solved_generics: Option<&Vec<(SymbolIndex, EvaluatedType)>>,
     // Error store from the standpoint, if it exists.
-    mut error_tracker: &mut Option<(&mut Vec<ProgramError>, PathIndex)>,
+    mut error_tracker: &mut Option<(&mut Vec<ProgramDiagnostic>, PathIndex)>,
     // A value that safe guards against infinitely recursive union types, or indirect recursion in type aliases.
     mut recursion_depth: u64,
 ) -> EvaluatedType {
@@ -679,7 +680,7 @@ fn evaluate_member_type(
     object: &Box<IntermediateType>,
     symbollib: &SymbolLibrary,
     solved_generics: Option<&Vec<(SymbolIndex, EvaluatedType)>>,
-    error_tracker: &mut Option<(&mut Vec<ProgramError>, PathIndex)>,
+    error_tracker: &mut Option<(&mut Vec<ProgramDiagnostic>, PathIndex)>,
     recursion_depth: u64,
     property: &crate::IntermediateTypeProperty,
     span: &Span,
@@ -757,7 +758,7 @@ fn evaluate_function_type(
     return_type: &Option<Box<IntermediateType>>,
     symbollib: &SymbolLibrary,
     solved_generics: Option<&Vec<(SymbolIndex, EvaluatedType)>>,
-    mut error_tracker: &mut Option<(&mut Vec<ProgramError>, PathIndex)>,
+    mut error_tracker: &mut Option<(&mut Vec<ProgramDiagnostic>, PathIndex)>,
     recursion_depth: u64,
     params: &Vec<ParameterType>,
 ) -> EvaluatedType {
@@ -806,7 +807,7 @@ fn evaluate_function_type(
 fn generate_generics_from_arguments(
     generic_args: &Vec<IntermediateType>,
     generic_params: &Vec<SymbolIndex>,
-    mut error_tracker: &mut Option<(&mut Vec<ProgramError>, PathIndex)>,
+    mut error_tracker: &mut Option<(&mut Vec<ProgramDiagnostic>, PathIndex)>,
     typ: &crate::SemanticSymbol,
     span: &Span,
     symbollib: &SymbolLibrary,
@@ -885,13 +886,13 @@ fn generate_generics_from_arguments(
 }
 
 fn add_error_if_possible(
-    error_tracker: &mut Option<(&mut Vec<ProgramError>, PathIndex)>,
+    error_tracker: &mut Option<(&mut Vec<ProgramDiagnostic>, PathIndex)>,
     error: TypeError,
 ) {
     if let Some((errors, path_idx)) = error_tracker {
-        let error = ProgramError {
+        let error = ProgramDiagnostic {
             offending_file: *path_idx,
-            error_type: crate::ProgramErrorType::Typing(error),
+            error_type: DiagnosticType::Error(crate::Error::Typing(error)),
         };
         if !errors.iter().any(|prior| *prior == error) {
             errors.push(error);

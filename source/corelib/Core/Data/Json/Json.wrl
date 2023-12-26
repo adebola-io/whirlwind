@@ -2,7 +2,6 @@ module json;
 
 use core.prelude.{Display, Bool, String, Number, none, some};
 use core.collections.HashMap;
-use super.Serializeable;
 
 public use jsonParsing.JsonParseError;
 public use jsonParsing.stringify;

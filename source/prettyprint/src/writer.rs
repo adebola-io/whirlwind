@@ -1,9 +1,8 @@
-use std::cell::RefCell;
-
 use analyzer::{
     EvaluatedType, IntermediateType, IntermediateTypeProperty, ParameterType, SemanticSymbolKind,
     Standpoint, SymbolIndex, VariablePatternForm,
 };
+use std::cell::RefCell;
 
 pub struct SymbolWriter<'a> {
     pub standpoint: &'a Standpoint,

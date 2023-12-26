@@ -2,8 +2,8 @@ module arrayStack;
 
 use core.math.UINTMAX;
 use core.prelude.{
-    Array, UnsignedInt, Maybe, Int, Outcome, Bool, String,
-    todo, err, ok,
+    Array, UnsignedInt, Int, Outcome, Bool,
+    err, ok,
 };
 
 /// An implementation of a stack using an array.

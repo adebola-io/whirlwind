@@ -8,7 +8,7 @@
 /// a more finegrained control over iteration.
 module iteration;
 
-use core.prelude.{Array, Bool, todo, Maybe, some, none, UnsignedInt};
+use core.prelude.{Bool, todo, some, none, UnsignedInt};
 use core.collections.Tuple;
 
 /// ## The Iteratable interface

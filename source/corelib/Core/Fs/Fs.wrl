@@ -1,10 +1,9 @@
 module fs;
 
 use core.prelude.String;
-use core.prelude.{Array, UInt8, Display, todo, Bool};
+use core.prelude.{todo, Bool};
 use core.prelude.Outcome;
 use core.memory.Buffer;
-use core.io.IoError;
 use core.primitives.UnsignedInt;
 use core.net.Url;
 

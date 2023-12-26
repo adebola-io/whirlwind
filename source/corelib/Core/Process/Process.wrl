@@ -4,7 +4,6 @@ use core.{
     primitives.String,
     primitives.UnsignedInt,
     primitives.UInt8,
-    prelude.Maybe,
     concurrent.CurrentSequence,
     internals.{builtin, never},
 };

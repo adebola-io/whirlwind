@@ -1,8 +1,6 @@
 module numeric;
 
 use core.prelude.{Display, Default};
-use core.internals.{invoke, Injunction};
-use string.String;
 use ops.{Addition, Sequenced};
 
 /// An interface to be implemented by values that can be cast to an unsigned integer.

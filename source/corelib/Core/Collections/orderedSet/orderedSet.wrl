@@ -1,12 +1,7 @@
 module orderedSet;
 
-use core.prelude.todo;
-use core.prelude.Display;
-use core.prelude.String;
+
 use core.prelude.none;
-use core.prelude.some;
-use core.internals.never;
-use core.primitives.ops.Addition;
 
 public use tuple.{pair, Tuple};
 public use triple.Triple;

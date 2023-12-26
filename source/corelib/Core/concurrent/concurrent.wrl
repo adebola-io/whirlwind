@@ -2,8 +2,7 @@
 /// for the creation and utilization of asynchronous processes.
 module concurrent;
 
-use core.process.fatal;
-use core.prelude.{some, Array, todo, Bool, Guaranteed, String};
+use core.prelude.{todo, String};
 use core.internals.{builtin, StackTrace};
 use core.primitives.UnsignedInt;
 

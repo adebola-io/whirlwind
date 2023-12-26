@@ -1,7 +1,7 @@
 module response;
 use request.HttpRequest;
 
-use core.prelude.{String, UnsignedInt, Maybe, todo};
+use core.prelude.{String, UnsignedInt, todo};
 use core.data.JsonValue;
 
 /// The headers on a 

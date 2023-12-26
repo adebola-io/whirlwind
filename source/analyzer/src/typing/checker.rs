@@ -7,11 +7,11 @@ use crate::{
         infer_ahead, is_array, is_boolean, is_numeric_type, maybify, prospectify, symbol_to_type,
         update_expression_type,
     },
-    EvaluatedType, Literal, LiteralMap, ParameterType, PathIndex, ProgramError, ScopeId,
-    SemanticSymbolKind, SymbolIndex, SymbolLibrary, TypedAccessExpr, TypedAssignmentExpr,
-    TypedBlock, TypedCallExpr, TypedExpression, TypedFnExpr, TypedFunctionDeclaration, TypedIdent,
-    TypedIfExpr, TypedIndexExpr, TypedLogicExpr, TypedModule, TypedNewExpr, TypedReturnStatement,
-    TypedStmnt, TypedThisExpr, UnifyOptions,
+    DiagnosticType, EvaluatedType, Literal, LiteralMap, ParameterType, PathIndex,
+    ProgramDiagnostic, ScopeId, SemanticSymbolKind, SymbolIndex, SymbolLibrary, TypedAccessExpr,
+    TypedAssignmentExpr, TypedBlock, TypedCallExpr, TypedExpression, TypedFnExpr,
+    TypedFunctionDeclaration, TypedIdent, TypedIfExpr, TypedIndexExpr, TypedLogicExpr, TypedModule,
+    TypedNewExpr, TypedReturnStatement, TypedStmnt, TypedThisExpr, UnifyOptions,
 };
 use ast::{Span, UnaryOperator};
 use errors::{missing_intrinsic, TypeError, TypeErrorType};
@@ -35,7 +35,7 @@ pub struct TypecheckerContext<'a> {
     /// in a constructor block.
     current_expression_is_access: Option<bool>,
     /// List of errors from the standpoint.
-    errors: &'a mut Vec<ProgramError>,
+    diagnostics: &'a mut Vec<ProgramDiagnostic>,
     /// List of literal types from the standpoint.
     literals: &'a LiteralMap,
     // /// Cached values of intermediate types,
@@ -79,16 +79,16 @@ impl AttributeAssignment {
 }
 
 impl<'a> TypecheckerContext<'a> {
-    /// Adds a type error to the owner standpoint's list of errors.
-    pub fn add_error(&mut self, error: TypeError) {
-        self.errors.push(ProgramError {
+    /// Adds a type error to the owner standpoint's list of diagnostics.
+    pub fn add_diagnostic(&mut self, error: TypeError) {
+        self.diagnostics.push(ProgramDiagnostic {
             offending_file: self.path_idx,
-            error_type: crate::ProgramErrorType::Typing(error),
+            error_type: DiagnosticType::Error(crate::Error::Typing(error)),
         })
     }
     /// Returns a reference to the error list to be passed around by the evaluator.
-    pub fn tracker(&mut self) -> Option<(&mut Vec<ProgramError>, PathIndex)> {
-        Some((self.errors, self.path_idx))
+    pub fn tracker(&mut self) -> Option<(&mut Vec<ProgramDiagnostic>, PathIndex)> {
+        Some((self.diagnostics, self.path_idx))
     }
     /// Calculates the span of a typed expression using the symbollib and the list of literals.
     fn span_of_expr(&self, expression: &TypedExpression, symbollib: &SymbolLibrary) -> Span {
@@ -104,7 +104,7 @@ impl<'a> TypecheckerContext<'a> {
 pub fn typecheck(
     module: &mut TypedModule,
     symbollib: &mut SymbolLibrary,
-    errors: &mut Vec<ProgramError>,
+    diagnostics: &mut Vec<ProgramDiagnostic>,
     literals: &LiteralMap,
 ) {
     let mut checker_ctx = TypecheckerContext {
@@ -114,14 +114,14 @@ pub fn typecheck(
         enclosing_model_or_interface: None,
         current_function_is_static: None,
         current_expression_is_access: None,
-        errors,
+        diagnostics,
         literals,
     };
     for statement in &mut module.statements {
         statements::typecheck_statement(statement, &mut checker_ctx, symbollib);
     }
-    // Block uninferrable generics and unknowns at the end.
     for symbol in symbollib.in_module(module.path_idx) {
+        // Block uninferrable generics and unknowns at the end.
         if let SemanticSymbolKind::Variable { inferred_type, .. }
         | SemanticSymbolKind::LoopVariable { inferred_type, .. } = &symbol.kind
         {
@@ -131,7 +131,29 @@ pub fn typecheck(
                     EvaluatedType::Generic { .. } | EvaluatedType::Unknown
                 )
             }) {
-                checker_ctx.add_error(errors::uninferrable_variable(symbol.ident_span()));
+                checker_ctx.add_diagnostic(errors::uninferrable_variable(symbol.ident_span()));
+            }
+        }
+        // Unused symbols.
+        if !symbol.kind.is_public()
+            && symbol.references.len() == 1
+            && symbol.references[0].starts.len() == 1
+        {
+            match symbol.kind {
+                SemanticSymbolKind::Property { .. }
+                | SemanticSymbolKind::UndeclaredValue
+                | SemanticSymbolKind::Module { .. } => {}
+                SemanticSymbolKind::Import { .. } => {
+                    let span = symbol.ident_span();
+                    let name = symbol.name.to_owned();
+                    checker_ctx.diagnostics.push(ProgramDiagnostic {
+                        offending_file: checker_ctx.path_idx,
+                        error_type: DiagnosticType::Warning(errors::unused_import_symbol(
+                            name, span,
+                        )),
+                    })
+                }
+                _ => {}
             }
         }
     }
@@ -210,7 +232,7 @@ mod statements {
             expressions::typecheck_expression(&mut forloop.iterator, checker_ctx, symbollib);
         if symbollib.iteratable.is_none() || symbollib.asiter.is_none() {
             let span = checker_ctx.span_of_expr(&forloop.iterator, symbollib);
-            checker_ctx.add_error(errors::missing_intrinsic("Iteration".to_owned(), span));
+            checker_ctx.add_diagnostic(errors::missing_intrinsic("Iteration".to_owned(), span));
             typecheck_for_loop_body(&mut forloop.body, checker_ctx, symbollib);
             return;
         }
@@ -248,7 +270,7 @@ mod statements {
         if implementation.is_none() {
             let illegal_type = symbollib.format_evaluated_type(&iterator_type);
             let span = checker_ctx.span_of_expr(&forloop.iterator, symbollib);
-            checker_ctx.add_error(errors::illegal_iterator(illegal_type, span));
+            checker_ctx.add_diagnostic(errors::illegal_iterator(illegal_type, span));
             typecheck_for_loop_body(&mut forloop.body, checker_ctx, symbollib);
             return;
         }
@@ -264,7 +286,7 @@ mod statements {
                 if generic_solution.is_none() {
                     let name = symbollib.format_evaluated_type(&iterator_type);
                     let span = checker_ctx.span_of_expr(&forloop.iterator, symbollib);
-                    checker_ctx.add_error(errors::illegal_iterator(name, span));
+                    checker_ctx.add_diagnostic(errors::illegal_iterator(name, span));
                     EvaluatedType::Unknown
                 } else {
                     let evaluated_type = generic_solution.unwrap().1;
@@ -332,7 +354,7 @@ mod statements {
                             if property_type.is_none() {
                                 let property_name = get_property_name();
                                 let model_name = get_model_name();
-                                checker_ctx.add_error(errors::unknown_property(
+                                checker_ctx.add_diagnostic(errors::unknown_property(
                                     model_name,
                                     property_name,
                                     property_span,
@@ -342,7 +364,7 @@ mod statements {
                                 if pattern_result.is_method_instance() {
                                     let property_name = get_property_name();
                                     let model_name = get_model_name();
-                                    checker_ctx.add_error(errors::destructuring_method(
+                                    checker_ctx.add_diagnostic(errors::destructuring_method(
                                         model_name,
                                         property_name,
                                         property_span,
@@ -351,7 +373,7 @@ mod statements {
                             }
                         }
                         _ => {
-                            checker_ctx.add_error(errors::illegal_model_destructure(
+                            checker_ctx.add_diagnostic(errors::illegal_model_destructure(
                                 symbollib.format_evaluated_type(&final_type),
                                 forloop.span,
                             ));
@@ -368,7 +390,7 @@ mod statements {
                         pattern_result = generic_arguments.first().unwrap().1.clone()
                     }
                     _ => {
-                        checker_ctx.add_error(errors::illegal_array_destructure(
+                        checker_ctx.add_diagnostic(errors::illegal_array_destructure(
                             symbollib.format_evaluated_type(&final_type),
                             forloop.span,
                         ));
@@ -410,7 +432,7 @@ mod statements {
                 .map(|stmnt| checker_ctx.span_of_stmnt(stmnt, symbollib))
                 .unwrap_or(body.span);
             let type_as_string = symbollib.format_evaluated_type(&block_type);
-            checker_ctx.add_error(errors::implicit_loop_return(type_as_string, err_span));
+            checker_ctx.add_diagnostic(errors::implicit_loop_return(type_as_string, err_span));
         }
     }
 
@@ -467,7 +489,7 @@ mod statements {
                     .last()
                     .map(|statement| checker_ctx.span_of_stmnt(statement, symbollib))
                     .unwrap_or_else(|| constructor.span);
-                checker_ctx.add_error(errors::return_from_constructor(span));
+                checker_ctx.add_diagnostic(errors::return_from_constructor(span));
             }
             checker_ctx.current_function_context.pop();
             let constructor_context = checker_ctx.current_constructor_context.pop().unwrap();
@@ -495,14 +517,15 @@ mod statements {
                         let reference_span =
                             Span::on_line(start, attribute_symbol.name.len() as u32);
                         if reference_span.is_before(assignment_span) {
-                            checker_ctx
-                                .add_error(errors::using_attribute_before_assign(reference_span));
+                            checker_ctx.add_diagnostic(errors::using_attribute_before_assign(
+                                reference_span,
+                            ));
                             break;
                         }
                     }
                 } else {
                     checker_ctx
-                        .add_error(errors::unassigned_attribute(attribute_symbol.origin_span));
+                        .add_diagnostic(errors::unassigned_attribute(attribute_symbol.origin_span));
                 }
             }
         }
@@ -656,7 +679,7 @@ mod statements {
                 found: symbollib.format_evaluated_type(&block_return_type),
                 expected: symbollib.format_evaluated_type(&return_type),
             };
-            checker_ctx.add_error(errors::composite_type_error(
+            checker_ctx.add_diagnostic(errors::composite_type_error(
                 main_error,
                 typeerrortype,
                 span,
@@ -671,7 +694,7 @@ mod statements {
         span: Span,
     ) {
         let symbol = symbollib.get(interface_);
-        checker_ctx.add_error(errors::interface_as_type(
+        checker_ctx.add_diagnostic(errors::interface_as_type(
             symbol
                 .map(|symbol| symbol.name.clone())
                 .unwrap_or(String::from("{Interface}")),
@@ -742,7 +765,7 @@ mod statements {
             // Interfaces are not allowed in type contexts.
             if let EvaluatedType::InterfaceInstance { interface_, .. } = &declared {
                 let symbol = symbollib.get(*interface_);
-                checker_ctx.add_error(errors::interface_as_type(
+                checker_ctx.add_diagnostic(errors::interface_as_type(
                     symbol
                         .map(|symbol| symbol.name.clone())
                         .unwrap_or(String::from("{Interface}")),
@@ -752,14 +775,14 @@ mod statements {
             }
             // Never types are not allowed in type contexts.
             if declared.contains(&EvaluatedType::Never) {
-                checker_ctx.add_error(errors::never_as_declared(variable.span));
+                checker_ctx.add_diagnostic(errors::never_as_declared(variable.span));
             }
             let type_of_value = inferred_result.as_ref().unwrap();
             match unify_freely(declared, &type_of_value, symbollib, None) {
                 Ok(unified_type) => inferred_result = Some(unified_type),
                 Err(errortypes) => {
                     for error in errortypes {
-                        checker_ctx.add_error(TypeError {
+                        checker_ctx.add_diagnostic(TypeError {
                             _type: error,
                             span: variable.span,
                         });
@@ -774,7 +797,7 @@ mod statements {
                 let default_is_implemented =
                     get_implementation_of(default, declared, symbollib).is_some();
                 if !default_is_implemented {
-                    checker_ctx.add_error(errors::no_default(
+                    checker_ctx.add_diagnostic(errors::no_default(
                         symbollib.format_evaluated_type(declared),
                         variable.span,
                     ));
@@ -783,7 +806,7 @@ mod statements {
         }
         // if neither is available, nothing can be done.
         if declared_type.is_none() && variable.value.is_none() {
-            checker_ctx.add_error(errors::missing_annotations(variable.span));
+            checker_ctx.add_diagnostic(errors::missing_annotations(variable.span));
             return;
         }
         let final_type = inferred_result.unwrap_or_else(|| declared_type.unwrap());
@@ -797,7 +820,7 @@ mod statements {
                 let expression = variable.value.as_ref().unwrap();
                 if !is_pure(expression) {
                     let span = checker_ctx.span_of_expr(expression, symbollib);
-                    checker_ctx.add_error(errors::non_pure_global(span));
+                    checker_ctx.add_diagnostic(errors::non_pure_global(span));
                     return;
                 }
             }
@@ -847,7 +870,7 @@ mod statements {
                             if property_type.is_none() {
                                 let property_name = get_property_name();
                                 let model_name = get_model_name();
-                                checker_ctx.add_error(errors::unknown_property(
+                                checker_ctx.add_diagnostic(errors::unknown_property(
                                     model_name,
                                     property_name,
                                     span,
@@ -857,7 +880,7 @@ mod statements {
                                 if pattern_result.is_method_instance() {
                                     let property_name = get_property_name();
                                     let model_name = get_model_name();
-                                    checker_ctx.add_error(errors::destructuring_method(
+                                    checker_ctx.add_diagnostic(errors::destructuring_method(
                                         model_name,
                                         property_name,
                                         span,
@@ -866,7 +889,7 @@ mod statements {
                             }
                         }
                         _ => {
-                            checker_ctx.add_error(errors::illegal_model_destructure(
+                            checker_ctx.add_diagnostic(errors::illegal_model_destructure(
                                 symbollib.format_evaluated_type(&final_type),
                                 variable.span,
                             ));
@@ -882,7 +905,7 @@ mod statements {
                         pattern_result = generic_arguments.first().unwrap().1.clone()
                     }
                     _ => {
-                        checker_ctx.add_error(errors::illegal_array_destructure(
+                        checker_ctx.add_diagnostic(errors::illegal_array_destructure(
                             symbollib.format_evaluated_type(&final_type),
                             variable.span,
                         ));
@@ -923,7 +946,7 @@ mod statements {
         let condition_type =
             expressions::typecheck_expression(&mut whil.condition, checker_ctx, symbollib);
         if !is_boolean(&condition_type, symbollib) && !condition_type.is_unknown() {
-            checker_ctx.add_error(errors::non_boolean_logic(
+            checker_ctx.add_diagnostic(errors::non_boolean_logic(
                 symbollib.format_evaluated_type(&condition_type),
                 checker_ctx.span_of_expr(&whil.condition, symbollib),
             ))
@@ -949,7 +972,7 @@ mod statements {
                     typ,
                     symbollib,
                     None,
-                    &mut Some((checker_ctx.errors, checker_ctx.path_idx)),
+                    &mut Some((checker_ctx.diagnostics, checker_ctx.path_idx)),
                     0,
                 )
             })
@@ -973,7 +996,7 @@ mod statements {
         let inference_result = if let Some(declared) = declared_type {
             if let EvaluatedType::InterfaceInstance { interface_, .. } = &declared {
                 let symbol = symbollib.get(*interface_);
-                checker_ctx.add_error(errors::interface_as_type(
+                checker_ctx.add_diagnostic(errors::interface_as_type(
                     symbol
                         .map(|symbol| symbol.name.clone())
                         .unwrap_or(String::from("{Interface}")),
@@ -982,13 +1005,13 @@ mod statements {
                 return;
             }
             if declared.contains(&EvaluatedType::Never) {
-                checker_ctx.add_error(errors::never_as_declared(shorthand_variable.span))
+                checker_ctx.add_diagnostic(errors::never_as_declared(shorthand_variable.span))
             }
             match unify_freely(&declared, &type_of_value, symbollib, None) {
                 Ok(eval_type) => eval_type,
                 Err(errortypes) => {
                     for error in errortypes {
-                        checker_ctx.add_error(TypeError {
+                        checker_ctx.add_diagnostic(TypeError {
                             _type: error,
                             span: shorthand_variable.span,
                         });
@@ -1038,7 +1061,7 @@ mod statements {
                 || function_context.is_some_and(|ctx| ctx.is_named && ctx.return_type.is_void())
             {
                 // returns with a value, but no value was requested.
-                checker_ctx.add_error(TypeError {
+                checker_ctx.add_diagnostic(TypeError {
                     _type: TypeErrorType::MismatchedReturnType {
                         expected: symbollib.format_evaluated_type(&EvaluatedType::Void),
                         found: symbollib.format_evaluated_type(eval_type),
@@ -1082,12 +1105,12 @@ mod statements {
                 // Unification failed.
                 Err(errortype) => {
                     for errortype in errortype {
-                        checker_ctx.add_error(TypeError {
+                        checker_ctx.add_diagnostic(TypeError {
                             _type: errortype,
                             span: retstat.span,
                         });
                     }
-                    checker_ctx.add_error(TypeError {
+                    checker_ctx.add_diagnostic(TypeError {
                         _type: TypeErrorType::MismatchedReturnType {
                             expected: symbollib.format_evaluated_type(&ctx_return_type),
                             found: symbollib.format_evaluated_type(eval_type),
@@ -1100,7 +1123,7 @@ mod statements {
             // does not return a value, but a type is specified by the function.
             if let Some(return_type) = function_context.map(|ctx| &ctx.return_type) {
                 if !return_type.is_void() {
-                    checker_ctx.add_error(TypeError {
+                    checker_ctx.add_diagnostic(TypeError {
                         _type: TypeErrorType::MismatchedReturnType {
                             expected: symbollib.format_evaluated_type(return_type),
                             found: symbollib.format_evaluated_type(&EvaluatedType::Void),
@@ -1138,7 +1161,7 @@ mod statements {
                                     declared_type,
                                     symbollib,
                                     Some(&generic_arguments),
-                                    &mut Some((checker_ctx.errors, checker_ctx.path_idx)),
+                                    &mut Some((checker_ctx.diagnostics, checker_ctx.path_idx)),
                                     0,
                                 )
                             } else {
@@ -1235,7 +1258,7 @@ mod expressions {
                 match typecheck_identifier(i, symbollib) {
                     Ok(evaluated_type) => evaluated_type,
                     Err(error_type) => {
-                        checker_ctx.add_error(TypeError {
+                        checker_ctx.add_diagnostic(TypeError {
                             _type: error_type,
                             span: checker_ctx.span_of_expr(expression, &symbollib),
                         });
@@ -1337,7 +1360,7 @@ mod expressions {
                             if let Some(bool) = symbollib.bool {
                                 return boolean_instance(bool);
                             } else {
-                                checker_ctx.add_error(errors::missing_intrinsic(
+                                checker_ctx.add_diagnostic(errors::missing_intrinsic(
                                     format!("Bool"),
                                     binexp.span,
                                 ));
@@ -1352,9 +1375,13 @@ mod expressions {
                                     _type: error_type,
                                     span: binexp.span,
                                 };
-                                checker_ctx.add_error(error);
+                                checker_ctx.add_diagnostic(error);
                             }
-                            checker_ctx.add_error(errors::incomparable(left, right, binexp.span));
+                            checker_ctx.add_diagnostic(errors::incomparable(
+                                left,
+                                right,
+                                binexp.span,
+                            ));
                             return EvaluatedType::Unknown;
                         }
                     }
@@ -1399,7 +1426,7 @@ mod expressions {
                                         .find(|generic| generic.0 == guaranteed_generic);
                                     if generic_solution.is_none() {
                                         let name = symbollib.format_evaluated_type(&operand_type);
-                                        checker_ctx.add_error(errors::illegal_guarantee(
+                                        checker_ctx.add_diagnostic(errors::illegal_guarantee(
                                             name,
                                             updateexp.span,
                                         ));
@@ -1422,11 +1449,12 @@ mod expressions {
                             }
                         } else {
                             let name = symbollib.format_evaluated_type(&operand_type);
-                            checker_ctx.add_error(errors::illegal_guarantee(name, updateexp.span));
+                            checker_ctx
+                                .add_diagnostic(errors::illegal_guarantee(name, updateexp.span));
                             EvaluatedType::Unknown
                         }
                     } else {
-                        checker_ctx.add_error(errors::missing_intrinsic(
+                        checker_ctx.add_diagnostic(errors::missing_intrinsic(
                             String::from("Guaranteed"),
                             updateexp.span,
                         ));
@@ -1451,7 +1479,7 @@ mod expressions {
                             get_implementation_of(try_idx, operand_type, &symbollib);
                         if implementation.is_none() {
                             let name = symbollib.format_evaluated_type(&operand_type);
-                            checker_ctx.add_error(errors::illegal_try(name, updateexp.span));
+                            checker_ctx.add_diagnostic(errors::illegal_try(name, updateexp.span));
                             return EvaluatedType::Unknown;
                         }
                         let implementation = implementation.unwrap();
@@ -1469,7 +1497,8 @@ mod expressions {
                             if first_generic_solution.is_none() || second_generic_solution.is_none()
                             {
                                 let name = symbollib.format_evaluated_type(&operand_type);
-                                checker_ctx.add_error(errors::illegal_try(name, updateexp.span));
+                                checker_ctx
+                                    .add_diagnostic(errors::illegal_try(name, updateexp.span));
                                 return EvaluatedType::Unknown;
                             }
                             let evaluated_type = first_generic_solution.unwrap().1;
@@ -1498,7 +1527,7 @@ mod expressions {
                                     coerce_all_generics(&returned_type, EvaluatedType::Never)
                             }
                             if function_ctx.is_none() {
-                                checker_ctx.add_error(TypeError {
+                                checker_ctx.add_diagnostic(TypeError {
                                     _type: TypeErrorType::MismatchedReturnType {
                                         expected: symbollib
                                             .format_evaluated_type(&EvaluatedType::Void),
@@ -1526,7 +1555,7 @@ mod expressions {
                                         .return_type = result;
                                 }
                                 Err(errors) => {
-                                    checker_ctx.add_error(TypeError {
+                                    checker_ctx.add_diagnostic(TypeError {
                                         _type: TypeErrorType::MismatchedReturnType {
                                             expected: symbollib
                                                 .format_evaluated_type(&function_ctx.return_type),
@@ -1535,7 +1564,7 @@ mod expressions {
                                         span: updateexp.span,
                                     });
                                     for _type in errors {
-                                        checker_ctx.add_error(TypeError {
+                                        checker_ctx.add_diagnostic(TypeError {
                                             _type,
                                             span: updateexp.span,
                                         })
@@ -1547,7 +1576,7 @@ mod expressions {
                             return EvaluatedType::Unknown;
                         }
                     } else {
-                        checker_ctx.add_error(errors::missing_intrinsic(
+                        checker_ctx.add_diagnostic(errors::missing_intrinsic(
                             String::from("Try"),
                             updateexp.span,
                         ));
@@ -1571,7 +1600,7 @@ mod expressions {
                 UnaryOperator::Negation | UnaryOperator::NegationLiteral => {
                     if !is_boolean(&operand_type, symbollib) {
                         let name = symbollib.format_evaluated_type(&operand_type);
-                        checker_ctx.add_error(TypeError {
+                        checker_ctx.add_diagnostic(TypeError {
                             _type: TypeErrorType::NonBooleanLogic { name },
                             span: unaryexp.span,
                         })
@@ -1602,7 +1631,7 @@ mod expressions {
         ifexp.inferred_type = {
             let condition_type = typecheck_expression(&mut ifexp.condition, checker_ctx, symbollib);
             if !is_boolean(&condition_type, symbollib) && !condition_type.is_unknown() {
-                checker_ctx.add_error(errors::non_boolean_logic(
+                checker_ctx.add_diagnostic(errors::non_boolean_logic(
                     symbollib.format_evaluated_type(&condition_type),
                     checker_ctx.span_of_expr(&ifexp.condition, symbollib),
                 ));
@@ -1634,13 +1663,13 @@ mod expressions {
                 ) {
                     Ok(result) => result,
                     Err(errors) => {
-                        checker_ctx.add_error(errors::separate_if_types(
+                        checker_ctx.add_diagnostic(errors::separate_if_types(
                             ifexp.span,
                             symbollib.format_evaluated_type(&block_type),
                             symbollib.format_evaluated_type(&else_type),
                         ));
                         for error in errors {
-                            checker_ctx.add_error(TypeError {
+                            checker_ctx.add_diagnostic(TypeError {
                                 _type: error,
                                 span: ifexp.span,
                             })
@@ -1669,7 +1698,7 @@ mod expressions {
         assexp.inferred_type = (|| {
             let left_type = typecheck_expression(&mut assexp.left, checker_ctx, symbollib);
             let right_type = if !is_valid_lhs(&assexp.left) {
-                checker_ctx.add_error(errors::invalid_assignment_target(assexp.span));
+                checker_ctx.add_diagnostic(errors::invalid_assignment_target(assexp.span));
                 typecheck_expression(&mut assexp.right, checker_ctx, symbollib); // For continuity.
                 return EvaluatedType::Unknown;
             } else {
@@ -1696,7 +1725,7 @@ mod expressions {
                         Ok(result_type) => result_type,
                         Err(errortypes) => {
                             for _type in errortypes {
-                                checker_ctx.add_error(TypeError {
+                                checker_ctx.add_diagnostic(TypeError {
                                     _type,
                                     span: assexp.span,
                                 })
@@ -1719,11 +1748,11 @@ mod expressions {
                             .clone(),
                         _ => String::from("[Model]"),
                     };
-                    checker_ctx.add_error(errors::mutating_method(owner, name, assexp.span));
+                    checker_ctx.add_diagnostic(errors::mutating_method(owner, name, assexp.span));
                     return EvaluatedType::Unknown;
                 }
                 _ => {
-                    checker_ctx.add_error(errors::invalid_assignment_target(assexp.span));
+                    checker_ctx.add_diagnostic(errors::invalid_assignment_target(assexp.span));
                     return EvaluatedType::Unknown;
                 }
             };
@@ -1741,7 +1770,7 @@ mod expressions {
                         .clone(),
                     _ => String::from("[Model]"),
                 };
-                checker_ctx.add_error(errors::mutating_method(owner, name, assexp.span));
+                checker_ctx.add_diagnostic(errors::mutating_method(owner, name, assexp.span));
                 return EvaluatedType::Unknown;
             }
 
@@ -1789,7 +1818,7 @@ mod expressions {
                     .iter()
                     .any(|start| span_of_rhs.contains(*start))
                 {
-                    checker_ctx.add_error(errors::using_attribute_before_assign(span_of_rhs));
+                    checker_ctx.add_diagnostic(errors::using_attribute_before_assign(span_of_rhs));
                     break 'check_for_attribute_assignment;
                 }
                 let assignment_type = match current_scope_type {
@@ -1899,13 +1928,13 @@ mod expressions {
             let right = typecheck_expression(&mut logexp.right, checker_ctx, symbollib);
 
             if !is_boolean(&left, symbollib) && !left.is_unknown() {
-                checker_ctx.add_error(errors::non_boolean_logic(
+                checker_ctx.add_diagnostic(errors::non_boolean_logic(
                     symbollib.format_evaluated_type(&left),
                     checker_ctx.span_of_expr(&logexp.right, symbollib),
                 ));
             }
             if !is_boolean(&right, symbollib) && !right.is_unknown() {
-                checker_ctx.add_error(errors::non_boolean_logic(
+                checker_ctx.add_diagnostic(errors::non_boolean_logic(
                     symbollib.format_evaluated_type(&right),
                     checker_ctx.span_of_expr(&logexp.right, symbollib),
                 ));
@@ -1917,7 +1946,7 @@ mod expressions {
                     is_invariant: false,
                 };
             } else {
-                checker_ctx.add_error(errors::missing_intrinsic(format!("Bool"), logexp.span));
+                checker_ctx.add_diagnostic(errors::missing_intrinsic(format!("Bool"), logexp.span));
                 return EvaluatedType::Unknown;
             }
         })();
@@ -1941,7 +1970,7 @@ mod expressions {
             {
                 let start = [this.start_line, this.start_character];
                 let span = Span::on_line(start, 4);
-                checker_ctx.add_error(errors::this_in_static_method(span));
+                checker_ctx.add_diagnostic(errors::this_in_static_method(span));
                 return EvaluatedType::Unknown;
             }
             // Block the use of `this` as a standalone value in the constructor.
@@ -1950,7 +1979,7 @@ mod expressions {
             {
                 let start = [this.start_line, this.start_character];
                 let span = Span::on_line(start, 4);
-                checker_ctx.add_error(errors::using_this_before_construction(span));
+                checker_ctx.add_diagnostic(errors::using_this_before_construction(span));
             }
             let symbol = symbollib.get_forwarded(model_or_interface).unwrap();
             match &symbol.kind {
@@ -1987,7 +2016,7 @@ mod expressions {
                         None => return EvaluatedType::Unknown,
                     };
                     if matches!(symbol.kind, SemanticSymbolKind::Model { .. }) {
-                        checker_ctx.add_error(errors::calling_new_on_identifier(
+                        checker_ctx.add_diagnostic(errors::calling_new_on_identifier(
                             symbol.name.clone(),
                             Span::on_line(ident.start, symbol.name.len() as u32),
                         ));
@@ -2012,8 +2041,9 @@ mod expressions {
                                     let span = newexp.span;
                                     // if model does not have a new() function.
                                     if !*is_constructable {
-                                        checker_ctx
-                                            .add_error(errors::model_not_constructable(name, span));
+                                        checker_ctx.add_diagnostic(
+                                            errors::model_not_constructable(name, span),
+                                        );
                                         return EvaluatedType::Unknown;
                                     }
                                     let generic_arguments =
@@ -2049,7 +2079,7 @@ mod expressions {
                             return result_model_instance;
                         }
                         _ => {
-                            checker_ctx.add_error(errors::invalid_new_expression(
+                            checker_ctx.add_diagnostic(errors::invalid_new_expression(
                                 checker_ctx.span_of_expr(&callexp.caller, &symbollib),
                             ));
                             return EvaluatedType::Unknown;
@@ -2058,7 +2088,7 @@ mod expressions {
                 }
                 // Invalid new expressions.
                 _ => {
-                    checker_ctx.add_error(errors::invalid_new_expression(
+                    checker_ctx.add_diagnostic(errors::invalid_new_expression(
                         checker_ctx.span_of_expr(&newexp.value, &symbollib),
                     ));
                     typecheck_expression(&mut newexp.value, checker_ctx, symbollib);
@@ -2083,7 +2113,7 @@ mod expressions {
             let ptr = type_of_indexed;
             if !is_array(&ptr, &symbollib) {
                 if !is_array(&ptr, symbollib) {
-                    checker_ctx.add_error(errors::invalid_index_subject(
+                    checker_ctx.add_diagnostic(errors::invalid_index_subject(
                         symbollib.format_evaluated_type(&ptr),
                         indexexp.span,
                     ));
@@ -2111,16 +2141,16 @@ mod expressions {
                     None,
                 ) {
                     let span = checker_ctx.span_of_expr(&indexexp.index, symbollib);
-                    checker_ctx.add_error(errors::indexing_with_illegal_value(
+                    checker_ctx.add_diagnostic(errors::indexing_with_illegal_value(
                         symbollib.format_evaluated_type(&type_of_indexer),
                         span,
                     ));
                     for error in errors {
-                        checker_ctx.add_error(TypeError { _type: error, span })
+                        checker_ctx.add_diagnostic(TypeError { _type: error, span })
                     }
                 }
             } else {
-                checker_ctx.add_error(errors::missing_intrinsic(
+                checker_ctx.add_diagnostic(errors::missing_intrinsic(
                     format!("UnsignedInt"),
                     checker_ctx.span_of_expr(&indexexp.index, symbollib),
                 ));
@@ -2138,7 +2168,7 @@ mod expressions {
                     }
                 }
                 _ => {
-                    checker_ctx.add_error(errors::invalid_index_subject(
+                    checker_ctx.add_diagnostic(errors::invalid_index_subject(
                         symbollib.format_evaluated_type(&ptr),
                         indexexp.span,
                     ));
@@ -2157,7 +2187,7 @@ mod expressions {
     ) -> EvaluatedType {
         array.inferred_type = (|| {
             if symbollib.array.is_none() {
-                checker_ctx.add_error(missing_intrinsic(format!("Array"), array.span));
+                checker_ctx.add_diagnostic(missing_intrinsic(format!("Array"), array.span));
             }
             if array.elements.len() == 0 {
                 if symbollib.array.is_some() {
@@ -2224,13 +2254,13 @@ mod expressions {
                 i += 1;
             }
             if errors_gotten.len() > 0 {
-                checker_ctx.add_error(TypeError {
+                checker_ctx.add_diagnostic(TypeError {
                     _type: TypeErrorType::HeterogeneousArray,
                     span: array.span,
                 });
                 for (idx, errortype) in errors_gotten {
                     for error in errortype {
-                        checker_ctx.add_error(TypeError {
+                        checker_ctx.add_diagnostic(TypeError {
                             _type: error,
                             span: array
                                 .elements
@@ -2303,7 +2333,7 @@ mod expressions {
                 is_invariant: false,
             };
         } else {
-            checker_ctx.add_error(errors::missing_intrinsic(
+            checker_ctx.add_diagnostic(errors::missing_intrinsic(
                 format!("Bool"),
                 Span::on_line([*start_line, *start_character], if *value { 4 } else { 5 }),
             ));
@@ -2324,7 +2354,7 @@ mod expressions {
                 is_invariant: false,
             };
         }
-        checker_ctx.add_error(errors::missing_intrinsic(format!("String"), value.span));
+        checker_ctx.add_diagnostic(errors::missing_intrinsic(format!("String"), value.span));
         return EvaluatedType::Unknown;
     }
 
@@ -2446,7 +2476,7 @@ mod expressions {
     ) {
         // mismatched arguments. It checks if the parameter list is longer, so it can account for optional parameters.
         if parameter_types.len() < callexp.arguments.len() {
-            checker_ctx.add_error(errors::mismatched_function_args(
+            checker_ctx.add_diagnostic(errors::mismatched_function_args(
                 callexp.span,
                 parameter_types.len(),
                 callexp.arguments.len(),
@@ -2519,7 +2549,7 @@ mod expressions {
                 Some(evaled_typ) => evaled_typ,
                 None => {
                     if !is_optional {
-                        checker_ctx.add_error(errors::mismatched_function_args(
+                        checker_ctx.add_diagnostic(errors::mismatched_function_args(
                             callexp.span,
                             parameter_types.len(),
                             callexp.arguments.len(),
@@ -2557,7 +2587,7 @@ mod expressions {
             );
             if let Err(errortype) = unification {
                 for errortype in errortype {
-                    checker_ctx.add_error(TypeError {
+                    checker_ctx.add_diagnostic(TypeError {
                         _type: errortype,
                         span: checker_ctx.span_of_expr(&callexp.arguments[i], &symbollib),
                     })
@@ -2644,7 +2674,8 @@ mod expressions {
             | EvaluatedType::MethodInstance { .. } => caller,
             EvaluatedType::Model(base) => {
                 let symbol = symbollib.get_forwarded(base).unwrap();
-                checker_ctx.add_error(errors::illegal_model_call(symbol.name.clone(), caller_span));
+                checker_ctx
+                    .add_diagnostic(errors::illegal_model_call(symbol.name.clone(), caller_span));
                 EvaluatedType::Unknown
             }
             EvaluatedType::Module(_)
@@ -2657,7 +2688,7 @@ mod expressions {
             | EvaluatedType::Void
             | EvaluatedType::Never
             | EvaluatedType::OpaqueTypeInstance { .. } => {
-                checker_ctx.add_error(errors::not_callable(
+                checker_ctx.add_diagnostic(errors::not_callable(
                     symbollib.format_evaluated_type(&caller),
                     caller_span,
                 ));
@@ -2694,7 +2725,7 @@ mod expressions {
                 // Interfaces cannot be used as parameter types.
                 if let EvaluatedType::InterfaceInstance { interface_, .. } = &inferred_type {
                     let symbol = symbollib.get(*interface_);
-                    checker_ctx.add_error(errors::interface_as_type(
+                    checker_ctx.add_diagnostic(errors::interface_as_type(
                         symbol
                             .map(|symbol| symbol.name.clone())
                             .unwrap_or(String::from("{Interface}")),
@@ -2723,7 +2754,7 @@ mod expressions {
             // Interfaces cannot be used as return types.
             if let Some((EvaluatedType::InterfaceInstance { interface_, .. }, _)) = &return_type {
                 let symbol = symbollib.get(*interface_);
-                checker_ctx.add_error(errors::interface_as_type(
+                checker_ctx.add_diagnostic(errors::interface_as_type(
                     symbol
                         .map(|symbol| symbol.name.clone())
                         .unwrap_or(String::from("{Interface}")),
@@ -2781,9 +2812,9 @@ mod expressions {
                     }
                     Err(errors) => {
                         for _type in errors {
-                            checker_ctx.add_error(TypeError { _type, span })
+                            checker_ctx.add_diagnostic(TypeError { _type, span })
                         }
-                        checker_ctx.add_error(TypeError {
+                        checker_ctx.add_diagnostic(TypeError {
                             _type: TypeErrorType::MismatchedReturnType {
                                 expected: symbollib.format_evaluated_type(&return_type),
                                 found: symbollib.format_evaluated_type(&inferred_return_type),
@@ -2892,7 +2923,7 @@ mod expressions {
                             };
                             if symbol.name == property_symbol.name {
                                 if !symbol.kind.is_public() {
-                                    checker_ctx.add_error(TypeError {
+                                    checker_ctx.add_diagnostic(TypeError {
                                         _type: TypeErrorType::PrivateSymbolLeak {
                                             modulename: module.name.clone(),
                                             property: property_symbol.name.clone(),
@@ -2921,7 +2952,7 @@ mod expressions {
                             }
                         }
                         // No such symbol found.
-                        checker_ctx.add_error(TypeError {
+                        checker_ctx.add_diagnostic(TypeError {
                             _type: TypeErrorType::NoSuchSymbol {
                                 modulename: module.name.clone(),
                                 property: property_symbol.name.clone(),
@@ -3065,7 +3096,7 @@ mod expressions {
                 base_type: symbollib.format_evaluated_type(&object_type),
                 property,
             };
-            checker_ctx.add_error(TypeError {
+            checker_ctx.add_diagnostic(TypeError {
                 _type: error,
                 span: checker_ctx.span_of_expr(&access.property, &symbollib),
             });
@@ -3159,13 +3190,13 @@ mod expressions {
                     _ => false,
                 };
                 if method_is_static && object_is_instance {
-                    checker_ctx.add_error(errors::instance_static_method_access(
+                    checker_ctx.add_diagnostic(errors::instance_static_method_access(
                         base_symbol.name.clone(),
                         method_symbol.name.clone(),
                         property_span,
                     ))
                 } else if !method_is_static && !object_is_instance {
-                    checker_ctx.add_error(errors::contructor_non_static_method_access(
+                    checker_ctx.add_diagnostic(errors::contructor_non_static_method_access(
                         base_symbol.name.clone(),
                         method_symbol.name.clone(),
                         property_span,
@@ -3183,7 +3214,7 @@ mod expressions {
                 if !method_symbol.kind.is_public()
                     && checker_ctx.enclosing_model_or_interface != Some(model)
                 {
-                    checker_ctx.add_error(errors::private_property_leak(
+                    checker_ctx.add_diagnostic(errors::private_property_leak(
                         method_symbol.name.clone(),
                         property_span,
                     ));
@@ -3224,7 +3255,7 @@ mod expressions {
                     if !attribute_symbol.kind.is_public()
                         && checker_ctx.enclosing_model_or_interface != Some(model)
                     {
-                        checker_ctx.add_error(errors::private_property_leak(
+                        checker_ctx.add_diagnostic(errors::private_property_leak(
                             attribute_symbol.name.clone(),
                             property_span,
                         ));
@@ -3238,7 +3269,7 @@ mod expressions {
                 let attribute = *attributes;
                 let attribute_symbol = symbollib.get_forwarded(attribute).unwrap();
                 if attribute_symbol.name.to_lowercase() == property_symbol.name.to_lowercase() {
-                    checker_ctx.add_error(errors::mispelled_name(
+                    checker_ctx.add_diagnostic(errors::mispelled_name(
                         attribute_symbol.name.clone(),
                         property_span,
                     ));
@@ -3252,7 +3283,7 @@ mod expressions {
             let method = *method;
             let method_symbol = symbollib.get_forwarded(method).unwrap();
             if method_symbol.name.to_lowercase() == property_symbol.name.to_lowercase() {
-                checker_ctx.add_error(errors::mispelled_name(
+                checker_ctx.add_diagnostic(errors::mispelled_name(
                     method_symbol.name.clone(),
                     property_span,
                 ));

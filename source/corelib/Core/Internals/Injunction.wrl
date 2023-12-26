@@ -7,16 +7,7 @@
 /// - interface with external resources.
 module injunction;
 
-use core.{
-    prelude.{Range, Bool, Array, todo, some},
-    collections.OrderedSet,
-    concurrent.{Eventual, Prospect, Sequence},
-    primitives.{
-        UnsignedInt,
-        String,
-        Int,
-    }
-};
+use core.primitives.String;
 use never.never;
  
 /// The `Injunction` interface allows its implementers to directly interact with, or

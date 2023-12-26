@@ -1,7 +1,7 @@
 module range;
 
 use core.prelude.Iteratable;
-use core.prelude.{Maybe, none, some};
+use core.prelude.{none, some};
 use core.primitives.ops.Sequenced;
 
 public model Range<T implements Sequenced> implements Iteratable<T> {

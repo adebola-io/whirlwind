@@ -1,6 +1,6 @@
 module sextuple;
 
-use core.prelude.{never, some};
+use core.prelude.some;
 use orderedSet.OrderedSet;
 
 

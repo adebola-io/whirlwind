@@ -20,7 +20,7 @@ fn retrieves_main_module() {
     let idx = standpoint.add_module(module).unwrap();
     standpoint.validate();
     standpoint.entry_module = idx;
-    assert!(standpoint.errors.is_empty());
+    assert!(standpoint.diagnostics.is_empty());
 
     println!("The main function is {:#?}", standpoint.main());
 }

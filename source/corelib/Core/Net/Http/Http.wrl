@@ -2,10 +2,8 @@ module http;
 
 use core.prelude.{
     Bool, todo, Outcome, Prospect, String,
-    Maybe, UnsignedInt, some, Array, none, fatal,
-    Display,
+    UnsignedInt, some, fatal,
 };
-use core.primitives.ops.Addition;
 public use request.{
     RequestParams, HttpRequest, HttpMethod, 
     HttpRequestError,
