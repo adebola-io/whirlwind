@@ -21,4 +21,11 @@ pub fn get_parent_dir(path: &Path) -> Option<&Path> {
     path.ancestors().nth(1)
 }
 
+pub fn get_dir_basename(path: &std::path::Path) -> Option<&str> {
+    path.components()
+        .last()
+        .map(|component| component.as_os_str())
+        .and_then(|dirname| dirname.to_str())
+}
+
 pub type Atomic<T> = Arc<Mutex<T>>;

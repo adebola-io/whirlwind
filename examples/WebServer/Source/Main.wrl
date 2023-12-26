@@ -5,7 +5,7 @@ module Main;
 use core.{
     net.http.{
         HttpServer, ServerOutcome, HttpRequest, HttpResponse,
-        Middleware, MiddlewareResponse, HttpRequestError
+        Middleware, MiddlewareResponse,
     },
     io.{fmt, print},
     crypto.JwtEncryptor,

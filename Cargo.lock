@@ -442,6 +442,7 @@ dependencies = [
  "analyzer",
  "ast",
  "errors",
+ "utils",
 ]
 
 [[package]]

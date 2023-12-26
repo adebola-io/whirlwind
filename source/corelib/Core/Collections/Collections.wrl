@@ -7,4 +7,4 @@ public use orderedSet.{
 };
 public use arrayStack.ArrayStack;
 public use hashMap.{HashMap, Hash, ToMap};
-public use sort.{quickSort};
+public use sort.quickSort;

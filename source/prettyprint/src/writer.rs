@@ -2,7 +2,8 @@ use analyzer::{
     EvaluatedType, IntermediateType, IntermediateTypeProperty, ParameterType, SemanticSymbolKind,
     Standpoint, SymbolIndex, VariablePatternForm,
 };
-use std::cell::RefCell;
+use std::{cell::RefCell, path::Path};
+use utils::{get_dir_basename, get_parent_dir};
 
 pub struct SymbolWriter<'a> {
     pub standpoint: &'a Standpoint,
@@ -43,7 +44,38 @@ impl<'a> SymbolWriter<'a> {
         }
         match &symbol.kind {
             SemanticSymbolKind::Module { .. } => {
-                string.push_str("module "); // todo: print full path.
+                // todo: print full path.
+                string.push_str("module ");
+                let standpoint = self.standpoint;
+                let mut rope = vec![];
+                let mut curr_symbol = symbol;
+                loop {
+                    let module = standpoint
+                        .module_map
+                        .get(curr_symbol.references.first().unwrap().module_path)
+                        .unwrap();
+                    let mut parent_directory = get_parent_dir(&module.path_buf);
+                    if let Some(dir) = parent_directory.as_ref() {
+                        if dir
+                            .file_name()
+                            .and_then(|name| name.to_str())
+                            .is_some_and(|name| name == curr_symbol.name)
+                        {
+                            parent_directory = get_parent_dir(dir);
+                        }
+                    }
+                    let parent_module_symbol = get_directory_symbol(parent_directory, standpoint);
+                    if let Some(parent_symbol) = parent_module_symbol {
+                        rope.push(parent_symbol.name.to_owned());
+                        curr_symbol = parent_symbol;
+                    } else {
+                        break;
+                    }
+                }
+                for modulename in rope.iter().rev() {
+                    string.push_str(modulename);
+                    string.push_str(".")
+                }
                 string.push_str(&symbol.name);
             }
             SemanticSymbolKind::Interface {
@@ -522,4 +554,24 @@ impl<'a> SymbolWriter<'a> {
         }
         string
     }
+}
+
+fn get_directory_symbol<'a>(
+    path: Option<&'a Path>,
+    standpoint: &'a Standpoint,
+) -> Option<&'a analyzer::SemanticSymbol> {
+    let symbollib = &standpoint.symbol_library;
+    let module_map = &standpoint.module_map;
+    path.and_then(|path| {
+        standpoint
+            .directories
+            .get(path)
+            .map(|dirmap| (path, dirmap))
+    })
+    .and_then(|(path, dirmap)| {
+        get_dir_basename(path)
+            .and_then(|dirname| dirmap.get(dirname))
+            .and_then(|pathidx| module_map.get(*pathidx))
+            .and_then(|module| symbollib.get(module.symbol_idx))
+    })
 }

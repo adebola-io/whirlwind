@@ -74,7 +74,6 @@ impl VariablePatternForm {
 #[derive(Debug)]
 pub enum SemanticSymbolKind {
     Module {
-        parent_modules: Vec<SymbolIndex>,
         /// Declarations from other modules that are referenced in this module.
         external_symbols: Vec<SymbolIndex>,
         /// The declarations in the global scope of this module.

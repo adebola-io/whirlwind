@@ -64,7 +64,7 @@ public model Template implements Display {
     /// template := core.io.fmt("My name is % and I am % years old.");
     /// completed := template.add(name).add(age).finish();
     /// 
-    /// core.io.print(completed); // Will print out "My name is Sefunmi and I am 21 years old."
+    /// print(completed); // Will print out "My name is Sefunmi and I am 21 years old."
     /// ```
     public function add<T implements Display>(value: T): This {
         this.arguments.push(value.toStr());
@@ -116,10 +116,9 @@ public function fmt(template: String): Template {
 }
 
 test "create templates" {
-    // use core.testing.assert;
-    use terminal.print;
+    use core.testing.assertThat;
 
     template := new Template("Hello, %!");
     template.add("world");
-    print(template)
+    assertThat(template.finish() == "Hello, world!");
 }

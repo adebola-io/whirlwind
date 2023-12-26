@@ -115,7 +115,6 @@ pub fn bind(
     let module_symbol = SemanticSymbol {
         name: module_name,
         kind: SemanticSymbolKind::Module {
-            parent_modules: vec![],
             external_symbols: binder
                 .imported_values
                 .iter()

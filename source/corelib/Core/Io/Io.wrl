@@ -8,9 +8,7 @@
 /// for a consistent interface.
 module io;
 
-
-use core.prelude.{Outcome, UInt8};
-use core.prelude.UnsignedInt;
+use core.prelude.{Outcome, UInt8, UnsignedInt};
 
 public use terminal.{print, prompt, printFmt};
 public use template.{fmt, Template};

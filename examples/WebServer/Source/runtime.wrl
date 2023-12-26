@@ -5,7 +5,6 @@ model Component {
     var name: String;
 }
 
-use core.net.http.HttpServer;
 function main() {
     array := 'hello'.chars().interleave("hello").collect();
 }

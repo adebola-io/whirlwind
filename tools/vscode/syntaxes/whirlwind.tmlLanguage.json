@@ -16,7 +16,7 @@
       { "include": "#boolean_literal" },
       { "include": "#keyword" },
       { "include": "#number" },
-      { "include": "#injunction" },
+      { "include": "#special_keyword" },
       { "include": "#this" },
       { "include": "#inferred_model" },
       { "include": "#inferred_function" },
@@ -28,8 +28,8 @@
          "name": "entity.name.keyword support.keyword keyword.control",
          "match": "\\b(for|function|fn|in|while|break|continue|if|else|as|return|switch|case)\\b"
       },
-      "injunction": {
-         "name": "meta.injunction keyword.storage.injunction",
+      "special_keyword": {
+         "name": "meta.special_keyword keyword.storage.special_keyword",
          "match": "\\b(use|module|enum|public|static|test|var|new|const|model|async|record|interface|type|implements|not|and|or|is|super|core|packages)\\b"
       },
       "comment": {
@@ -207,7 +207,13 @@
                "name": "keyword"
             },
             "2": {
-               "name": "entity.name.class support.class"
+               "patterns": [
+                  { "include": "#special_keyword" },
+                  {
+                     "name": "entity.name.class support.class",
+                     "match": ".+"
+                  }
+               ]
             }
          }
       },
@@ -221,7 +227,7 @@
          },
          "patterns": [
             { "include": "#comment" },
-            { "include": "#injunction" },
+            { "include": "#special_keyword" },
             {
                "name": "meta.definition.variable variable.other.constant",
                "match": "\\b[[:upper:][:digit:]_]+\\b"
@@ -412,7 +418,7 @@
       "generic_params": {
          "begin": "(?<=((type|model|function|enum|interface)\\s*\\w+\\s*)\\<\\s*)",
          "patterns": [
-            { "include": "#injunction" },
+            { "include": "#special_keyword" },
             {
                "name": "punctuation",
                "match": "\\&"
@@ -426,7 +432,7 @@
                "match": "\\bThis\\b"
             },
             { "include": "#type_name" },
-            { "include": "#injunction" },
+            { "include": "#special_keyword" },
             { "include": "#type_label" },
             {
                "name": "punctuation",
