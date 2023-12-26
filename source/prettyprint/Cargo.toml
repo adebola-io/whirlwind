@@ -10,3 +10,4 @@ ast = {version ="*", path="../ast"}
 errors = {version="*", path="../errors"}
 utils = {version="*", path="../utils"}
 analyzer = {version="*", path="../analyzer"}
+lexer = {version="*", path="../lexer"}

@@ -1,10 +1,9 @@
+use analyzer::{DiagnosticType, ProgramDiagnostic, Standpoint};
 use std::{
     fs::File,
     io::{self, Read, Seek},
     path::Path,
 };
-
-use analyzer::{DiagnosticType, Error, ProgramDiagnostic, Standpoint};
 use utils::terminal::{Colorable, Colored};
 
 /// Prints an error.
@@ -15,7 +14,7 @@ pub fn print_diagnostic_into(
     path: &Path,
     line_lengths: &Vec<u32>,
 ) {
-    let shift = if span.start[0] > 10 { "   " } else { "  " };
+    let shift = " ".repeat(span.start[0].to_string().len() + 1);
     let tag = if diagnostic.is_error() {
         "error: ".color().red()
     } else {
@@ -108,16 +107,17 @@ pub fn print_diagnostics(standpoint: &Standpoint) -> bool {
         });
 
     let message = format!(
-        "Found {} warning{} and {} error{}.",
+        "{}Found {} error{} and {} warning{}.",
+        if errors > 0 { "Build failed. " } else { "" },
+        errors,
+        if errors == 1 { "" } else { "s" },
         warnings,
         if warnings == 1 { "" } else { "s" },
-        errors,
-        if errors == 1 { "" } else { "s" }
     );
     let colored = Colored::from(message).bold().cyan().underline();
     println!("\n{colored}\n");
 
-    for diagnostic in &standpoint.diagnostics {
+    for (idx, diagnostic) in standpoint.diagnostics.iter().enumerate() {
         let mut string = String::new();
         let span = diagnostic.span();
         let typed_module = standpoint
@@ -135,6 +135,12 @@ pub fn print_diagnostics(standpoint: &Standpoint) -> bool {
         println!("{string}");
         if diagnostic.is_error() {
             can_continue = false;
+        }
+        if idx == 29 {
+            let note = "note: ".color().bold();
+            let message = "Showing at most 30 diagnostics. To show all, run the command again with \"--SHOW-ALL-DIAGNOSTICS=true\".".color().italic();
+            println!("\n{note}{message}\n");
+            break;
         }
     }
 

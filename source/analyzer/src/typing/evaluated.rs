@@ -446,6 +446,7 @@ pub fn evaluate(
                     EvaluatedType::HardGeneric { base: idx }
                 }
                 SemanticSymbolKind::UndeclaredValue => EvaluatedType::Unknown,
+                SemanticSymbolKind::Import { source: None, .. } => EvaluatedType::Unknown,
                 _ => {
                     if error_tracker.is_some() {
                         let old = error_tracker.as_ref().unwrap().1;

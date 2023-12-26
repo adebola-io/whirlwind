@@ -142,7 +142,8 @@ pub fn typecheck(
             match symbol.kind {
                 SemanticSymbolKind::Property { .. }
                 | SemanticSymbolKind::UndeclaredValue
-                | SemanticSymbolKind::Module { .. } => {}
+                | SemanticSymbolKind::Module { .. }
+                | SemanticSymbolKind::Import { source: None, .. } => {}
                 SemanticSymbolKind::Import { .. } => {
                     let span = symbol.ident_span();
                     let name = symbol.name.to_owned();

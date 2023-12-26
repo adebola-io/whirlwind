@@ -73,13 +73,21 @@ fn manage(options: options::CliObject, code: &mut i32) {
                     };
 
                     standpoint.validate();
-
                     // First boundary.
                     if standpoint.diagnostics.len() > 0 {
+                        standpoint.validate();
                         print_diagnostics(&standpoint);
-                    } else {
-                        println!("????")
+                        if standpoint
+                            .diagnostics
+                            .iter()
+                            .any(|diagnostic| diagnostic.is_error())
+                        {
+                            *code = 1;
+                            return;
+                        }
                     }
+
+                    println!("Moving on.")
 
                     // match bytecode::generate_from(&standpoint) {
                     //     Ok(_) => todo!(),

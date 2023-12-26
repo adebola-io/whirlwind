@@ -446,6 +446,7 @@ dependencies = [
  "analyzer",
  "ast",
  "errors",
+ "lexer",
  "utils",
 ]
 
