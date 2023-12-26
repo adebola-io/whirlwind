@@ -21,6 +21,8 @@ pub enum CurrentModuleType {
     Bool,
     Numeric,
     Concurrent,
+    Eventual,
+    Prospect,
     Internal,
     Ops,
     Interfaces,
@@ -39,6 +41,8 @@ pub trait IntrinsicPaths {
     const BOOL: &'static str = "primitives/bool.wrl";
     const NUMERIC: &'static str = "primitives/numeric.wrl";
     const CONCURRENT: &'static str = "concurrent/concurrent.wrl";
+    const PROSPECT: &'static str = "concurrent/prospect.wrl";
+    const EVENTUAL: &'static str = "concurrent/eventual.wrl";
     const INTERNAL: &'static str = "internals/internals.wrl";
     const NEVER: &'static str = "internals/never.wrl";
     const OPS: &'static str = "primitives/ops.wrl";

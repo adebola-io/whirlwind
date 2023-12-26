@@ -1,12 +1,15 @@
-#![allow(unused)]
+mod table;
+
 use std::{
     fmt::Display,
     io::{Error, Write},
 };
+pub use table::{TerminalTable, TermnalTableEntry};
 
 /// A colored string.
+#[derive(Clone)]
 pub struct Colored {
-    text: String,
+    pub text: String,
     codes: Vec<u8>,
 }
 
@@ -16,6 +19,12 @@ pub trait Colorable {
 }
 
 impl Colored {
+    pub fn new() -> Self {
+        Self {
+            text: String::new(),
+            codes: vec![],
+        }
+    }
     pub fn from<T>(value: T) -> Self
     where
         T: Display,
@@ -37,6 +46,9 @@ impl Colored {
     }
     pub fn bold(self) -> Self {
         add_format(self, 1)
+    }
+    pub fn italic(self) -> Self {
+        add_format(self, 3)
     }
     pub fn underline(self) -> Self {
         add_format(self, 4)

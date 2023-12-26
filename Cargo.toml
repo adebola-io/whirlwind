@@ -5,7 +5,7 @@ members = [
     "source/errors", 
     "source/lexer", 
     "source/parser",
-    "source/pretty",
+    "source/prettyprint",
     "source/bytecode",
     "source/repl",
     "source/analyzer",

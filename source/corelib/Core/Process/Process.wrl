@@ -26,7 +26,7 @@ public function fatalOnCaller(message: String): never  {
 ///     if a >= 0 {
 ///         return ok(a * a);
 ///     } else {
-///         Todo() // will implement later.
+///         todo() // will implement later.
 ///     }
 /// }
 /// ```
@@ -73,7 +73,6 @@ public function getEnv(varName: String): ?String {
 }
 
 
-const CURRENT_WORKING_DIRECTORY: String = "";
 /// Returns a string value corresponding to the path of the current working directory.
 /// ### Usage
 /// ```
@@ -81,7 +80,7 @@ const CURRENT_WORKING_DIRECTORY: String = "";
 /// print("The current directory is " + currentDir);
 /// ```
 public function cwd(): String {
-    return CURRENT_WORKING_DIRECTORY;
+    return builtin.sequence.cwd();
 }
 
 /// Schedules a function to run after a duration elapses.

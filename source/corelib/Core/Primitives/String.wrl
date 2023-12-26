@@ -64,27 +64,27 @@ public model String
     public function [AsIterator.iter](): Chars {
         return new Chars(this);
     }
-    // /// Returns a `Maybe` with the character at a zero based index in the string.
-    // ///
-    // /// It also supports negative indexes, which will return values in reverse from the end of the string.
-    // /// ## Usage
-    // /// ```
-    // /// str := "This is a string";
-    // /// 
-    // /// assert(str.at(0)).equals(some("T"));
-    // /// assert(str.at(8)).equals(some("a"));
-    // /// assert(str.at(11)).equals(some("t"));
-    // /// ```
-    // /// _Indexing from behind:_
-    // /// 
-    // /// ```
-    // /// assert(str.at(-1)).equals(some("g"));
-    // /// assert(str.at(-3)).equals(some("i"));
-    // /// ```
-    // /// It will return no value if the length of the string is exceeded.
-    // public function at(position: Int): ?String {
-    //     some(this.arr.at(position)?.toStr())
-    // }
+    /// Returns a `Maybe` with the _byte_ (not character) at a zero based index in the string.
+    ///
+    /// It also supports negative indexes, which will return values in reverse from the end of the string.
+    /// ## Usage
+    /// ```
+    /// str := "This is a string";
+    /// 
+    /// assertThat(str.at(0) == some("T".bytes()[0]));
+    /// assertThat(str.at(8) == some("a".bytes()[0]));
+    /// assertThat(str.at(11) == some("t".bytes()[0]));
+    /// ```
+    /// _Indexing from behind:_
+    /// 
+    /// ```
+    /// assertThat(str.at(-1) == some("g".bytes()[0]));
+    /// assertThat(str.at(-3) == some("i".bytes()[0]));
+    /// ```
+    /// It will return no value if the length of the string is exceeded.
+    public function at(position: Int): ?UInt8 {
+        some(this.arr.at(position)?)
+    }
     /// Adds text to the end of the string.
     /// ## Usage
     /// ```

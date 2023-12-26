@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use crate::{EvaluatedType, Module, SemanticSymbolKind, Standpoint, CORE_LIBRARY_PATH};
+use crate::{ Module, SemanticSymbolKind, Standpoint, CORE_LIBRARY_PATH};
 
 use std::path::PathBuf;
 

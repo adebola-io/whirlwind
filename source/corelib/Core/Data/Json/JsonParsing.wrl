@@ -11,7 +11,10 @@ public model JsonParseError {
 }
 
 /// Converts an object that implements `Serializeable` into a JSON value.
-public function stringify<T implements Serializeable>(value: T): Outcome<RawJsonVal, JsonParseError> 
+public function stringify
+    <T implements Serializeable>
+    (value: T)
+    : Outcome<RawJsonVal, JsonParseError> 
 {
     return todo();
 }

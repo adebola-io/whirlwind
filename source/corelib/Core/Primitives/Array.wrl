@@ -26,33 +26,24 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     public function [AsIterator.iter](): ArrayIter<T> {
         new ArrayIter(this)
     }
-    // /// Returns the item at a particular index in the array, if it exists.
-    // /// Indexes are zero-based, meaning that the first item is at index 0.
-    // /// ### Usage
-    // /// ```
-    // /// arr := [1, 2, 3, 4];
-    // /// assertThat(arr.At(0) == some(1));
-    // /// assertThat(arr.Ar(1) == some(2));
-    // /// ```
-    // /// Elements can also be indexed from behind the array.
-    // /// Backward indexes are one-based, meaning the index -1 is the
-    // /// last item in the array.
-    // /// ```
-    // /// arr := [15, 25, 35, 45, 55];
-    // /// assert(arr.at(-1) == some(55))
-    // /// ```
-    // public function at(index: Int): Maybe<T> {
-    //     i := if index < 0 {
-    //         this.length() + index
-    //     } else {
-    //         index
-    //     };
-    //     if i > this.length() or i < 0 {
-    //         return none();
-    //     };
-    //     a := this[i.unsigned()?];
-    //     return some(a);
-    // }
+    /// Returns the item at a particular index in the array, if it exists.
+    /// Indexes are zero-based, meaning that the first item is at index 0.
+    /// ### Usage
+    /// ```
+    /// arr := [1, 2, 3, 4];
+    /// assertThat(arr.at(0) == some(1));
+    /// assertThat(arr.at(1) == some(2));
+    /// ```
+    /// Elements can also be indexed from behind the array.
+    /// Backward indexes are one-based, meaning the index -1 is the
+    /// last item in the array.
+    /// ```
+    /// arr := [15, 25, 35, 45, 55];
+    /// assert(arr.at(-1) == some(55))
+    /// ```
+    public function at(index: Int): Maybe<T> {
+        return builtin.arrays.at(this, index);
+    }
     /// Checks if an item is contained in the array.
     /// ### Usage
     /// ```

@@ -51,6 +51,7 @@ public function invoke
 
 public enum InjunctionType {
     // Arrays.
+    ArrayAt,
     ArrayContains,
     ArrayClear,
     ArrayIndexOf,
@@ -76,6 +77,7 @@ public enum InjunctionType {
     SequenceId,
     SequenceCrashOneStep,
     SequenceCrash,
+    SequenceCwd,
 
     StringCapitalCase,
     StringIsAlphanumeric,

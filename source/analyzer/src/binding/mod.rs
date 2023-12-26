@@ -551,7 +551,7 @@ mod bind_utils {
                 (CurrentModuleType::String, "String") => &mut symbol_library.string,
                 (CurrentModuleType::Array, "Array") => &mut symbol_library.array,
                 (CurrentModuleType::Bool, "Bool") => &mut symbol_library.bool,
-                (CurrentModuleType::Concurrent, "Prospect") => &mut symbol_library.prospect,
+                (CurrentModuleType::Prospect, "Prospect") => &mut symbol_library.prospect,
                 (CurrentModuleType::Maybe, "Maybe") => &mut symbol_library.maybe,
                 (CurrentModuleType::Numeric, _) => match entry.name() {
                     "Int" => &mut symbol_library.int,

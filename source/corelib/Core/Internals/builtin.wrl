@@ -1,7 +1,7 @@
 module builtin;
 
 use core.prelude.{Array, Bool, Outcome, Range, String, some};
-use core.primitives.{UnsignedInt, UInt8};
+use core.primitives.{UnsignedInt, UInt8, Int};
 use core.concurrent.{Prospect, Eventual, Sequence};
 use injunction.{InjunctionType, Injunction, invoke};
 use never.never;
@@ -21,8 +21,12 @@ function builtin(_type: InjunctionType): BuiltIn {
 }
 
 public model arrays<T> {
+
+    public static function at(array: Array<T>, index: Int): ?T {
+        invoke(builtin(InjunctionType.ArrayAt), some(array), some(index))
+    }
     public static function contains(array: Array<T>, value: T): Bool {
-        invoke(builtin(InjunctionType.ArrayContains), some(array), value)
+        invoke(builtin(InjunctionType.ArrayContains), some(array), some(value))
     }
 
     public static function clear(array: Array<T>) {
@@ -107,6 +111,10 @@ public model sequence {
 
     public static function crash(message?: String): never {
         invoke(builtin(InjunctionType.SequenceCrash), some(message))
+    }
+
+    public static function cwd(): String {
+        invoke(builtin(InjunctionType.SequenceCwd))
     }
 }
 

@@ -595,6 +595,8 @@ impl Standpoint {
                         is_prelude = true;
                         CurrentModuleType::Regular
                     }
+                    Self::PROSPECT => CurrentModuleType::Prospect,
+                    Self::EVENTUAL => CurrentModuleType::Eventual,
                     _ => CurrentModuleType::Regular,
                 }
             } else {

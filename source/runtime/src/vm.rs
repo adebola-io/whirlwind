@@ -121,7 +121,7 @@ impl VM {
                 }
                 if self.exited {
                     println!("Program exited in {:?}", time.elapsed());
-                    utils::success("Program exited successfully.");
+                    utils::terminal::success("Program exited successfully.");
                     break 'runtime;
                 } else {
                     i += 1;
