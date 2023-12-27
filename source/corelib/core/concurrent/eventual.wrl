@@ -1,0 +1,138 @@
+module eventual;
+
+use core.process.fatal;
+use core.prelude.{some, Bool, Guaranteed};
+use core.internals.{builtin};
+use concurrent.Sequence;
+
+/// An eventual is an asynchronously running operation,
+/// produced by calling `.run()` on a `Prospect`.
+/// 
+/// It is a wrapper for the value that will _eventually_ be produced
+/// when the operation ends.
+public model Eventual<T> implements Guaranteed<T> {
+    /// Whether or not the eventual is resolved.
+    var resolved: Bool;
+    /// Whether or not the eventual has been aborted.
+    var aborted: Bool;
+    /// A reference to the parent sequence in charge of this eventual.
+    public var sequence: Sequence;
+    /// The final value to be produced. 
+    /// 
+    /// Until the eventual is resolved, the value remains uninitialized, as with
+    /// the value in `Maybe`.
+    /// 
+    /// Trying to read it while it does not exist will lead to a runtime error in
+    /// the VM.
+    var value: T;
+    /// Returns true if the eventual has been resolved to a value.
+    public function isResolved(): Bool {
+        return this.resolved;
+    }
+    /// Returns true if the eventual was aborted before it could finish execution.
+    public function wasAborted(): Bool {
+        return this.aborted;
+    }
+    /// Implementation of the Guaranteed interface.
+    function [Guaranteed.guarantee](): T {
+        this.unwrap()
+    }
+    /// It attempts to abort the eventual's execution and returns true if it is 
+    /// successful.
+    /// 
+    /// For already aborted eventuals, it will always return true. For already 
+    /// resolved eventuals, it will always return false.
+    /// ### Usage
+    /// ```
+    /// async function asyncPrint() {
+    ///     Print("It's a good day!");
+    /// }
+    /// eventual := asyncPrint().run();
+    /// if eventual.tryAbort() {
+    ///     print("Eventual was aborted.");
+    /// } else {
+    ///     print("Eventual is already resolved.")
+    /// }
+    /// ```
+    public function tryAbort(): Bool {
+        if this.aborted {
+            return true;
+        };
+        builtin.eventual.abort(this);
+        this.aborted = true;
+        if this.resolved {
+            return false;
+        };
+        return true;
+    }
+    /// Cancels the running of the eventual and discards its value.
+    /// 
+    /// If the eventual was already aborted, then the function does nothing.
+    /// 
+    /// _However, the function will crash the program if it is called
+    /// on an eventual that has already been resolved._
+    /// 
+    /// For a safer version, use `.tryAbort()`.
+    public function abort() {
+        if this.aborted {
+            return;
+        };
+        builtin.eventual.abort(this);
+        this.aborted = true;
+        if this.resolved {
+            fatal(some("Cannot abort an already resolved eventual."));
+        };
+    }
+    /// Blocks other operations in the enclosing sequence until the eventual is resolved.
+    /// 
+    /// Using Await can be tricky, because it does not pause _all_ execution.
+    /// 
+    /// It only pauses the parent execution sequence, which could be the main sequence or
+    /// another, depending on whether it was called inside another asynchronous context or not.
+    /// 
+    /// It is a valid alternative to using callbacks on the source prospect, especially
+    /// in situations where the value to be produced is needed before operations can
+    /// continue.
+    /// ### Usage
+    /// ```
+    /// async function waitASec<T>(x: T): T {
+    ///     core.time.sleep(1000);
+    ///     return x;
+    /// }
+    /// x := 34;
+    /// y := waitASec(x).run().await(); // Waits a second and produces the value.
+    /// assertThat(x == y);
+    /// ```
+    /// Calling `.await()` on an already resolved eventual just returns a copy of the previously produced value.
+    /// ```
+    /// eventual := waitASec().run();
+    /// 
+    /// a := eventual.await();
+    /// b := eventual.await();
+    /// 
+    /// assertThat(a == b);
+    /// ```
+    public function await(): T {
+        if this.aborted {
+            fatal(some("Cannot call Await on an aborted Eventual."));
+        };
+        if this.resolved {
+            return this.value;
+        };
+        this.resolved = true;
+        return builtin.eventual.await(this);
+    }
+    /// Forces the eventual to be resolved, and panics if it isn't.
+    /// 
+    /// There aren't many viable reasons why you should forcefully 
+    /// resolve an eventual, but it is still useful in some niche contexts.
+    public function unwrap(): T {
+        if this.aborted {
+            fatal(some("Called Unwrap() on an aborted eventual."));
+        };
+        if not this.resolved {
+            fatal(some("Called Unwrap() on an unresolved eventual."));
+        };
+        return this.value;
+    }
+}

@@ -1,0 +1,55 @@
+/// The `concurrent` module contains all primitive constructs in Whirlwind
+/// for the creation and utilization of asynchronous processes.
+module concurrent;
+
+use core.prelude.{todo, String};
+use core.internals.{builtin, StackTrace};
+use core.primitives.UnsignedInt;
+
+public use prospect.Prospect;
+public use eventual.Eventual;
+
+/// Runs a prospect immediately, blocking the current execution sequence until it is finished.
+///
+/// ### Usage
+/// ```
+/// async function asyncSquare(a: Int): Int {
+///     return a * a
+/// }
+/// num := toSync(asyncSquare(2));
+/// assert(num).equals(4) // 2 * 2.
+/// ```
+/// It is the same as running `.run().await()` on the prospect (Its implementation is quite literally that).
+public function toSync<T>(prospect: Prospect<T>): T {
+    return prospect.run().await();
+}
+
+/// The current running sequence for an instruction.
+public model CurrentSequence {
+    var handle: Sequence;
+    /// Forces the current running sequence to halt for a duration.
+    public static function sleep(timeout: UnsignedInt) {
+        todo()
+    }
+}
+
+/// A running set of instructions.
+public model Sequence {
+    /// Returns the id of the sequence.
+    /// The id of the main sequence is always 0.
+    function getId(): UnsignedInt {
+        return builtin.sequence.sequenceId(this);
+    }
+} 
+
+public model SequenceError {
+    public var errorType: SequenceErrorType;
+    public var message: ?String;
+    public var stackTrace: StackTrace;
+}
+
+public enum SequenceErrorType {
+    StackOverflow,
+    CastingError,
+    FatalError,
+}

@@ -1,0 +1,137 @@
+module lib;
+
+test "Testing types." {
+    use core.testing.assert;
+    use core.collections.Tuple;
+
+    /// Returns the value itself.
+    function identity<T>(value: T): T {
+        return value;
+    }
+    /// Swaps the elements of a tuple.
+    function Swap<T, U>(tuple: Tuple<T, U>): Tuple<U, T> {
+        tuple.swap()
+    }
+    // swapping variables.
+    tuple := new Tuple(true, "hello");
+    swapped := tuple.swap();
+    // Assert(tuple.Swap()).Equals(swapped);
+    // Assert(Swap(tuple)).Equals(tuple.Swap());
+ 
+    // Coercion.
+    stringItself := identity("String"); // Should have type String.
+    result := err(true);
+    result = ok(none());
+    result = ok(some("hello, world"));
+    // result should coerce to type Outcome<Maybe<String>, Bool>;
+
+    // Opaque types.
+    model Football {
+        new(){}
+        /// Bounce for a football.
+        public function bounce(): String {
+            return "Football is bouncing...";
+        }
+    }
+    model Tennisball {
+        new(){}
+        /// Bounce for a tennisball.
+        public function bounce() : String {
+            return "Tennisball is bouncing...";
+        }
+    }
+    model Basketball {
+        new(){}
+        /// Bounce for a basketball.
+        public function bounce(): String {
+            return "Basketball is bouncing...";
+        }
+    }
+    type Ball = Football | Tennisball | Basketball;
+    ball: Ball := new Football();
+    ball.bounce();
+    ball = new Basketball();
+    ball.bounce();
+
+    interface Bounceable {
+        public function bounce(): String;
+    }
+    function Nested<T implements Bounceable>(newBall: T) {
+        type InnerBall = T | Ball;
+        ball: InnerBall := new Football();
+        ball.bounce();
+        ball = newBall;
+        ball.bounce();
+    }
+
+    // Opaque types with interfaces.
+    interface TransformableTo<T> {
+        public function Transform(): T;
+    }
+    model Box<T> implements TransformableTo<T> {
+        new(value: T){}
+        public function [TransformableTo.Transform](): T {
+            todo()
+        }
+    }
+    model Sphere<T> implements TransformableTo<T> {
+        new(value: T){}
+        public function [TransformableTo.Transform](): T {
+            todo()
+        }
+    }
+    type Transformable<T> = Box<T> | Sphere<T>;
+    entity := new Box(new Sphere("hello"));
+
+    // Numeric types.
+    number := 90;
+    number = 12;
+    array := [1, 2, 3, 4, number, 255];
+
+    // function type coercion.
+    strArray := ["hello", "world"];
+    strArrayHasHello := strArray.iter().any(fn(element) element == "hello");
+    functor: fn(): fn(value: String): String := fn() fn(value) value.toStr();
+    // Auto inferred generics.
+    arr := [];
+    arr = ["Hello", "world"]; // arr should infer type Array<String>
+    firstItem := arr[0]; // Should infer type string.
+    arr2 := [];
+    arr2.push(some(true)); // arr2 should infer type Array<Maybe<Bool>>.
+    arr3 := [];
+    num: Number := 99;
+    arr3[0] = num; // arr3 should infer type Array<Number> 
+
+    // Destructuring.
+    model Person implements Default {
+        public var name: String;
+        public var age: UInt8; // Set automatically.
+        new(name: String, age?: UInt8) {
+            this.name = name;
+            this.age = Maybe.unwrapOrDefault(age);
+        }
+        static function [Default.Init](): This {
+            return new Person("{unknown}");
+        }
+    }
+    var person: Person; // possible because Person implements Default.
+    var { name, age }: Person;
+    var { name as johnsName} = new Person("John Doe");
+
+    // Destructuring in loops.
+    people := [new Person("Susan Micheals"), new Person("Aaron Michaels")];
+    for { name} in people {
+        print(name)
+    }
+
+    function anyType<T>(value: T) {}
+
+    // Generic Invariance.
+    function hello<T>(value: T, factory: fn(value: T): T): T {
+        value = factory(value); // valid.
+        if true {
+            return value; // valid.
+        };
+        return factory(value);
+    }
+}

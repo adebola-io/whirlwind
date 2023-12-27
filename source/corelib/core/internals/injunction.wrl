@@ -1,0 +1,104 @@
+/// This module provides the fundamental mechanisms for Whirlwind programs to
+/// interact with the outside world, including the runtime environment, external
+/// systems and foreign functions. It enables developers to:
+/// - perform actions not directly supported by the runtime. e.g. create
+///   an array, print to the standard output, etc.
+/// - modify program behaviour or execute computations outside Whirlwind's scope, and
+/// - interface with external resources.
+module injunction;
+
+use core.primitives.String;
+use never.never;
+ 
+/// The `Injunction` interface allows its implementers to directly interact with, or
+/// operate outside the runtime. It can be implemented by any model that maps to a
+/// foreign function, or a Whirlwind internal feature.
+/// 
+/// Injunctions are utilized by being passed to the `invoke` function.
+/// 
+public interface Injunction {
+    /// Returns the type of the injunction.
+    public function getType(): InjunctionType;
+}
+
+
+/// ## Invoke.
+/// The `invoke` function is a gateway function to perform intrinsic, builtin or foreign operations.
+/// 
+/// It transports its arguments outside the
+/// program, making it the nerve centre of almost every external
+/// operation in Whirlwind. After invoke is called, all typechecking rules
+/// fly out the window, and it is up to the runtime environment to decide 
+/// what is returned or not returned from it.
+/// 
+/// As a result, _this is the single most dangerous function in all of
+/// Whirlwind, and it is **very** easy to use it to cause undefined behaviour_.
+public function invoke
+    <T implements Injunction, U, V, W, X>
+    (
+        command: T, 
+        firstValue?: U, 
+        secondValue?: V, 
+        thirdValue?: W, 
+        fourthValue?: X
+    )
+    : never 
+{
+    // The recursion here is bogus, and only exists to satisfy the
+    // typechecker. All calls to `invoke` are handled
+    // outside the runtime, in the implementation language.
+    return invoke(command, firstValue, secondValue, thirdValue, fourthValue);
+}
+
+public enum InjunctionType {
+    // Arrays.
+    ArrayAt,
+    ArrayContains,
+    ArrayClear,
+    ArrayIndexOf,
+    ArrayIncludes,
+    ArrayInsert,
+    ArrayPrepend,
+    ArrPartition,
+    ArrLen,
+    ArrayPush,
+    ArrayPop,
+
+    // Eventuals
+    EventualCreate,
+    EventualAbort,
+    EventualAwait,
+
+    MaybeNone,
+    MaybeSome,
+    
+    OutcomeUnwrap,
+    OutcomeUnwrapError,
+    
+    SequenceId,
+    SequenceCrashOneStep,
+    SequenceCrash,
+    SequenceCwd,
+
+    StringCapitalCase,
+    StringIsAlphanumeric,
+    StringLowercase,
+    StringPad,
+    StringPadLeft,
+    StringPadRight,
+    StringPadInPlace,
+    StringReplace,
+    StringSlice,
+    StringSplit,
+    StringSplitAt,
+    StringSentenceCase,
+    StringTrim,
+    StringTrimStart,
+    StringTrimEnd,
+    StringUpperCase,
+
+    Print,
+    SequenceExit,
+
+    Custom(String)
+}

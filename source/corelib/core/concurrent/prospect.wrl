@@ -1,0 +1,158 @@
+module prospect;
+
+use core.process.fatal;
+use core.prelude.{some, Array, todo, Bool};
+use core.internals.builtin;
+use core.primitives.UnsignedInt;
+use eventual.Eventual;
+use concurrent.SequenceError;
+
+/// Asynchronous functions do not run automatically in Whirlwind. 
+/// 
+/// Instead, calling an async function produces a _`Prospect`_, 
+/// which is essentially a lazy execution context for the called function.
+/// 
+/// A prospect provides an interface for specifying:
+/// - how and when the function should run,
+/// - the manner in which the values should be produced, 
+/// - the callbacks to be invoked,
+/// - interaction with other prospects, etc.
+public model Prospect<T> {
+    /// The prospect has been executed.
+    var consumed: Bool;
+    /// The function to execute when the run method is called.
+    var func: fn(): T;
+
+    new(func: fn(): T) {
+        this.consumed = false;
+        this.func = func;
+    }
+    /// Chains a callback to be run when the prospect completes.
+    /// 
+    /// It returns a new Prospect which resolves to the value returned 
+    /// by the callback.
+    /// ### Usage
+    /// ```
+    /// squared := async fn(a: Int) a * a;
+    /// doubled := fn(a: Number) a * 2;
+    /// 
+    /// num := squared(2).then(doubled).run().await();
+    /// assert(num).equals(12); // (2 * 2) * 3
+    /// ```
+    /// Callbacks can be joined consecutively, and they will run in the
+    /// order in which they are chained.
+    /// ```
+    /// prospect := async fn() print("Hello!");
+    /// prospect
+    ///   .then(fn print("Good day!"))
+    ///   .then(fn print("How do you do?"))
+    ///   .run();
+    /// ```
+    public function then<U>(next: fn (prior?: T): U): Prospect<U> {
+        if this.consumed {
+            fatal(some("Cannot chain callback to a consumed prospect."))
+        };
+        new Prospect(fn next(some(this.func())))
+    }
+    /// Executes a prospect.
+    /// 
+    /// Running a prospect produces an `Eventual`, 
+    /// which is a representation of the future value expected to be 
+    /// produced by the asynchronous operation. 
+    /// 
+    /// The operation runs in a new sequence produced by the runtime, 
+    /// meaning that other operations can continue and the execution is non-blocking.
+    /// 
+    /// ### Usage
+    /// ```
+    /// async function aFunc() {
+    ///     Print("Hello from prospect!");
+    /// }
+    /// prospect := aFunc(); // Nothing happens yet.
+    /// prospect.run(); // aFunc runs and print "Hello from prospect!".
+    /// ```
+    /// After the prospect completes, its entire callback chain is invoked, 
+    /// in the order in which the callbacks are defined with `.Then()`.
+    /// ```
+    /// async function aFunc() {
+    ///     print("Hello 1");
+    /// }
+    /// prospect := aFunc();
+    /// prospect.then(fn() print("Hello 2"));
+    /// prospect.run(); // Prints "Hello 1", then prints "Hello 2".
+    /// ```
+    /// **Once a prospect is run, it is effectively _consumed_, meaning it cannot be altered,
+    /// re-run or used in interaction with other prospects.**
+    /// 
+    /// This means that the following code will cause an error.
+    /// <!--ignore-->
+    /// ```
+    /// prospect2 := aFunc();
+    /// prospect2.run();
+    /// prospect2.then(fn print("Something else.")); // Will cause an error.
+    /// ```
+    public function run(): Eventual<T> {
+        if this.consumed {
+            fatal(some("Cannot rerun a consumed Prospect."));
+        }
+        this.consumed = true;
+        return builtin.eventual.create(this);
+    }
+    /// Sets a timeout on the prospect's eventual execution. If the duration elapses 
+    /// before the eventual can be resolved, it is abruptly aborted.
+    public function timeout(ms: UnsignedInt): Prospect<T> {
+        todo();
+        return this;
+    }
+    /// Attaches a callback that should run if the execution of the prospect fails.
+    public function recover(callback: fn(error: SequenceError)) {
+        todo();
+    }
+    /// Races a prospect against another.
+    /// 
+    /// It returns a new prospect that will run the 
+    /// two prospects concurrently. Once either eventual
+    /// is resolved, its final value will be returned, and the
+    /// other eventual will be immediately aborted.
+    /// ### Usage
+    /// ```
+    /// use core.Time.sleep;
+    /// first := async fn() {
+    ///     sleep(300); 
+    ///     return "Hello!";
+    /// };
+    /// second := async fn() {
+    ///     sleep(500);
+    ///     return "Hola!";
+    /// }
+    /// greeting := first.race(second).run().await();
+    /// assert(greeting).equals("Hello");
+    /// ```
+    public function race(other: Prospect<T>): Prospect<T> {
+        todo()
+    }
+    /// Creates a prospect that produces the fastest resolved value from
+    /// a list of other prospects of the same type, and immediately aborts 
+    /// other eventuals in the list.
+    /// ### Usage
+    /// ```
+    /// use core.Time.sleep;
+    /// first := async fn() {
+    ///     sleep(100);
+    ///     return 1;
+    /// }
+    /// second := async fn() {
+    ///     sleep(200);
+    ///     return 2;
+    /// }
+    /// third := async fn() {
+    ///     sleep(300);
+    ///     return 3;
+    /// }
+    /// num := Prospect.raceAll([first, second, third]).run().await();
+    /// assert(num).equals(1);
+    /// ```
+    public static function raceAll<T>(prospects: Array<Prospect<T>>): Prospect<T> {
+        return todo();
+    }
+}
