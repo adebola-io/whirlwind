@@ -207,7 +207,7 @@ impl Standpoint {
         for statement in &entry_module.statements {
             if let TypedStmnt::FunctionDeclaration(f) = statement {
                 let function_symbol = ast::unwrap_or_continue!(self.symbol_library.get(f.name));
-                if function_symbol.name == "Main" {
+                if function_symbol.name == "main" {
                     return Some(f);
                 }
             }

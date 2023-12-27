@@ -1,13 +1,12 @@
 module display;
 
 use core.prelude.String;
-use core.internals.{invoke, Injunction};
 
 /// The `Display` interface defines a contract for the conversion of models into string representations.
 /// This allows objects of different types to be seamlessly integrated into textual contexts,
 /// particularly for user-facing interfaces.
 /// 
-/// Models that implements Display can be printed using the `core.io.Print` method.
+/// Models that implements Display can be printed using the `core.io.print` method.
 /// ## Usage
 /// ```
 /// use core.io.fmt;
@@ -27,7 +26,7 @@ use core.internals.{invoke, Injunction};
 ///     }
 /// }
 /// 
-/// Print(new Rectangle(4, 6)) // Will print out "Rectangle { length: 4, breadth: 6 }"".
+/// print(new Rectangle(4, 6)) // Will print out "Rectangle { length: 4, breadth: 6 }"".
 /// ```
 /// Because the implementation is tedious to write again and again,
 /// especially for large models, it can be derived automatically.
@@ -41,13 +40,11 @@ use core.internals.{invoke, Injunction};
 ///     }
 /// }
 /// 
-/// Print(new Circle(10)); // Will print out "Circle { radius: 10 }"
+/// print(new Circle(10)); // Will print out "Circle { radius: 10 }"
 /// ```
 public interface Display {
     /// Converts the implementing type to a string.
-    public function toStr(): String {
-        return invoke(Injunction.Display(this));
-    }
+    public function toStr(): String;
     /// Converts the implementing type to a formatted string.
     public function toFmtStr(): String {
         return this.toStr();

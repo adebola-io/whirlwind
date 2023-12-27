@@ -74,7 +74,7 @@ async function greetHandler(req: HttpRequest): ServerOutcome {
 
 // Handler function for serving static files.
 async function staticFileHandler(req: HttpRequest): ServerOutcome {
-    filename := req.pathParams().get("filename");
+    filename := req.pathParams().getOrErr("filename")?;
     // Implement logic to read and serve the specified static file.
     response := req.respond();
     return ok(response);

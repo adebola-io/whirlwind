@@ -40,6 +40,10 @@ pub fn print_help() {
         .row(
             "--NO-SOURCE-LOOKUP=[true|false]",
             vec!["Disables error and warning lookup."],
+        )
+        .row(
+            "--SHOW-ALL-DIAGNOSTICS=[true|false]",
+            vec!["Shows all diagnostics rather than a max of 30."],
         );
 
     println!("{args}");

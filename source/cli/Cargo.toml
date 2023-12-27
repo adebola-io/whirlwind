@@ -11,4 +11,5 @@ analyzer = {version = "*", path = "../analyzer"}
 bytecode = {version = "*", path = "../bytecode"}
 utils = {version = "*", path = "../utils"}
 errors = {version = "*", path = "../errors"}
+runtime = {version = "*", path = "../runtime"}
 pretty = {version = "*", path = "../prettyprint"}

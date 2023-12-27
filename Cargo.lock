@@ -91,6 +91,7 @@ version = "0.1.0"
 dependencies = [
  "analyzer",
  "ast",
+ "errors",
 ]
 
 [[package]]
@@ -123,6 +124,7 @@ dependencies = [
  "bytecode",
  "errors",
  "pretty",
+ "runtime",
  "utils",
 ]
 

@@ -1,3 +1,4 @@
+mod bytecode_error;
 mod context_error;
 mod import_error;
 mod lex_error;
@@ -6,6 +7,7 @@ mod stringify;
 mod type_error;
 mod warning;
 
+pub use bytecode_error::*;
 pub use context_error::*;
 pub use import_error::*;
 pub use lex_error::*;
@@ -27,5 +29,12 @@ pub fn unused_import_symbol(name: String, span: ast::Span) -> Warning {
     Warning {
         span,
         warning_type: WarningType::UnusedImportSymbol(name),
+    }
+}
+
+pub fn unused_model_symbol(name: String, span: ast::Span) -> Warning {
+    Warning {
+        span,
+        warning_type: WarningType::UnusedModelSymbol(name),
     }
 }

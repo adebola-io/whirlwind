@@ -21,7 +21,8 @@ use std::collections::HashMap;
 /// used for infering and validating the use of data types within a module.
 /// It also does some control flow analysis, validates return types,
 /// solves generics and ensures valid property assignment and use.
-pub struct TypecheckerContext<'a> {
+pub struct TypecheckerContext<'standpoint> {
+    /// Current module being typechecked.
     path_idx: PathIndex,
     /// The context of the closest function scope currently being typechecked.
     current_function_context: Vec<CurrentFunctionContext>,
@@ -35,9 +36,9 @@ pub struct TypecheckerContext<'a> {
     /// in a constructor block.
     current_expression_is_access: Option<bool>,
     /// List of errors from the standpoint.
-    diagnostics: &'a mut Vec<ProgramDiagnostic>,
+    diagnostics: &'standpoint mut Vec<ProgramDiagnostic>,
     /// List of literal types from the standpoint.
-    literals: &'a LiteralMap,
+    literals: &'standpoint LiteralMap,
     // /// Cached values of intermediate types,
     // /// so they do not have to be evaluated over and over.
     // intermediate_types: HashMap<IntermediateType, EvaluatedType>,
@@ -125,35 +126,43 @@ pub fn typecheck(
         if let SemanticSymbolKind::Variable { inferred_type, .. }
         | SemanticSymbolKind::LoopVariable { inferred_type, .. } = &symbol.kind
         {
-            if inferred_type.contains_child_for_which(&|child| {
-                matches!(
-                    child,
-                    EvaluatedType::Generic { .. } | EvaluatedType::Unknown
-                )
-            }) {
+            if inferred_type
+                .contains_child_for_which(&|child| child.is_unknown() || child.is_soft_generic())
+            {
                 checker_ctx.add_diagnostic(errors::uninferrable_variable(symbol.ident_span()));
             }
         }
-        // Unused symbols.
-        if !symbol.kind.is_public()
-            && symbol.references.len() == 1
-            && symbol.references[0].starts.len() == 1
-        {
-            match symbol.kind {
-                SemanticSymbolKind::Property { .. }
-                | SemanticSymbolKind::UndeclaredValue
-                | SemanticSymbolKind::Module { .. }
-                | SemanticSymbolKind::Import { source: None, .. } => {}
-                SemanticSymbolKind::Import { .. } => {
-                    let span = symbol.ident_span();
-                    let name = symbol.name.to_owned();
-                    checker_ctx.diagnostics.push(ProgramDiagnostic {
-                        offending_file: checker_ctx.path_idx,
-                        _type: DiagnosticType::Warning(errors::unused_import_symbol(name, span)),
-                    })
-                }
-                _ => {}
+        check_usage(symbol, &mut checker_ctx);
+    }
+}
+
+/// Checks that a symbol is not unused.
+fn check_usage(symbol: &crate::SemanticSymbol, checker_ctx: &mut TypecheckerContext<'_>) {
+    // Unused symbols.
+    if !symbol.kind.is_public()
+        && symbol.references.len() == 1
+        && symbol.references[0].starts.len() == 1
+    {
+        match symbol.kind {
+            SemanticSymbolKind::Import {
+                source: Some(_), ..
+            } => {
+                let span = symbol.ident_span();
+                let name = symbol.name.to_owned();
+                checker_ctx.diagnostics.push(ProgramDiagnostic {
+                    offending_file: checker_ctx.path_idx,
+                    _type: DiagnosticType::Warning(errors::unused_import_symbol(name, span)),
+                })
             }
+            SemanticSymbolKind::Model { .. } => {
+                let span = symbol.ident_span();
+                let name = symbol.name.to_owned();
+                checker_ctx.diagnostics.push(ProgramDiagnostic {
+                    offending_file: checker_ctx.path_idx,
+                    _type: DiagnosticType::Warning(errors::unused_model_symbol(name, span)),
+                })
+            }
+            _ => {}
         }
     }
 }

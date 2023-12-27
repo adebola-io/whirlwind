@@ -328,6 +328,10 @@ impl EvaluatedType {
             _ => {}
         }
     }
+
+    pub(crate) fn is_soft_generic(&self) -> bool {
+        matches!(self, EvaluatedType::Generic { .. })
+    }
 }
 
 /// Converts an intermediate type into an evaluation.

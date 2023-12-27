@@ -1,7 +1,9 @@
-module testin;
+module testing;
 
-function main() {
-    a := ok("baby");
-    a = er(true);
-    x = ok(a).unwrap();
+model console {
+    public static function log<T implements Display>(data: T) {
+        print(data)
+    }
 }
+
+function main() {}

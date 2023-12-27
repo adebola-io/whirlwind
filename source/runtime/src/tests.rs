@@ -1,8 +1,5 @@
-use crate::{
-    predefined::PAD,
-    vm::{Function, Layout, VM},
-};
-use bytecode::Opcode;
+use crate::vm::{Function, Layout, VM};
+use bytecode::{Opcode, PAD};
 
 fn run(instructions: &[u8]) {
     print_instructions(&instructions);

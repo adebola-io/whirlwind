@@ -1,5 +1,6 @@
 use crate::{
-    ContextErrorType, ImportErrorType, LexErrorType, ParserErrorType, TypeErrorType, WarningType,
+    BytecodeError, ContextErrorType, ImportErrorType, LexErrorType, ParserErrorType, TypeErrorType,
+    WarningType,
 };
 
 impl std::fmt::Display for TypeErrorType {
@@ -95,11 +96,10 @@ impl std::fmt::Display for TypeErrorType {
         TypeErrorType::ThisInStaticMethod => format!("The 'this' identifier cannot be used in a static method."),
         TypeErrorType::CompositeError { main_error, sub_errors } => {
             let mut string = main_error.to_string();
-            for (index, error) in sub_errors.iter().enumerate() {
+            string += " ";
+            for error in sub_errors {
                 string += &error.to_string();
-                if index + 1 != sub_errors.len() {
-                    string += " "
-                }
+                string += " "
             }
             string
         },
@@ -267,6 +267,21 @@ impl std::fmt::Display for WarningType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let message = match self {
             WarningType::UnusedImportSymbol(name) => format!("Unused import '{name}'."),
+            WarningType::UnusedModelSymbol(name) => {
+                format!("'{name}' is never constructed or accessed statically.")
+            }
+        };
+        write!(f, "{message}")
+    }
+}
+
+impl std::fmt::Display for BytecodeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            BytecodeError::MainIsAsync => "The entry main() function cannot be async.",
+            BytecodeError::MainReturns => "The entry main() function cannot have a return type.",
+            BytecodeError::MainNotFound => "main() function not found in entry file.",
+            BytecodeError::MainHasParameters => "The entry main() function cannot have parameters.",
         };
         write!(f, "{message}")
     }

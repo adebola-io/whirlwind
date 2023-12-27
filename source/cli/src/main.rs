@@ -63,7 +63,12 @@ fn manage(options: options::CliObject, code: &mut i32) {
                     let entry_path = options.file.unwrap();
                     match Module::from_path(entry_path) {
                         Ok(module) => {
-                            standpoint.add_module(module);
+                            match standpoint.add_module(module) {
+                                Some(pathidx) => standpoint.entry_module = pathidx,
+                                None => terminal::error(
+                                    "Could not add module to standpoint. Something went wrong.",
+                                ),
+                            };
                         }
                         Err(error) => {
                             terminal::error(error._type);
@@ -75,7 +80,7 @@ fn manage(options: options::CliObject, code: &mut i32) {
                     standpoint.validate();
                     // First boundary.
                     if standpoint.diagnostics.len() > 0 {
-                        standpoint.validate();
+                        standpoint.validate(); // idk
                         print_diagnostics(&standpoint);
                         if standpoint
                             .diagnostics
@@ -87,15 +92,21 @@ fn manage(options: options::CliObject, code: &mut i32) {
                         }
                     }
 
-                    println!("Moving on.")
+                    let object = bytecode::generate_from(&standpoint);
+                    let object = match object {
+                        Ok(object) => object,
+                        Err(error) => {
+                            terminal::error(format!("{error}"));
+                            *code = 1;
+                            return;
+                        }
+                    };
 
-                    // match bytecode::generate_from(&standpoint) {
-                    //     Ok(_) => todo!(),
-                    //     Err(error) => {
+                    let code = bytecode::serialize_object(object);
+                    let mut vm = runtime::VM::new();
+                    vm.instructions = code;
 
-                    //     },
-                    // }
-
+                    // vm
                     // --
                 };
             }

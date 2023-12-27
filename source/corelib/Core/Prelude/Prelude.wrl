@@ -1,11 +1,25 @@
 /// ## The Whirlwind Prelude
 /// 
-/// The `prelude` module is a core module that exposes a set of fundamental types, functions and models,
-/// automatically available in the global namespace of every other module.
+/// The `core.prelude` module is a core module that exposes a set of 
+/// fundamental types, functions and models, automatically available 
+/// in the global namespace of every other module.
 /// 
-/// These functionalities are considered essential for writing clear, efficient code, and would be tedious
-/// to import again and again into other modules. The `Prelude` reduces boilerplate by predefining these values,
-/// increasing code readability, consistency and productivity.
+/// These functionalities are considered essential for writing clear, 
+/// efficient code, and would be tedious to import again and again 
+/// into other modules. Having a `prelude` reduces boilerplate 
+/// by predefining these values, increasing code readability, 
+/// consistency and productivity.
+/// 
+/// ### Note
+/// Technically, the prelude is only available _outside_ the core library. 
+/// The importing rules in Whirlwind are convoluted, and there are several
+/// core modules with cyclical dependencies.e.g. `core.io` needs the `Display` 
+/// interface from `core.prelude`, but `core.prelude` needs the 
+/// `print` function from `core.io`.
+/// 
+/// Allowing a global scope within `core` would leads to ominous, disappearing errors, 
+/// because depending on the import resolution path at build time, `core.prelude` might
+/// not yet exist.
 module prelude;
 
 public use core;

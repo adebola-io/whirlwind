@@ -15,7 +15,8 @@ pub enum UnifyOptions {
 }
 
 /// Take two evaluated types and finds the most suitable type
-/// that upholds the properties of both.
+/// that can uphold the properties of both.
+/// 
 /// It optionally takes in a map so it can track the generic parameters
 /// that have been transformed.
 // TODO: Return custom error if one type is a Maybe of the other.

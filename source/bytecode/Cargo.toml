@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 analyzer = {version = "*", path = "../analyzer"}
 ast = {version = "*", path = "../ast"}
+errors = {version = "*", path = "../errors"}

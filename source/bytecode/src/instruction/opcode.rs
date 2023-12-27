@@ -1,3 +1,6 @@
+/// Padding for the bytecode.
+pub const PAD: u8 = 0;
+
 /// Bytecode Operations in Whirlwind.
 #[derive(Debug, PartialEq)]
 pub enum Opcode {

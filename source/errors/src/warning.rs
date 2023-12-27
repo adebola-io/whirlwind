@@ -9,4 +9,5 @@ pub struct Warning {
 #[derive(PartialEq, Debug)]
 pub enum WarningType {
     UnusedImportSymbol(String),
+    UnusedModelSymbol(String),
 }

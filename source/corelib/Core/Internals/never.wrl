@@ -18,9 +18,7 @@ module never;
 /// all types, including itself._ This makes it useful for writing unfinished code that
 /// compiles because it satisfies the typechecker.
 /// 
-/// However, due to its abstract nature, _no other type is assignable to `never`, except itself._
-/// 
-/// This means that these are all semantically valid;
+/// This means that the following are all semantically valid;
 /// <!--#ignore-->
 /// ```
 /// function blackHole(): never {
@@ -33,7 +31,8 @@ module never;
 ///     return blackHole(); // valid.
 /// }
 /// ```
-/// But the following is not.
+/// However, due to its abstract nature, _no other type is assignable to `never`, except itself._
+/// This means that the following all produce errors.
 /// <!--#ignore-->
 /// ```
 /// neverNum: never := 0; // will not compile.
