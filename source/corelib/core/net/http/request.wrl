@@ -20,27 +20,27 @@ public model HttpRequest {
         this._url = url;
         this.data = new HashMap();
     }
-    public function pathParams(): RequestParams {
+    public function pathParams() -> RequestParams {
         todo()
     }
     /// Returns the method of the request,
-    public function method(): String {
+    public function method() -> String {
         todo()
     }
     /// Returns the URL route of the request.
-    public function url(): String {
+    public function url() -> String {
         return this._url;
     }
     /// Gets the complete body buffer of the string asynchronously.
-    public async function body(): Buffer {
+    public async function body() -> Buffer {
         todo()
     }
     /// Returns true if the request was completed successfully.
-    public function isCompleted(): Bool {
+    public function isCompleted() -> Bool {
         todo()
     }
     /// Returns the headers stored in the request.
-    public function headers(): RequestHeaders {
+    public function headers() -> RequestHeaders {
         todo()
     }
     /// Stores data on the request object.
@@ -48,40 +48,40 @@ public model HttpRequest {
         this.data.set(key, value);
     }
     /// Creates a new response model from the request.
-    public function respond(): HttpResponse {
+    public function respond() -> HttpResponse {
         return HttpResponse.from(this);
     }
     /// Returns an error based on this request.
     public function createError(
         message: String, 
         statusCode?: UnsignedInt
-    ): HttpRequestError {
+    ) -> HttpRequestError {
         return new HttpRequestError(message, this, statusCode);
     }
 }
 
 public model RequestHeaders {
-    function get(name: String): ?String {
+    function get(name: String) -> ?String {
         todo()
     }
-    function has(name: String): Bool {
+    function has(name: String) -> Bool {
         todo()
     }
     /// Returns the 
-    public function getOrErr(name: String): Outcome<String, HttpRequestError> 
+    public function getOrErr(name: String) -> Outcome<String, HttpRequestError> 
     {
         todo()
     }
 }
 public model RequestParams {
-    public function get(name: String): ?String {
+    public function get(name: String) -> ?String {
         todo()
     }
-    public function getOrErr(name: String): Outcome<String, HttpRequestError> 
+    public function getOrErr(name: String) -> Outcome<String, HttpRequestError> 
     {
         todo()
     }
-    function has(name: String): Bool {
+    function has(name: String) -> Bool {
         todo()
     }
 }
@@ -100,7 +100,7 @@ public model HttpRequestError implements IoError + Display {
         this.route = request.url();
         this.statusCode = statusCode.unwrapOr(400);
     }
-    public function [Display.toStr](): String {
+    public function [Display.toStr]() -> String {
         return "Error: " + this.message;
     }
 }

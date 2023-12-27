@@ -23,7 +23,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// assertThat(arrIter.next() == some(2));
     /// assertThat(arrIter.next() == some(3));
     /// ```
-    public function [AsIterator.iter](): ArrayIter<T> {
+    public function [AsIterator.iter]() -> ArrayIter<T> {
         new ArrayIter(this)
     }
     /// Returns the item at a particular index in the array, if it exists.
@@ -41,7 +41,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// arr := [15, 25, 35, 45, 55];
     /// assert(arr.at(-1) == some(55))
     /// ```
-    public function at(index: Int): Maybe<T> {
+    public function at(index: Int) -> Maybe<T> {
         return builtin.arrays.at(this, index);
     }
     /// Checks if an item is contained in the array.
@@ -53,7 +53,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// 
     /// assertThat(array.contains(str));
     /// ```
-    public function contains(value: T): Bool {
+    public function contains(value: T) -> Bool {
         return builtin.arrays.contains(this, value);
     }
     /// Removes all elements in the array.
@@ -77,7 +77,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// empty: []Int := [];
     /// assertThat(empty.first() == none());
     /// ```
-    public function first(): ?T {
+    public function first() -> ?T {
         if this.length() == 0 { none() } 
         else some(this[0])
     }
@@ -95,7 +95,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// anotherSubArray := [4, 6, 5];
     /// assertThat(!mainArray.includes(anotherSubArray));
     /// ```
-    public function includes(subarray: []T): Bool {
+    public function includes(subarray: []T) -> Bool {
         return builtin.arrays.includes(this, subarray);
     }
     /// Returns the zero-based index of a value in the array.
@@ -109,7 +109,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// arr := [str1, str2, str3];
     /// assert(arr.IndexOf(str2) == some(1)).
     /// ```
-    public function indexOf(value: T): ?UnsignedInt {
+    public function indexOf(value: T) -> ?UnsignedInt {
         return builtin.arrays.indexOf(this, value);
     }
     /// Inserts an element at an index in the array,
@@ -145,7 +145,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// assertThat(startsWithD == ["Donald", "Dele", "Daniel"]);
     /// assertThat(others == ["Arnold", "Harriet"]);
     /// ```
-    public function partition(check: fn(item: T): Bool): [][]T {
+    public function partition(check: fn(item: T) -> Bool) -> [][]T {
         return builtin.arrays.partition(this, check);
     }
     /// Returns the number of items in the array.
@@ -154,7 +154,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// arr := [1, 2, 3, 4];
     /// assert(arr.length()).equals(4);
     /// ```
-    public function length(): UnsignedInt {
+    public function length() -> UnsignedInt {
         return builtin.arrays.length(this);
     }
     /// Adds an item to the end of the array.
@@ -181,7 +181,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// array.pop();
     /// assert(array).equals([1]);
     /// ```
-    public function pop(): ?T {
+    public function pop() -> ?T {
         return builtin.arrays.pop(this);
     }
     /// Returns an iterator that produces elements from the end of the array
@@ -197,7 +197,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// 
     /// assertThat(rev.next() == none());
     /// ```
-    public function reverse(): Reversed<T> {
+    public function reverse() -> Reversed<T> {
         return new Reversed(this);
     }
     /// Randomly selects a specific number of elements from
@@ -212,7 +212,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// 
     /// twoItems := arr.sample(2);
     /// ```
-    public function sample(n: UnsignedInt): []T {
+    public function sample(n: UnsignedInt) -> []T {
         if n > this.length() {
             return this.shuffled();
         };
@@ -241,7 +241,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// assert(arr).equals([]);
     /// assert(firstItem).equals(none());
     /// ```
-    public function shift(): ?T {
+    public function shift() -> ?T {
         if this.length() == 0 {
             return none();
         } else {
@@ -255,11 +255,11 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// 
     /// shuffledArray := arr.shuffled();
     /// ```
-    public function shuffled(): []T {
+    public function shuffled() -> []T {
         todo()
     }
     /// Returns a reference to the last item in the array.
-    public function last(): ?T {
+    public function last() -> ?T {
         if this.length() == 0 { none() } 
         else some(this[this.length() - 1])
     }
@@ -272,7 +272,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// 
     /// assert(arrAsStr).equals("[1, 6, 7, 8, 10]");
     /// ```
-    public static function toStr<T implements Display>(array: Array<T>): String {
+    public static function toStr<T implements Display>(array: Array<T>) -> String {
         string := "[";
         i := 0;
         for { a as index, b as item } in array.iter().enumerate() 
@@ -307,7 +307,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// 
     /// assert(arrSorted).equals([1, 10, 12, 16, 26, 35, 87]);
     /// ```
-    public static function sorted<T implements Orderable>(array: []T): []T {
+    public static function sorted<T implements Orderable>(array: []T) -> []T {
         todo()
     }
     /// Fills an array with default values, given that the element type can be defaulted.
@@ -334,7 +334,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// 
     /// assert(largest == some(7));
     /// ```
-    public static function max<T implements Orderable>(array: []T): ?T {
+    public static function max<T implements Orderable>(array: []T) -> ?T {
         maximum := array.first()?;
         array.iter().forEach(fn(value) maximum = max(maximum, value));
         some(maximum)
@@ -349,7 +349,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// 
     /// assert(smallest == some(2));
     /// ```
-    public static function min<T implements Orderable>(array: []T): ?T {
+    public static function min<T implements Orderable>(array: []T) -> ?T {
         minimum := array.first()?;
         array.iter().forEach(fn(value) minimum = min(minimum, value));
         some(minimum)
@@ -367,7 +367,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// 
     /// array2 := [""]
     /// ```
-    public static function sum<T implements Addition + Default>(array: []T): T {
+    public static function sum<T implements Addition + Default>(array: []T) -> T {
         var sum: T;
         array.iter().forEach(fn(item) sum += item);
         sum
@@ -387,7 +387,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// 
     /// assertThat(joined2 == "1+2+3+4+5");
     /// ```
-    public static function join<T implements Display>(array: []T, separator?: String): String {
+    public static function join<T implements Display>(array: []T, separator?: String) -> String {
         separatorValue := separator.unwrapOr(" ");
         string := new String();
         for { a as i, b as element } in array.iter().enumerate() 
@@ -411,7 +411,7 @@ public model ArrayIter<T> implements Iteratable<T> {
         this.idx = 0;
     }
 
-    public function [Iteratable.next](): ?T {
+    public function [Iteratable.next]() -> ?T {
         length := this.array.length();
         if length == this.idx {
             return none();

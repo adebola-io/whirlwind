@@ -8,7 +8,7 @@ use core.prelude.{some, none};
 /// A representation of boolean values, `true` or `false`.
 // compiler built-in.
 public model Bool implements Display {
-    public function [Display.toStr](): String {
+    public function [Display.toStr]() -> String {
         if this {"true"} else "false"
     }
     /// Creates a `Maybe<T>` based on the value.
@@ -21,7 +21,7 @@ public model Bool implements Display {
     /// 
     /// assertThat(optionalMessage.isSome());
     /// ```
-    public function ifTrue<T>(consequent: fn(): T): ?T {
+    public function ifTrue<T>(consequent: fn() -> T) -> ?T {
         if this { some(consequent()) } else { none() }
     }
 }

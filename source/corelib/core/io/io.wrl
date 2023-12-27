@@ -17,7 +17,7 @@ public use template.{fmt, Template};
 /// to streams of data.
 public interface Writer {
     /// Writes into a byte stream and returns the number of bytes written.
-    public async function write(bytes: []UInt8): Outcome<UnsignedInt, IoError>;
+    public async function write(bytes: []UInt8) -> Outcome<UnsignedInt, IoError>;
 }
 
 /// This interface is implemented by any entity that is capable of

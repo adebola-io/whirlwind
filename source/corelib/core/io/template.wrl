@@ -16,7 +16,7 @@ public model Template implements Display {
     var template: String;
     var arguments: []String;
     var map: HashMap<String, String>;
-    var transforms: []fn(x: String): String;
+    var transforms: []fn(x: String) -> String;
     
     new(origin: String) {
         this.map = new HashMap();
@@ -24,7 +24,7 @@ public model Template implements Display {
         this.transforms = [];
         this.arguments = [];
     }
-    public function [Display.toStr](): String {
+    public function [Display.toStr]() -> String {
         return this.finish();
     }
     /// Sets an argument based on the list of named parameters in the template string.
@@ -50,7 +50,7 @@ public model Template implements Display {
     ///             Oh happy day,
     ///             The day of joy!");
     /// ```
-    public function set<T implements Display>(param: String, value: T): This {
+    public function set<T implements Display>(param: String, value: T) -> This {
         this.map.set(param, value.toStr());
         return this;
     }
@@ -66,7 +66,7 @@ public model Template implements Display {
     /// 
     /// print(completed); // Will print out "My name is Sefunmi and I am 21 years old."
     /// ```
-    public function add<T implements Display>(value: T): This {
+    public function add<T implements Display>(value: T) -> This {
         this.arguments.push(value.toStr());
         return this;
     }
@@ -81,7 +81,7 @@ public model Template implements Display {
     /// 
     /// assert(name.finish()).equals("Welcome, Mark! Good Morning.");
     /// ```
-    public function extend(suffix: String): This {
+    public function extend(suffix: String) -> This {
         this.template += suffix;
         return this;
     }
@@ -100,18 +100,18 @@ public model Template implements Display {
     /// 
     /// assert(template.finish()).equals("Hello, John!");
     /// ```
-    public function transform(arg: UnsignedInt, transformer: fn(x: String): String): This {
+    public function transform(arg: UnsignedInt, transformer: fn(x: String) -> String) -> This {
         this.transforms.push(transformer);
         return this;
     }
     /// Builds a string from the template with all the inputted values.
-    public function finish(): String {
+    public function finish() -> String {
         todo()
     }
 }
 
 /// Creates a new formattable template.
-public function fmt(template: String): Template {
+public function fmt(template: String) -> Template {
     new Template(template)
 }
 

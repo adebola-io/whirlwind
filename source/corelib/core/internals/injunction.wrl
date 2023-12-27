@@ -18,9 +18,8 @@ use never.never;
 /// 
 public interface Injunction {
     /// Returns the type of the injunction.
-    public function getType(): InjunctionType;
+    public function getType() -> InjunctionType;
 }
-
 
 /// ## Invoke.
 /// The `invoke` function is a gateway function to perform intrinsic, builtin or foreign operations.
@@ -32,7 +31,8 @@ public interface Injunction {
 /// what is returned or not returned from it.
 /// 
 /// As a result, _this is the single most dangerous function in all of
-/// Whirlwind, and it is **very** easy to use it to cause undefined behaviour_.
+/// Whirlwind, and it is **very** easy to use it to cause unpredictable behaviour_.
+/// 
 public function invoke
     <T implements Injunction, U, V, W, X>
     (
@@ -98,6 +98,7 @@ public enum InjunctionType {
     StringUpperCase,
 
     Print,
+    Swap,
     SequenceExit,
 
     Custom(String)

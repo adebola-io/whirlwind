@@ -21,13 +21,13 @@ module never;
 /// This means that the following are all semantically valid;
 /// <!--#ignore-->
 /// ```
-/// function blackHole(): never {
+/// function blackHole() -> never {
 ///     core.process.exit(1) // Exits the program and never returns.
 /// }
 /// num: Int := blackHole(); // valid.
 /// str: String := blackHole(); // valid.
 /// 
-/// function produceValue(): String {
+/// function produceValue() -> String {
 ///     return blackHole(); // valid.
 /// }
 /// ```
@@ -39,7 +39,7 @@ module never;
 /// type Recursive = Recursive;
 /// neverBool: Recursive = true; // will not compile.
 /// 
-/// function outsideReality(): never {
+/// function outsideReality() -> never {
 ///     return "Hello, world"; // will not compile.
 /// }
 /// ```

@@ -9,7 +9,7 @@ public interface Hash {}
 /// An interface to be implemented by models that can be transformed into
 /// a hashmap of sorts.
 public interface ToMap<K, V> {
-    public function toMap(): HashMap<K, V>;
+    public function toMap() -> HashMap<K, V>;
 }
 
 public model HashMap<K implements Hash, V> implements Iteratable<Tuple<K, V>> {
@@ -20,14 +20,14 @@ public model HashMap<K implements Hash, V> implements Iteratable<Tuple<K, V>> {
     /// ### Usage
     /// ```
     /// ```
-    public function set(key: K, value: V): V {
+    public function set(key: K, value: V) -> V {
         todo()
     }
     /// Retrieves a value from the hashmap.
     /// ### Usage
     /// ```
     /// ```
-    public function get(key: K): V {
+    public function get(key: K) -> V {
         todo()
     }
 }

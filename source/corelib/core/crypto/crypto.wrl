@@ -5,7 +5,7 @@ use core.prelude.String;
 
 public model JwtEncryptor {
     /// Verify 
-    public static function decode(name: String, secret: String): String {
+    public static function decode(name: String, secret: String) -> String {
         todo()
     }
 }

@@ -19,10 +19,10 @@ public model Tuple<T, U> implements OrderedSet<T, U, never, never, never, never>
         this.b = second;
     }
 
-    public function [OrderedSet.first](): ?T {
+    public function [OrderedSet.first]() -> ?T {
         return some(this.a);
     }
-    public function [OrderedSet.second](): ?U {
+    public function [OrderedSet.second]() -> ?U {
         return some(this.b);
     }
 
@@ -35,7 +35,7 @@ public model Tuple<T, U> implements OrderedSet<T, U, never, never, never, never>
     /// swapped := tuple.swap();
     /// assertThat(swapped == new Tuple("story", true));
     /// ```
-    public function swap(): Tuple<U, T> {
+    public function swap() -> Tuple<U, T> {
         new Tuple(this.b, this.a)
     }
     /// Concatenates the elements of the pair into one.
@@ -49,7 +49,7 @@ public model Tuple<T, U> implements OrderedSet<T, U, never, never, never, never>
     public static function join
         <T implements Addition>
         (tuple: Tuple<T, T>)
-        : T 
+        -> T 
     {
         tuple.a + tuple.b
     }
@@ -65,7 +65,7 @@ public model Tuple<T, U> implements OrderedSet<T, U, never, never, never, never>
     public static function toStr
         <T implements Display, U implements Display>
         (tuple: Tuple<T, U>)
-        : String 
+        -> String 
     {
         str := "(";
         str.append(tuple.a.toStr());
@@ -93,6 +93,6 @@ public model Tuple<T, U> implements OrderedSet<T, U, never, never, never, never>
 /// second := pair1.b;
 /// assert(second).equals("apple");
 /// ```
-public function pair<T, U>(a: T, b: U): Tuple<T, U> {
+public function pair<T, U>(a: T, b: U) -> Tuple<T, U> {
     return new Tuple(a, b);
 }

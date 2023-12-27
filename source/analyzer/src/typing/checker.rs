@@ -2279,6 +2279,9 @@ mod expressions {
                     }
                 }
             }
+            for element in &mut array.elements {
+                update_expression_type(element, symbollib, &vec![], Some(&next_type))
+            }
             arrify(next_type, symbollib)
         })();
         array.inferred_type.clone()

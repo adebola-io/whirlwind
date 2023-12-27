@@ -14,22 +14,22 @@ public model Sextuple<T, U, V, W, X, Y>
     public var e: X;
     public var f: Y;
 
-    public function [OrderedSet.first](): ?T {
+    public function [OrderedSet.first]() -> ?T {
         return some(this.a);
     }
-    public function [OrderedSet.second](): ?U {
+    public function [OrderedSet.second]() -> ?U {
         return some(this.b);
     }
-    public function [OrderedSet.third](): ?V {
+    public function [OrderedSet.third]() -> ?V {
         return some(this.c);
     }
-    public function [OrderedSet.fourth](): ?W {
+    public function [OrderedSet.fourth]() -> ?W {
         return some(this.d);
     }
-    public function [OrderedSet.fifth](): ?X {
+    public function [OrderedSet.fifth]() -> ?X {
         return some(this.e);
     }
-    public function [OrderedSet.sixth](): ?Y {
+    public function [OrderedSet.sixth]() -> ?Y {
         return some(this.f);
     }
 

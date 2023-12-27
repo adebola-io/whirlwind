@@ -275,8 +275,6 @@ pub enum Opcode {
     ///
     /// Format: `[CallAnonymousFunction]`
     CallAnonymousFunction,
-    /// Calls a function from
-    CallDynamicFunction,
     /// Returns to the caller block of the current function and continues execution.
     ///
     /// Format: `[Return]`
@@ -442,7 +440,6 @@ impl From<Opcode> for u8 {
             Opcode::CallNamedFunction => 51,
             Opcode::LoadthisFromFrame => todo!(),
             Opcode::CallAnonymousFunction => todo!(),
-            Opcode::CallDynamicFunction => todo!(),
             Opcode::Return => 52,
             Opcode::NewInstanceValueA => 55,
             Opcode::StoreValueAToFrame => 56,

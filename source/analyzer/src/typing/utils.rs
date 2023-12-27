@@ -765,18 +765,28 @@ pub fn update_expression_type(
                 if declared_type.is_some() {
                     return;
                 }
-                unified_type = optional_type
-                    .map(|opt_type| {
-                        unify_types(
-                            inferred_type,
+                unified_type = optional_type.and_then(|opt_type| {
+                    let mut new_type = unify_types(
+                        inferred_type,
+                        opt_type,
+                        symbollib,
+                        UnifyOptions::Conform,
+                        None,
+                    )
+                    .ok();
+                    // Numeric types should be upgraded when they are updated.
+                    if new_type.is_none() && is_numeric_type(inferred_type, symbollib) {
+                        new_type = unify_types(
                             opt_type,
+                            inferred_type,
                             symbollib,
                             UnifyOptions::Conform,
                             None,
                         )
-                        .ok()
-                    })
-                    .flatten();
+                        .ok();
+                    }
+                    new_type
+                });
             }
 
             let ident_symbol = symbollib.get_mut(ident.value).unwrap();

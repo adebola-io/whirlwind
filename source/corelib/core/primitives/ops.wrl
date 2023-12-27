@@ -4,33 +4,33 @@ module ops;
 /// by overloading the `+` operator, such as strings and numbers.
 public interface Addition {
     /// Adds two items together.
-    public function add(other: This): This;
+    public function add(other: This) -> This;
 }
 
 public interface Negation<R> {
     /// Negates a value with the ! or not operator.
-    public function negate(): R;
+    public function negate() -> R;
 }
 
 public interface Remainder<R> {
     /// Finds the remainder from dividing an item.
-    public function remainder(other: This): R;
+    public function remainder(other: This) -> R;
 }
 
 public interface Subtraction {
-    public function subtract(other: This): This;
+    public function subtract(other: This) -> This;
 }
 
 public interface Multiplication {
-    public function multiply(other: This): This;
+    public function multiply(other: This) -> This;
 }
 
 public interface Division {
-    public function division(other: This): This;
+    public function division(other: This) -> This;
 }
 
 public interface Index<I, R> {
-    public function index(indexer: I): R;
+    public function index(indexer: I) -> R;
 }
 
 public enum Ordering {
@@ -43,24 +43,24 @@ public enum Ordering {
 /// to other models of the same type.
 public interface Orderable {
     /// Compares two values together.
-    public function compare(other: This): Ordering;
+    public function compare(other: This) -> Ordering;
 }
 
 /// Provides a set of methods to enable overloading of bitwise operators (`|` and ``) for custom models.
 /// It allows instances of a class to behave like integers in bitwise operations.
 public interface Bitwise {
     /// Performs the bitwise OR operation.
-    public function bitor(other: This): This;
+    public function bitor(other: This) -> This;
     /// Performs the bitwise AND operation.
-    public function bitand(other: This): This;
+    public function bitand(other: This) -> This;
     /// Performs the bitwise XOR operation.
-    public function bitxor(other: This): This;
+    public function bitxor(other: This) -> This;
 }
 
 /// This interface concerns all items that can exist in a sequence,
 /// most notably letters and numbers.
 public interface Sequenced {
     /// Returns the next item in a sequence.
-    public function nextItem(): ?This;
+    public function nextItem() -> ?This;
 }
 

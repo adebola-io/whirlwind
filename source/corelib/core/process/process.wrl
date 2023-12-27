@@ -9,7 +9,7 @@ use core.{
 };
 
 /// Unwinds the stack by one frame and crashes with a fatal error.
-public function fatalOnCaller(message: String): never  {
+public function fatalOnCaller(message: String) -> never  {
     return builtin.sequence.crashOneStep(message);
 }
 
@@ -21,7 +21,7 @@ public function fatalOnCaller(message: String): never  {
 /// This function will *always* cause the sequence to crash.
 /// ### Usage
 /// ```
-/// function positiveSquare(a: Int): Outcome<Int, String> {
+/// function positiveSquare(a: Int) -> Outcome<Int, String> {
 ///     if a >= 0 {
 ///         return ok(a * a);
 ///     } else {
@@ -29,7 +29,7 @@ public function fatalOnCaller(message: String): never  {
 ///     }
 /// }
 /// ```
-public function todo(message?: String): never {
+public function todo(message?: String) -> never {
     return fatalOnCaller(message.unwrapOr("Entered unfinished code."));
 }
 
@@ -43,7 +43,7 @@ public function todo(message?: String): never {
 ///
 /// ### Usage
 /// ```
-/// function divide(number: Int, divisor: Int): Float {
+/// function divide(number: Int, divisor: Int) -> Float {
 ///     if divisor == 0 {
 ///         fatal("Cannot divide by zero!");
 ///     } else {
@@ -51,7 +51,7 @@ public function todo(message?: String): never {
 ///     }
 /// }
 /// ```
-public function fatal(message?: String): never {
+public function fatal(message?: String) -> never {
     return builtin.sequence.crash(message);
 }
 
@@ -62,12 +62,12 @@ public function fatal(message?: String): never {
 /// 
 /// exit(0);
 /// ```
-public function exit(code?: UInt8): never {
+public function exit(code?: UInt8) -> never {
     return builtin.exit(code);
 }
 
 /// Returns the value of an environment variable.
-public function getEnv(varName: String): ?String {
+public function getEnv(varName: String) -> ?String {
     todo()
 }
 
@@ -78,7 +78,7 @@ public function getEnv(varName: String): ?String {
 /// currentDir := core.process.cwd();
 /// print("The current directory is " + currentDir);
 /// ```
-public function cwd(): String {
+public function cwd() -> String {
     return builtin.sequence.cwd();
 }
 

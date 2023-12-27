@@ -5,7 +5,7 @@ use ops.{Addition, Sequenced};
 
 /// An interface to be implemented by values that can be cast to an unsigned integer.
 interface Unsigned {
-    public function unsigned(): ?UnsignedInt;
+    public function unsigned() -> ?UnsignedInt;
 }
 
 /// An unsigned 8-bit integer.

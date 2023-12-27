@@ -1,7 +1,7 @@
 module terminal;
 
 use core.prelude.Display;
-use core.primitives.String;
+use core.primitives.{String, UInt8};
 use core.internals.builtin;
 use core.process.todo;
 
@@ -16,7 +16,7 @@ public function print<T implements Display>(data: T) {
 /// Displays an optional message to the console, terminal or
 /// any predefined input interface, prompting the user to enter
 /// text.
-public function prompt(message?: String): String {
+public function prompt(message?: String) -> String {
     todo()
 }
 
@@ -25,4 +25,18 @@ public function prompt(message?: String): String {
 public function printFmt<T implements Display>(data: T) {
     dataStr := data.toFmtStr();
     builtin.print(dataStr)
+}
+
+/// A string that may have custom colors and styles applied to it.
+public model TerminalString implements Display {
+    var text: String;
+    var codes: []UInt8;
+
+    public function blue() -> This {
+        todo()
+    }
+
+    function [Display.toStr]() -> String {
+        todo()
+    }
 }

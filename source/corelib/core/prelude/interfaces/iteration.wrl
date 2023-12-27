@@ -30,7 +30,7 @@ use core.collections.Tuple;
 /// Optionally, one can also override some of the default methods to provide more efficient or customized behavior.
 public interface Iteratable<I> {
     /// Returns the next item in the iteration.
-    public function next(): ?I;
+    public function next() -> ?I;
     /// Gathers all the items left in the iterator into an array.
     /// 
     /// Once the iterator is collected, it is exhausted and cannot produce new values.
@@ -43,7 +43,7 @@ public interface Iteratable<I> {
     /// assert(charsArray.length()).equals(5);
     /// assertThat(characters.next().isNone());
     /// ```
-    public function collect(): []I {
+    public function collect() -> []I {
         todo()
     }
     /// Consumes the iterator, running a callback for all the items produced by it.
@@ -67,7 +67,7 @@ public interface Iteratable<I> {
     /// 
     /// assert(arrReduced).equals("this is the pathway");
     /// ```
-    public function reduce(reducer: fn(acc: I, current: I): I, initial: I): I {
+    public function reduce(reducer: fn(acc: I, current: I) -> I, initial: I) -> I {
         todo()
     }
     /// Returns an iterator that only yields items that match a predicate.
@@ -83,7 +83,7 @@ public interface Iteratable<I> {
     /// assert(divBy4.next()).equals(some(40));
     /// assert(divBy4.next()).equals(some(60));
     /// ```
-    public function filter(predicate: fn(value: I): Bool): Filter<I, This> {
+    public function filter(predicate: fn(value: I) -> Bool) -> Filter<I, This> {
         return new Filter(this, predicate);
     }
     /// The `.map()` method is an iterator adapter that allows the creation of a new iterator by applying a
@@ -95,7 +95,7 @@ public interface Iteratable<I> {
     /// 
     /// assert(listTransformed).equals([3, 6, 9, 12]);
     /// ```
-    public function map<O>(transformer: fn(value: I): O): Map<I, O, This> {
+    public function map<O>(transformer: fn(value: I) -> O) -> Map<I, O, This> {
         return new Map(this, transformer);
     }
     /// Checks if any of the elements produced by the iterator matches a predicate.
@@ -111,7 +111,7 @@ public interface Iteratable<I> {
     /// assert(iterator.next()).equals(some(13));
     /// assert(iterator.next()).equals(some(14));
     /// ```
-    public function any(predicate: fn(value: I): Bool): Bool {
+    public function any(predicate: fn(value: I) -> Bool) -> Bool {
         // while true {
         //     next := this.next();
         //     if next.isNone() {
@@ -139,7 +139,7 @@ public interface Iteratable<I> {
     /// assert(iter.next()).equals(some(18));
     /// assert(iter.next()).equals(some(20));
     /// ```
-    public function all(predicate: fn(value: I): Bool): Bool {
+    public function all(predicate: fn(value: I) -> Bool) -> Bool {
         // while true {
         //     next := this.next();
         //     if next.IsNone() {
@@ -155,7 +155,7 @@ public interface Iteratable<I> {
     /// ### Usage
     /// ```
     /// ```
-    public function enumerate(): Enumerate<I, This> {
+    public function enumerate() -> Enumerate<I, This> {
         return new Enumerate(this);
     }
     /// Finds the first item in an iterator that matches a predicate.
@@ -172,7 +172,7 @@ public interface Iteratable<I> {
     /// assert(namesIter.next()).equals(some("Fatima"));
     /// assert(namesIter.next()).equals(some("Bao"));
     /// ```
-    public function find(predicate: fn(value: I): Bool): ?I {
+    public function find(predicate: fn(value: I) -> Bool) -> ?I {
         todo()
     }
     /// collects the next _n_ elements from the iterator into an array.
@@ -190,7 +190,7 @@ public interface Iteratable<I> {
     /// 
     /// assert(firstTen).equals([2, 4, 6, 8, 10]);
     /// ```
-    public function take(n: UnsignedInt): []I {
+    public function take(n: UnsignedInt) -> []I {
         todo()
     }
     /// Iterative adapter that advances as long as a condition is false.
@@ -214,7 +214,7 @@ public interface Iteratable<I> {
     /// assertThat(iter.next() == some(14));
     /// assertThat(iter.next() == none()); // 16 is printed.
     /// ```
-    public function until(condition: fn(value: I): Bool, catch?: fn(value: I)): Until<I, This> {
+    public function until(condition: fn(value: I) -> Bool, catch?: fn(value: I)) -> Until<I, This> {
         todo()
     }
     /// Returns an iterator that produces elements from both iterators as a tuple.
@@ -231,7 +231,7 @@ public interface Iteratable<I> {
     /// assertThat(numbersAndWords.next() == some(pair(1, "one")));
     /// assertThat(numbersAndWords.next() == some(pair(2, "two")));
     /// ```
-    public function zip<J, Other implements Iteratable<J>>(that: Other): Zip<I, This, J, Other> {
+    public function zip<J, Other implements Iteratable<J>>(that: Other) -> Zip<I, This, J, Other> {
         return new Zip(this, that);
     }
     /// An iterative adapter that adds a fallback value in between the items produced from the iteration.
@@ -245,7 +245,7 @@ public interface Iteratable<I> {
     /// numbersWith5 := iter.collect();
     /// assert(numbersWith5).equals([1, 5, 2, 5, 3, 5, 4, 5]);
     /// ```
-    public function interleave(value: I): Interleave<I, This> {
+    public function interleave(value: I) -> Interleave<I, This> {
         return new Interleave(this, value);
     }
 
@@ -259,7 +259,7 @@ public interface Iteratable<I> {
     /// 
     /// assert(iter.collect()).equals(["cherry", "date", "elderberry"]);
     /// ```
-    public function skip(n: UnsignedInt): Skip<I, This> {
+    public function skip(n: UnsignedInt) -> Skip<I, This> {
         return new Skip(this, n);
     }
     /// Specifies a side-effect that should run once the iterator stops producing elements.
@@ -270,7 +270,7 @@ public interface Iteratable<I> {
     /// fruits := ["blueberry", "mango", "pawpaw"];
     /// 
     /// ```
-    public function onEnd(callback: fn()): OnEnd<I, This> {
+    public function onEnd(callback: fn()) -> OnEnd<I, This> {
         return new OnEnd(this, callback);
     }
     /// Joins two iterators together .i.e. It starts producing values from the second iterator
@@ -285,7 +285,7 @@ public interface Iteratable<I> {
     /// 
     /// assert(chained.collect()).equals([1, 2, 3, 4, 5, 6]);
     /// ```
-    public function chain<That implements Iteratable<I>>(that: That): Chain<I, This, That> {
+    public function chain<That implements Iteratable<I>>(that: That) -> Chain<I, This, That> {
         return new Chain(this, that);
     }
 }
@@ -297,7 +297,7 @@ public model Enumerate<I, J implements Iteratable<I>> implements Iteratable<Tupl
         this.indexer = 0;
         this.iterator = iterator;
     }
-    public function [Iteratable.next](): ?Tuple<UnsignedInt, I> {
+    public function [Iteratable.next]() -> ?Tuple<UnsignedInt, I> {
         value := this.iterator.next()?;
         this.indexer += 1;
         return some(new Tuple(this.indexer, value));
@@ -307,12 +307,12 @@ public model Enumerate<I, J implements Iteratable<I>> implements Iteratable<Tupl
 
 public model Filter<I, J implements Iteratable<I>> implements Iteratable<I> {
     var iterator: J;
-    var predicate: fn(value: I): Bool;
-    new(iterator: J, predicate: fn(value: I): Bool){
+    var predicate: fn(value: I) -> Bool;
+    new(iterator: J, predicate: fn(value: I) -> Bool){
         this.iterator = iterator;
         this.predicate = predicate;
     }
-    public function [Iteratable.next](): ?I {
+    public function [Iteratable.next]() -> ?I {
         value := this.iterator.next()?;
         while !this.predicate(value) {
             value = this.iterator.next()?;
@@ -322,32 +322,35 @@ public model Filter<I, J implements Iteratable<I>> implements Iteratable<I> {
 }
 public model Until<I, J implements Iteratable<I>> implements Iteratable<I> {
     var iterator: J;
-    var condition: fn(value: I): Bool;
+    var condition: fn(value: I) -> Bool;
     var catch: ?fn(value: I);
     var ended: Bool;
-    new(iterator: J, condition: fn(value: I): Bool, catch?: fn(value: I)) {
+    new(iterator: J, condition: fn(value: I) -> Bool, catch?: fn(value: I)) {
         this.iterator = iterator;
         this.condition = condition;
         this.catch = catch;
         this.ended = false;
     }
-    public function [Iteratable.next](): ?I {
+    public function [Iteratable.next]() -> ?I {
        todo()
     }
 }
 
 /// Flattens a nested iterator.
-public function flatten<T implements Iteratable<U>, U implements Iteratable<V>, V>(iterator: T): U {
+public function flatten
+    <T implements Iteratable<U>, U implements Iteratable<V>, V>
+    (iterator: T) -> U 
+{
     return todo();
 }
 public model Map<I, O, J implements Iteratable<I>> implements Iteratable<O> {
     var iterator: J;
-    var transformer: fn(input: I): O;
-    new(iterator: J, transformer: fn(input: I): O) {
+    var transformer: fn(input: I) -> O;
+    new(iterator: J, transformer: fn(input: I) -> O) {
         this.iterator = iterator;
         this.transformer = transformer;
     }
-    public function [Iteratable.next](): ?O {
+    public function [Iteratable.next]() -> ?O {
         return some(this.transformer(this.iterator.next()?));
     }
 }
@@ -361,7 +364,7 @@ public model Zip<I, I1 implements Iteratable<I>, J, I2 implements Iteratable<J>>
         this.first = first;
         this.second = second;
     }
-    public function [Iteratable.next](): ?Tuple<I, J> {
+    public function [Iteratable.next]() -> ?Tuple<I, J> {
         firstItem := this.first.next()?;
         secondItem := this.second.next()?;
         return some(new Tuple(firstItem, secondItem));
@@ -377,7 +380,7 @@ public model Interleave<I, J implements Iteratable<I>> implements Iteratable<I> 
         this.delimeter = delimeter;
         this.flag = false;
     }
-    public function [Iteratable.next](): ?I {
+    public function [Iteratable.next]() -> ?I {
         if this.flag {
             return some(this.delimeter);
         } else {
@@ -395,7 +398,7 @@ public model Reversed<I> implements Iteratable<I> {
         this.array = array;
         this.idx = array.length();
     }
-    public function [Iteratable.next](): ?I {
+    public function [Iteratable.next]() -> ?I {
         if this.idx == 0 {
             none()
         } else {
@@ -412,7 +415,7 @@ public model Skip<I, J implements Iteratable<I>> implements Iteratable<I> {
         this.iterator = iterator;
         this.skipCount = n;
     }
-    public function [Iteratable.next](): ?I {
+    public function [Iteratable.next]() -> ?I {
         if this.skipCount == 0 {
             return this.iterator.next();
         } else {
@@ -434,7 +437,7 @@ public model OnEnd<I, J implements Iteratable<I>> implements Iteratable<I> {
         this.callback = callback;
         this.ended = false;
     }
-    public function [Iteratable.next](): ?I {
+    public function [Iteratable.next]() -> ?I {
         nextItem := this.iterator.next();
         if nextItem.isNone() and !this.ended {
             this.callback();
@@ -453,7 +456,7 @@ public model Chain<I, J implements Iteratable<I>, K implements Iteratable<I>> im
         this.second = second;
         this.firstEnded = false;
     }
-    public function [Iteratable.next](): ?I {
+    public function [Iteratable.next]() -> ?I {
         if this.firstEnded {
             return this.second.next();
         } else {
@@ -471,5 +474,5 @@ public model Chain<I, J implements Iteratable<I>, K implements Iteratable<I>> im
 /// This interface specifies that a model can be made into an iterator.
 public interface AsIterator<I, T implements Iteratable<I>> {
     /// Turn a model into an iterator.
-    public function iter(): T;
+    public function iter() -> T;
 }

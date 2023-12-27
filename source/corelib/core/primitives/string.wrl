@@ -28,15 +28,15 @@ public model String
         this.arr = [];
     }
     /// Returns the next character alphabetically in a sequence.
-    function [Sequenced.nextItem](): ?String {
+    function [Sequenced.nextItem]() -> ?String {
         if this.arr.length() > 1 { none() } else { todo() }
     }
     /// Implementation of the Display trait.
-    public function [Display.toStr](): String {
+    public function [Display.toStr]() -> String {
         return this;
     }
     /// Implementation of the Default trait.
-    static function [Default.init](): This {
+    static function [Default.init]() -> This {
         return new String();
     }
     /// Adds two strings together.
@@ -45,7 +45,7 @@ public model String
     /// str := "Hello" + ", world!";
     /// assert(str).equals("Hello, world!");
     /// ```
-    function [Addition.add](other: This): This {
+    function [Addition.add](other: This) -> This {
         newStr := this;
         for char in other.arr {
             newStr.arr.push(char);
@@ -61,7 +61,7 @@ public model String
     ///     print(char);
     /// }
     /// ```
-    public function [AsIterator.iter](): Chars {
+    public function [AsIterator.iter]() -> Chars {
         return new Chars(this);
     }
     /// Returns a `Maybe` with the _byte_ (not character) at a zero based index in the string.
@@ -82,7 +82,7 @@ public model String
     /// assertThat(str.at(-3) == some("i".bytes()[0]));
     /// ```
     /// It will return no value if the length of the string is exceeded.
-    public function at(position: Int): ?UInt8 {
+    public function at(position: Int) -> ?UInt8 {
         some(this.arr.at(position)?)
     }
     /// Adds text to the end of the string.
@@ -103,7 +103,7 @@ public model String
     /// ## Usage
     /// ```
     /// ```
-    public function bytes(): []UInt8 {
+    public function bytes() -> []UInt8 {
         return this.arr;
     }
     /// Changes the first character of every word in the string to upper case.
@@ -114,7 +114,7 @@ public model String
     /// 
     /// assert(str2).equals("Jonathan Is A Boy");
     /// ```
-    public function capitalCase(): String {
+    public function capitalCase() -> String {
         return builtin.strings.capitalCase(this);
     }
     /// Returns an iterator over the valid characters in the string.
@@ -126,7 +126,7 @@ public model String
     ///     print(char);
     /// }
     /// ```
-    public function chars(): Chars {
+    public function chars() -> Chars {
         return new Chars(this);
     }
     /// Empties the string of its characters.
@@ -150,7 +150,7 @@ public model String
     /// assertThat(str.contains("world"));
     /// assertThat(str.contains("premiere"));
     /// ```
-    public function contains(substr: String): Bool {
+    public function contains(substr: String) -> Bool {
        this.arr.includes(substr.arr)
     }
     /// Returns true if the string ends with a given pattern.
@@ -160,7 +160,7 @@ public model String
     /// assertThat(name.endsWith("l"));
     /// assertThat(name.endsWith("ael"));
     /// ```
-    public function endsWith(pat: String): Bool {
+    public function endsWith(pat: String) -> Bool {
         if pat.arr.length() > this.arr.length() {
             return false;
         }
@@ -182,7 +182,7 @@ public model String
     /// str2 := "%hello_world$";
     /// assertThat(!str2.isAlphanumeric());
     /// ```
-    public function isAlphanumeric(): Bool {
+    public function isAlphanumeric() -> Bool {
         return builtin.strings.isAlphanumeric(this);
     }
     /// Returns true if the string has no characters.
@@ -194,7 +194,7 @@ public model String
     /// str.append("Hello");
     /// assertThat(!str.isEmpty());
     /// ```
-    public function isEmpty(): Bool {
+    public function isEmpty() -> Bool {
         return this.arr.length() == 0;
     }
     /// Returns the number of characters in the string.
@@ -204,7 +204,7 @@ public model String
     /// 
     /// assert(str.length()).equals(5);
     /// ```
-    public function length(): UnsignedInt {
+    public function length() -> UnsignedInt {
         this.arr.length()
     }
     /// Changes the case of all letters in the string to lower case.
@@ -215,7 +215,7 @@ public model String
     /// 
     /// assert(str2).equals("hello, world!");
     /// ```
-    public function lowerCase(): String {
+    public function lowerCase() -> String {
         return builtin.strings.lowerCase(this);
     }
     /// Returns a version of the string with padding on both sides.
@@ -226,7 +226,7 @@ public model String
     /// 
     /// assert(str2).equals("   Alright   "); // 3 spaces before and after.
     /// ```
-    public function pad(count: UnsignedInt): String {
+    public function pad(count: UnsignedInt) -> String {
         return builtin.strings.pad(this, count);
     }
     /// Returns a version of the string with left padding.
@@ -237,7 +237,7 @@ public model String
     /// 
     /// assert(str2).equals("   Alright"); // 3 spaces before.
     /// ```
-    public function padLeft(count: UnsignedInt): String {
+    public function padLeft(count: UnsignedInt) -> String {
         return builtin.strings.padLeft(this, count);
     }
     /// Returns a version of the string with left padding.
@@ -248,7 +248,7 @@ public model String
     /// 
     /// assert(str2).equals("Alright   "); // 3 spaces before.
     /// ```
-    public function padRight(count: UnsignedInt): String {
+    public function padRight(count: UnsignedInt) -> String {
         return builtin.strings.padRight(this, count);
     }
     /// Pads the string in place with whitespace on the left and right sides.
@@ -288,7 +288,7 @@ public model String
     /// str3 := str.repeat(0);
     /// assertThat(str2.IsEmpty()); // No copies.
     /// ```
-    public function repeat(count: UnsignedInt): String {
+    public function repeat(count: UnsignedInt) -> String {
         str := new String();
         // for {} in 0..count {
         //    str.Append(this);
@@ -304,7 +304,7 @@ public model String
     /// 
     /// assert(str2).equals("Mike goes to school. Mike buys a book.")
     /// ```
-    public function replace(subStr: String, newStr: String): String {
+    public function replace(subStr: String, newStr: String) -> String {
         return builtin.strings.replace(this, subStr, newStr);
     }
     /// Returns a reversed version of the string.
@@ -316,7 +316,7 @@ public model String
     /// 
     /// assert(str2).equals("muinomednap");
     /// ```
-    public function reverse(): String {
+    public function reverse() -> String {
         newStr := new String();
         for unit in this.arr.reverse() {
             newStr.arr.push(unit);
@@ -331,7 +331,7 @@ public model String
     /// 
     /// assert(str.slice(0..5)).equals(some("Hello")); // index 0 to 4.
     /// ```
-    public function slice(bounds: Range<UnsignedInt>): ?String {
+    public function slice(bounds: Range<UnsignedInt>) -> ?String {
         return builtin.strings.slice(this, bounds);
     }
     /// Divides the string into a list of substrings based on a delimeter.
@@ -342,7 +342,7 @@ public model String
     /// 
     /// assert(words == ["Ring", "Around", "The", "Rosy"]);
     /// ```
-    public function split(delim: String): []String {
+    public function split(delim: String) -> []String {
         return builtin.strings.split(this, delim);
     }
     /// Divides the string into a list of substrings based on a predicate.
@@ -353,7 +353,7 @@ public model String
     /// 
     /// assert(sentences).equals(["Hello world", "My name is James."]);
     /// ```
-    public function splitAt(predicate: fn(pattern: String): Bool): []String {
+    public function splitAt(predicate: fn(pattern: String) -> Bool) -> []String {
         return builtin.strings.splitAt(this, predicate);
     }
     /// Changes only the first character in the string to upper case.
@@ -364,7 +364,7 @@ public model String
     /// 
     /// assert(str2).equals("Nice to meet you, where you been?");
     /// ```
-    public function sentenceCase(): String {
+    public function sentenceCase() -> String {
         return builtin.strings.sentenceCase(this);
     }
     /// Returns a version of the string without left or right whitespace padding.
@@ -374,7 +374,7 @@ public model String
     /// 
     /// assert(str.trim()).equals("What then shall we say?");
     /// ```
-    public function trim(): String {
+    public function trim() -> String {
         return builtin.strings.trim(this);
     }  
     /// Mutates the string in place and removes left or right whitespace padding.
@@ -396,7 +396,7 @@ public model String
     /// 
     /// assert(str.trimStart()).equals("What then shall we say?\n");
     /// ```
-    public function trimStart(): String {
+    public function trimStart() -> String {
         return builtin.strings.trimStart(this);
     } 
     /// Returns a version of the string without right whitespace padding.
@@ -406,7 +406,7 @@ public model String
     /// 
     /// assert(str.trimEnd()).equals("\nWhat then shall we say?");
     /// ```
-    public function trimEnd(): String {
+    public function trimEnd() -> String {
         return builtin.strings.trimEnd(this);
     }
     /// Changes the case of all letters in the string to upper case.
@@ -415,7 +415,7 @@ public model String
     /// str := "hello, world!";
     /// assert(str.upperCase()).equals("HELLO, WORLD!");
     /// ```
-    public function upperCase(): String {
+    public function upperCase() -> String {
         return builtin.strings.trimEnd(this);
     }
     /// Returns true if the string starts with a given pattern.
@@ -426,7 +426,7 @@ public model String
     /// assertThat(name.startsWith("J"));
     /// assertThat(name.startsWith("Jo"));
     /// ```
-    public function startsWith(pat: String): Bool {
+    public function startsWith(pat: String) -> Bool {
         if pat.arr.length() > this.arr.length() {
             return false;
         }
@@ -446,7 +446,7 @@ public model String
     /// 
     /// assert(valueStr).equals("1234");
     /// ```
-    public static function from<T implements Display>(value: T): This {
+    public static function from<T implements Display>(value: T) -> This {
         value.toStr()
     }
 }
@@ -461,7 +461,7 @@ public model Chars implements Iteratable<String> {
         this.string = string;
     }
     /// Returns the next character.
-    public function [Iteratable.next](): ?String {
+    public function [Iteratable.next]() -> ?String {
         // nextChar := this.string.at(this.idx)?;
         // this.idx += 1;
         // return some(nextChar);
@@ -470,6 +470,6 @@ public model Chars implements Iteratable<String> {
 }
 
 /// Calculates the edit distance between two strings using the [Levenshtein's Algorithm](http://example.com).
-public function LevenshteinEditRatio(str1: String, str2: String): Int {
+public function LevenshteinEditRatio(str1: String, str2: String) -> Int {
     todo()
 }

@@ -53,17 +53,17 @@ public model ArrayStack<T> {
         this._capacity = value;
     }
     /// Returns the top value in the stack without removing it.
-    public function top(): ?T {
+    public function top() -> ?T {
         this.items.last()
     }
     /// Removes the last item from the stack and returns it, if it exists.
-    public function pop(): ?T {
+    public function pop() -> ?T {
         this.items.pop()
     }
     /// Enter data into the stack.
     ///
     /// This method will fail if the size of the stack is already at maximum length.
-    public function push(data: T): Outcome<Bool, StackError> {
+    public function push(data: T) -> Outcome<Bool, StackError> {
         if this.items.length() == this._capacity {
             err(StackError.AlreadyFull)
         } else {
@@ -72,11 +72,11 @@ public model ArrayStack<T> {
         }
     }
     /// Returns the capacity of the stack.
-    public function capacity(): Int {
+    public function capacity() -> Int {
         this._capacity
     }
     /// Returns the size of the stack.
-    public function size(): Int {
+    public function size() -> Int {
         this.items.length()
     }   
 }

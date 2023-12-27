@@ -1,7 +1,6 @@
 module lib;
 
 test "Testing types." {
-    use core.testing.assert;
     use core.collections.Tuple;
 
     /// Returns the value itself.
@@ -66,27 +65,28 @@ test "Testing types." {
 
     // Opaque types with interfaces.
     interface TransformableTo<T> {
-        public function Transform(): T;
+        public function transform(): T;
     }
     model Box<T> implements TransformableTo<T> {
         new(value: T){}
-        public function [TransformableTo.Transform](): T {
+        public function [TransformableTo.transform](): T {
             todo()
         }
     }
     model Sphere<T> implements TransformableTo<T> {
         new(value: T){}
-        public function [TransformableTo.Transform](): T {
+        public function [TransformableTo.transform](): T {
             todo()
         }
     }
     type Transformable<T> = Box<T> | Sphere<T>;
     entity := new Box(new Sphere("hello"));
+    entity.transform();
 
     // Numeric types.
     number := 90;
     number = 12;
-    array := [1, 2, 3, 4, number, 255];
+    array := [1, 2, 3, 4, number, 255, 900];
 
     // function type coercion.
     strArray := ["hello", "world"];
@@ -110,7 +110,7 @@ test "Testing types." {
             this.name = name;
             this.age = Maybe.unwrapOrDefault(age);
         }
-        static function [Default.Init](): This {
+        static function [Default.init](): This {
             return new Person("{unknown}");
         }
     }

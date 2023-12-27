@@ -406,7 +406,7 @@ impl<'a> SymbolWriter<'a> {
         return_type: Option<&IntermediateType>,
     ) {
         if let Some(rettype) = return_type {
-            string.push_str(": ");
+            string.push_str(" -> ");
             string.push_str(&self.print_intermediate_type(rettype))
         }
     }
@@ -427,7 +427,7 @@ impl<'a> SymbolWriter<'a> {
                 }
                 string.push(')');
                 if let Some(ref rettype) = return_type {
-                    string.push_str(": ");
+                    string.push_str(" -> ");
                     string.push_str(&self.print_intermediate_type(rettype))
                 }
                 string

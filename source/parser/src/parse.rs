@@ -376,7 +376,7 @@ impl<L: Lexer> Parser<L> {
         } else {
             None
         };
-        let return_type = check!(self.maybe_type_label());
+        let return_type = check!(self.maybe_return_type());
 
         if_ended!(
             errors::expected(TokenType::Bracket(LCurly), self.last_token_span(),),
@@ -1025,7 +1025,7 @@ impl<L: Lexer> Parser<L> {
                 vec![]
             }
         };
-        let return_type = match self.maybe_type_label() {
+        let return_type = match self.maybe_return_type() {
             Ok(rettye) => rettye,
             Err(error) => {
                 errors.push(error);
@@ -1998,7 +1998,7 @@ impl<L: Lexer> Parser<L> {
         let name = check!(self.identifier());
         let generic_params = check!(self.maybe_generic_params());
         let params = check!(self.parameters());
-        let return_type = check!(self.maybe_type_label());
+        let return_type = check!(self.maybe_return_type());
         let (body, errors) = self
             .block(ScopeType::ModelMethodOf {
                 model: *model_address,
@@ -2071,7 +2071,7 @@ impl<L: Lexer> Parser<L> {
         self.advance(); // Move past ]
         let generic_params = check!(self.maybe_generic_params());
         let params = check!(self.parameters());
-        let return_type = check!(self.maybe_type_label());
+        let return_type = check!(self.maybe_return_type());
         let (body, mut body_errors) = self
             .block(ScopeType::ModelMethodOf {
                 model: *model_address,
@@ -2515,7 +2515,7 @@ impl<L: Lexer> Parser<L> {
         let name = check!(self.identifier());
         let generic_params = check!(self.maybe_generic_params());
         let params = check!(self.parameters());
-        let return_type = check!(self.maybe_type_label());
+        let return_type = check!(self.maybe_return_type());
         if_ended!(
             errors::expected(TokenType::Operator(SemiColon), self.last_token_end()),
             self
@@ -2982,6 +2982,25 @@ impl<L: Lexer> Parser<L> {
         Ok(Some(self.type_label()?))
     }
 
+    /// Parses a return_type. It supports the `:` or `->` syntax.
+    fn maybe_return_type(&self) -> Fallible<Option<TypeExpression>> {
+        if self
+            .token()
+            .is_some_and(|t| t._type == TokenType::Operator(Colon))
+        {
+            return Ok(Some(self.type_label()?));
+        }
+        if self
+            .token()
+            .is_some_and(|t| t._type == TokenType::Operator(Arrow))
+        {
+            self.advance(); // Move past ->
+            let expression = self.type_expression()?;
+            return Ok(Some(expression));
+        }
+        return Ok(None);
+    }
+
     /// Parses a block of statements. It assumes that `{` is the current token.
     fn block(&self, scope_type: ScopeType) -> Imperfect<Block> {
         expect_or_return!(TokenType::Bracket(LCurly), self);
@@ -3250,7 +3269,7 @@ impl<L: Lexer> Parser<L> {
         self.advance(); // Move past fn.
         let generic_params = self.maybe_generic_params()?;
         let params = self.parameters()?;
-        let return_type = self.maybe_type_label()?.map(|exp| Box::new(exp));
+        let return_type = self.maybe_return_type()?.map(|exp| Box::new(exp));
         let span = Span::from([start, self.last_token_span().end]);
 
         let functype = TypeExpression::Functional(FunctionalType {

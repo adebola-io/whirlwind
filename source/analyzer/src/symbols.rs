@@ -15,7 +15,7 @@ impl From<usize> for PathIndex {
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct ScopeId(pub u32);
 
-/// An index into the symbol table.
+/// An unique identifier for a symbol in the symbol library.
 #[derive(Debug, PartialEq, Clone, Copy, Eq, Hash)]
 pub struct SymbolIndex(pub PathIndex, pub u32);
 

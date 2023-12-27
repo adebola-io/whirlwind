@@ -12,16 +12,16 @@ public model Quadruple<T, U, V, W> implements OrderedSet<T, U, V, W, never, neve
     public var c: V;
     public var d: W;
 
-    public function [OrderedSet.first](): ?T {
+    public function [OrderedSet.first]() -> ?T {
         return some(this.a);
     }
-    public function [OrderedSet.second](): ?U {
+    public function [OrderedSet.second]() -> ?U {
         return some(this.b);
     }
-    public function [OrderedSet.third](): ?V {
+    public function [OrderedSet.third]() -> ?V {
         return some(this.c);
     }
-    public function [OrderedSet.fourth](): ?W {
+    public function [OrderedSet.fourth]() -> ?W {
         return some(this.d);
     }
 
@@ -42,7 +42,7 @@ public model Quadruple<T, U, V, W> implements OrderedSet<T, U, V, W, never, neve
     /// assert(first == new Tuple(1, "Sefunmi"));
     /// assert(second == new Tuple(true, [35.5]));
     /// ```
-    public function toTuple(): Tuple<Tuple<T, U>, Tuple<V, W>> {
+    public function toTuple() -> Tuple<Tuple<T, U>, Tuple<V, W>> {
         return pair(pair(this.a, this.b), pair(this.c, this.d));
     }
 }

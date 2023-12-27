@@ -26,15 +26,15 @@ public model Eventual<T> implements Guaranteed<T> {
     /// the VM.
     var value: T;
     /// Returns true if the eventual has been resolved to a value.
-    public function isResolved(): Bool {
+    public function isResolved() -> Bool {
         return this.resolved;
     }
     /// Returns true if the eventual was aborted before it could finish execution.
-    public function wasAborted(): Bool {
+    public function wasAborted() -> Bool {
         return this.aborted;
     }
     /// Implementation of the Guaranteed interface.
-    function [Guaranteed.guarantee](): T {
+    function [Guaranteed.guarantee]() -> T {
         this.unwrap()
     }
     /// It attempts to abort the eventual's execution and returns true if it is 
@@ -54,7 +54,7 @@ public model Eventual<T> implements Guaranteed<T> {
     ///     print("Eventual is already resolved.")
     /// }
     /// ```
-    public function tryAbort(): Bool {
+    public function tryAbort() -> Bool {
         if this.aborted {
             return true;
         };
@@ -95,7 +95,7 @@ public model Eventual<T> implements Guaranteed<T> {
     /// continue.
     /// ### Usage
     /// ```
-    /// async function waitASec<T>(x: T): T {
+    /// async function waitASec<T>(x: T) -> T {
     ///     core.time.sleep(1000);
     ///     return x;
     /// }
@@ -112,7 +112,7 @@ public model Eventual<T> implements Guaranteed<T> {
     /// 
     /// assertThat(a == b);
     /// ```
-    public function await(): T {
+    public function await() -> T {
         if this.aborted {
             fatal(some("Cannot call Await on an aborted Eventual."));
         };
@@ -126,7 +126,7 @@ public model Eventual<T> implements Guaranteed<T> {
     /// 
     /// There aren't many viable reasons why you should forcefully 
     /// resolve an eventual, but it is still useful in some niche contexts.
-    public function unwrap(): T {
+    public function unwrap() -> T {
         if this.aborted {
             fatal(some("Called Unwrap() on an aborted eventual."));
         };

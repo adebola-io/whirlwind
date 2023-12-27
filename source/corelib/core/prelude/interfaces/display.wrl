@@ -20,7 +20,7 @@ use core.prelude.String;
 ///         this.width = width;
 ///     }
 /// 
-///     public function [Display.toStr](): String {
+///     public function [Display.toStr]() -> String {
 ///         template := fmt("Rectangle { length: %, breadth: % }");
 ///         template.add(this.length).add(this.breadth).finish()
 ///     }
@@ -44,9 +44,9 @@ use core.prelude.String;
 /// ```
 public interface Display {
     /// Converts the implementing type to a string.
-    public function toStr(): String;
+    public function toStr() -> String;
     /// Converts the implementing type to a formatted string.
-    public function toFmtStr(): String {
+    public function toFmtStr() -> String {
         return this.toStr();
     }
 }

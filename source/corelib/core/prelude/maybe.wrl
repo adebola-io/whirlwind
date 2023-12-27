@@ -11,12 +11,12 @@ use interfaces.{guaranteed.Guaranteed, try.Try, default.Default};
 use core.internals.builtin;
 
 /// Creates a `Maybe` with no value.
-public function none<T>(): ?T {
+public function none<T>() -> ?T {
     return builtin.maybe.none();
 }
 
 /// Creates a `Maybe` with an internal value.
-public function some<T>(value: T): ?T {
+public function some<T>(value: T) -> ?T {
     return builtin.maybe.some(value);
 }
 
@@ -35,11 +35,11 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     var value: T;
 
     /// Implementation of the `Guaranteed` interface.
-    function [Guaranteed.guarantee](): T {
+    function [Guaranteed.guarantee]() -> T {
         return this.unwrap();
     }
     /// Implementation of the `Try` interface.
-    function [Try.try](): Outcome<T, ?never> {
+    function [Try.try]() -> Outcome<T, ?never> {
         if this.isSome() {
             return ok(this.value);
         } else {
@@ -51,7 +51,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     /// ### Usage
     /// ```
     /// ```
-    public function andThen<U>(conjunct: fn(former: T): ?U): ?U {
+    public function andThen<U>(conjunct: fn(former: T) -> ?U) -> ?U {
         if this.isSome() { conjunct(this.value) } else { none() }
     }
     /// Unwraps the Maybe value if it exists, or crashes the running sequence 
@@ -64,7 +64,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     /// maybeVal := some("Hello, world!");
     /// assert(maybeVal.expect("No value in Maybe!!")).equals("Hello, world!");
     /// ```
-    public function expect(error: String): T {
+    public function expect(error: String) -> T {
         if this.isNone() { fatal(some(error)) } else { this.value }
     }
     /// Returns a Bool indicating if the Maybe contains no value.
@@ -76,7 +76,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     /// stringValue := some("boy");
     /// assertThat(!stringValue.isNone());
     /// ```
-    public function isNone(): Bool {
+    public function isNone() -> Bool {
         this.exists
     }
     /// Returns a Bool indicating whether there is a value contained or not.
@@ -88,7 +88,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     /// noValue: ?String := none();
     /// assertThat(!noValue.isSome());
     /// ```
-    public function isSome(): Bool {
+    public function isSome() -> Bool {
        !this.exists
     }
     /// Returns a Bool indicating whether there is a value contained, and it
@@ -106,7 +106,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     /// maybeInt3: ?Int := none()
     /// assertThat(!maybeInt3.isSomeAnd(predicate));
     /// ```
-    public function isSomeAnd(predicate: fn(value: T): Bool): Bool {
+    public function isSomeAnd(predicate: fn(value: T) -> Bool) -> Bool {
         this.isSome() and predicate(this.value)
     }
     /// Performs a computation if there is an internal value contained.
@@ -145,7 +145,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     /// maybeInt3 := some(4);
     /// assertThat(not maybeInt3.isNoneOr(predicate));
     /// ```
-    public function isNoneOr(predicate: fn(value: T): Bool): Bool {
+    public function isNoneOr(predicate: fn(value: T) -> Bool) -> Bool {
         this.isNone() or predicate(this.unwrap())
     }
     /// Maps a `Maybe<T>` to an `Outcome<T, E>` by passing in a fallback error
@@ -153,7 +153,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     /// ### Usage
     /// ```
     /// ```
-    public function someOr<E>(error: E): Outcome<T, E> {
+    public function someOr<E>(error: E) -> Outcome<T, E> {
         if this.isNone() { err(error) } else { ok(this.value) }
     }
     /// Maps a `Maybe<T>` to an `Outcome<T, E>` by computing a fallback error
@@ -161,11 +161,11 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     /// ### Usage
     /// ```
     /// ```
-    public function someOrElse<E>(error: fn(): E): Outcome<T, E> {
+    public function someOrElse<E>(error: fn() -> E) -> Outcome<T, E> {
         if this.isNone() { err(error()) } else { ok(this.value) }
     }
     /// Combines two intermediate values
-    public function orElse(alternate: fn(): ?T): ?T {
+    public function orElse(alternate: fn() -> ?T) -> ?T {
         if this.isSome() { this } else { alternate() }
     }
     /// Ignores the maybe and returns the internal value. 
@@ -183,18 +183,18 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     /// ```
     /// ### Panics
     /// It panics if called on a `Maybe` with no value.
-    public function unwrap(): T {
+    public function unwrap() -> T {
         if this.isNone() {
             fatalOnCaller("Called Unwrap on a Maybe with no value.")
         }
         return this.value;
     }
     /// Returns the internal value, or another given value.
-    public function unwrapOr(value: T): T {
+    public function unwrapOr(value: T) -> T {
         if this.isNone() { value } else { this.value }
     }
     /// Returns the internal value, or computes another given value.
-    public function unwrapOrElse(fallback: fn(): T): T {
+    public function unwrapOrElse(fallback: fn() -> T) -> T {
         if this.isNone() { fallback() } else { this.value }
     }
     /// Converts a `Maybe<T>` to a `Maybe<E>` by applying a transformation function.
@@ -208,10 +208,10 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     /// second: ?Number := none().map(double);
     /// assertThat(double.isNone());
     /// ```
-    public function map<U>(func: fn(former: T): U): ?U {
+    public function map<U>(func: fn(former: T) -> U) -> ?U {
         some(func(this?))
     } 
-    public function xor(other: ?T): ?T {
+    public function xor(other: ?T) -> ?T {
         if this.isSome() and other.isNone() {
             return this;
         }
@@ -231,7 +231,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     /// j: ?UInt8 := none();
     /// assert(Maybe.unwrapOrDefault(j)).equals(0); // default value for UInt8.
     /// ```
-    public static function unwrapOrDefault<U implements Default>(maybe: ?U): U {
+    public static function unwrapOrDefault<U implements Default>(maybe: ?U) -> U {
         if maybe.isNone() {
             var default: U;
             default
@@ -240,7 +240,7 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
         }
     }
     /// Tranforms a `Maybe<Maybe<T>>` to a `Maybe<T>`.
-    public static function flatten<U>(maybe: ??U): ?U {
+    public static function flatten<U>(maybe: ??U) -> ?U {
         if maybe.isNone() { none() } else { maybe.value }
     }
 }

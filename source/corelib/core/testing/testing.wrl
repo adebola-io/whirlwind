@@ -6,7 +6,7 @@ use core.io.fmt;
 use core.primitives.String;
 
 /// Creates an assertion object.
-public function assert<T implements Display>(value: T): Assertion<T> {
+public function assert<T implements Display>(value: T) -> Assertion<T> {
     return new Assertion(value);
 }
 
@@ -18,7 +18,7 @@ public function assertThat(proposition: Bool) {
 }
 
 /// Generates a string of an assertion error.
-function assertionMessage<T implements Display>(mainMessage: String, left: T, right: T): String {
+function assertionMessage<T implements Display>(mainMessage: String, left: T, right: T) -> String {
     template := fmt(mainMessage);
     template.extend("Contained value: %\nOther: %");
     return template.add(left).add(right).finish();
@@ -32,7 +32,7 @@ public model Assertion<T implements Display> {
         this.value = value;
     }
     /// Checks if the contained value equals another.
-    public function equals(other: T): This {
+    public function equals(other: T) -> This {
         if other != this.value {
             message := assertionMessage(
                         "Assertion failed on equality.", 
@@ -43,7 +43,7 @@ public model Assertion<T implements Display> {
         return this;
     }
     /// Checks that the contained value does not equal another.
-    public function doesNotEqual(other: T): This {
+    public function doesNotEqual(other: T) -> This {
         if other == this.value {
             message := assertionMessage(
                         "Assertion failed on inequality.", 
@@ -53,13 +53,14 @@ public model Assertion<T implements Display> {
         };
         return this;
     }
-    /// Checks that an array is empty.
-    public static function arrayIsEmpty<T>(arr: Array<T>) {
-        if arr.length() != 0 {
-            message := fmt("Assertion failed because array is not empty.");
-            message.extend("Array Length: %").add(arr.length());
-            fatalOnCaller(message.finish());
-        }
-    }
 }
 
+
+/// Checks that an array is empty.
+public function arrayIsEmpty<T>(arr: Array<T>) {
+    if arr.length() != 0 {
+        message := fmt("Assertion failed because array is not empty.\n");
+        message.extend("Array Length: %").add(arr.length());
+        fatalOnCaller(message.finish());
+    }
+}

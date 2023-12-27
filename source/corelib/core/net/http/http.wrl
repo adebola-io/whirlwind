@@ -18,7 +18,7 @@ model Endpoints {
     public function register(
         method: HttpMethod, 
         route: String, 
-        handler: fn(request: HttpRequest): Prospect<ServerOutcome>
+        handler: fn(request: HttpRequest) -> Prospect<ServerOutcome>
     ) {
         todo()
     }
@@ -27,6 +27,10 @@ model Endpoints {
 public type ServerOutcome = Outcome<HttpResponse, HttpRequestError>;
 
 /// A simple model for an HTTP server.
+/// 
+/// ## Constructor Arguments.
+/// - @param (name: String) The name to use to represent this server.
+/// - @param (port: UnsignedInt) The port to listen on.
 public model HttpServer {
     var endpoints: Endpoints;
     var middleware: []Middleware;
@@ -41,8 +45,8 @@ public model HttpServer {
     /// Registers a route for a request with a `GET` method. 
     public function get(
         route: String,
-        handler: fn(request: HttpRequest): Prospect<ServerOutcome>
-    ): This {
+        handler: fn(request: HttpRequest) -> Prospect<ServerOutcome>
+    ) -> This {
         this.assertInert();
         this.endpoints.register(HttpMethod.Get, route, handler);
         return this;
@@ -50,8 +54,8 @@ public model HttpServer {
     /// Registers a route for a request with a `POST` method.
     public function post(
         route: String, 
-        handler: fn(request: HttpRequest): Prospect<ServerOutcome>
-    ): This {
+        handler: fn(request: HttpRequest) -> Prospect<ServerOutcome>
+    ) -> This {
         this.assertInert();
         this.endpoints.register(HttpMethod.Post, route, handler);
         return this;
@@ -72,7 +76,7 @@ public model HttpServer {
     }
     /// Registers a middleware for use in the server.
     /// Middlewares are executed in the order in which they are registered.
-    public function useMiddleware(middleware: Middleware): This {
+    public function useMiddleware(middleware: Middleware) -> This {
         this.middleware.push(middleware)
         return this;
     }
@@ -81,12 +85,12 @@ public model HttpServer {
 
 public type MiddlewareResponse = Outcome<HttpRequest, HttpRequestError>;
 public model Middleware {
-    var handlers: []fn(request: HttpRequest): Prospect<MiddlewareResponse>;
+    var handlers: []fn(request: HttpRequest) -> Prospect<MiddlewareResponse>;
     new() {
         this.handlers = [];
     }
     /// Registers a middleware handler.
-    public function addHandler(handler: fn(request: HttpRequest): Prospect<MiddlewareResponse>) {
+    public function addHandler(handler: fn(request: HttpRequest) -> Prospect<MiddlewareResponse>) {
         this.handlers.push(handler);
     }
 }

@@ -21,9 +21,9 @@ public model Prospect<T> {
     /// The prospect has been executed.
     var consumed: Bool;
     /// The function to execute when the run method is called.
-    var func: fn(): T;
+    var func: fn() -> T;
 
-    new(func: fn(): T) {
+    new(func: fn() -> T) {
         this.consumed = false;
         this.func = func;
     }
@@ -48,7 +48,7 @@ public model Prospect<T> {
     ///   .then(fn print("How do you do?"))
     ///   .run();
     /// ```
-    public function then<U>(next: fn (prior?: T): U): Prospect<U> {
+    public function then<U>(next: fn (prior?: T) -> U) -> Prospect<U> {
         if this.consumed {
             fatal(some("Cannot chain callback to a consumed prospect."))
         };
@@ -91,7 +91,7 @@ public model Prospect<T> {
     /// prospect2.run();
     /// prospect2.then(fn print("Something else.")); // Will cause an error.
     /// ```
-    public function run(): Eventual<T> {
+    public function run() -> Eventual<T> {
         if this.consumed {
             fatal(some("Cannot rerun a consumed Prospect."));
         }
@@ -100,7 +100,7 @@ public model Prospect<T> {
     }
     /// Sets a timeout on the prospect's eventual execution. If the duration elapses 
     /// before the eventual can be resolved, it is abruptly aborted.
-    public function timeout(ms: UnsignedInt): Prospect<T> {
+    public function timeout(ms: UnsignedInt) -> Prospect<T> {
         todo();
         return this;
     }
@@ -128,7 +128,7 @@ public model Prospect<T> {
     /// greeting := first.race(second).run().await();
     /// assert(greeting).equals("Hello");
     /// ```
-    public function race(other: Prospect<T>): Prospect<T> {
+    public function race(other: Prospect<T>) -> Prospect<T> {
         todo()
     }
     /// Creates a prospect that produces the fastest resolved value from
@@ -152,7 +152,7 @@ public model Prospect<T> {
     /// num := Prospect.raceAll([first, second, third]).run().await();
     /// assert(num).equals(1);
     /// ```
-    public static function raceAll<T>(prospects: Array<Prospect<T>>): Prospect<T> {
+    public static function raceAll<T>(prospects: Array<Prospect<T>>) -> Prospect<T> {
         return todo();
     }
 }

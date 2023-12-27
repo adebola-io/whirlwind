@@ -3,7 +3,7 @@
 module concurrent;
 
 use core.prelude.{todo, String};
-use core.internals.{builtin, StackTrace};
+use core.internals.builtin;
 use core.primitives.UnsignedInt;
 
 public use prospect.Prospect;
@@ -13,14 +13,14 @@ public use eventual.Eventual;
 ///
 /// ### Usage
 /// ```
-/// async function asyncSquare(a: Int): Int {
+/// async function asyncSquare(a: Int) -> Int {
 ///     return a * a
 /// }
 /// num := toSync(asyncSquare(2));
 /// assert(num).equals(4) // 2 * 2.
 /// ```
 /// It is the same as running `.run().await()` on the prospect (Its implementation is quite literally that).
-public function toSync<T>(prospect: Prospect<T>): T {
+public function toSync<T>(prospect: Prospect<T>) -> T {
     return prospect.run().await();
 }
 
@@ -37,7 +37,7 @@ public model CurrentSequence {
 public model Sequence {
     /// Returns the id of the sequence.
     /// The id of the main sequence is always 0.
-    function getId(): UnsignedInt {
+    function getId() -> UnsignedInt {
         return builtin.sequence.sequenceId(this);
     }
 } 
@@ -45,7 +45,6 @@ public model Sequence {
 public model SequenceError {
     public var errorType: SequenceErrorType;
     public var message: ?String;
-    public var stackTrace: StackTrace;
 }
 
 public enum SequenceErrorType {

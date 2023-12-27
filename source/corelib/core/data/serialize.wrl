@@ -7,8 +7,8 @@ use json.JsonValue;
 
 
 public interface Serializeable {
-    public function toBytes(): Buffer;
-    public function toJson(): JsonValue {
+    public function toBytes() -> Buffer;
+    public function toJson() -> JsonValue {
         todo()
     }
 }
@@ -19,8 +19,8 @@ public model SerializeError {
 }
 
 public interface Deserializeable {
-    public function fromBytes(bytes: Buffer): This;
-    public function fromJson(bytes: Buffer): Outcome<This, SerializeError> {
+    public function fromBytes(bytes: Buffer) -> This;
+    public function fromJson(bytes: Buffer) -> Outcome<This, SerializeError> {
 
     }
 }

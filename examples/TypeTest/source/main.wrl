@@ -1,0 +1,6 @@
+module main;
+
+
+function main() {
+    print("Hello, world.")
+}

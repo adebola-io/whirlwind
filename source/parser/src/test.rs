@@ -183,6 +183,42 @@ fn parsing_functional_types() {
 }
 
 #[test]
+fn parse_function_types_with_arrow() {
+    let mut parser = parse_text("function Find(predicate: fn(value: Name) -> Boolean) {}");
+    let statement = parser.next().unwrap().unwrap();
+
+    // println!(
+    //     "{:?}",
+    //     parser.module_ambience().lookaround("Find").unwrap().entry
+    // );
+
+    assert!(parser
+        .module_ambience()
+        .lookaround("Find")
+        .is_some_and(|search| matches!(
+            search.entry,
+            ScopeEntry::Function(f) if matches!
+            (
+                &f.params[0].type_label,
+                Some(TypeExpression::Functional(f)) if matches!
+                {
+                    f.params[0].type_label,
+                    Some(TypeExpression::Discrete(_))
+                } && f.return_type.is_some()
+            )
+        )));
+
+    assert_eq!(
+        statement,
+        Statement::FunctionDeclaration(FunctionDeclaration {
+            address: [0, 0, 0].into(),
+            body: Block::empty(1, [1, 54, 1, 56].into()),
+            span: [1, 1, 1, 56].into()
+        })
+    );
+}
+
+#[test]
 fn parsing_union_types() {
     let mut parser = parse_text(
         "

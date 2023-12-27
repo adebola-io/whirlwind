@@ -16,16 +16,16 @@ public model BuiltIn implements Injunction {
 }
 
 
-function builtin(_type: InjunctionType): BuiltIn {
+function builtin(_type: InjunctionType) -> BuiltIn {
     return new BuiltIn(_type);
 }
 
 public model arrays<T> {
 
-    public static function at(array: Array<T>, index: Int): ?T {
+    public static function at(array: Array<T>, index: Int) -> ?T {
         invoke(builtin(InjunctionType.ArrayAt), some(array), some(index))
     }
-    public static function contains(array: Array<T>, value: T): Bool {
+    public static function contains(array: Array<T>, value: T) -> Bool {
         invoke(builtin(InjunctionType.ArrayContains), some(array), some(value))
     }
 
@@ -33,11 +33,11 @@ public model arrays<T> {
         invoke(builtin(InjunctionType.ArrayClear), some(array))
     }
 
-    public static function includes(array: Array<T>, subarray: Array<T>): Bool {
+    public static function includes(array: Array<T>, subarray: Array<T>) -> Bool {
         invoke(builtin(InjunctionType.ArrayIncludes), some(array), some(subarray))
     }
 
-    public static function indexOf(array: Array<T>, value: T): ?UnsignedInt {
+    public static function indexOf(array: Array<T>, value: T) -> ?UnsignedInt {
         invoke(builtin(InjunctionType.ArrayIndexOf), some(array), some(value))
     }
 
@@ -49,11 +49,11 @@ public model arrays<T> {
         invoke(builtin(InjunctionType.ArrayPrepend), some(array), some(prefix))
     }
 
-    public static function partition(array: Array<T>, check: fn(item: T): Bool): [][]T {
+    public static function partition(array: Array<T>, check: fn(item: T) -> Bool) -> [][]T {
         invoke(builtin(InjunctionType.ArrPartition), some(check))
     }
 
-    public static function length(array: Array<T>): UnsignedInt {
+    public static function length(array: Array<T>) -> UnsignedInt {
         invoke(builtin(InjunctionType.ArrLen), some(array))
     }
 
@@ -61,13 +61,13 @@ public model arrays<T> {
         invoke(builtin(InjunctionType.ArrayPush), some(array), some(value))
     }
 
-    public static function pop(array: Array<T>): ?T {
+    public static function pop(array: Array<T>) -> ?T {
         invoke(builtin(InjunctionType.ArrayPop), some(array))
     }
 }
 
 public model eventual<T> {
-    public static function create(prospect: Prospect<T>): Eventual<T> {
+    public static function create(prospect: Prospect<T>) -> Eventual<T> {
         invoke(builtin(InjunctionType.EventualCreate), some(prospect))
     }
 
@@ -75,115 +75,119 @@ public model eventual<T> {
         invoke(builtin(InjunctionType.EventualAbort), some(eventual))
     }
     
-    public static function await(eventual: Eventual<T>): T {
+    public static function await(eventual: Eventual<T>) -> T {
         invoke(builtin(InjunctionType.EventualAwait), some(eventual))
     }
 }
 
 public model maybe<T> {
-    public static function none(): ?T {
+    public static function none() -> ?T {
         invoke(builtin(InjunctionType.MaybeNone))
     }
 
-    public static function some(value: T): ?T {
+    public static function some(value: T) -> ?T {
         invoke(builtin(InjunctionType.MaybeSome), some(value))
     }
 }
 
 public model outcome<T, U> {
-    public static function unwrap(outcome: Outcome<T, U>): T {
+    public static function unwrap(outcome: Outcome<T, U>) -> T {
         invoke(builtin(InjunctionType.OutcomeUnwrap), some(outcome))
     }
 
-    public static function unwrapError(outcome: Outcome<T, U>): U {
+    public static function unwrapError(outcome: Outcome<T, U>) -> U {
         invoke(builtin(InjunctionType.OutcomeUnwrapError), some(outcome))
     }
 }
 
 public model sequence {
-    public static function sequenceId(sequence: Sequence): UnsignedInt {
+    public static function sequenceId(sequence: Sequence) -> UnsignedInt {
         invoke(builtin(InjunctionType.SequenceId), some(sequence))
     }
 
-    public static function crashOneStep(message: String): never {
+    public static function crashOneStep(message: String) -> never {
         invoke(builtin(InjunctionType.SequenceCrashOneStep), some(message))
     }
 
-    public static function crash(message?: String): never {
+    public static function crash(message?: String) -> never {
         invoke(builtin(InjunctionType.SequenceCrash), some(message))
     }
 
-    public static function cwd(): String {
+    public static function cwd() -> String {
         invoke(builtin(InjunctionType.SequenceCwd))
     }
 }
 
 public model strings {
-    public static function capitalCase(string: String): String {
+    public static function capitalCase(string: String) -> String {
         invoke(builtin(InjunctionType.StringCapitalCase), some(string))
     }
     
-    public static function isAlphanumeric(string: String): Bool {
+    public static function isAlphanumeric(string: String) -> Bool {
         invoke(builtin(InjunctionType.StringIsAlphanumeric), some(string))
     }
 
-    public static function lowerCase(string: String): String {
+    public static function lowerCase(string: String) -> String {
         invoke(builtin(InjunctionType.StringLowercase), some(string))
     }
 
-    public static function pad(string: String, count: UnsignedInt): String {
+    public static function pad(string: String, count: UnsignedInt) -> String {
         invoke(builtin(InjunctionType.StringPad), some(string), some(count))
     }
 
-    public static function padLeft(string: String, count: UnsignedInt): String {
+    public static function padLeft(string: String, count: UnsignedInt) -> String {
         invoke(builtin(InjunctionType.StringPadLeft), some(string), some(count))
     }
 
-    public static function padRight(string: String, count: UnsignedInt): String {
+    public static function padRight(string: String, count: UnsignedInt) -> String {
         invoke(builtin(InjunctionType.StringPadRight), some(string), some(count))
     }
 
-    public static function replace(string: String, subStr: String, newStr: String): String {
+    public static function replace(string: String, subStr: String, newStr: String) -> String {
         invoke(builtin(InjunctionType.StringReplace), some(string), some(subStr), some(newStr))
     }
 
-    public static function slice(string: String, bounds: Range<UnsignedInt>): ?String {
+    public static function slice(string: String, bounds: Range<UnsignedInt>) -> ?String {
         invoke(builtin(InjunctionType.StringSlice), some(string), some(bounds))
     }
 
-    public static function split(string: String, delim: String): []String {
+    public static function split(string: String, delim: String) -> []String {
         invoke(builtin(InjunctionType.StringSplit), some(string), some(delim))
     }
 
-    public static function splitAt(string: String, predicate: fn(pattern: String): Bool): []String {
+    public static function splitAt(string: String, predicate: fn(pattern: String) -> Bool) -> []String {
         invoke(builtin(InjunctionType.StringSplitAt), some(string), some(predicate))
     }
 
-    public static function sentenceCase(string: String): String {
+    public static function sentenceCase(string: String) -> String {
         invoke(builtin(InjunctionType.StringSentenceCase), some(string))
     }
 
-    public static function trim(string: String): String {
+    public static function trim(string: String) -> String {
         invoke(builtin(InjunctionType.StringTrim), some(string))
     }
 
-    public static function trimStart(string: String): String {
+    public static function trimStart(string: String) -> String {
         invoke(builtin(InjunctionType.StringTrimStart), some(string))
     }
 
-    public static function trimEnd(string: String): String {
+    public static function trimEnd(string: String) -> String {
         invoke(builtin(InjunctionType.StringTrimEnd), some(string))
     }
 
-    public static function upperCase(string: String): String {
+    public static function upperCase(string: String) -> String {
         invoke(builtin(InjunctionType.StringUpperCase), some(string))
     }
+}
+
+public function swap<T>(a: T, b: T) {
+    invoke(builtin(InjunctionType.Swap), some(a), some(b))
 }
 
 public function print(message: String) {
     invoke(builtin(InjunctionType.Print), some(message))
 }
 
-public function exit(code?: UInt8): never {
+public function exit(code?: UInt8) -> never {
     invoke(builtin(InjunctionType.SequenceExit), some(code))
 }

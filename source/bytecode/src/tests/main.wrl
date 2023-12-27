@@ -1,0 +1,10 @@
+module main;
+
+
+public function main() {
+
+}
+
+enum EvaluatedType {
+
+}

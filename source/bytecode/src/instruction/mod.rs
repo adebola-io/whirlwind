@@ -26,10 +26,13 @@ pub struct Block {
     instructions: Vec<Instruction>,
 }
 
-#[derive(Debug)]
-/// A function in the virtual machine.
-pub struct Function {
-    /// Computed name of the function.
+pub struct MonomorphicFunction {
     pub name: String,
-    pub blocks: Vec<Block>,
+    pub start: usize,
+    pub calls: usize,
+}
+
+pub enum FunctionPtr {
+    Monomorphic(MonomorphicFunction),
+    Polymorphic(Vec<MonomorphicFunction>),
 }

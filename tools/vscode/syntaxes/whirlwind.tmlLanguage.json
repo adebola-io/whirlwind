@@ -356,9 +356,9 @@
          "match": "\\{|\\}|\\,|\\."
       },
       "type_label": {
-         "begin": "\\:\\s*",
+         "begin": "(\\:|\\-\\>)\\s*",
          "patterns": [{ "include": "#type_expression" }],
-         "end": "(,(?=\\s*([A-Za-z0-9]|_)+\\s*\\??\\s*(\\:|\\))))|(?=[^A-Za-z0-9\\&\\?\\_\\.\\<\\>\\,\\s\\(\\)\\[\\]])"
+         "end": "(,(?=\\s*([A-Za-z0-9]|_)+\\s*\\??\\s*(\\:|\\-\\>|\\))))|(?=[^A-Za-z0-9\\&\\?\\_\\.\\<\\>\\,\\s\\(\\)\\[\\]])"
       },
       "discrete_type": {
          "patterns": [
@@ -408,7 +408,7 @@
          "end": "(?=\\))"
       },
       "generic_args": {
-         "begin": "(?<=((implements\\s+|\\:\\s*)\\w+\\s*)\\<\\s*)",
+         "begin": "(?<=((implements\\s+|(\\:|\\-\\>)\\s*)\\w+\\s*)\\<\\s*)",
          "patterns": [
             { "include": "#type_expression" },
             { "include": "#generic_args" }
