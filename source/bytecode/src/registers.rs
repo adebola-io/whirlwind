@@ -13,7 +13,7 @@ pub struct Register(pub f64);
 ///
 /// Forgiveness is requested. It will be optimized later.
 #[derive(Debug, Default, Clone)]
-pub enum Value {
+pub enum StackValue {
     HeapPointer(HeapPointer),
     Number(f64),
     Boolean(bool),
@@ -23,27 +23,27 @@ pub enum Value {
     None,
 }
 
-impl Display for Value {
+impl Display for StackValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
             "{}",
             match self {
-                Value::HeapPointer(_) => String::from("HeapPointer"),
-                Value::Number(num) => num.to_string(),
+                StackValue::HeapPointer(_) => String::from("HeapPointer"),
+                StackValue::Number(num) => num.to_string(),
                 _ => String::from("None"),
             }
         )
     }
 }
-impl From<u8> for Value {
+impl From<u8> for StackValue {
     fn from(value: u8) -> Self {
-        Value::Number(value as f64)
+        StackValue::Number(value as f64)
     }
 }
 
 #[derive(Debug)]
-pub struct HeapPointer(pub Arc<Mutex<Vec<Value>>>);
+pub struct HeapPointer(pub Arc<Mutex<Vec<StackValue>>>);
 impl Clone for HeapPointer {
     fn clone(&self) -> Self {
         Self(self.0.clone())
@@ -77,11 +77,11 @@ pub struct RegisterList {
     pub constptrb: usize,
 
     // value registsers.
-    pub vala: Option<Value>,
-    pub valb: Option<Value>,
+    pub vala: Option<StackValue>,
+    pub valb: Option<StackValue>,
 
     // The return value of a function call.
-    pub ret: Option<Value>,
+    pub ret: Option<StackValue>,
 }
 
 impl RegisterList {

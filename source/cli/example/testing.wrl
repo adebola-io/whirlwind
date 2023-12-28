@@ -1,11 +1,10 @@
 module testing;
 
-
 function main() {
-    return;
+    helloworld();
 }
 
 
-function greet(name: String) -> String {
-    fmt("Hello, %").add(name).finish()
+function helloworld() {
+    return;
 }

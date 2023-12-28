@@ -1,10 +1,11 @@
 use crate::options::parse_cli;
 use analyzer::{Module, Standpoint};
+use bytecode::print_instructions;
 use diagnostics::print_diagnostics;
 use help::print_help;
 use options::CliCommand;
 use std::{path::PathBuf, process::exit};
-use utils::terminal;
+use utils::terminal::{self, Colorable};
 
 mod diagnostics;
 mod globals;
@@ -76,9 +77,11 @@ fn check_paths(path: PathBuf, code: &mut i32, corelibpath: PathBuf, options: opt
     }
 
     // ---
-    let mut standpoint = Standpoint::new(true, Some(corelibpath));
-
     let entry_path = options.file.unwrap();
+    terminal::clear();
+    println!("{} {}", "Building:".color().cyan(), entry_path.display());
+    let time = std::time::Instant::now();
+    let mut standpoint = Standpoint::new(true, Some(corelibpath));
     match Module::from_path(entry_path) {
         Ok(module) => {
             match standpoint.add_module(module) {
@@ -94,21 +97,23 @@ fn check_paths(path: PathBuf, code: &mut i32, corelibpath: PathBuf, options: opt
             return;
         }
     };
-
     standpoint.validate();
-    // First boundary.
     if standpoint.diagnostics.len() > 0 {
-        standpoint.validate(); // idk
-        print_diagnostics(&standpoint);
-        if standpoint
-            .diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.is_error())
-        {
-            *code = 1;
-            return;
-        }
+        standpoint.validate(); // see idk
     }
+    print_diagnostics(&standpoint);
+    if standpoint
+        .diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.is_error())
+    {
+        *code = 1;
+        return;
+    }
+
+    let elapsed = time.elapsed();
+    let build_finished = format!("Build finished in {elapsed:?}").color().green();
+    println!("{build_finished}",);
 
     let object = bytecode::generate_from(&standpoint);
     std::mem::drop(standpoint);
@@ -122,6 +127,9 @@ fn check_paths(path: PathBuf, code: &mut i32, corelibpath: PathBuf, options: opt
     };
 
     let mut vm = runtime::VM::from_object(object);
+    println!("\nBYTECODE:");
+    print_instructions(&vm.instructions);
+    println!("FUNCTIONS: {}", vm.dispatch_table.len());
     vm.run().unwrap();
 
     // vm

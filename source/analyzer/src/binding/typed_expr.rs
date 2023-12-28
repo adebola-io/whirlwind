@@ -37,6 +37,14 @@ impl TypedExpression {
     //         _ => false,
     //     }
     // }
+
+    /// Returns `true` if the typed expression is [`Literal`].
+    ///
+    /// [`Literal`]: TypedExpression::Literal
+    #[must_use]
+    pub fn is_literal(&self) -> bool {
+        matches!(self, Self::Literal(..))
+    }
 }
 
 #[derive(Debug, PartialEq)]

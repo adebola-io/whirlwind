@@ -1,7 +1,7 @@
 use crate::predefined::MAX_STACK_SIZE;
 use analyzer::PathIndex;
 use ast::Span;
-use bytecode::{FunctionPtr, RegisterList, Value};
+use bytecode::{FunctionPtr, RegisterList, StackValue as Value};
 use std::{
     ops::Range,
     panic::Location,

@@ -322,6 +322,11 @@ pub enum Opcode {
     ///
     /// Format: `[GetPropertyOffset] [stackidx: [a, b, c, d]] [offset: [e, f, g, h]]`
     GetPropertyOffset,
+    /// Moves the value in the vala register to the ret register in preparation of a return.
+    /// It moves the empty value if the vala register is empty.
+    ///
+    /// Format: `[MoveValtoRet]`
+    MoveValtoRet,
 
     // SEQUENCE OPCODES.
     // --
@@ -376,6 +381,7 @@ impl From<u8> for Opcode {
             56 => Opcode::StoreValueAToFrame,
             57 => Opcode::StartBlock,
             58 => Opcode::EndBlock,
+            65 => Opcode::MoveValtoRet,
             _ => unimplemented!("{value}"),
         }
     }
@@ -445,6 +451,7 @@ impl From<Opcode> for u8 {
             Opcode::StoreValueAToFrame => 56,
             Opcode::StartBlock => 57,
             Opcode::EndBlock => 58,
+            Opcode::MoveValtoRet => 65,
             Opcode::SpawnSeq => todo!(),
             Opcode::SyncSeq => todo!(),
             Opcode::HaltSeq => todo!(),

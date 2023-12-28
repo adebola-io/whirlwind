@@ -3,7 +3,7 @@ use crate::{
     stack::{Block, Stack, StackError},
     vm::{ExecutionError, VM},
 };
-use bytecode::{Constant, FunctionPtr, HeapPointer, Opcode, RegisterList, Value};
+use bytecode::{Constant, FunctionPtr, HeapPointer, Opcode, RegisterList, StackValue};
 use std::{
     io::{stdout, Write},
     ops::ControlFlow,
@@ -165,9 +165,9 @@ impl Sequence {
                 let layout = &vm.layouts[layout];
                 let mut space = Vec::with_capacity(layout.size);
                 while space.len() < layout.size {
-                    space.push(Value::None);
+                    space.push(StackValue::None);
                 }
-                let value = Value::HeapPointer(HeapPointer(Arc::new(Mutex::new(space))));
+                let value = StackValue::HeapPointer(HeapPointer(Arc::new(Mutex::new(space))));
                 self.registers_mut().vala = Some(value)
             }
             Opcode::StoreValueAToFrame => {
@@ -192,6 +192,7 @@ impl Sequence {
         let function_idx = usize::from_be_bytes(self.next_eight_bytes());
         let function = &mut vm.dispatch_table[function_idx];
         function.calls += 1;
+        println!("Calling function {}", function.name);
         if let Err(error) = self.stack.allocate_new_frame(&function, self.pc) {
             return Some(ControlFlow::Break(match error {
                 StackError::StackOverflow => SequenceStatus::Crashed(ExecutionError::StackOverflow),
@@ -340,7 +341,7 @@ impl Sequence {
             1 => {
                 let result = self.registers_mut().acc64.sqrt();
                 let address = self.next_four_bytes_as_usize();
-                self.stack.write(address, Value::Number(result));
+                self.stack.write(address, StackValue::Number(result));
                 // todo: handle failure.
             }
             _ => panic!("Invalid instruction format!"),
@@ -358,7 +359,7 @@ impl Sequence {
             (0, 1) => {
                 let result = self.registers_mut().acc8 + self.registers_mut().r8;
                 let address = self.next_four_bytes_as_usize();
-                self.stack.write(address, Value::Number(result as f64));
+                self.stack.write(address, StackValue::Number(result as f64));
                 // todo: handle failure.
             }
             // u16 registers, store in place.
@@ -367,7 +368,7 @@ impl Sequence {
             (1, 1) => {
                 let result = self.registers_mut().acc16 + self.registers_mut().acc16;
                 let address = self.next_four_bytes_as_usize();
-                self.stack.write(address, Value::Number(result as f64));
+                self.stack.write(address, StackValue::Number(result as f64));
             }
             // u32 registers, store in place.
             (2, 0) => self.registers_mut().acc32 += self.registers_mut().r32,
@@ -375,7 +376,7 @@ impl Sequence {
             (2, 1) => {
                 let result = self.registers_mut().acc32 + self.registers_mut().acc32;
                 let address = self.next_four_bytes_as_usize();
-                self.stack.write(address, Value::Number(result as f64));
+                self.stack.write(address, StackValue::Number(result as f64));
             }
             // u64 registers, store in place.
             (3, 0) => self.registers_mut().acc64 += self.registers_mut().acc64,
@@ -383,7 +384,7 @@ impl Sequence {
             (3, 1) => {
                 let result = self.registers_mut().acc64 + self.registers_mut().acc64;
                 let address = self.next_four_bytes_as_usize();
-                self.stack.write(address, Value::Number(result));
+                self.stack.write(address, StackValue::Number(result));
             }
             _ => panic!("Invalid instruction format!"),
         }

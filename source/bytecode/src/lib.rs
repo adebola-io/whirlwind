@@ -48,7 +48,7 @@ pub fn generate_from(standpoint: &Standpoint) -> Result<BytecodeObject, Bytecode
             return Err(BytecodeError::MainHasParameters);
         }
     }
-    let mut generator = BytecodeGenerator::from(main, standpoint);
+    let mut generator = BytecodeGenerator::from(standpoint);
     let object = generator.generate()?;
     Ok(object)
 }

@@ -106,16 +106,18 @@ pub fn print_diagnostics(standpoint: &Standpoint) -> bool {
             DiagnosticType::Warning(_) => warnings += 1,
         });
 
-    let message = format!(
-        "{}Found {} error{} and {} warning{}.",
-        if errors > 0 { "Build failed. " } else { "" },
-        errors,
-        if errors == 1 { "" } else { "s" },
-        warnings,
-        if warnings == 1 { "" } else { "s" },
-    );
-    let colored = Colored::from(message).bold().cyan().underline();
-    println!("\n{colored}\n");
+    if errors > 0 && warnings > 0 {
+        let message = format!(
+            "{}Found {} error{} and {} warning{}.",
+            if errors > 0 { "Build failed. " } else { "" },
+            errors,
+            if errors == 1 { "" } else { "s" },
+            warnings,
+            if warnings == 1 { "" } else { "s" },
+        );
+        let colored = Colored::from(message).bold().cyan().underline();
+        println!("\n{colored}\n");
+    }
 
     for (idx, diagnostic) in standpoint.diagnostics.iter().enumerate() {
         let mut string = String::new();

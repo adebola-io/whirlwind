@@ -6,6 +6,7 @@ use analyzer::{
 /// Returns a function declaration that maps to a function symbol.
 pub struct FunctionRetriever<'a> {
     standpoint: &'a Standpoint,
+    // Symbol of the function to the retrieved.
     symbol: &'a SemanticSymbol,
 }
 
@@ -45,13 +46,17 @@ impl<'a> ShortcircuitTypedVisitorNoArgs<'a, &'a TypedFunctionDeclaration>
         }
     }
 }
-impl FunctionRetriever<'_> {
-    pub fn retrieve(&self) -> Option<&TypedFunctionDeclaration> {
+impl<'a> FunctionRetriever<'a> {
+    pub fn retrieve(&self) -> Option<&'a TypedFunctionDeclaration> {
         let module_idx = self.symbol.references.first()?.module_path;
         let module = self.standpoint.module_map.get(module_idx)?;
         for statement in &module.statements {
             ast::maybe!(self.statement(statement))
         }
         return None;
+    }
+    /// Creates a new retriever.
+    pub fn new(standpoint: &'a Standpoint, symbol: &'a SemanticSymbol) -> Self {
+        Self { standpoint, symbol }
     }
 }
