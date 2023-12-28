@@ -1,19 +1,21 @@
 #![cfg(test)]
 
-use crate::{ Module, SemanticSymbolKind, Standpoint, CORE_LIBRARY_PATH};
+use errors::TypeErrorType;
+
+use crate::{DiagnosticType, Error, Module, SemanticSymbolKind, Standpoint, CORE_LIBRARY_PATH};
 
 use std::path::PathBuf;
 
-macro_rules! _text_produces_errors{
+macro_rules! text_produces_errors{
     ($text: expr, $errors: expr) => {{
-        let mut module = Module::from_text($text.to_string());
+        let mut module = Module::from_text($text);
         module.module_path = Some(PathBuf::from("testing://Test.wrl"));
         let mut standpoint = Standpoint::new(true, Some(CORE_LIBRARY_PATH.into()));
         standpoint.add_module(module);
         standpoint.validate();
         for error in $errors {
-            if !standpoint.errors.iter().any(
-                |prog_error| matches!(&prog_error.error_type, ProgramErrorType::Typing(e) if e == error),
+            if !standpoint.diagnostics.iter().any(
+                |prog_diagnostic| matches!(&prog_diagnostic._type, DiagnosticType::Error(Error::Typing(e)) if &e._type == error),
             ) {
                 panic!("Error not produced {error:?}")
             }
@@ -125,7 +127,23 @@ fn it_errors_for_missing_else() {
 fn it_errors_for_incompatble_block_type() {}
 
 #[test]
-fn it_errors_on_string_and_number_binexp() {}
+fn it_errors_on_string_and_number_binexp() {
+    text_produces_errors!(
+        "
+    module Test;
+
+    function main() {
+         a := \"Hello\";
+         b := 902;
+         c := a == b;
+    }
+    ",
+        &[TypeErrorType::Incomparable {
+            left: format!("String"),
+            right: format!("UInt16")
+        }]
+    );
+}
 
 #[test]
 fn it_errors_on_invalid_unary_exp() {}

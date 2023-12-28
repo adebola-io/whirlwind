@@ -92,6 +92,8 @@ test "Testing types." {
     strArray := ["hello", "world"];
     strArrayHasHello := strArray.iter().any(fn(element) element == "hello");
     functor: fn(): fn(value: String): String := fn() fn(value) value.toStr();
+
+
     // Auto inferred generics.
     arr := [];
     arr = ["Hello", "world"]; // arr should infer type Array<String>
@@ -101,6 +103,10 @@ test "Testing types." {
     arr3 := [];
     num: Number := 99;
     arr3[0] = num; // arr3 should infer type Array<Number> 
+
+    arr4 := [];
+    arr4 == [none(), some(true)]; // arr4 should infer type Array<Maybe<Bool>>
+
 
     // Destructuring.
     model Person implements Default {

@@ -6,40 +6,40 @@ pub const PAD: u8 = 0;
 pub enum Opcode {
     // LOAD/MOVE OPCODES
     // --
-    /// Loads the immediate next byte value into the 8-bit register.
+    /// Loads the immediate next byte value into the r8 register.
     ///
     /// Format: `[LoadIr8] [value]`
     LoadIr8,
-    /// Loads the next two bytes as a u16 value into the 16-bit register.
+    /// Loads the next two bytes as a u16 value into the r16 register.
     ///
     /// Format: `[LoadIr8] [value: [a, b]]`
     LoadIr16,
-    /// Loads the next four bytes as a u32 value into the 32-bit register.
+    /// Loads the next four bytes as a u32 value into the r32 register.
     ///
     /// Format: `[LoadIr32] [value: [a, b, c, d]]`
     LoadIr32,
-    /// Loads the next eight bytes as a u64 value into the 64-bit register.
+    /// Loads the next eight bytes as a u64 value into the r64 register.
     ///
     /// Format: `[LoadIr64] [value: [a, b, c, d, e, f, g, h]]`
     LoadIr64,
-    /// Loads the immediate next byte value into the 8-bit accumulator.
-    /// It is useful for unary expressions, to circumvent having to move from the
-    /// stream to the register to the accumulator.
-    /// Format: `[LoadIacc8] [value]`
-    LoadIacc8,
-    /// Loads the next two bytes as a u16 value into the 16-bit accumulator.
-    ///
-    /// Format: `[LoadIacc16] [value: [a, b]]`
-    LoadIacc16,
-    /// Loads the next four bytes as a u32 value into the 32-bit accumulator.
-    ///
-    /// Format: `[LoadIacc32] [value: [a, b, c, d]]`
-    LoadIacc32,
-    /// Loads the next eight bytes as a u64 value into the 64-bit accumulator.
-    ///
-    /// Format: `[LoadIacc64] [value: [a, b, c, d, e, f, g, h]]`
-    LoadIacc64,
 
+    // /// Loads the immediate next byte value into the 8-bit accumulator.
+    // /// It is useful for unary expressions, to circumvent having to move from the
+    // /// stream to the register to the accumulator.
+    // /// Format: `[LoadIacc8] [value]`
+    // LoadIacc8,
+    // /// Loads the next two bytes as a u16 value into the 16-bit accumulator.
+    // ///
+    // /// Format: `[LoadIacc16] [value: [a, b]]`
+    // LoadIacc16,
+    // /// Loads the next four bytes as a u32 value into the 32-bit accumulator.
+    // ///
+    // /// Format: `[LoadIacc32] [value: [a, b, c, d]]`
+    // LoadIacc32,
+    // /// Loads the next eight bytes as a u64 value into the 64-bit accumulator.
+    // ///
+    // /// Format: `[LoadIacc64] [value: [a, b, c, d, e, f, g, h]]`
+    // LoadIacc64,
     /// Loads an immediate value into an address in the current frame.
     /// The following byte is the index to start writing from.
     /// if the next byte is n, it loads the next 2^n bytes into the frame.
@@ -50,20 +50,20 @@ pub enum Opcode {
     ///
     /// Format: `[LoadIret] [start: [a, b, c, d]]`
     LoadIret,
-    /// Loads a value from the frame into the this register.
-    ///
-    /// The next four bytes represent the address in the frame.
-    ///
-    /// Format: `[LoadthisFromFrame] [address: [a, b, c, d]]`
-    LoadthisFromFrame,
-    /// Loads the next eight bytes as a usize into the constptra register.
-    ///
-    /// Format: `[LoadIconstptra] [index: [a, b, c, d, e, f, g, h]]`
-    LoadIconstptra,
-    /// Loads the next eight bytes as a usize into the constptrb register.
-    ///
-    /// Format: `[LoadIconstptrb] [index: [a, b, c, d, e, f, g, h]]`
-    LoadIconstptrb,
+    // /// Loads a value from the frame into the this register.
+    // ///
+    // /// The next four bytes represent the address in the frame.
+    // ///
+    // /// Format: `[LoadthisFromFrame] [address: [a, b, c, d]]`
+    // LoadthisFromFrame,
+    // /// Loads the next eight bytes as a usize into the constptra register.
+    // ///
+    // /// Format: `[LoadIconstptra] [index: [a, b, c, d, e, f, g, h]]`
+    // LoadIconstptra,
+    // /// Loads the next eight bytes as a usize into the constptrb register.
+    // ///
+    // /// Format: `[LoadIconstptrb] [index: [a, b, c, d, e, f, g, h]]`
+    // LoadIconstptrb,
     /// Loads the value in an 8-bit register into the 8-bit accumulator.
     ///
     /// Format: `[Upaccr8]`
@@ -355,15 +355,14 @@ impl From<u8> for Opcode {
             2 => Opcode::LoadIr16,
             3 => Opcode::LoadIr32,
             4 => Opcode::LoadIr64,
-            5 => Opcode::LoadIacc8,
-            6 => Opcode::LoadIacc16,
-            7 => Opcode::LoadIacc32,
-            8 => Opcode::LoadIacc64,
-            9 => Opcode::LoadIframe,
-            10 => Opcode::LoadIret,
-            11 => Opcode::LoadIconstptra,
-            12 => Opcode::LoadIconstptrb,
-
+            // 5 => Opcode::LoadIacc8,
+            // 6 => Opcode::LoadIacc16,
+            // 7 => Opcode::LoadIacc32,
+            // 8 => Opcode::LoadIacc64,
+            // 9 => Opcode::LoadIframe,
+            // 10 => Opcode::LoadIret,
+            // 11 => Opcode::LoadIconstptra,
+            // 12 => Opcode::LoadIconstptrb,
             25 => Opcode::Printacc8,
             28 => Opcode::Printacc64,
             29 => Opcode::Printframe,
@@ -394,14 +393,14 @@ impl From<Opcode> for u8 {
             Opcode::LoadIr16 => 2,
             Opcode::LoadIr32 => 3,
             Opcode::LoadIr64 => 4,
-            Opcode::LoadIacc8 => 5,
-            Opcode::LoadIacc16 => 6,
-            Opcode::LoadIacc32 => 7,
-            Opcode::LoadIacc64 => 8,
+            // Opcode::LoadIacc8 => 5,
+            // Opcode::LoadIacc16 => 6,
+            // Opcode::LoadIacc32 => 7,
+            // Opcode::LoadIacc64 => 8,
             Opcode::LoadIframe => 9,
             Opcode::LoadIret => 10,
-            Opcode::LoadIconstptra => 11,
-            Opcode::LoadIconstptrb => 12,
+            // Opcode::LoadIconstptra => 11,
+            // Opcode::LoadIconstptrb => 12,
             Opcode::Upaccr8 => todo!(),
             Opcode::Uppaccr16 => todo!(),
             Opcode::Upaccr32 => todo!(),
@@ -444,7 +443,7 @@ impl From<Opcode> for u8 {
             Opcode::BreakLoop => todo!(),
             Opcode::Goto => todo!(),
             Opcode::CallNamedFunction => 51,
-            Opcode::LoadthisFromFrame => todo!(),
+            // Opcode::LoadthisFromFrame => todo!(),
             Opcode::CallAnonymousFunction => todo!(),
             Opcode::Return => 52,
             Opcode::NewInstanceValueA => 55,

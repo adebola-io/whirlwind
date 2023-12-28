@@ -11,6 +11,13 @@ This means that:
 
 will not compile.
 
+## Register Allocation.
+
+There will be 3 registers for every runtime data type in Whirilwind.
+
+-  Boolean registers _boola_, _boolb_ and _boolc_.
+-  General purpose value registers _vala_, _valb_ and _valc_.
+
 ## Representation of Opaque Types in Memory
 
 -  An opaque type has the size of its largest possible value.

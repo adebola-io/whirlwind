@@ -117,17 +117,11 @@ impl Sequence {
             Opcode::LoadIframe => {
                 self.load_iframe()?;
             }
-            Opcode::LoadIconstptra => self.load_iconstptra(),
-
-            Opcode::LoadIacc8 => self.loadiacc8(),
-            Opcode::LoadIacc16 => self.loadiacc16(),
-            Opcode::LoadIacc32 => self.loadiacc32(),
-            Opcode::LoadIacc64 => self.loadiacc64(),
 
             Opcode::Printacc8 => self.printacc8(),
             Opcode::Printacc64 => self.printacc64(),
 
-            Opcode::Printconstptra => self.printconstptra(vm),
+            // Opcode::Printconstptra => self.printconstptra(vm),
             Opcode::Addacc => self.addacc(),
             Opcode::Sqrtacc64 => self.sqrtacc(),
             Opcode::LoopFor => {
@@ -395,17 +389,17 @@ impl Sequence {
         u32::from_be_bytes(self.next_four_bytes()) as usize
     }
 
-    #[inline]
-    fn printconstptra(&mut self, vm: &mut VM) {
-        let constant = &vm.constant_pool.list[self.registers().constptra];
-        let lock = &mut stdout().lock();
-        match constant {
-            Constant::String(c) => lock.write(c.as_bytes()),
-            Constant::Number(n) => lock.write(&n.to_ne_bytes()),
-            Constant::Bool(b) => lock.write(if *b { b"true" } else { b"false" }),
-        }
-        .unwrap();
-    }
+    // #[inline]
+    // fn printconstptra(&mut self, vm: &mut VM) {
+    //     let constant = &vm.constant_pool.list[self.registers().constptra];
+    //     let lock = &mut stdout().lock();
+    //     match constant {
+    //         Constant::String(c) => lock.write(c.as_bytes()),
+    //         Constant::Number(n) => lock.write(&n.to_ne_bytes()),
+    //         Constant::Bool(b) => lock.write(if *b { b"true" } else { b"false" }),
+    //     }
+    //     .unwrap();
+    // }
 
     /// Prints the value in the 8-bit accumulator.
     #[inline]
@@ -431,12 +425,12 @@ impl Sequence {
         write!(&mut stdout().lock(), "{}\n", self.registers().acc64).unwrap();
     }
 
-    #[inline]
-    fn load_iconstptra(&mut self) {
-        let bytes = self.next_eight_bytes();
-        let value = usize::from_be_bytes(bytes);
-        self.registers_mut().constptra = value;
-    }
+    // #[inline]
+    // fn load_iconstptra(&mut self) {
+    //     let bytes = self.next_eight_bytes();
+    //     let value = usize::from_be_bytes(bytes);
+    //     self.registers_mut().constptra = value;
+    // }
 
     /// Load a range of bytes into the frameptr.
     #[inline]

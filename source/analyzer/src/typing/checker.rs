@@ -1328,7 +1328,7 @@ mod expressions {
     ) -> EvaluatedType {
         binexp.inferred_type = (|| {
             let left = typecheck_expression(&mut binexp.left, checker_ctx, symbollib);
-            let right = typecheck_expression(&mut binexp.left, checker_ctx, symbollib);
+            let right = typecheck_expression(&mut binexp.right, checker_ctx, symbollib);
             let _is_numeric =
                 is_numeric_type(&left, symbollib) && is_numeric_type(&right, symbollib);
             let mut generic_hashmap = HashMap::new();
@@ -1396,6 +1396,7 @@ mod expressions {
                         }
                     }
                 }
+
                 _ => return EvaluatedType::Unknown,
             }
         })();

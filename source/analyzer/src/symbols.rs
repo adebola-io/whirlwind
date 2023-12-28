@@ -286,6 +286,32 @@ pub enum Literal {
     },
 }
 
+impl Literal {
+    /// Returns `true` if the literal is [`StringLiteral`].
+    ///
+    /// [`StringLiteral`]: Literal::StringLiteral
+    #[must_use]
+    pub fn is_string_literal(&self) -> bool {
+        matches!(self, Self::StringLiteral { .. })
+    }
+
+    /// Returns `true` if the literal is [`NumericLiteral`].
+    ///
+    /// [`NumericLiteral`]: Literal::NumericLiteral
+    #[must_use]
+    pub fn is_numeric_literal(&self) -> bool {
+        matches!(self, Self::NumericLiteral { .. })
+    }
+
+    /// Returns `true` if the literal is [`BooleanLiteral`].
+    ///
+    /// [`BooleanLiteral`]: Literal::BooleanLiteral
+    #[must_use]
+    pub fn is_boolean_literal(&self) -> bool {
+        matches!(self, Self::BooleanLiteral { .. })
+    }
+}
+
 impl SemanticSymbol {
     /// Add a reference to this symbol.
     pub fn add_reference(&mut self, module_path: PathIndex, span: Span) {

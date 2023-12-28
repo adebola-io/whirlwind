@@ -2,10 +2,6 @@ module testing;
 
 
 function main() {
-    helloworld();
+     
 }
 
-
-function helloworld() {
-    // main()
-}

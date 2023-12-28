@@ -45,6 +45,10 @@ impl TypedExpression {
     pub fn is_literal(&self) -> bool {
         matches!(self, Self::Literal(..))
     }
+
+    pub fn is_number(&self, literals: &LiteralMap) -> bool {
+        matches!(self, Self::Literal(literal) if literals.get(*literal).is_some_and(|literal| literal.is_numeric_literal()))
+    }
 }
 
 #[derive(Debug, PartialEq)]
