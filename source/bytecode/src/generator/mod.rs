@@ -1,5 +1,5 @@
 use crate::{
-    Block, ConstantPool, FunctionPtr, FunctionRetriever, Instruction, Opcode, RegisterList, PAD,
+    Block, CallablePtr, ConstantPool, FunctionRetriever, Instruction, Opcode, RegisterList, PAD,
 };
 use analyzer::{
     EvaluatedType, PathIndex, ScopeId, SemanticSymbolKind, Standpoint, SymbolIndex,
@@ -14,7 +14,7 @@ use std::{
 
 pub struct BytecodeObject {
     pub constants: ConstantPool,
-    pub functions: Vec<FunctionPtr>,
+    pub functions: Vec<CallablePtr>,
     pub layouts: Vec<Layout>,
     pub code: Vec<u8>,
 }
@@ -76,7 +76,7 @@ pub struct FunctionManager<'standpoint> {
     /// Maps a function's symbol index to its index in the table.
     function_lookup: RefCell<HashMap<SymbolIndex, usize>>,
     /// Function dispatch table.
-    function_table: RefCell<Vec<FunctionPtr>>,
+    function_table: RefCell<Vec<CallablePtr>>,
 }
 
 impl<'standpoint> FunctionManager<'standpoint> {
@@ -88,12 +88,7 @@ impl<'standpoint> FunctionManager<'standpoint> {
             Some(index) => return *index,
             None => {
                 let mut function_table = self.function_table.borrow_mut();
-                let name = self.construct_function_name(symbol);
-                let functionptr = FunctionPtr {
-                    name,
-                    start: 0, // to be determined when the function is actually reached.
-                    calls: 0,
-                };
+                let functionptr = self.construct_callableptr(symbol);
                 let index = function_table.len();
                 function_table.push(functionptr);
                 lookup.insert(symbol, index);
@@ -108,23 +103,33 @@ impl<'standpoint> FunctionManager<'standpoint> {
             .get(&function_symbol)
             .is_some()
     }
-    /// Constructs the name of a function based on its signature
-    fn construct_function_name(&self, symbol: SymbolIndex) -> String {
+    /// Constructs a callable pointer to store in the dispatch table,
+    /// based on the symbol signature
+    fn construct_callableptr(&self, symbol: SymbolIndex) -> CallablePtr {
         let standpoint = self.standpoint;
         let symbol = standpoint.symbol_library.get(symbol).unwrap();
-        match &symbol.kind {
+        let (name, param_count) = match &symbol.kind {
             SemanticSymbolKind::Method {
                 owner_model_or_interface,
+                params,
                 ..
             } => {
                 let owner = standpoint
                     .symbol_library
                     .get(*owner_model_or_interface)
                     .unwrap();
-                format!("{}.{}", owner.name, symbol.name)
+                (format!("{}.{}", owner.name, symbol.name), params.len())
             }
-            SemanticSymbolKind::Function { .. } => format!("{}", symbol.name),
+            SemanticSymbolKind::Function { params, .. } => {
+                (format!("{}", symbol.name), params.len())
+            }
             _ => unreachable!(),
+        };
+        CallablePtr {
+            name,
+            param_count,
+            start: 0, // to be determined when the function is actually reached.
+            calls: 0,
         }
     }
     /// Creates the main() function.
@@ -135,7 +140,7 @@ impl<'standpoint> FunctionManager<'standpoint> {
         assert!(list.is_empty());
 
         function_map.insert(main_symbol, 0);
-        list.push(FunctionPtr::main());
+        list.push(CallablePtr::main());
         0
     }
 
@@ -250,7 +255,9 @@ impl<'a> BytecodeGenerator<'a> {
             TypedStmnt::TypeDeclaration(_) => todo!(),
             TypedStmnt::ModelDeclaration(_) => todo!(),
             TypedStmnt::ModuleDeclaration(_) => todo!(),
-            TypedStmnt::FunctionDeclaration(_) => todo!(),
+            TypedStmnt::FunctionDeclaration(function) => {
+                self.emit_callable(Callable::NamedFunction(function))
+            }
             TypedStmnt::InterfaceDeclaration(_) => todo!(),
             TypedStmnt::ExpressionStatement(expression)
             | TypedStmnt::FreeExpression(expression) => {
@@ -274,7 +281,7 @@ impl<'a> BytecodeGenerator<'a> {
         let index = self.callables.get_or_create(function_symbol);
         // Adds the call instruction to the bytecode.
         self.code.push(Opcode::CallNamedFunction.into());
-        index
+        (index as u32)
             .to_be_bytes()
             .into_iter()
             .for_each(|byte| self.code.push(byte));

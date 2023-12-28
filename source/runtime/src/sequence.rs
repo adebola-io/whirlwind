@@ -1,9 +1,10 @@
 use crate::{
     predefined::{INSTRUCTION_START, MAX_STACK_SIZE},
     stack::{Block, Stack, StackError},
-    vm::{ExecutionError, VM},
+    vm::VM,
 };
-use bytecode::{Constant, FunctionPtr, HeapPointer, Opcode, RegisterList, StackValue};
+use bytecode::{CallablePtr, Constant, HeapPointer, Opcode, RegisterList, StackValue};
+use errors::ExecutionError;
 use std::{
     io::{stdout, Write},
     ops::ControlFlow,
@@ -49,7 +50,7 @@ impl Sequence {
     pub fn new(
         parent: Option<SequenceId>,
         id: SequenceId,
-        function: &FunctionPtr,
+        function: &CallablePtr,
         return_address: usize,
     ) -> Self {
         let mut sequence = Self {
@@ -189,10 +190,9 @@ impl Sequence {
     /// Executes the [`Opcode::Call`] instruction.
     #[inline]
     fn call(&mut self, vm: &mut VM) -> Option<ControlFlow<SequenceStatus>> {
-        let function_idx = usize::from_be_bytes(self.next_eight_bytes());
+        let function_idx = u32::from_be_bytes(self.next_four_bytes()) as usize;
         let function = &mut vm.dispatch_table[function_idx];
         function.calls += 1;
-        println!("Calling function {}", function.name);
         if let Err(error) = self.stack.allocate_new_frame(&function, self.pc) {
             return Some(ControlFlow::Break(match error {
                 StackError::StackOverflow => SequenceStatus::Crashed(ExecutionError::StackOverflow),

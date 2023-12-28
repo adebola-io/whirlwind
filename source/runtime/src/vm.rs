@@ -3,7 +3,8 @@ use crate::{
     sequence::{Sequence, SequenceId, SequenceRequest, SequenceStatus},
 };
 use analyzer::SymbolIndex;
-use bytecode::{BytecodeObject, ConstantPool, FunctionPtr, Layout};
+use bytecode::{BytecodeObject, CallablePtr, ConstantPool, Layout};
+use errors::ExecutionError;
 use std::{
     any::Any,
     collections::HashMap,
@@ -19,18 +20,10 @@ pub struct VM {
     pub layouts: Vec<Layout>,
     pub constant_pool: ConstantPool,
     pub running_sequences: usize,
-    pub dispatch_table: Vec<FunctionPtr>,
+    pub dispatch_table: Vec<CallablePtr>,
     /// For use in scripting contexts where main() is not necessarily defined.
     autocall: bool,
     pub exited: bool,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum ExecutionError {
-    MainCrashed,
-    MainFunctionNotDefined,
-    StackOverflow,
-    IllegalMemoryAccess,
 }
 
 impl VM {
@@ -65,13 +58,13 @@ impl VM {
         };
         vm.queue.push(SequenceRequest {
             solicitor: None,
-            instruction_pointer: 2, // Since a call to main is Instruction no. 1.
+            instruction_pointer: INSTRUCTION_START,
         });
         vm
     }
 
     /// Defines the function with which to start execution.
-    pub fn define_main_function(&mut self, function: FunctionPtr) {
+    pub fn define_main_function(&mut self, function: CallablePtr) {
         self.dispatch_table.insert(0, function);
     }
 

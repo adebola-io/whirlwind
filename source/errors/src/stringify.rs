@@ -1,6 +1,6 @@
 use crate::{
-    BytecodeError, ContextErrorType, ImportErrorType, LexErrorType, ParserErrorType, TypeErrorType,
-    WarningType,
+    BytecodeError, ContextErrorType, ExecutionError, ImportErrorType, LexErrorType,
+    ParserErrorType, TypeErrorType, WarningType,
 };
 
 impl std::fmt::Display for TypeErrorType {
@@ -283,6 +283,18 @@ impl std::fmt::Display for BytecodeError {
             BytecodeError::MainReturns => "The entry main() function cannot have a return type.",
             BytecodeError::MainNotFound => "main() function not found in entry file.",
             BytecodeError::MainHasParameters => "The entry main() function cannot have parameters.",
+        };
+        write!(f, "{message}")
+    }
+}
+
+impl std::fmt::Display for ExecutionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            ExecutionError::MainCrashed => "Main sequence crashed.",
+            ExecutionError::MainFunctionNotDefined => "Main function not defined.",
+            ExecutionError::StackOverflow => "Main sequence has overflown its stack.",
+            ExecutionError::IllegalMemoryAccess => "Illegal memory access.",
         };
         write!(f, "{message}")
     }

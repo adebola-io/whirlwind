@@ -265,9 +265,9 @@ pub enum Opcode {
     /// Format: `[Goto] [destination: [a, b, c, d, e, f, g, h]]`
     Goto,
     /// Calls a named function or a method.
-    /// The next 8 bytes correspond to the index of the function in the function registry.
+    /// The next 4 bytes correspond to the index of the function in the function registry.
     ///
-    /// Format: `[CallNamedFunction] [function: [a..h]]`
+    /// Format: `[CallNamedFunction] [function: [a..d]]`
     CallNamedFunction,
     /// Calls an anonymous function.
     /// It assumes that the value in the vala register is a Value::Function and will panic

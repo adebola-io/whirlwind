@@ -10,3 +10,4 @@ analyzer = {version = "*", path = "../analyzer"}
 bytecode = {version = "*", path = "../bytecode"}
 ast = {version = "*", path = "../ast"}
 utils = {version = "*", path = "../utils"}
+errors = {version = "*", path = "../errors"}

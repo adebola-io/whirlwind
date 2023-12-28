@@ -1,11 +1,11 @@
 use crate::vm::VM;
-use bytecode::{print_instructions, FunctionPtr, Layout, Opcode, PAD};
+use bytecode::{print_instructions, CallablePtr, Layout, Opcode, PAD};
 
 fn run(instructions: &[u8]) {
     print_instructions(&instructions);
     let mut vm = VM::new();
     vm.instructions = instructions.to_vec();
-    vm.define_main_function(FunctionPtr::main());
+    vm.define_main_function(CallablePtr::main());
     vm.run().unwrap();
 }
 
@@ -34,7 +34,7 @@ fn test_runtime_hello_world() {
     ];
     print_instructions(&instructions);
     let mut vm = VM::new();
-    vm.define_main_function(FunctionPtr::main());
+    vm.define_main_function(CallablePtr::main());
     vm.instructions = instructions;
     vm.constant_pool.add(String::from("Hello, world.\n"));
     vm.run().unwrap();
@@ -81,13 +81,14 @@ fn test_runtime_square_root_of_number() {
 #[test]
 fn test_runtime_function_call_and_return() {
     let mut vm = VM::new();
-    vm.define_main_function(FunctionPtr::main());
-    vm.dispatch_table.push(FunctionPtr {
+    vm.define_main_function(CallablePtr::main());
+    vm.dispatch_table.push(CallablePtr {
         name: String::from("AnotherFunction"),
+        param_count: 0,
         start: 11,
         calls: 0,
     });
-    let function_idx = 1usize.to_be_bytes();
+    let function_idx = 1u32.to_be_bytes();
     let constidx = vm
         .constant_pool
         .add(String::from("Hello from inside a function!\n"))
@@ -100,10 +101,10 @@ fn test_runtime_function_call_and_return() {
         function_idx[1],
         function_idx[2],
         function_idx[3],
-        function_idx[4],
-        function_idx[5],
-        function_idx[6],
-        function_idx[7],
+        // function_idx[4],
+        // function_idx[5],
+        // function_idx[6],
+        // function_idx[7],
         Opcode::Exit.into(),
         // AnotherFunction:
         Opcode::LoadIconstptra.into(),
@@ -178,7 +179,7 @@ fn test_runtime_if_else() {
 #[should_panic = "called `Result::unwrap()` on an `Err` value: StackOverflow"]
 fn test_stack_overflow() {
     // Call main() recursively.
-    let func_idx = 0usize.to_be_bytes();
+    let func_idx = 0u32.to_be_bytes();
     run(&[
         PAD,
         Opcode::CallNamedFunction.into(),
@@ -186,10 +187,6 @@ fn test_stack_overflow() {
         func_idx[1],
         func_idx[2],
         func_idx[3],
-        func_idx[4],
-        func_idx[5],
-        func_idx[6],
-        func_idx[7],
         Opcode::Exit.into(),
     ])
 }
@@ -218,7 +215,7 @@ fn test_runtime_variable_init() {
 #[test]
 fn create_instance_on_heap() {
     let mut vm = VM::new();
-    vm.define_main_function(FunctionPtr::main());
+    vm.define_main_function(CallablePtr::main());
     // model Person {
     //   var id: UInt8;
     //   new() {

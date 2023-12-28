@@ -149,7 +149,7 @@ where
 {
     eprintln!(
         "{} {}",
-        Colored::from(" ERROR: ").bg_red().black().bold(),
+        Colored::from(" ERROR: ").bg_red().bold(),
         Colored::from(error.to_string()).red()
     )
 }

@@ -1,5 +1,6 @@
 #![allow(unused)]
 mod constant;
+mod from_text;
 mod generator;
 mod injunction;
 mod instruction;

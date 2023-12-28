@@ -1,9 +1,9 @@
 use crate::options::parse_cli;
 use analyzer::{Module, Standpoint};
-use bytecode::print_instructions;
 use diagnostics::print_diagnostics;
 use help::print_help;
 use options::CliCommand;
+use runtime::VM;
 use std::{path::PathBuf, process::exit};
 use utils::terminal::{self, Colorable};
 
@@ -79,7 +79,11 @@ fn check_paths(path: PathBuf, code: &mut i32, corelibpath: PathBuf, options: opt
     // ---
     let entry_path = options.file.unwrap();
     terminal::clear();
-    println!("{} {}", "Building:".color().cyan(), entry_path.display());
+    println!(
+        "{} {}",
+        "Building:".color().cyan().bold().underline(),
+        entry_path.display()
+    );
     let time = std::time::Instant::now();
     let mut standpoint = Standpoint::new(true, Some(corelibpath));
     match Module::from_path(entry_path) {
@@ -112,7 +116,7 @@ fn check_paths(path: PathBuf, code: &mut i32, corelibpath: PathBuf, options: opt
     }
 
     let elapsed = time.elapsed();
-    let build_finished = format!("Build finished in {elapsed:?}").color().green();
+    let build_finished = format!("Build finished in {elapsed:?}\n").color().green();
     println!("{build_finished}",);
 
     let object = bytecode::generate_from(&standpoint);
@@ -125,13 +129,16 @@ fn check_paths(path: PathBuf, code: &mut i32, corelibpath: PathBuf, options: opt
             return;
         }
     };
+    let mut vm = VM::from_object(object);
 
-    let mut vm = runtime::VM::from_object(object);
-    println!("\nBYTECODE:");
-    print_instructions(&vm.instructions);
-    println!("FUNCTIONS: {}", vm.dispatch_table.len());
-    vm.run().unwrap();
+    // println!("SIZE: {}B,\n\nBYTECODE:", vm.instructions.len());
+    // print_instructions(&vm.instructions);
+    // println!("FUNCTIONS: {}", vm.dispatch_table.len());
 
+    if let Err(error) = vm.run() {
+        terminal::error(error.to_string());
+        *code = 1;
+    };
     // vm
     // --
 }

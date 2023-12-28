@@ -1,7 +1,7 @@
 use crate::predefined::MAX_STACK_SIZE;
 use analyzer::PathIndex;
 use ast::Span;
-use bytecode::{FunctionPtr, RegisterList, StackValue as Value};
+use bytecode::{CallablePtr, RegisterList, StackValue as Value};
 use std::{
     ops::Range,
     panic::Location,
@@ -43,14 +43,12 @@ pub struct Block {
 
 impl CallFrame {
     /// Creates a new call frame.
-    /// By default, it starts with a single block, corresponding to the
-    /// block of the function itself.
     pub fn new(call_address: usize, start: usize, return_address: usize) -> Self {
         CallFrame {
             call_address,
             start,
             return_address,
-            blocks: vec![Block::new()],
+            blocks: vec![],
         }
     }
     /// Translates an address in the frame to an address in the overall stack.
@@ -79,7 +77,7 @@ impl Stack {
     #[inline]
     pub fn allocate_new_frame(
         &mut self,
-        function: &FunctionPtr,
+        function: &CallablePtr,
         return_address: usize,
     ) -> Result<(), StackError> {
         // The call address is always the return address - 1 instruction.
@@ -102,7 +100,6 @@ impl Stack {
     pub fn deallocate_current_frame(&mut self) -> Option<usize> {
         let frame = self.frames.pop()?;
         let size = self.space.len() - frame.start;
-        println!("{size}, {}", self.space.len());
         let shrink = self.space.len() - size;
         while self.space.len() > shrink {
             self.space.pop();

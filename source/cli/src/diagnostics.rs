@@ -106,7 +106,7 @@ pub fn print_diagnostics(standpoint: &Standpoint) -> bool {
             DiagnosticType::Warning(_) => warnings += 1,
         });
 
-    if errors > 0 && warnings > 0 {
+    if errors > 0 || warnings > 0 {
         let message = format!(
             "{}Found {} error{} and {} warning{}.",
             if errors > 0 { "Build failed. " } else { "" },
@@ -115,7 +115,10 @@ pub fn print_diagnostics(standpoint: &Standpoint) -> bool {
             warnings,
             if warnings == 1 { "" } else { "s" },
         );
-        let colored = Colored::from(message).bold().cyan().underline();
+        let mut colored = Colored::from(message).bold().cyan().underline();
+        if errors > 0 {
+            colored = colored.red();
+        }
         println!("\n{colored}\n");
     }
 
