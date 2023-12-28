@@ -13,8 +13,7 @@ use analyzer::{
 };
 pub use constant::*;
 use errors::BytecodeError;
-pub use generator::BytecodeGenerator;
-use generator::BytecodeObject;
+pub use generator::*;
 pub use injunction::*;
 pub use instruction::*;
 pub use registers::*;
@@ -52,9 +51,4 @@ pub fn generate_from(standpoint: &Standpoint) -> Result<BytecodeObject, Bytecode
     let mut generator = BytecodeGenerator::from(main, standpoint);
     let object = generator.generate()?;
     Ok(object)
-}
-
-/// Serializes a bytecode object into a stream of bytes.
-pub fn serialize_object(object: BytecodeObject) -> Vec<u8> {
-    vec![]
 }

@@ -208,8 +208,8 @@ public model Maybe<T> implements Guaranteed<T> + Try<T, ?never> {
     /// second: ?Number := none().map(double);
     /// assertThat(double.isNone());
     /// ```
-    public function map<U>(func: fn(former: T) -> U) -> ?U {
-        some(func(this?))
+    public function map<U>(transform: fn(former: T) -> U) -> ?U {
+        some(transform(this?))
     } 
     public function xor(other: ?T) -> ?T {
         if this.isSome() and other.isNone() {

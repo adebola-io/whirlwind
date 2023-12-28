@@ -7,9 +7,9 @@ public interface Addition {
     public function add(other: This) -> This;
 }
 
-public interface Negation<R> {
+public interface Negation<N> {
     /// Negates a value with the ! or not operator.
-    public function negate() -> R;
+    public function negate() -> N;
 }
 
 public interface Remainder<R> {

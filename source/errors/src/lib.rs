@@ -38,3 +38,10 @@ pub fn unused_model_symbol(name: String, span: ast::Span) -> Warning {
         warning_type: WarningType::UnusedModelSymbol(name),
     }
 }
+
+pub fn method_in_constructor(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::MethodInConstructor,
+        span,
+    }
+}

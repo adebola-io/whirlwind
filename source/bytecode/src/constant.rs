@@ -1,6 +1,7 @@
 use std::{collections::HashMap, fmt::Display};
 
 /// A smart list of unique constant values.
+#[derive(Debug)]
 pub struct ConstantPool {
     pub list: Vec<Constant>,
     /// The router redirects LiteralIndex requests to the new unique values.
@@ -25,6 +26,7 @@ impl ConstantPool {
     }
 }
 
+#[derive(Debug)]
 pub enum Constant {
     String(String),
     Number(f64),

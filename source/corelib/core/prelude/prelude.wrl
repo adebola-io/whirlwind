@@ -33,7 +33,7 @@ public use outcome.{ok, err, Outcome};
 public use maybe.{none, some, Maybe};
 public use range.Range;
 public use core.{
-    io.print,
+    io.{print, fmt},
     concurrent.{Eventual, Prospect, toSync},
     primitives.{
         String, Array, Number, Int, Float, UnsignedInt,

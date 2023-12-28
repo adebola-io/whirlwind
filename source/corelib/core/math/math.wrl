@@ -64,7 +64,7 @@ public function square(a: Number) -> Number {
 /// num := sqrt(4);
 /// assertThat(num == 2);
 /// ```
-public function sqrt(a: Number) {
+public function sqrt(a: Number) -> Number {
     todo()
 }
 

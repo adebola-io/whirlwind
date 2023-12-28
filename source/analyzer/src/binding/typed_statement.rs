@@ -38,6 +38,10 @@ impl TypedStmnt {
     pub fn is_free_expression(&self) -> bool {
         matches!(self, Self::FreeExpression(..))
     }
+
+    pub fn is_return(&self) -> bool {
+        matches!(self, Self::ReturnStatement(..))
+    }
 }
 
 #[derive(Debug, PartialEq)]

@@ -1,9 +1,9 @@
 use crate::{
     predefined::{INSTRUCTION_START, MAX_STACK_SIZE},
     stack::{Block, Stack, StackError},
-    vm::{ExecutionError, Function, VM},
+    vm::{ExecutionError, VM},
 };
-use bytecode::{Constant, HeapPointer, Opcode, RegisterList, Value};
+use bytecode::{Constant, FunctionPtr, HeapPointer, Opcode, RegisterList, Value};
 use std::{
     io::{stdout, Write},
     ops::ControlFlow,
@@ -15,6 +15,7 @@ use std::{
 pub struct SequenceId(pub usize);
 
 /// A request to the virtual machine to allocate and run another sequence.
+#[derive(Debug)]
 pub struct SequenceRequest {
     /// The sequence making this request.
     pub solicitor: Option<SequenceId>,
@@ -48,7 +49,7 @@ impl Sequence {
     pub fn new(
         parent: Option<SequenceId>,
         id: SequenceId,
-        function: &Function,
+        function: &FunctionPtr,
         return_address: usize,
     ) -> Self {
         let mut sequence = Self {
@@ -65,6 +66,18 @@ impl Sequence {
             .allocate_new_frame(function, return_address)
             .unwrap();
         sequence
+    }
+
+    pub fn main(pc: usize) -> Self {
+        Sequence {
+            parent: None,
+            id: SequenceId(0),
+            pc,
+            stack: Stack::new(),
+            time: None,
+            blob: None,
+            status: SequenceStatus::Idle,
+        }
     }
 
     /// Advances the execution in the sequence.
@@ -177,7 +190,7 @@ impl Sequence {
     #[inline]
     fn call(&mut self, vm: &mut VM) -> Option<ControlFlow<SequenceStatus>> {
         let function_idx = usize::from_be_bytes(self.next_eight_bytes());
-        let function = &mut vm.vtable[function_idx];
+        let function = &mut vm.dispatch_table[function_idx];
         function.calls += 1;
         if let Err(error) = self.stack.allocate_new_frame(&function, self.pc) {
             return Some(ControlFlow::Break(match error {

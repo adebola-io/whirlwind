@@ -26,13 +26,19 @@ pub struct Block {
     instructions: Vec<Instruction>,
 }
 
-pub struct MonomorphicFunction {
+impl FunctionPtr {
+    pub fn main() -> Self {
+        Self {
+            name: String::from("main"),
+            start: 1,
+            calls: 0,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct FunctionPtr {
     pub name: String,
     pub start: usize,
     pub calls: usize,
-}
-
-pub enum FunctionPtr {
-    Monomorphic(MonomorphicFunction),
-    Polymorphic(Vec<MonomorphicFunction>),
 }

@@ -1,7 +1,7 @@
-use crate::{predefined::MAX_STACK_SIZE, vm::Function};
+use crate::predefined::MAX_STACK_SIZE;
 use analyzer::PathIndex;
 use ast::Span;
-use bytecode::{RegisterList, Value};
+use bytecode::{FunctionPtr, RegisterList, Value};
 use std::{
     ops::Range,
     panic::Location,
@@ -79,7 +79,7 @@ impl Stack {
     #[inline]
     pub fn allocate_new_frame(
         &mut self,
-        function: &Function,
+        function: &FunctionPtr,
         return_address: usize,
     ) -> Result<(), StackError> {
         // The call address is always the return address - 1 instruction.

@@ -1,9 +1,13 @@
 module sort;
 
 use core.primitives.ops.Orderable;
-use core.primitives.Array;
 
 /// Implementation of the QuickSort algorithm in Whirlwind.
-public function quickSort<T implements Orderable>(array: Array<T>) {
+public function quickSort<T implements Orderable>(array: []T) {
+
+}
+
+/// Implementation of the MergeSort algorithm in Whirlwind.
+public function mergeSort<T implements Orderable>(array: []T) {
 
 }

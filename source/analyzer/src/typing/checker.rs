@@ -52,6 +52,7 @@ struct CurrentFunctionContext {
 }
 
 struct CurrentConstructorContext {
+    model: SymbolIndex,
     scopes: Vec<ScopeType>,
     attributes: HashMap<SymbolIndex, Vec<AttributeAssignment>>,
 }
@@ -480,6 +481,7 @@ mod statements {
             checker_ctx
                 .current_constructor_context
                 .push(CurrentConstructorContext {
+                    model: model.name,
                     scopes: Vec::new(),
                     attributes,
                 });
@@ -3229,6 +3231,15 @@ mod expressions {
                         method_symbol.name.clone(),
                         property_span,
                     ));
+                }
+                // Block access in constructor.
+                if checker_ctx
+                    .current_constructor_context
+                    .last()
+                    .is_some_and(|constructor_ctx| constructor_ctx.model == model)
+                    && !method_is_static
+                {
+                    checker_ctx.add_diagnostic(errors::method_in_constructor(property_span));
                 }
                 return Some(EvaluatedType::MethodInstance {
                     method,

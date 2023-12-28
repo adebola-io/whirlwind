@@ -1,22 +1,12 @@
-use crate::vm::{Function, Layout, VM};
-use bytecode::{Opcode, PAD};
+use crate::vm::VM;
+use bytecode::{print_instructions, FunctionPtr, Layout, Opcode, PAD};
 
 fn run(instructions: &[u8]) {
     print_instructions(&instructions);
     let mut vm = VM::new();
     vm.instructions = instructions.to_vec();
-    vm.define_main_function(Function::main());
+    vm.define_main_function(FunctionPtr::main());
     vm.run().unwrap();
-}
-
-fn print_instructions(instructions: &[u8]) {
-    for (index, byte) in instructions.iter().enumerate() {
-        if index % 10 == 0 {
-            print!("\n")
-        }
-        print!("{:02X} ", byte);
-    }
-    print!("\n\n");
 }
 
 #[test]
@@ -44,7 +34,7 @@ fn test_runtime_hello_world() {
     ];
     print_instructions(&instructions);
     let mut vm = VM::new();
-    vm.define_main_function(Function::main());
+    vm.define_main_function(FunctionPtr::main());
     vm.instructions = instructions;
     vm.constant_pool.add(String::from("Hello, world.\n"));
     vm.run().unwrap();
@@ -91,8 +81,8 @@ fn test_runtime_square_root_of_number() {
 #[test]
 fn test_runtime_function_call_and_return() {
     let mut vm = VM::new();
-    vm.define_main_function(Function::main());
-    vm.vtable.push(Function {
+    vm.define_main_function(FunctionPtr::main());
+    vm.dispatch_table.push(FunctionPtr {
         name: String::from("AnotherFunction"),
         start: 11,
         calls: 0,
@@ -228,7 +218,7 @@ fn test_runtime_variable_init() {
 #[test]
 fn create_instance_on_heap() {
     let mut vm = VM::new();
-    vm.define_main_function(Function::main());
+    vm.define_main_function(FunctionPtr::main());
     // model Person {
     //   var id: UInt8;
     //   new() {
@@ -268,6 +258,7 @@ fn create_instance_on_heap() {
         Opcode::Exit.into(),
     ];
     print_instructions(&instructions);
+    println!("{vm:?}");
     vm.instructions = instructions;
     vm.run().unwrap();
 }

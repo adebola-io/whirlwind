@@ -64,3 +64,8 @@ public function arrayIsEmpty<T>(arr: Array<T>) {
         fatalOnCaller(message.finish());
     }
 }
+
+
+test "doStuff" {
+   
+}

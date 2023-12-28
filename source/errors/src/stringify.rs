@@ -109,7 +109,8 @@ impl std::fmt::Display for TypeErrorType {
         TypeErrorType::ImplicitLoopReturn { rettype } => format!("For loop blocks do not return a value, but {rettype} is implicitly returned here."),
         TypeErrorType::Illegalterator { illegal_type } => format!("Iteration invalid because {illegal_type} does not implement Iteratable or AsIterator."),
         TypeErrorType::UsingThisBeforeConstructor => format!("Instance cannot be used before it is fully constructed."),
-        TypeErrorType::Incomparable { left, right } => format!("Cannot compare {left} to {right}."),   
+        TypeErrorType::Incomparable { left, right } => format!("Cannot compare {left} to {right}."),
+        TypeErrorType::MethodInConstructor => format!("Methods on a model instance cannot be called from inside its constructor."), 
         };
         write!(f, "{message}")
     }

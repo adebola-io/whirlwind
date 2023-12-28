@@ -246,6 +246,7 @@ pub enum TypeErrorType {
         left: String,
         right: String,
     },
+    MethodInConstructor,
 }
 
 pub fn invalid_binary(left: String, operator: BinOperator, right: String, span: Span) -> TypeError {
