@@ -285,9 +285,9 @@ public model String
     /// ```
     public function repeat(count: UnsignedInt) -> String {
         str := new String();
-        // for {} in 0..count {
-        //    str.Append(this);
-        // }
+        for {} in 0..count {
+           str.append(this);
+        }
         return str;
     }
     /// Replaces all instances of a substring and returns the new string.

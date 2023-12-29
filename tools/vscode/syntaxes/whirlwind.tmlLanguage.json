@@ -208,7 +208,6 @@
             },
             "2": {
                "patterns": [
-                  { "include": "#special_keyword" },
                   {
                      "name": "entity.name.class support.class",
                      "match": ".+"
