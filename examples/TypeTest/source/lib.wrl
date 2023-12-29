@@ -89,6 +89,7 @@ test "Testing types." {
     array := [1, 2, 3, 4, number, 255, 900];
 
     numeric := 0;
+    numeric = 900; // should coerce to UInt16.
 
     // function type coercion.
     strArray := ["hello", "world"];

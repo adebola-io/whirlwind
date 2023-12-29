@@ -113,7 +113,7 @@ impl std::fmt::Display for TypeErrorType {
         TypeErrorType::MethodInConstructor => format!("Methods on a model instance cannot be called from inside its constructor."),
         TypeErrorType::NotOrderable { name, operator } => format!("Illegal operator {operator:?}. Values of type {name} do not implement Orderable."),
         TypeErrorType::NotSequenced { name} => format!("Range cannot be created because values of type {name} do not implement Sequenced."),
-        TypeErrorType::NumericExclusiveOperation { operator, typ } => format!("{operator:?} cannot be used because {typ} is not a numeric type."), 
+        TypeErrorType::NumericExclusiveOperation { typ } => format!("{typ} is not a numeric type."), 
         };
 
         write!(f, "{message}")

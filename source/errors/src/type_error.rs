@@ -257,7 +257,6 @@ pub enum TypeErrorType {
         name: String,
     },
     NumericExclusiveOperation {
-        operator: ast::BinOperator,
         typ: String,
     },
 }

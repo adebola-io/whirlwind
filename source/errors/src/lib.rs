@@ -72,13 +72,9 @@ pub fn unimplemented_interface(offender: String, _interface: String, span: ast::
     }
 }
 
-pub fn numeric_exclusive_operation(
-    operator: ast::BinOperator,
-    typ: String,
-    span: ast::Span,
-) -> TypeError {
+pub fn numeric_exclusive_operation(typ: String, span: ast::Span) -> TypeError {
     TypeError {
-        _type: TypeErrorType::NumericExclusiveOperation { operator, typ },
+        _type: TypeErrorType::NumericExclusiveOperation { typ },
         span,
     }
 }

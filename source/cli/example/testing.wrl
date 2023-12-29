@@ -2,7 +2,8 @@ module testing;
 
 
 function main() {
-     a := 89 / 9 * 0.9 % 6;
+     print("Hello, world!");
 
+     String;
 }
 

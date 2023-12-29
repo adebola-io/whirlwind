@@ -128,6 +128,22 @@ pub fn is_numeric_type(evaluated_type: &EvaluatedType, symbollib: &SymbolLibrary
     )
 }
 
+/// Returns true if an evaluated type is unsigned.
+pub fn is_unsigned(evaluated_type: &EvaluatedType, symbollib: &SymbolLibrary) -> bool {
+    matches!(
+        evaluated_type, EvaluatedType::ModelInstance { model, .. }
+        if [
+            symbollib.uint8,
+            symbollib.uint16,
+            symbollib.uint32,
+            symbollib.uint64,
+        ].iter().filter_map(|sym| *sym).any(|sym| sym == *model)
+    ) || matches!(
+        evaluated_type, EvaluatedType::OpaqueTypeInstance {aliased_as, ..}
+        if symbollib.uint.as_ref() == aliased_as.as_ref()
+    )
+}
+
 /// Checks if an expression type can be modified in retrospect.
 pub fn is_updateable(expression: &TypedExpression, symbollib: &SymbolLibrary) -> bool {
     match expression {

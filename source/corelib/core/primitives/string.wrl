@@ -1,13 +1,13 @@
 module string;
 
-use ops.{Addition, Sequenced};
+use ops.{Addition};
 use bool.Bool;
 use core.{ 
     internals.builtin,
     collections.Hash,
     prelude.{
         AsIterator, Iteratable, 
-        Range, Display, some, none, Default
+        Range, Display, some, Default
     },
     process.todo,
 };
@@ -21,15 +21,10 @@ public model String
     + Default
     + Display
     + Hash
-    + Sequenced
 {
     var arr: []UInt8;
     new() {
         this.arr = [];
-    }
-    /// Returns the next character alphabetically in a sequence.
-    function [Sequenced.nextItem]() -> ?String {
-        if this.arr.length() > 1 { none() } else { todo() }
     }
     /// Implementation of the Display trait.
     public function [Display.toStr]() -> String {

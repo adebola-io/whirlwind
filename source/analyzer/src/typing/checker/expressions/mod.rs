@@ -2,7 +2,10 @@ mod assignment;
 mod binary;
 
 use super::*;
-use crate::{utils::is_updateable, IntermediateType};
+use crate::{
+    utils::{is_unsigned, is_updateable},
+    IntermediateType,
+};
 use assignment::typecheck_assignment_expression;
 use binary::typecheck_binary_expression;
 
@@ -278,9 +281,43 @@ fn typecheck_unary_expression(
                     })
                     .unwrap_or(EvaluatedType::Unknown)
             }
-            // UnaryOperator::Plus => todo!(),
-            // UnaryOperator::Minus => todo!(),
-            _ => EvaluatedType::Unknown,
+            UnaryOperator::Plus | UnaryOperator::Minus => {
+                if is_numeric_type(&operand_type, symbollib) {
+                    if is_unsigned(&operand_type, symbollib) {
+                        if symbollib.int.is_none() {
+                            checker_ctx.add_diagnostic(errors::missing_intrinsic(
+                                format!("Int"),
+                                unaryexp.span,
+                            ));
+                            return EvaluatedType::Unknown;
+                        }
+                        let int = evaluate(
+                            &IntermediateType::SimpleType {
+                                value: symbollib.int.unwrap(),
+                                generic_args: vec![],
+                                span: Span::default(),
+                            },
+                            symbollib,
+                            None,
+                            &mut None,
+                            0,
+                        );
+                        update_expression_type(
+                            &mut unaryexp.operand,
+                            symbollib,
+                            &vec![],
+                            Some(&int),
+                        );
+                        return int;
+                    }
+                    return operand_type;
+                } else {
+                    let typ = symbollib.format_evaluated_type(&operand_type);
+                    checker_ctx
+                        .add_diagnostic(errors::numeric_exclusive_operation(typ, unaryexp.span));
+                    return EvaluatedType::Unknown;
+                }
+            }
         }
     })();
     unaryexp.inferred_type.clone()

@@ -236,6 +236,44 @@ fn test_assignment_types() {
 }
 
 #[test]
+fn unary_minus_or_plus() {
+    let standpoint = check_types!(
+        "module Test;
+        
+        function main() {
+            a := 20;
+            a = -99;
+
+            b := 800;
+            b = -b;
+        }
+        ",
+        &[("a", "Int"), ("b", "Int")]
+    );
+    assert_eq!(
+        standpoint
+            .diagnostics
+            .iter()
+            .filter(|diagnostic| diagnostic.is_error())
+            .count(),
+        0
+    );
+
+    text_produces_errors!(
+        "module Test;
+        
+        function main() {
+            a := 'Hello, world';
+            a = -a;
+        }
+        ",
+        &[TypeErrorType::NumericExclusiveOperation {
+            typ: format!("String")
+        }]
+    );
+}
+
+#[test]
 fn it_errors_on_invalid_unary_exp() {}
 
 #[test]

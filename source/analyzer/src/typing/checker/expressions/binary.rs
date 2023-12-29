@@ -112,7 +112,6 @@ pub fn typecheck_binary_expression(
                 if !is_numeric_type(&result_type, symbollib) {
                     let result_type = symbollib.format_evaluated_type(&result_type);
                     checker_ctx.add_diagnostic(errors::numeric_exclusive_operation(
-                        binexp.operator,
                         result_type,
                         binexp.span,
                     ));
