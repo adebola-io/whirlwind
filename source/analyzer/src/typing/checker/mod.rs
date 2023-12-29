@@ -9,9 +9,9 @@ use crate::{
     },
     DiagnosticType, EvaluatedType, Literal, LiteralMap, ParameterType, PathIndex,
     ProgramDiagnostic, ScopeId, SemanticSymbolKind, SymbolIndex, SymbolLibrary, TypedAccessExpr,
-    TypedAssignmentExpr, TypedBlock, TypedCallExpr, TypedExpression, TypedFnExpr,
-    TypedFunctionDeclaration, TypedIdent, TypedIfExpr, TypedIndexExpr, TypedLogicExpr, TypedModule,
-    TypedNewExpr, TypedReturnStatement, TypedStmnt, TypedThisExpr, UnifyOptions,
+    TypedBlock, TypedCallExpr, TypedExpression, TypedFnExpr, TypedFunctionDeclaration, TypedIdent,
+    TypedIfExpr, TypedIndexExpr, TypedLogicExpr, TypedModule, TypedNewExpr, TypedReturnStatement,
+    TypedStmnt, TypedThisExpr, UnifyOptions,
 };
 use ast::{Span, UnaryOperator};
 use errors::{missing_intrinsic, TypeError, TypeErrorType};

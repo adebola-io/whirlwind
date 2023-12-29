@@ -25,7 +25,7 @@ macro_rules! text_produces_errors{
 }
 
 macro_rules! check_types {
-    ($text: expr, $types: expr) => {
+    ($text: expr, $types: expr) => {{
         let mut module = Module::from_text($text);
         module.module_path = Some(PathBuf::from("testing://Test.wrl"));
         let mut standpoint = Standpoint::new(true, Some(CORE_LIBRARY_PATH.into()));
@@ -53,7 +53,8 @@ macro_rules! check_types {
                 }
             }
         }
-    };
+        standpoint
+    }};
 }
 
 #[test]
@@ -204,6 +205,33 @@ fn other_binary_operations() {
             ("d", "Float"),
             ("e", "Float")
         ]
+    );
+}
+
+#[test]
+fn test_assignment_types() {
+    let standpoint = check_types!(
+        "module Test;
+        
+        function main() {
+            a := 0;
+            a += 9; // valid.
+
+            a += 0.293; // valid.
+            
+            string := \"Hello, world.\";
+            string += \"Welcome.\";
+        }
+        ",
+        &[("a", "Float"), ("string", "String")]
+    );
+    assert_eq!(
+        standpoint
+            .diagnostics
+            .iter()
+            .filter(|diagnostic| diagnostic.is_error())
+            .count(),
+        0
     );
 }
 
