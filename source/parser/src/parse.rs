@@ -567,8 +567,8 @@ impl<L: Lexer> Parser<L> {
                 TokenType::Operator(Dot) => self.access_expression(exp),
                 TokenType::Operator(
                     op @ (Asterisk | Divide | Carat | Ampersand | BitOr | Equal | NotEqual
-                    | LesserThan | GreaterThan | LesserThanOrEqual | GreaterThanOrEqual
-                    | Percent | Plus | Minus | Range),
+                    | LesserThan | LeftShift | RightShift | GreaterThan | LesserThanOrEqual
+                    | GreaterThanOrEqual | Percent | Plus | Minus | Range),
                 ) => self.binary_expression(exp, op),
                 TokenType::Operator(op @ (And | Or | LogicalAnd | LogicalOr)) => {
                     self.logical_expression(exp, op)

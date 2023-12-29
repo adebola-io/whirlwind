@@ -1,7 +1,11 @@
 module numeric;
 
 use core.prelude.{Display, Default};
-use ops.{Addition, Sequenced, Orderable};
+use ops.{
+    Addition, Sequenced, Subtraction, 
+    Multiplication, Division, Orderable,
+    Bitwise
+};
 
 /// An interface to be implemented by values that can be cast to an unsigned integer.
 interface Unsigned {
@@ -12,6 +16,10 @@ interface Unsigned {
 public model UInt8 
     implements Display 
         + Addition 
+        + Subtraction
+        + Multiplication
+        + Division
+        + Bitwise
         + Sequenced 
         + Default 
         + Unsigned 
@@ -24,6 +32,10 @@ public model UInt8
 public model UInt16 
     implements Display 
         + Addition 
+        + Subtraction
+        + Multiplication
+        + Division
+        + Bitwise
         + Sequenced 
         + Default 
         + Unsigned 
@@ -36,6 +48,10 @@ public model UInt16
 public model UInt32 
     implements Display 
         + Addition 
+        + Subtraction
+        + Multiplication
+        + Division
+        + Bitwise
         + Sequenced 
         + Default 
         + Unsigned
@@ -48,6 +64,10 @@ public model UInt32
 public model UInt64 
     implements Display 
         + Addition 
+        + Subtraction
+        + Multiplication
+        + Division
+        + Bitwise
         + Sequenced 
         + Default 
         + Unsigned
@@ -60,6 +80,10 @@ public model UInt64
 public model SignedInt 
     implements Display 
         + Addition 
+        + Subtraction
+        + Multiplication
+        + Division
+        + Bitwise
         + Sequenced 
         + Default 
         + Unsigned
@@ -79,7 +103,10 @@ public type Int = UnsignedInt | SignedInt;
 /// An 32-bit floating number.
 public model Float32 
     implements Display 
-    + Addition 
+    + Addition
+    + Subtraction
+    + Multiplication
+    + Division
     + Default 
     + Orderable 
 {
@@ -89,7 +116,10 @@ public model Float32
 /// A 64-bit floating number.
 public model Float64 
     implements Display 
-    + Addition 
+    + Addition
+    + Subtraction
+    + Multiplication
+    + Division 
     + Default 
     + Orderable {
     // Compiler built in.
@@ -101,9 +131,13 @@ public type Float = Float32 | Float64 | Int;
 /// An arbitrarily large integer value.
 public model BigInt 
     implements Display 
-    + Addition 
-    + Default 
-    + Orderable {
+    + Addition
+    + Subtraction
+    + Multiplication
+    + Division
+    + Bitwise 
+    + Orderable
+{
     // Compiler built in.
 }
 

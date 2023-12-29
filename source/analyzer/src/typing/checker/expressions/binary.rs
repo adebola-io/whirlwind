@@ -103,8 +103,82 @@ pub fn typecheck_binary_expression(
                     EvaluatedType::Unknown
                 }
             }
-
-            _ => EvaluatedType::Unknown,
+            // % and ^ operations.
+            // can only work on numbers.
+            BinOperator::PowerOf | BinOperator::Remainder => {
+                let lef = left.clone();
+                let result_type =
+                    converge_binary_types(symbollib, left, right, binexp, checker_ctx);
+                if !is_numeric_type(&result_type, symbollib) {
+                    let result_type = symbollib.format_evaluated_type(&result_type);
+                    checker_ctx.add_diagnostic(errors::numeric_exclusive_operation(
+                        binexp.operator,
+                        result_type,
+                        binexp.span,
+                    ));
+                    return EvaluatedType::Unknown;
+                }
+                if matches!(binexp.operator, BinOperator::Remainder) {
+                    return lef.clone();
+                }
+                return result_type;
+                // if result_type.
+            }
+            // the rest.
+            BinOperator::Multiply
+            | BinOperator::Add
+            | BinOperator::Subtract
+            | BinOperator::Divide
+            | BinOperator::BitAnd
+            | BinOperator::BitOr
+            | BinOperator::LeftShift
+            | BinOperator::RightShift => {
+                let result_type =
+                    converge_binary_types(symbollib, left, right, binexp, checker_ctx);
+                let interface_ = match binexp.operator {
+                    BinOperator::Add => symbollib.addition,
+                    BinOperator::Multiply => symbollib.multiply,
+                    BinOperator::Subtract => symbollib.subtract,
+                    BinOperator::Divide => symbollib.divide,
+                    _ => symbollib.bitwise,
+                };
+                if interface_.is_none() {
+                    checker_ctx.add_diagnostic(errors::missing_intrinsic(
+                        format!(
+                            "{}",
+                            match binexp.operator {
+                                BinOperator::Add => "Addition",
+                                BinOperator::Multiply => "Multiplication",
+                                BinOperator::Subtract => "Subtraction",
+                                BinOperator::Divide => "Division",
+                                _ => "Bitwise",
+                            }
+                        ),
+                        binexp.span,
+                    ));
+                    return EvaluatedType::Unknown;
+                }
+                let target_interface = interface_.unwrap();
+                let implementation =
+                    get_implementation_of(target_interface, &result_type, symbollib);
+                if implementation.is_none() && !result_type.is_unknown() {
+                    let result_type = symbollib.format_evaluated_type(&result_type);
+                    let interface =
+                        symbollib.format_evaluated_type(&EvaluatedType::InterfaceInstance {
+                            interface_: target_interface,
+                            is_invariant: false,
+                            generic_arguments: vec![],
+                        });
+                    checker_ctx.add_diagnostic(errors::unimplemented_interface(
+                        result_type,
+                        interface,
+                        binexp.span,
+                    ));
+                    EvaluatedType::Unknown
+                } else {
+                    return result_type;
+                }
+            } // _ => EvaluatedType::Unknown,
         }
     })();
     binexp.inferred_type.clone()

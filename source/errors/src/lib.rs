@@ -61,3 +61,24 @@ pub fn not_sequenced(name: String, span: ast::Span) -> TypeError {
         span,
     }
 }
+
+pub fn unimplemented_interface(offender: String, _interface: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::UnimplementedInterface {
+            offender,
+            _interface,
+        },
+        span,
+    }
+}
+
+pub fn numeric_exclusive_operation(
+    operator: ast::BinOperator,
+    typ: String,
+    span: ast::Span,
+) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::NumericExclusiveOperation { operator, typ },
+        span,
+    }
+}

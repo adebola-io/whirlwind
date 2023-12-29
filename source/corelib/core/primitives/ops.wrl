@@ -12,10 +12,10 @@ public interface Negation<N> {
     public function negate() -> N;
 }
 
-public interface Remainder<R> {
-    /// Finds the remainder from dividing an item.
-    public function remainder(other: This) -> R;
-}
+// public interface Remainder<R> {
+//     /// Finds the remainder from dividing an item.
+//     public function remainder(other: This) -> R;
+// }
 
 public interface Subtraction {
     public function subtract(other: This) -> This;
@@ -29,9 +29,9 @@ public interface Division {
     public function division(other: This) -> This;
 }
 
-public interface Index<I, R> {
-    public function index(indexer: I) -> R;
-}
+// public interface Index<I, R> {
+//     public function index(indexer: I) -> R;
+// }
 
 public enum Ordering {
     Less,
@@ -48,8 +48,8 @@ public interface Orderable {
     public function compare(other: This) -> Ordering;
 }
 
-/// Provides a set of methods to enable overloading of bitwise operators (`|` and ``) for custom models.
-/// It allows instances of a class to behave like integers in bitwise operations.
+/// Provides a set of methods to enable overloading of bitwise operators (`|` and `&`) for custom models.
+/// It allows instances of a model to behave like integers in bitwise operations.
 public interface Bitwise {
     /// Performs the bitwise OR operation.
     public function bitor(other: This) -> This;

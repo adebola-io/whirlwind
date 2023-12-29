@@ -145,6 +145,8 @@ impl From<Operator> for BinOperator {
             Operator::GreaterThan => Self::GreaterThan,
             Operator::LesserThanOrEqual => Self::LessThanOrEquals,
             Operator::GreaterThanOrEqual => Self::GreaterThanOrEquals,
+            Operator::LeftShift => Self::LeftShift,
+            Operator::RightShift => Self::RightShift,
             _ => panic!("Cannot convert {:?} to binary operator!", value),
         }
     }

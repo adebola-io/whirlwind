@@ -586,6 +586,10 @@ mod bind_utils {
                 (CurrentModuleType::Default, "Default") => &mut symbol_library.default,
                 (CurrentModuleType::Ops, name) => match name {
                     "Addition" => &mut symbol_library.addition,
+                    "Multiplication" => &mut symbol_library.multiply,
+                    "Subtraction" => &mut symbol_library.subtract,
+                    "Division" => &mut symbol_library.divide,
+                    "Bitwise" => &mut symbol_library.bitwise,
                     "Orderable" => &mut symbol_library.orderable,
                     "Sequenced" => &mut symbol_library.sequenced,
                     _ => return index,

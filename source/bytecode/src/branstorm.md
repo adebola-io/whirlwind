@@ -11,6 +11,10 @@ This means that:
 
 will not compile.
 
+## Arithmetic Operations.
+
+-  Dividing will always yield the type of the two operands. i.e. Int / Int = Int.
+
 ## Register Allocation.
 
 There will be 3 registers for every runtime data type in Whirilwind.

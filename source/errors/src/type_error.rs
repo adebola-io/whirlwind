@@ -256,6 +256,10 @@ pub enum TypeErrorType {
     NotSequenced {
         name: String,
     },
+    NumericExclusiveOperation {
+        operator: ast::BinOperator,
+        typ: String,
+    },
 }
 
 pub fn invalid_binary(left: String, operator: BinOperator, right: String, span: Span) -> TypeError {

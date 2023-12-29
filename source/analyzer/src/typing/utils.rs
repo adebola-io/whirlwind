@@ -128,6 +128,17 @@ pub fn is_numeric_type(evaluated_type: &EvaluatedType, symbollib: &SymbolLibrary
     )
 }
 
+/// Checks if an expression type can be modified in retrospect.
+pub fn is_updateable(expression: &TypedExpression, symbollib: &SymbolLibrary) -> bool {
+    match expression {
+        TypedExpression::Identifier(ident) => symbollib.get(ident.value).is_some_and(|symbol| {
+            matches!(&symbol.kind, SemanticSymbolKind::Variable { declared_type,.. } if declared_type.is_none())
+        }),
+        TypedExpression::Literal(_) => true,
+        _ => false,
+    }
+}
+
 /// Encloses an evaluated type as a Maybe.
 /// It does nothing if the intrinsic Maybe type is unreachable.
 pub fn maybify(typ: EvaluatedType, symbollib: &SymbolLibrary) -> EvaluatedType {

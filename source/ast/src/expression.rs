@@ -172,6 +172,8 @@ pub enum BinOperator {
     GreaterThan,         // a > b
     LessThanOrEquals,    // a <= b
     GreaterThanOrEquals, // a >= b
+    LeftShift,           // a << b
+    RightShift,          // a >> b
 }
 
 #[derive(Debug, PartialEq)]

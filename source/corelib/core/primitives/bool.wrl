@@ -3,13 +3,17 @@ module bool;
 use core.prelude.Display;
 use string.String;
 use core.prelude.{some, none};
+use ops.Negation;
 
 
 /// A representation of boolean values, `true` or `false`.
 // compiler built-in.
-public model Bool implements Display {
+public model Bool implements Display + Negation<Bool> {
     public function [Display.toStr]() -> String {
-        if this {"true"} else "false"
+        if this { "true" } else "false"
+    }
+    public function [Negation.negate]() -> Bool {
+        if this { false } else true
     }
     /// Creates a `Maybe<T>` based on the value.
     /// ### Usage

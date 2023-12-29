@@ -278,7 +278,7 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
         for { a as index, b as item } in array.iter().enumerate() 
         {
             string.append(item.toStr());
-            if index + 1 != array.length {
+            if index + 1 != array.length() {
                 string.append(",")
             }
         }

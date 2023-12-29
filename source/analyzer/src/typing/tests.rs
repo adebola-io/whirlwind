@@ -168,6 +168,46 @@ fn ordering_types() {
 }
 
 #[test]
+fn sequencing_types() {
+    check_types!(
+        "module Test;
+        
+        function main() {
+            a /*: UInt8 */ := 30;
+            b /*: UInt16 */ := 300;
+
+            c := a..b;       
+        }
+        ",
+        &[("a", "UInt16"), ("b", "UInt16"), ("c", "Range<UInt16>")]
+    );
+}
+
+#[test]
+fn other_binary_operations() {
+    check_types!(
+        "module Test;
+        
+        function main() {
+            a /*: UInt8 */ := 30;
+            b /*: UInt16 */ := 300;
+
+            c := (a + b) - (a * b);
+            d := a % 10;
+            e := d ^ 0.5;       
+        }
+        ",
+        &[
+            ("a", "UInt16"),
+            ("b", "UInt16"),
+            ("c", "UInt16"),
+            ("d", "Float"),
+            ("e", "Float")
+        ]
+    );
+}
+
+#[test]
 fn it_errors_on_invalid_unary_exp() {}
 
 #[test]

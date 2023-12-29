@@ -1,7 +1,7 @@
 mod binary;
 
 use super::*;
-use crate::IntermediateType;
+use crate::{utils::is_updateable, IntermediateType};
 use binary::typecheck_binary_expression;
 
 /// Typechecks an expression.
@@ -377,13 +377,27 @@ fn typecheck_assignment_expression(
             | EvaluatedType::Generic { .. }
             | EvaluatedType::OpaqueTypeInstance { .. }
             | EvaluatedType::FunctionExpressionInstance { .. } => {
-                match unify_types(
+                let mut unification = unify_types(
                     &left_type,
                     &right_type,
                     symbollib,
                     UnifyOptions::Conform,
                     Some(&mut generic_hashmap),
-                ) {
+                );
+                if is_numeric_type(&left_type, symbollib)
+                    && is_updateable(&assexp.left, &symbollib)
+                    && is_numeric_type(&right_type, symbollib)
+                    && is_updateable(&assexp.left, &symbollib)
+                {
+                    unification = unification.or(unify_types(
+                        &right_type,
+                        &left_type,
+                        symbollib,
+                        UnifyOptions::Conform,
+                        Some(&mut generic_hashmap),
+                    ))
+                }
+                match unification {
                     Ok(result_type) => result_type,
                     Err(errortypes) => {
                         for _type in errortypes {
@@ -889,7 +903,9 @@ fn typecheck_array_expression(
             );
             // For numeric types, casting should occur bidirectionally.
             // So that elements will always scale the array upwards in size.
-            if is_numeric_type(&next_type, symbollib) && is_numeric_type(&evaluated_type, symbollib)
+            if is_numeric_type(&next_type, symbollib)
+                && is_numeric_type(&evaluated_type, symbollib)
+                && is_updateable(&array.elements[i], symbollib)
             {
                 unification = unification.or(unify_types(
                     &evaluated_type,

@@ -46,7 +46,7 @@ impl std::fmt::Display for TypeErrorType {
             format!("The enclosing function has no return type, but '{found}' is being returned here.")
         } else {format!("The enclosing function expects a return type of '{expected}' but found '{found}'.")},
         TypeErrorType::NoSuchProperty { base_type, property } => format!("Property '{property}' does not exist on a value of type '{base_type}'."),
-        TypeErrorType::UnimplementedInterface { offender, _interface } => format!("Assignment failed because the type '{offender}' does not implement '{_interface}'."),
+        TypeErrorType::UnimplementedInterface { offender, _interface } => format!("Operation failed because the type '{offender}' does not implement '{_interface}'."),
         TypeErrorType::NotCallable { caller } => format!("{caller} is not a callable type."),
         TypeErrorType::IllegalModelCall { name } => format!("'{name}' refers to a model, which can be constructed, rather than called. Did you mean to contruct it with `new {name}(...)`?"),
         TypeErrorType::MismatchedFunctionArgs { expected, found, least_required } => match least_required {
@@ -112,8 +112,8 @@ impl std::fmt::Display for TypeErrorType {
         TypeErrorType::Incomparable { left, right } => format!("Cannot compare {left} to {right}."),
         TypeErrorType::MethodInConstructor => format!("Methods on a model instance cannot be called from inside its constructor."),
         TypeErrorType::NotOrderable { name, operator } => format!("Illegal operator {operator:?}. Values of type {name} do not implement Orderable."),
-        TypeErrorType::NotSequenced { name} => format!("Range cannot be created because values of type {name} do not implement Sequenced."), 
-        
+        TypeErrorType::NotSequenced { name} => format!("Range cannot be created because values of type {name} do not implement Sequenced."),
+        TypeErrorType::NumericExclusiveOperation { operator, typ } => format!("{operator:?} cannot be used because {typ} is not a numeric type."), 
         };
 
         write!(f, "{message}")
