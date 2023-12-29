@@ -556,7 +556,7 @@ mod bind_utils {
                 (CurrentModuleType::Bool, "Bool") => &mut symbol_library.bool,
                 (CurrentModuleType::Prospect, "Prospect") => &mut symbol_library.prospect,
                 (CurrentModuleType::Maybe, "Maybe") => &mut symbol_library.maybe,
-                (CurrentModuleType::Numeric, _) => match entry.name() {
+                (CurrentModuleType::Numeric, name) => match name {
                     "Int" => &mut symbol_library.int,
                     "SignedInt" => &mut symbol_library.sint,
                     "UnsignedInt" => &mut symbol_library.uint,
@@ -569,13 +569,13 @@ mod bind_utils {
                     "Float64" => &mut symbol_library.float64,
                     _ => return index,
                 },
-                (CurrentModuleType::Internal, _) => match entry.name() {
+                (CurrentModuleType::Internal, name) => match name {
                     "Injunction" => &mut symbol_library.injunction,
                     "invoke" => &mut symbol_library.invoke,
                     _ => return index,
                 },
                 (CurrentModuleType::Never, "never") => &mut symbol_library.never,
-                (CurrentModuleType::Iteration, _) => match entry.name() {
+                (CurrentModuleType::Iteration, name) => match name {
                     "Iteratable" => &mut symbol_library.iteratable,
                     "AsIterator" => &mut symbol_library.asiter,
                     _ => return index,
@@ -584,7 +584,12 @@ mod bind_utils {
                 (CurrentModuleType::Guaranteed, "Guaranteed") => &mut symbol_library.guaranteed,
                 (CurrentModuleType::Range, "Range") => &mut symbol_library.range,
                 (CurrentModuleType::Default, "Default") => &mut symbol_library.default,
-                (CurrentModuleType::Ops, "Addition") => &mut symbol_library.addition,
+                (CurrentModuleType::Ops, name) => match name {
+                    "Addition" => &mut symbol_library.addition,
+                    "Orderable" => &mut symbol_library.orderable,
+                    "Sequenced" => &mut symbol_library.sequenced,
+                    _ => return index,
+                },
                 _ => return index,
             }) = Some(index);
         }

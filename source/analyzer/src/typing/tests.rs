@@ -11,6 +11,7 @@ macro_rules! text_produces_errors{
         let mut module = Module::from_text($text);
         module.module_path = Some(PathBuf::from("testing://Test.wrl"));
         let mut standpoint = Standpoint::new(true, Some(CORE_LIBRARY_PATH.into()));
+        standpoint.validate();
         standpoint.add_module(module);
         standpoint.validate();
         for error in $errors {
@@ -28,6 +29,7 @@ macro_rules! check_types {
         let mut module = Module::from_text($text);
         module.module_path = Some(PathBuf::from("testing://Test.wrl"));
         let mut standpoint = Standpoint::new(true, Some(CORE_LIBRARY_PATH.into()));
+        standpoint.validate();
         let path_idx = standpoint.add_module(module).unwrap();
         standpoint.validate();
         let symbol_library = &standpoint.symbol_library;
@@ -43,7 +45,11 @@ macro_rules! check_types {
                         }
                     };
                     let inferred_type_symbol = symbol_library.format_evaluated_type(inferred_type);
-                    assert_eq!(&inferred_type_symbol, type_value);
+                    assert_eq!(
+                        &inferred_type_symbol, type_value,
+                        "Errors: {:#?}",
+                        standpoint.diagnostics
+                    );
                 }
             }
         }
@@ -142,6 +148,22 @@ fn it_errors_on_string_and_number_binexp() {
             left: format!("String"),
             right: format!("UInt16")
         }]
+    );
+}
+
+#[test]
+fn ordering_types() {
+    check_types!(
+        "module Test;
+        
+        function main() {
+            a /*: UInt8 */ := 30;
+            b /*: UInt16 */ := 300;
+
+            c := b > a;       
+        }
+        ",
+        &[("a", "UInt16"), ("b", "UInt16"), ("c", "Bool")]
     );
 }
 

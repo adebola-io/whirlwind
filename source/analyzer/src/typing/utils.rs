@@ -1,7 +1,7 @@
 use crate::{
-    evaluate, unify_generic_arguments, unify_types, EvaluatedType, LiteralMap, ParameterType,
-    SemanticSymbolKind, SymbolIndex, SymbolLibrary, TypecheckerContext, TypedExpression,
-    UnifyOptions,
+    evaluate, unify_generic_arguments, unify_types, DiagnosticType, EvaluatedType, LiteralMap,
+    ParameterType, ProgramDiagnostic, SemanticSymbolKind, SymbolIndex, SymbolLibrary,
+    TypecheckerContext, TypedExpression, UnifyOptions,
 };
 use errors::{TypeError, TypeErrorType};
 /// Returns an intrinsic symbol from the symbol table or returns an unknown type.
@@ -12,6 +12,37 @@ macro_rules! get_intrinsic {
             None => return EvaluatedType::Unknown,
         }
     }};
+}
+
+/// Checks that a symbol is not unused.
+pub fn check_usage(symbol: &crate::SemanticSymbol, checker_ctx: &mut TypecheckerContext<'_>) {
+    // Unused symbols.
+    if !symbol.kind.is_public()
+        && symbol.references.len() == 1
+        && symbol.references[0].starts.len() == 1
+    {
+        match symbol.kind {
+            SemanticSymbolKind::Import {
+                source: Some(_), ..
+            } => {
+                let span = symbol.ident_span();
+                let name = symbol.name.to_owned();
+                checker_ctx.diagnostics.push(ProgramDiagnostic {
+                    offending_file: checker_ctx.path_idx,
+                    _type: DiagnosticType::Warning(errors::unused_import_symbol(name, span)),
+                })
+            }
+            SemanticSymbolKind::Model { .. } => {
+                let span = symbol.ident_span();
+                let name = symbol.name.to_owned();
+                checker_ctx.diagnostics.push(ProgramDiagnostic {
+                    offending_file: checker_ctx.path_idx,
+                    _type: DiagnosticType::Warning(errors::unused_model_symbol(name, span)),
+                })
+            }
+            _ => {}
+        }
+    }
 }
 
 /// Encloses an evaluated type as a prospect.
@@ -26,6 +57,25 @@ pub fn prospectify(typ: EvaluatedType, symbollib: &SymbolLibrary) -> EvaluatedTy
         return EvaluatedType::ModelInstance {
             model,
             generic_arguments: vec![(prospect_generic_parameter, typ)],
+            is_invariant: false,
+        };
+    } else {
+        return typ;
+    }
+}
+
+/// Encloses an evaluated type as a range.
+/// It does nothing if the intrinsic Range type is unreachable.
+pub fn rangify(typ: EvaluatedType, symbollib: &SymbolLibrary) -> EvaluatedType {
+    if let Some(model) = symbollib.range {
+        let range_symbol = symbollib.get(model).unwrap();
+        let range_generic_parameter = match &range_symbol.kind {
+            SemanticSymbolKind::Model { generic_params, .. } => generic_params[0],
+            _ => unreachable!(),
+        };
+        return EvaluatedType::ModelInstance {
+            model,
+            generic_arguments: vec![(range_generic_parameter, typ)],
             is_invariant: false,
         };
     } else {
@@ -489,6 +539,19 @@ pub fn get_implementation_of(
                 if let EvaluatedType::InterfaceInstance { interface_, .. } = &evaluated {
                     if *interface_ == target_interface {
                         return Some(evaluated);
+                    }
+                }
+            }
+            return None;
+        }
+        EvaluatedType::OpaqueTypeInstance {
+            available_interfaces,
+            ..
+        } => {
+            for interface in available_interfaces {
+                if let EvaluatedType::InterfaceInstance { interface_, .. } = interface {
+                    if *interface_ == target_interface {
+                        return Some(interface.clone());
                     }
                 }
             }

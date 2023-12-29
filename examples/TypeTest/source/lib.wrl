@@ -8,7 +8,7 @@ test "Testing types." {
         return value;
     }
     /// Swaps the elements of a tuple.
-    function Swap<T, U>(tuple: Tuple<T, U>): Tuple<U, T> {
+    function Swap<T, U>(tuple: Tuple<T, U>) -> Tuple<U, T> {
         tuple.swap()
     }
     // swapping variables.
@@ -88,6 +88,8 @@ test "Testing types." {
     number = 12;
     array := [1, 2, 3, 4, number, 255, 900];
 
+    numeric := 0;
+
     // function type coercion.
     strArray := ["hello", "world"];
     strArrayHasHello := strArray.iter().any(fn(element) element == "hello");
@@ -116,7 +118,7 @@ test "Testing types." {
             this.name = name;
             this.age = Maybe.unwrapOrDefault(age);
         }
-        static function [Default.init](): This {
+        static function [Default.init]() -> This {
             return new Person("{unknown}");
         }
     }

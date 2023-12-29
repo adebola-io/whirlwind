@@ -217,7 +217,9 @@ pub enum TypeErrorType {
     ReturnFromConstructor,
     UsingAttributeBeforeAssign,
     UnassignedAttribute, // InfiniteType,
-    UninferrableVariable,
+    UninferrableVariable {
+        name: String,
+    },
     InvalidSize {
         error: String,
     },
@@ -247,6 +249,13 @@ pub enum TypeErrorType {
         right: String,
     },
     MethodInConstructor,
+    NotOrderable {
+        name: String,
+        operator: BinOperator,
+    },
+    NotSequenced {
+        name: String,
+    },
 }
 
 pub fn invalid_binary(left: String, operator: BinOperator, right: String, span: Span) -> TypeError {
@@ -650,9 +659,9 @@ pub fn unassigned_attribute(span: ast::Span) -> TypeError {
     }
 }
 
-pub fn uninferrable_variable(span: ast::Span) -> TypeError {
+pub fn uninferrable_variable(name: String, span: ast::Span) -> TypeError {
     TypeError {
-        _type: TypeErrorType::UninferrableVariable,
+        _type: TypeErrorType::UninferrableVariable { name },
         span,
     }
 }

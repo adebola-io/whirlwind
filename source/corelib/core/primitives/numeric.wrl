@@ -1,7 +1,7 @@
 module numeric;
 
 use core.prelude.{Display, Default};
-use ops.{Addition, Sequenced};
+use ops.{Addition, Sequenced, Orderable};
 
 /// An interface to be implemented by values that can be cast to an unsigned integer.
 interface Unsigned {
@@ -14,7 +14,9 @@ public model UInt8
         + Addition 
         + Sequenced 
         + Default 
-        + Unsigned {
+        + Unsigned 
+        + Orderable 
+{
     // Compiler built in.
 }
 
@@ -24,7 +26,9 @@ public model UInt16
         + Addition 
         + Sequenced 
         + Default 
-        + Unsigned {
+        + Unsigned 
+        + Orderable 
+{
     // Compiler built in.
 }
 
@@ -34,7 +38,9 @@ public model UInt32
         + Addition 
         + Sequenced 
         + Default 
-        + Unsigned {
+        + Unsigned
+        + Orderable 
+{
     // Compiler built in.
 }
 
@@ -44,7 +50,9 @@ public model UInt64
         + Addition 
         + Sequenced 
         + Default 
-        + Unsigned {
+        + Unsigned
+        + Orderable 
+{
     // Compiler built in.
 }
 
@@ -54,7 +62,9 @@ public model SignedInt
         + Addition 
         + Sequenced 
         + Default 
-        + Unsigned {
+        + Unsigned
+        + Orderable 
+{
     // Compiler built in.
 }
 
@@ -67,12 +77,21 @@ public type UInt = UnsignedInt;
 public type Int = UnsignedInt | SignedInt;
 
 /// An 32-bit floating number.
-public model Float32 implements Display + Addition + Default {
+public model Float32 
+    implements Display 
+    + Addition 
+    + Default 
+    + Orderable 
+{
     // Compiler built in.
 }
 
 /// A 64-bit floating number.
-public model Float64 implements Display + Addition + Default {
+public model Float64 
+    implements Display 
+    + Addition 
+    + Default 
+    + Orderable {
     // Compiler built in.
 }
 
@@ -80,7 +99,11 @@ public model Float64 implements Display + Addition + Default {
 public type Float = Float32 | Float64 | Int;
 
 /// An arbitrarily large integer value.
-public model BigInt implements Display + Addition + Default {
+public model BigInt 
+    implements Display 
+    + Addition 
+    + Default 
+    + Orderable {
     // Compiler built in.
 }
 

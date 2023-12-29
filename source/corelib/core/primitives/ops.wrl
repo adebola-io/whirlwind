@@ -39,8 +39,10 @@ public enum Ordering {
     Equal,
 }
 
-/// This interface is implemented by models that can be compared in a sequence
-/// to other models of the same type.
+/// This interface should be implemented by models that can be ordered and compared
+/// relative to each other. 
+/// 
+/// It allows overloading of the `<`, `>`, `<=` and `>=` operators.
 public interface Orderable {
     /// Compares two values together.
     public function compare(other: This) -> Ordering;

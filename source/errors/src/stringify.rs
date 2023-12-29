@@ -91,7 +91,7 @@ impl std::fmt::Display for TypeErrorType {
         TypeErrorType::ReturnFromConstructor => format!("Model constructors do not expect a return value."),
         TypeErrorType::UsingAttributeBeforeAssign => format!("Attribute is being used before it is assigned."),
         TypeErrorType::UnassignedAttribute => format!("Attribute is not assigned a definitive initial value in the constructor."),
-        TypeErrorType::UninferrableVariable => format!("Cannot infer type of variable. Consider adding type annotations."),
+        TypeErrorType::UninferrableVariable {name} => format!("Cannot fully infer the type of {name}. Consider adding type annotations."),
         TypeErrorType::InvalidSize { error } => error.clone(),
         TypeErrorType::ThisInStaticMethod => format!("The 'this' identifier cannot be used in a static method."),
         TypeErrorType::CompositeError { main_error, sub_errors } => {
@@ -110,8 +110,12 @@ impl std::fmt::Display for TypeErrorType {
         TypeErrorType::Illegalterator { illegal_type } => format!("Iteration invalid because {illegal_type} does not implement Iteratable or AsIterator."),
         TypeErrorType::UsingThisBeforeConstructor => format!("Instance cannot be used before it is fully constructed."),
         TypeErrorType::Incomparable { left, right } => format!("Cannot compare {left} to {right}."),
-        TypeErrorType::MethodInConstructor => format!("Methods on a model instance cannot be called from inside its constructor."), 
+        TypeErrorType::MethodInConstructor => format!("Methods on a model instance cannot be called from inside its constructor."),
+        TypeErrorType::NotOrderable { name, operator } => format!("Illegal operator {operator:?}. Values of type {name} do not implement Orderable."),
+        TypeErrorType::NotSequenced { name} => format!("Range cannot be created because values of type {name} do not implement Sequenced."), 
+        
         };
+
         write!(f, "{message}")
     }
 }

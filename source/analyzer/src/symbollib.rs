@@ -47,6 +47,7 @@ pub struct SymbolLibrary {
     pub bitwise: Option<SymbolIndex>,
     pub subtract: Option<SymbolIndex>,
     pub orderable: Option<SymbolIndex>,
+    pub sequenced: Option<SymbolIndex>,
     pub multiply: Option<SymbolIndex>,
     pub divide: Option<SymbolIndex>,
     pub remainder: Option<SymbolIndex>,

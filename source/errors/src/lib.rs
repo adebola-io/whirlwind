@@ -47,3 +47,17 @@ pub fn method_in_constructor(span: ast::Span) -> TypeError {
         span,
     }
 }
+
+pub fn not_orderable(operator: ast::BinOperator, name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::NotOrderable { name, operator },
+        span,
+    }
+}
+
+pub fn not_sequenced(name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::NotSequenced { name },
+        span,
+    }
+}
