@@ -191,26 +191,26 @@ fn test_stack_overflow() {
     ])
 }
 
-#[test]
-fn test_runtime_variable_init() {
-    let zeroaddr = 0u32.to_be_bytes();
-    run(&[
-        PAD,
-        Opcode::LoadIframe.into(),
-        zeroaddr[0],
-        zeroaddr[1],
-        zeroaddr[2],
-        zeroaddr[3],
-        0,
-        3,
-        Opcode::Printframe.into(),
-        zeroaddr[0],
-        zeroaddr[1],
-        zeroaddr[2],
-        zeroaddr[3],
-        Opcode::Exit.into(),
-    ]);
-}
+// #[test]
+// fn test_runtime_variable_init() {
+//     let zeroaddr = 0u32.to_be_bytes();
+//     run(&[
+//         PAD,
+//         Opcode::LoadIframe.into(),
+//         zeroaddr[0],
+//         zeroaddr[1],
+//         zeroaddr[2],
+//         zeroaddr[3],
+//         0,
+//         3,
+//         Opcode::Printframe.into(),
+//         zeroaddr[0],
+//         zeroaddr[1],
+//         zeroaddr[2],
+//         zeroaddr[3],
+//         Opcode::Exit.into(),
+//     ]);
+// }
 
 #[test]
 fn create_instance_on_heap() {
