@@ -231,7 +231,7 @@ impl BytecodeMemoryManager {
         return id;
     }
 
-    /// Loads a value into the functionptr register.
+    /// Loads a value into a functionptr register.
     /// Returns the id of the loaded register.
     pub fn load_immediate_function_ptr(&mut self, value: CallablePtrId) -> RegisterId {
         let mut register = self.get_free_register(RegisterGroup::FunctionPtr);
@@ -315,6 +315,7 @@ impl BytecodeMemoryManager {
         return id;
     }
 
+    /// Returns a particular register. It will panic if the register does not exist.
     pub fn get_register_mut(&mut self, from: &(RegisterGroup, RegisterId)) -> &mut Register {
         &mut self
             .frame_stack
@@ -325,6 +326,7 @@ impl BytecodeMemoryManager {
             .expect("Could not find group for data type")[from.1 .0 as usize]
     }
 
+    /// Clears the state of a register
     pub fn clear_register(&mut self, register: (RegisterGroup, RegisterId)) {
         let register = self.get_register_mut(&register);
         register.state = RegisterState::Empty;
