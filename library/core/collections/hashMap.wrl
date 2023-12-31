@@ -1,0 +1,33 @@
+module hashMap;
+
+use core.prelude.todo;
+use core.prelude.Iteratable;
+use core.collections.Tuple;
+
+public interface Hash {}
+
+/// An interface to be implemented by models that can be transformed into
+/// a hashmap of sorts.
+public interface ToMap<K, V> {
+    public function toMap() -> HashMap<K, V>;
+}
+
+public model HashMap<K implements Hash, V> implements Iteratable<Tuple<K, V>> {
+    new(){}
+    /// Inserts a key-value pair into the hashmap.
+    /// 
+    /// If the key is already present in the map, then it will be replaced.
+    /// ### Usage
+    /// ```
+    /// ```
+    public function set(key: K, value: V) -> V {
+        todo()
+    }
+    /// Retrieves a value from the hashmap.
+    /// ### Usage
+    /// ```
+    /// ```
+    public function get(key: K) -> V {
+        todo()
+    }
+}

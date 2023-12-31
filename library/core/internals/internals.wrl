@@ -1,0 +1,16 @@
+/// ## Core of the Core.
+/// This module is the beating heart of Whirlwind, responsible for defining and orchestrating
+/// critical low-level functions and data manipulations.
+/// 
+/// It is **strictly** for internal core library development and optimization
+/// purposes. Treat everything within it as unsafe, unstable and unpredictable, unless
+/// stated otherwise. Modifying its contents or directly depending on them 
+/// _will_ have unintended consequences.
+/// 
+/// If you break anything, it's not my fault.
+module internals;
+
+
+public use never.never;
+public use builtin;
+public use injunction.{Injunction, invoke};

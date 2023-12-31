@@ -1,7 +1,7 @@
 > **THIS PROJECT IS 60% INCOMPLETE. LOOK AWAY.**
 
 <h1 align=center>
-   <img width="120" src="./assets/Icon.svg" alt="Whirlwind Icon"/>
+   <img width="120" src="./assets/wrl_color_2.svg" alt="Whirlwind Icon"/>
    <p><i>Whirlwind.</i></p>
 </h1>
 
@@ -17,8 +17,9 @@ For more information relating to the source code, refer to the [docs](./docs/REA
 
 -  First Class Functions.
 -  Static, Nominal Typing System.
--  Support for Generic Programming and Union Types.
--  Inbuilt Testing capabilities.
+-  Support for Generic Programming.
+-  Support for Union Types.
+-  Inbuilt Testing capabilities. (todo)
 -  Modular organization.
 
 ## Syntax
@@ -27,14 +28,14 @@ Whirlwind is inspired heavily by the syntax of already existing languages. An ex
 
 ```typescript
 /// Function to add two numbers.
-function Add(a: Int, b: Int): Int {
+function add(a: Int, b: Int): Int {
    return a + b;
 }
 
 /// Entry to the program.
 function main() {
-   c := Add(2, 3);
-   core.io.Println(c);
+   c := add(2, 3);
+   print(c);
 }
 ```
 

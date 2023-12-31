@@ -1,0 +1,89 @@
+module process;
+
+use core.{
+    primitives.String,
+    primitives.UnsignedInt,
+    primitives.UInt8,
+    concurrent.CurrentSequence,
+    internals.{builtin, never},
+};
+
+/// Unwinds the stack by one frame and crashes with a fatal error.
+public function fatalOnCaller(message: String) -> never  {
+    return builtin.sequence.crashOneStep(message);
+}
+
+/// Indicates that the current piece of code is unfinished.
+/// 
+/// Developers can use this function as a temporary marker for incomplete work.
+/// It is also useful for satisfying the type system when implementing other functionality.
+/// 
+/// This function will *always* cause the sequence to crash.
+/// ### Usage
+/// ```
+/// function positiveSquare(a: Int) -> Outcome<Int, String> {
+///     if a >= 0 {
+///         return ok(a * a);
+///     } else {
+///         todo() // will implement later.
+///     }
+/// }
+/// ```
+public function todo(message?: String) -> never {
+    return fatalOnCaller(message.unwrapOr("Entered unfinished code."));
+}
+
+/// Called when an execution sequence encounters an unrecoverable or
+/// unexpected condition. It causes the sequence to
+/// abruptly terminate or crash, unwinding the sequence's stack.
+/// 
+/// If the sequence has no recover callback attached, 
+/// then the crash will bubble up, crashing the parent sequence, and then its parent,
+/// up until it encounters a recovery, or it crashes the main program sequence.
+///
+/// ### Usage
+/// ```
+/// function divide(number: Int, divisor: Int) -> Float {
+///     if divisor == 0 {
+///         fatal("Cannot divide by zero!");
+///     } else {
+///         return a / b;
+///     }
+/// }
+/// ```
+public function fatal(message?: String) -> never {
+    return builtin.sequence.crash(message);
+}
+
+/// Closes all sequences and exits the program with a given code.
+/// ### Usage
+/// ```
+/// use core.process.exit;
+/// 
+/// exit(0);
+/// ```
+public function exit(code?: UInt8) -> never {
+    return builtin.exit(code);
+}
+
+/// Returns the value of an environment variable.
+public function getEnv(varName: String) -> ?String {
+    todo()
+}
+
+
+/// Returns a string value corresponding to the path of the current working directory.
+/// ### Usage
+/// ```
+/// currentDir := core.process.cwd();
+/// print("The current directory is " + currentDir);
+/// ```
+public function cwd() -> String {
+    return builtin.sequence.cwd();
+}
+
+/// Schedules a function to run after a duration elapses.
+public function waitThen(callback: fn(), timeout: UnsignedInt) {
+    CurrentSequence.sleep(timeout);
+    callback();
+}

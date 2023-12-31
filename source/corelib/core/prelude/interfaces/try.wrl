@@ -1,7 +1,0 @@
-module try;
-
-use core.prelude.Outcome;
-
-public interface Try<T, U> {
-    function try() -> Outcome<T, U>;
-}

@@ -1,0 +1,123 @@
+module template;
+
+use core.collections.HashMap;
+use core.primitives.String;
+use core.prelude.Display;
+use core.prelude.todo;
+use core.prelude.UnsignedInt;
+
+
+/// The Template model helps in the construction of dynamic strings by 
+/// embedding expressions within a formatted template. It
+/// works by defining and substituting characters with values retreived from
+/// various sources, ensuring support for basic transformations and type safety.
+public model Template implements Display {
+    var template: String;
+    var arguments: []String;
+    var map: HashMap<String, String>;
+    var transforms: []fn(x: String) -> String;
+    
+    new(origin: String) {
+        this.map = new HashMap();
+        this.template = origin;
+        this.transforms = [];
+        this.arguments = [];
+    }
+    public function [Display.toStr]() -> String {
+        return this.finish();
+    }
+    /// Sets an argument based on the list of named parameters in the template string.
+    /// ### Usage
+    /// ```
+    /// weather := "bright";
+    /// emotion := "happy";
+    /// 
+    /// template := core.io.fmt(
+    ///            "The day is %{weather}, 
+    ///             It's bright and fair,
+    ///             Oh %{emotion} day,
+    ///             The day of joy!");
+    /// 
+    /// completed := template
+    ///                 .set("weather", weather)
+    ///                 .set("emotion", emotion)
+    ///                 .finish();
+    /// 
+    /// assert(completed)
+    ///    .equals("The day is bright, 
+    ///             It's bright and fair,
+    ///             Oh happy day,
+    ///             The day of joy!");
+    /// ```
+    public function set<T implements Display>(param: String, value: T) -> This {
+        this.map.set(param, value.toStr());
+        return this;
+    }
+    /// Adds an argument according to the list of positional parameters
+    /// in the template string.
+    /// ### Usage
+    /// ```
+    /// name := "Sefunmi";
+    /// age := 21;
+    /// 
+    /// template := core.io.fmt("My name is % and I am % years old.");
+    /// completed := template.add(name).add(age).finish();
+    /// 
+    /// print(completed); // Will print out "My name is Sefunmi and I am 21 years old."
+    /// ```
+    public function add<T implements Display>(value: T) -> This {
+        this.arguments.push(value.toStr());
+        return this;
+    }
+    /// Appends new template text to the end of the template.
+    /// ### Usage
+    /// ```
+    /// name := core.io.fmt("Welcome, %!");
+    /// name.add("Mark");
+    /// 
+    /// name.extend(" Good %.");
+    /// name.add("Morning");
+    /// 
+    /// assert(name.finish()).equals("Welcome, Mark! Good Morning.");
+    /// ```
+    public function extend(suffix: String) -> This {
+        this.template += suffix;
+        return this;
+    }
+    /// Transforms a positional parameter with a function.
+    /// The positional arguments are zero-based, meaning 0
+    /// corresponds to the first argument.
+    /// 
+    /// If the argument index is not within the template, then the
+    /// transformer is ignored until it is.
+    /// ### Usage
+    /// ```
+    /// template := core.io.fmt("Hello %!");
+    /// 
+    /// template.transform(0, fn(x) x.capitalCase());
+    /// template.add("john");
+    /// 
+    /// assert(template.finish()).equals("Hello, John!");
+    /// ```
+    public function transform(arg: UnsignedInt, transformer: fn(x: String) -> String) -> This {
+        this.transforms.push(transformer);
+        return this;
+    }
+    /// Builds a string from the template with all the inputted values.
+    public function finish() -> String {
+        todo()
+    }
+}
+
+/// Creates a new formattable template.
+public function fmt(template: String) -> Template {
+    new Template(template)
+}
+
+test "create templates" {
+    use core.testing.assertThat;
+
+    template := new Template("Hello, %!");
+    template.add("world");
+    assertThat(template.finish() == "Hello, world!");
+}

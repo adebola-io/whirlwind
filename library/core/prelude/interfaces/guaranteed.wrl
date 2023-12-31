@@ -1,0 +1,5 @@
+module guaranteed;
+
+public interface Guaranteed<T> {
+    function guarantee() -> T;
+}

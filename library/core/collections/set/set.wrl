@@ -1,0 +1,118 @@
+module set;
+
+use core.prelude.{Bool, UnsignedInt, todo, AsIterator, Iteratable};
+public use orderedSet;
+
+public model SetIterator<T> implements Iteratable<T> {
+    public function [Iteratable.next]() -> ?T {
+        todo()
+    }
+}
+
+/// An unordered data structure that stores a collection 
+/// of unique elements, akin to the mathematical concept of a set.
+public model Set<T> implements AsIterator<T, SetIterator<T>> {
+    new(data?: []T) {
+        todo()
+    }
+
+    public function [AsIterator.iter]() -> SetIterator<T> {
+        todo()
+    }
+
+    /// Adds an element to the set.
+    public function add(element: T) {
+        todo()
+    }
+    /// Checks if an element is contained within the current set.
+    public function has(element: T) -> Bool {
+        todo()
+    }
+    /// Returns true if the set has no elements.
+    public function isEmpty() -> Bool {
+        todo()
+    }
+    /// Removes an element from the set.
+    /// If the element is not in the set, then nothing happens.
+    public function remove(element: T) {
+        todo()
+    }
+    /// Returns true if the current set contains the exact same 
+    /// elements as the other.
+    public function equals(other: This) -> Bool {
+        todo()
+    }
+    /// Returns a new set consisting of the elements from the current
+    /// set that are not in another set.
+    public function difference(other: This) -> This {
+        todo()
+    }
+    /// Returns true if the current set has no elements in common with 
+    /// another set.
+    public function isDisjointFrom(other: This) -> Bool {
+        this.intersection(other).isEmpty()
+    }
+    /// Generates a union set by combining the elements of the 
+    /// current set with the elements of another set.
+    /// ### Usage
+    /// ```
+    /// use core.collections.Set;
+    /// 
+    /// setA := new Set([1, 2, 3, 4]);
+    /// setB := new Set([3, 4, 5, 6]);
+    /// 
+    /// union := setA.union(setB);
+    /// 
+    /// assertThat(union.equals(new Set([1, 2, 3, 4, 5, 6])));
+    /// ```
+    public function union(other: This) -> This {
+        todo()
+    }
+    /// Generates an intersection set by selecting the common elements
+    /// between the current set and another set.
+    /// ### Usage
+    /// ```
+    /// use core.collections.Set;
+    /// 
+    /// setA := new Set([1, 2, 3, 4]);
+    /// setB := new Set([3, 4, 5, 6]);
+    /// 
+    /// union := setA.intersection(setB);
+    /// 
+    /// assertThat(union.equals(new Set([3, 4])));
+    /// ```
+    public function intersection(other: This) -> This {
+        todo()
+    }
+    /// Returns the count of elements in the set.
+    /// ### Usage
+    /// ```
+    /// use core.collections.Set;
+    /// 
+    /// set := new Set([1, 2, 8, 9]);
+    /// 
+    /// assert(set.cardinality()).equals(4);
+    /// ```
+    public function cardinality() -> UnsignedInt {
+        todo()
+    }
+    /// Returns the power set of the current set, i.e.
+    /// the set of all possible subsets.
+    public function powerSet() -> Set<Set<T>> {
+        todo()
+    }
+    /// Returns true if the current set can be found within
+    /// another.
+    /// ### Usage
+    /// ```
+    /// use core.collections.Set;
+    /// 
+    /// setA := new Set([1, 2, 3, 4, 5]);
+    /// setB := new Set([2, 3, 5]);
+    /// 
+    /// assertThat(setB.isSubsetOf(setA));
+    /// ```
+    public function isSubsetOf(other: This) -> Bool {
+        todo()
+    }
+}

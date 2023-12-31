@@ -1,0 +1,14 @@
+/// This module contains useful.
+module collections;
+
+public use set.{
+    orderedSet.{
+        Tuple, pair, Triple, Quadruple,
+        Quintuple, Sextuple, OrderedSet
+    },
+    Set, SetIterator, 
+};
+public use arrayStack.ArrayStack;
+public use arrayQueue.ArrayQueue;
+public use hashMap.{HashMap, Hash, ToMap};
+public use sort.{mergeSort, quickSort};

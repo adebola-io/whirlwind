@@ -1,7 +1,0 @@
-module net;
-
-public use http;
-use core.prelude.Display;
-
-
-public model Url implements Display {}

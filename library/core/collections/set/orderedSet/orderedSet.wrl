@@ -1,0 +1,42 @@
+module orderedSet;
+
+
+use core.prelude.none;
+
+public use tuple.{pair, Tuple};
+public use triple.Triple;
+public use quadruple.Quadruple;
+public use quintuple.Quintuple;
+public use sextuple.Sextuple;
+
+/// A representation of any collection of elements that maintain a specific order,
+/// and can have different types. 
+/// 
+/// The number of elements in an `OrderedSet` implementation can vary, depending
+/// on the implementor, but the maximum is six, chosen arbritrarily.
+public interface OrderedSet<T, U, V, W, X, Y>  {
+    /// Returns the first item in the set.
+    public function first() -> ?T {
+        return none();
+    }
+    /// Returns the second item in the set.
+    public function second() -> ?U {
+        return none();
+    }
+    /// Returns the third item in the set.
+    public function third() -> ?V {
+        return none();
+    }
+    /// Returns the fourth item in the set.
+    public function fourth() -> ?W {
+        return none();
+    }
+    /// Returns the fifth item in the set.
+    public function fifth() -> ?X {
+        return none();
+    }
+    /// Returns the sixth item in the set.
+    public function sixth() -> ?Y {
+        return none();
+    }
+}

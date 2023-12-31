@@ -1,17 +1,15 @@
 [workspace]
 resolver = "2"
 members = [
-    "source/ast", 
-    "source/errors", 
-    "source/lexer", 
-    "source/parser",
-    "source/prettyprint",
-    "source/bytecode",
-    "source/repl",
-    "source/analyzer",
-    "source/server",
-    "source/utils",
-    "source/macros",
-    "source/cli",
-    "source/runtime"
-    ]
+    "compiler/ast", 
+    "compiler/errors", 
+    "compiler/lexer", 
+    "compiler/parser",
+    "compiler/prettyprint",
+    "compiler/bytecode",
+    "compiler/analyzer",
+    "compiler/utils",
+    "compiler/macros",
+    "server",
+    "repl",
+]

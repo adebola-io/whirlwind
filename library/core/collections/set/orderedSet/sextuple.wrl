@@ -1,0 +1,36 @@
+module sextuple;
+
+use core.prelude.some;
+use orderedSet.OrderedSet;
+
+
+public model Sextuple<T, U, V, W, X, Y> 
+    implements OrderedSet<T, U, V, W, X, Y> 
+{
+    public var a: T;
+    public var b: U;
+    public var c: V;
+    public var d: W;
+    public var e: X;
+    public var f: Y;
+
+    public function [OrderedSet.first]() -> ?T {
+        return some(this.a);
+    }
+    public function [OrderedSet.second]() -> ?U {
+        return some(this.b);
+    }
+    public function [OrderedSet.third]() -> ?V {
+        return some(this.c);
+    }
+    public function [OrderedSet.fourth]() -> ?W {
+        return some(this.d);
+    }
+    public function [OrderedSet.fifth]() -> ?X {
+        return some(this.e);
+    }
+    public function [OrderedSet.sixth]() -> ?Y {
+        return some(this.f);
+    }
+
+}

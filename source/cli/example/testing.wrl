@@ -1,9 +1,0 @@
-module testing;
-
-
-function main() {
-     print("Hello, world!");
-
-     String;
-}
-

@@ -1,0 +1,46 @@
+module triple;
+
+use orderedSet.OrderedSet;
+use core.prelude.{some, never};
+
+
+/// A set containing three individual items.
+public model Triple<T, U, V> 
+    implements OrderedSet<T, U, V, never, never, never> 
+{
+    public var a: T;
+    public var b: U;
+    public var c: V;
+
+    public function [OrderedSet.first]() -> ?T {
+        return some(this.a);
+    }
+    public function [OrderedSet.second]() -> ?U {
+        return some(this.b);
+    }
+    public function [OrderedSet.third]() -> ?V {
+        return some(this.c);
+    }
+
+    new(a: T, b: U, c: V) {
+        this.a = a;
+        this.b = b;
+        this.c = c;
+    }
+
+    /// Swaps the position of elements in the triple,
+    /// converting a `Triple<T, U, V>` to a `Triple<V, U, T>`.
+    /// 
+    /// ### Usage
+    /// ```
+    /// use core.collections.Triple;
+    /// 
+    /// myTriple := new Triple(42, "Hello", 3.14);
+    /// myTripleReversed := myTriple.reverse();
+    /// 
+    /// assert(Triple.toStr(myTripleReversed)).equals("(3.14, Hello, 42)");
+    /// ```
+    public function reverse() -> Triple<V, U, T> {
+        return new Triple(this.c, this.b, this.a);
+    }
+}
