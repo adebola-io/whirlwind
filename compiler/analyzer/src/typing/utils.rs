@@ -150,6 +150,9 @@ pub fn is_updateable(expression: &TypedExpression, symbollib: &SymbolLibrary) ->
         TypedExpression::Identifier(ident) => symbollib.get(ident.value).is_some_and(|symbol| {
             matches!(&symbol.kind, SemanticSymbolKind::Variable { declared_type,.. } if declared_type.is_none())
         }),
+        TypedExpression::BinaryExpr(b) => {
+            println!("Checking updateability...");
+            is_updateable(&b.left, symbollib) && is_updateable(&b.right, symbollib)},
         TypedExpression::Literal(_) => true,
         _ => false,
     }
@@ -990,6 +993,26 @@ pub fn update_expression_type(
             generic_arguments,
             optional_type,
         ),
+        TypedExpression::BinaryExpr(binexp) => {
+            if is_updateable(&binexp.left, symbollib) {
+                update_expression_type(
+                    &mut binexp.left,
+                    symbollib,
+                    literals,
+                    generic_arguments,
+                    optional_type,
+                );
+            }
+            if is_updateable(&binexp.right, symbollib) {
+                update_expression_type(
+                    &mut binexp.right,
+                    symbollib,
+                    literals,
+                    generic_arguments,
+                    optional_type,
+                );
+            }
+        }
         TypedExpression::Literal(literal) => {
             if let Some(literal) = literals.get_mut(*literal) {
                 if let crate::Literal::NumericLiteral {

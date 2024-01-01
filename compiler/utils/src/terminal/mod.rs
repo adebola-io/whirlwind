@@ -56,14 +56,23 @@ impl Colored {
     pub fn black(self) -> Self {
         add_format(self, 30)
     }
+    pub fn gray(self) -> Self {
+        add_format(self, 90)
+    }
     pub fn red(self) -> Self {
         add_format(self, 31)
     }
     pub fn green(self) -> Self {
         add_format(self, 32)
     }
+    pub fn bright_yellow(self) -> Self {
+        add_format(self, 93)
+    }
     pub fn yellow(self) -> Self {
         add_format(self, 33)
+    }
+    pub fn bright_blue(self) -> Self {
+        add_format(self, 94)
     }
     pub fn blue(self) -> Self {
         add_format(self, 34)

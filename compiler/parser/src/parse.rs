@@ -513,7 +513,11 @@ impl<L: Lexer> Parser<L> {
     fn grouped_expression(&self) -> Imperfect<Expression> {
         expect_or_return!(TokenType::Bracket(LParens), self);
         self.advance(); // move past (
+        self.precedence_stack
+            .borrow_mut()
+            .push(ExpressionPrecedence::Pseudo);
         let expression = self.expression();
+        self.precedence_stack.borrow_mut().pop();
         expect_or_return!(TokenType::Bracket(RParens), self);
         self.advance(); // Move past )
         self.spring(expression)

@@ -233,7 +233,10 @@ fn typecheck_for_loop_body(
     checker_ctx: &mut TypecheckerContext<'_>,
     symbollib: &mut SymbolLibrary,
 ) {
+    push_scopetype(checker_ctx, ScopeType::Other);
     let block_type = expressions::typecheck_block(body, false, checker_ctx, symbollib);
+    pop_scopetype(checker_ctx);
+
     // For loop blocks should not have implicit returns.
     // If partials are allowed because having to add the semicolon can get annoying after sometime.
     if !block_type.is_void()
@@ -371,11 +374,12 @@ fn typecheck_model_declaration(
                     SemanticSymbolKind::Attribute { declared_type, .. } => declared_type,
                     _ => continue,
                 };
+                let span = attribute_symbol.ident_span();
                 evaluate(
                     declared_type,
                     symbollib,
                     None,
-                    &mut checker_ctx.tracker(),
+                    &mut checker_ctx.tracker(span),
                     0,
                 );
             }
@@ -409,7 +413,14 @@ fn typecheck_model_declaration(
                             evaluated_param_types,
                             return_type
                                 .map(|typ| {
-                                    evaluate(typ, &symbollib, None, &mut checker_ctx.tracker(), 0)
+                                    let span = typ.span();
+                                    evaluate(
+                                        typ,
+                                        &symbollib,
+                                        None,
+                                        &mut checker_ctx.tracker(span),
+                                        0,
+                                    )
                                 })
                                 .unwrap_or_else(|| EvaluatedType::Void),
                             return_type.map(|typ| typ.span()),
@@ -471,28 +482,43 @@ fn typecheck_function_body(
     }
     // Ignore unreachable nested generics.
     // if last statement was a return, there is no need to check type again, since it will still show the apprioprate errors.
-    if let Err(typeerrortype) = unify_types(
+    match unify_types(
         &return_type,
         &block_return_type,
         &symbollib,
         UnifyOptions::Return,
         None,
     ) {
-        let span = body
-            .statements
-            .last()
-            .map(|s| checker_ctx.span_of_stmnt(s, symbollib))
-            .or(return_type_span)
-            .unwrap_or_else(|| body.span);
-        let main_error = TypeErrorType::MismatchedReturnType {
-            found: symbollib.format_evaluated_type(&block_return_type),
-            expected: symbollib.format_evaluated_type(&return_type),
-        };
-        checker_ctx.add_diagnostic(errors::composite_type_error(
-            main_error,
-            typeerrortype,
-            span,
-        ));
+        Ok(final_type) => {
+            if let Some(TypedStmnt::FreeExpression(expression)) = body.statements.last_mut() {
+                let empty = vec![];
+                let generic_arguments = get_type_generics(&final_type, &empty);
+                update_expression_type(
+                    expression,
+                    symbollib,
+                    checker_ctx.literals,
+                    &generic_arguments,
+                    Some(&final_type),
+                );
+            }
+        }
+        Err(typeerrortype) => {
+            let span = body
+                .statements
+                .last()
+                .map(|s| checker_ctx.span_of_stmnt(s, symbollib))
+                .or(return_type_span)
+                .unwrap_or_else(|| body.span);
+            let main_error = TypeErrorType::MismatchedReturnType {
+                found: symbollib.format_evaluated_type(&block_return_type),
+                expected: symbollib.format_evaluated_type(&return_type),
+            };
+            checker_ctx.add_diagnostic(errors::composite_type_error(
+                main_error,
+                typeerrortype,
+                span,
+            ));
+        }
     }
 }
 
@@ -544,11 +570,12 @@ fn typecheck_variable_declaration(
         if declared_type.is_some() {
             // Currently on the first type.
             let declared_type = declared_type.as_ref().unwrap();
+            let span = declared_type.span();
             Some(evaluate(
                 declared_type,
                 symbollib,
                 None,
-                &mut checker_ctx.tracker(),
+                &mut checker_ctx.tracker(span),
                 0,
             ))
         } else {
@@ -778,7 +805,7 @@ pub fn typecheck_shorthand_variable_declaration(
                 typ,
                 symbollib,
                 None,
-                &mut Some((checker_ctx.diagnostics, checker_ctx.path_idx)),
+                &mut checker_ctx.tracker(typ.span()),
                 0,
             )
         })
@@ -969,7 +996,7 @@ pub fn typecheck_function(
                                 declared_type,
                                 symbollib,
                                 Some(&generic_arguments),
-                                &mut Some((checker_ctx.diagnostics, checker_ctx.path_idx)),
+                                &mut checker_ctx.tracker(declared_type.span()),
                                 0,
                             )
                         } else {
@@ -984,7 +1011,15 @@ pub fn typecheck_function(
             (
                 evaluated_param_types,
                 return_type
-                    .map(|typ| evaluate(typ, &symbollib, None, &mut checker_ctx.tracker(), 0))
+                    .map(|typ| {
+                        evaluate(
+                            typ,
+                            &symbollib,
+                            None,
+                            &mut checker_ctx.tracker(typ.span()),
+                            0,
+                        )
+                    })
                     .unwrap_or_else(|| EvaluatedType::Void),
                 return_type.map(|typ| typ.span()),
             )

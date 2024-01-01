@@ -1,7 +1,11 @@
 module set;
 
-use core.prelude.{Bool, UnsignedInt, todo, AsIterator, Iteratable};
 public use orderedSet;
+use core.prelude.{
+    Bool, UnsignedInt, todo, AsIterator, Iteratable,
+    Maybe
+};
+use super.{Hash, HashMap};
 
 public model SetIterator<T> implements Iteratable<T> {
     public function [Iteratable.next]() -> ?T {
@@ -11,9 +15,18 @@ public model SetIterator<T> implements Iteratable<T> {
 
 /// An unordered data structure that stores a collection 
 /// of unique elements, akin to the mathematical concept of a set.
-public model Set<T> implements AsIterator<T, SetIterator<T>> {
+public model Set<T implements Hash> 
+    implements AsIterator<T, SetIterator<T>> 
+    + Hash 
+{
+    var items: HashMap<T, Bool>;
+
     new(data?: []T) {
-        todo()
+        dataVal := Maybe.unwrapOrDefault(data);
+        this.items = new HashMap();
+        for element in dataVal {
+            this.items.set(element, true);
+        }
     }
 
     public function [AsIterator.iter]() -> SetIterator<T> {
@@ -21,31 +34,63 @@ public model Set<T> implements AsIterator<T, SetIterator<T>> {
     }
 
     /// Adds an element to the set.
+    /// 
+    /// ### Usage
+    /// ```
+    /// use core.collections.Set;
+    /// 
+    /// set := new Set();
+    /// set.add("hello");
+    /// 
+    /// assertThat();
+    /// ```
     public function add(element: T) {
-        todo()
+        this.items.set(element, true);
     }
     /// Checks if an element is contained within the current set.
     public function has(element: T) -> Bool {
-        todo()
+        this.items.get(element).isSome()
     }
     /// Returns true if the set has no elements.
     public function isEmpty() -> Bool {
-        todo()
+        this.items.length() == 0
     }
-    /// Removes an element from the set.
+    /// Removes an element from the set. 
     /// If the element is not in the set, then nothing happens.
+    /// ### Usage
+    /// ```
+    /// use core.collections.Set;
+    /// set = new Set();
+    /// 
+    /// set.add(1);
+    /// set.add(2);
+    /// set.remove(1);
+    /// 
+    /// assertThat(!set.has(1));
+    /// ```
     public function remove(element: T) {
-        todo()
+        this.items.remove(element);
     }
     /// Returns true if the current set contains the exact same 
     /// elements as the other.
     public function equals(other: This) -> Bool {
-        todo()
+        for { a as element } in this.items {
+            if !other.has(element) {
+                return false;
+            }
+        }
+        return true;
     }
     /// Returns a new set consisting of the elements from the current
     /// set that are not in another set.
     public function difference(other: This) -> This {
-        todo()
+        difference := new Set();
+        for {a as element} in this.items {
+            if !other.has(element) {
+                difference.add(element);
+            }
+        }
+        return difference;
     }
     /// Returns true if the current set has no elements in common with 
     /// another set.
@@ -66,7 +111,12 @@ public model Set<T> implements AsIterator<T, SetIterator<T>> {
     /// assertThat(union.equals(new Set([1, 2, 3, 4, 5, 6])));
     /// ```
     public function union(other: This) -> This {
-        todo()
+        unionSet := new Set();
+        this.items
+            .iter()
+            .chain(other.items.iter())
+            .forEach(fn (item) unionSet.add(item.a));
+        return unionSet;
     }
     /// Generates an intersection set by selecting the common elements
     /// between the current set and another set.
@@ -82,7 +132,13 @@ public model Set<T> implements AsIterator<T, SetIterator<T>> {
     /// assertThat(union.equals(new Set([3, 4])));
     /// ```
     public function intersection(other: This) -> This {
-        todo()
+        unionSet := this;
+        for { a as element} in other.items {
+            if !other.has(element) {
+                unionSet.remove(element)
+            }
+        }
+        return unionSet;
     }
     /// Returns the count of elements in the set.
     /// ### Usage
@@ -94,7 +150,14 @@ public model Set<T> implements AsIterator<T, SetIterator<T>> {
     /// assert(set.cardinality()).equals(4);
     /// ```
     public function cardinality() -> UnsignedInt {
-        todo()
+        this.items.length()
+    }
+    /// Returns the number of elements in the set.
+    /// ### Usage
+    /// ```
+    /// ```
+    public function length() -> UnsignedInt {
+        this.items.length()
     }
     /// Returns the power set of the current set, i.e.
     /// the set of all possible subsets.
@@ -113,6 +176,25 @@ public model Set<T> implements AsIterator<T, SetIterator<T>> {
     /// assertThat(setB.isSubsetOf(setA));
     /// ```
     public function isSubsetOf(other: This) -> Bool {
-        todo()
+        for {a as element} in this.items {
+            if !other.has(element) {
+                return false;
+            }
+        }
+        return true;
+    }
+    /// Returns true if the current set contains all the elements
+    /// from another.
+    /// ### Usage
+    /// ```
+    /// use core.collections.Set;
+    /// 
+    /// setA := new Set([1, 2, 3, 4, 5]);
+    /// setB := new Set([2, 3, 5]);
+    /// 
+    /// assertThat(setA.isSupersetOf(setB));
+    /// ```
+    public function isSupersetOf(other: This) -> Bool {
+        other.isSubsetOf(this)
     }
 }

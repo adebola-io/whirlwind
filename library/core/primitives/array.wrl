@@ -12,7 +12,7 @@ use core.math.{max, min};
 use core.internals.builtin;
 
 /// A contiguous, growable list of items.
-public model Array<T> implements AsIterator<T, ArrayIter<T>> {
+public model Array<T> implements AsIterator<T, ArrayIter<T>> + Default {
     /// Returns an iterator over elements in this array.
     /// ### Usage
     /// ```
@@ -25,6 +25,10 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> {
     /// ```
     public function [AsIterator.iter]() -> ArrayIter<T> {
         new ArrayIter(this)
+    }
+    /// Implementation of the default trait.
+    static function [Default.init]() -> This {
+        return [];
     }
     /// Returns the item at a particular index in the array, if it exists.
     /// Indexes are zero-based, meaning that the first item is at index 0.

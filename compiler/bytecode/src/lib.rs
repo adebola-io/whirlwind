@@ -1,5 +1,6 @@
 #![allow(unused)]
 mod constant;
+mod disassembler;
 mod from_text;
 mod generator;
 mod injunction;
@@ -7,6 +8,7 @@ mod instruction;
 mod retriever;
 #[cfg(test)]
 mod tests;
+mod reader;
 
 use analyzer::{
     PathIndex, ScopeId, SemanticSymbolKind, Standpoint, SymbolIndex, TypedFunctionDeclaration,

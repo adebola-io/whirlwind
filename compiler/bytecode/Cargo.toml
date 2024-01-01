@@ -9,4 +9,4 @@ edition = "2021"
 analyzer = {version = "*", path = "../analyzer"}
 ast = {version = "*", path = "../ast"}
 errors = {version = "*", path = "../errors"}
-indexmap = "2.1.0"
+utils = {version = "*", path= "../utils"}

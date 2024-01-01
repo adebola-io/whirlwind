@@ -92,8 +92,11 @@ impl<'a> TypecheckerContext<'a> {
         })
     }
     /// Returns a reference to the error list to be passed around by the evaluator.
-    pub fn tracker(&mut self) -> Option<(&mut Vec<ProgramDiagnostic>, PathIndex)> {
-        Some((self.diagnostics, self.path_idx))
+    pub fn tracker(
+        &mut self,
+        span: Span,
+    ) -> Option<(&mut Vec<ProgramDiagnostic>, PathIndex, Span)> {
+        Some((self.diagnostics, self.path_idx, span))
     }
     /// Calculates the span of a typed expression using the symbollib and the list of literals.
     fn span_of_expr(&self, expression: &TypedExpression, symbollib: &SymbolLibrary) -> Span {

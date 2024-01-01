@@ -3,8 +3,8 @@ module memory;
 use core.{
     primitives.{UInt8, UnsignedInt},
     prelude.{
-        Iteratable, none, some, Display, 
-        String, todo, Bool
+        Guaranteed, Iteratable, none, some, Display, 
+        String, todo,
     },
     internals.builtin,
 };
@@ -25,7 +25,7 @@ public function swap<T>(a: T, b: T) {
     builtin.swap(a, b)
 }
 
-/// Provides a way to hold a weak reference to a value of type `T`.
+/// An intrinsic model that provides a way to hold a weak reference to a value of type `T`.
 /// 
 /// Unlike regular references, weak references don't prevent the underlying
 /// value from being dropped by the runtime. This means that if the 
@@ -34,15 +34,26 @@ public function swap<T>(a: T, b: T) {
 /// 
 /// It is useful for circumventing Whirlwind's disallowance for
 /// circular references, while still preventing memory leaks.
-public model WeakRef<T> {
-    var reference: T;
-    var exists: Bool;
-    /// Retrieves the value in the reference.
-    public function value() -> ?T {
-        if this.exists {
-            return some(this.reference);
-        } else none()
+public model WeakRef<T> implements Guaranteed<T> {
+
+    /// Implementation of the Guaranteed interface.
+    function [Guaranteed.guarantee]() -> T {
+        this.unwrap()
     }
+
+    /// Forcefully retrieves the value in the reference.
+    /// 
+    /// It is useful when there is a surety that the value
+    /// contained has not been dropped by the runtime.
+    public function unwrap() -> T {
+        this.deref().unwrap()
+    }    
+
+    /// Retrieves the value in the reference.
+    public function deref() -> ?T {
+        return builtin.deref(this);
+    }
+
     /// Creates a weak reference to an object.
     public static function to(value: T) -> This {
         builtin.weakref(value)

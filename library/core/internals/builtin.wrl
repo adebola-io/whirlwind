@@ -186,7 +186,11 @@ public function swap<T>(a: T, b: T) {
 }
 
 public function weakref<T>(value: T) -> WeakRef<T> {
-    invoke(builtin(InjunctionType.Swap), some(value))
+    invoke(builtin(InjunctionType.Ref), some(value))
+}
+
+public function deref<T>(value: WeakRef<T>) -> ?T {
+    invoke(builtin(InjunctionType.Deref), some(value))
 }
 
 public function print(message: String) {

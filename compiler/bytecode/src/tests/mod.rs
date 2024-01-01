@@ -44,7 +44,8 @@ fn simple_empty_main() {
         vec![CallablePtr {
             name: String::from("main"),
             param_count: 0,
-            start: 7, // After pad + call + index + exit.
+            start: 10,
+            end: 0,
             calls: 0
         }]
     );
@@ -82,12 +83,14 @@ fn function_call() {
                 name: String::from("main"),
                 param_count: 0,
                 start: 7, // After pad + call + index + exit.
+                end: 0,
                 calls: 0
             },
             CallablePtr {
                 name: String::from("anotherFunction"),
                 param_count: 0,
                 start: 15,
+                end: 0,
                 calls: 0
             }
         ]
@@ -117,12 +120,14 @@ fn recursive_function_call() {
                 name: String::from("main"),
                 param_count: 0,
                 start: 7, // After pad + call + index + exit.
+                end: 0,
                 calls: 0
             },
             CallablePtr {
                 name: String::from("anotherFunction"),
                 param_count: 0,
                 start: 15,
+                end: 0,
                 calls: 0
             }
         ]

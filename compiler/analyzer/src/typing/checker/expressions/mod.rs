@@ -961,7 +961,10 @@ fn typecheck_call_expression(
                     );
                     let return_type = return_type
                         .as_ref()
-                        .map(|typ| evaluate(typ, symbollib, None, &mut checker_ctx.tracker(), 0))
+                        .map(|typ| {
+                            let span = checker_ctx.span_of_expr(&callexp.caller, symbollib);
+                            evaluate(typ, symbollib, None, &mut checker_ctx.tracker(span), 0)
+                        })
                         .unwrap_or(EvaluatedType::Void);
                     (
                         *is_async,
@@ -1178,12 +1181,12 @@ fn convert_param_list_to_type(
         .iter()
         .map(|param| {
             let parameter_symbol = symbollib.get(*param).unwrap();
-            let (is_optional, type_label) = match &parameter_symbol.kind {
+            let (is_optional, type_label, span) = match &parameter_symbol.kind {
                 SemanticSymbolKind::Parameter {
                     is_optional,
                     param_type,
                     ..
-                } => (*is_optional, param_type),
+                } => (*is_optional, param_type, parameter_symbol.ident_span()),
                 _ => unreachable!("Expected parameter but got {parameter_symbol:?}"),
             };
             ParameterType {
@@ -1197,7 +1200,7 @@ fn convert_param_list_to_type(
                             typ,
                             symbollib,
                             Some(solved_generics),
-                            &mut checker_ctx.tracker(),
+                            &mut checker_ctx.tracker(span),
                             0,
                         )
                     })
@@ -1261,17 +1264,17 @@ fn typecheck_function_expression(
         let generic_args = evaluate_generic_params(&f.generic_params, true);
         for param in &f.params {
             let parameter_symbol = symbollib.get_forwarded(*param).unwrap();
-            let (param_type, is_optional) = match &parameter_symbol.kind {
+            let (param_type, is_optional, span) = match &parameter_symbol.kind {
                 SemanticSymbolKind::Parameter {
                     param_type,
                     is_optional,
                     ..
-                } => (param_type, *is_optional),
+                } => (param_type, *is_optional, parameter_symbol.ident_span()),
                 _ => unreachable!(),
             };
             let inferred_type = param_type
                 .as_ref()
-                .map(|typ| evaluate(typ, symbollib, None, &mut checker_ctx.tracker(), 0))
+                .map(|typ| evaluate(typ, symbollib, None, &mut checker_ctx.tracker(span), 0))
                 .unwrap_or(EvaluatedType::Unknown);
             // Interfaces cannot be used as parameter types.
             if let EvaluatedType::InterfaceInstance { interface_, .. } = &inferred_type {
@@ -1296,7 +1299,7 @@ fn typecheck_function_expression(
                     typ,
                     &symbollib,
                     Some(&generic_args),
-                    &mut checker_ctx.tracker(),
+                    &mut checker_ctx.tracker(typ.span()),
                     0,
                 ),
                 typ.span(),
@@ -1789,13 +1792,16 @@ pub fn search_for_property(
             if attribute_symbol.name == property_symbol.name {
                 let result_type = match &attribute_symbol.kind {
                     // todo: Is attribute public?
-                    SemanticSymbolKind::Attribute { declared_type, .. } => evaluate(
-                        &declared_type,
-                        symbollib,
-                        Some(&generic_arguments),
-                        &mut checker_ctx.tracker(),
-                        0,
-                    ),
+                    SemanticSymbolKind::Attribute { declared_type, .. } => {
+                        let span = attribute_symbol.ident_span();
+                        evaluate(
+                            &declared_type,
+                            symbollib,
+                            Some(&generic_arguments),
+                            &mut checker_ctx.tracker(span),
+                            0,
+                        )
+                    }
                     _ => return Some(EvaluatedType::Unknown),
                 };
                 // get mutably.

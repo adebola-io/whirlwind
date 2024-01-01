@@ -101,6 +101,8 @@ public enum InjunctionType {
 
     Print,
     Swap,
+    Ref,
+    Deref,
     SequenceExit,
 
     Custom(String)

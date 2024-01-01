@@ -21,4 +21,5 @@ public use path;
 public use prelude;
 public use primitives;
 public use process;
+public use time;
 public use testing;

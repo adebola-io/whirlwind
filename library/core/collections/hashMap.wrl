@@ -1,7 +1,8 @@
 module hashMap;
 
-use core.prelude.todo;
+use core.prelude.{todo, AsIterator};
 use core.prelude.Iteratable;
+use core.prelude.UnsignedInt;
 use core.collections.Tuple;
 
 public interface Hash {}
@@ -12,8 +13,14 @@ public interface ToMap<K, V> {
     public function toMap() -> HashMap<K, V>;
 }
 
-public model HashMap<K implements Hash, V> implements Iteratable<Tuple<K, V>> {
+public model HashMap<K implements Hash, V> 
+    implements AsIterator<Tuple<K, V>, HashMapIteratable<K, V>> 
+{
     new(){}
+
+    public function [AsIterator.iter]() -> HashMapIteratable<K, V> {
+        return new HashMapIteratable(this);
+    }
     /// Inserts a key-value pair into the hashmap.
     /// 
     /// If the key is already present in the map, then it will be replaced.
@@ -27,7 +34,30 @@ public model HashMap<K implements Hash, V> implements Iteratable<Tuple<K, V>> {
     /// ### Usage
     /// ```
     /// ```
-    public function get(key: K) -> V {
+    public function get(key: K) -> ?V {
+        todo()
+    }
+    /// Removes a key-value pair from the hashmap.
+    /// ### Usage
+    /// ```
+    /// ```
+    public function remove(key: K) -> ?V {
+        todo()
+    }
+    /// Returns the number of elements in the map.
+    public function length() -> UnsignedInt {
+        todo()
+    }
+}
+
+public model HashMapIteratable<K implements Hash, V> implements Iteratable<Tuple<K, V>> {
+    var _map: HashMap<K, V>;
+
+    new(map: HashMap<K, V>) {
+        this._map = map;
+    }
+
+    public function [Iteratable.next]() -> ?Tuple<K, V> {
         todo()
     }
 }

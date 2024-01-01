@@ -7,7 +7,6 @@ use crate::{
 };
 use ast::Span;
 use errors::{
-    value_as_type,
     TypeError,
     TypeErrorType,
     // TypeErrorType
@@ -341,7 +340,7 @@ pub fn evaluate(
     // A map of the solutions for previously encountered generic types.
     solved_generics: Option<&Vec<(SymbolIndex, EvaluatedType)>>,
     // Error store from the standpoint, if it exists.
-    mut error_tracker: &mut Option<(&mut Vec<ProgramDiagnostic>, PathIndex)>,
+    mut error_tracker: &mut Option<(&mut Vec<ProgramDiagnostic>, PathIndex, Span)>,
     // A value that safe guards against infinitely recursive union types, or indirect recursion in type aliases.
     mut recursion_depth: u64,
 ) -> EvaluatedType {
@@ -365,9 +364,7 @@ pub fn evaluate(
         ),
         // Accessing a member type of another module.
         IntermediateType::MemberType {
-            object,
-            property,
-            span,
+            object, property, ..
         } => match evaluate_member_type(
             object,
             symbollib,
@@ -375,7 +372,6 @@ pub fn evaluate(
             error_tracker,
             recursion_depth,
             property,
-            span,
         ) {
             Ok(value) => value,
             Err(value) => return value,
@@ -383,7 +379,7 @@ pub fn evaluate(
         IntermediateType::SimpleType {
             value,
             generic_args,
-            span,
+            ..
         } => {
             let idx = symbollib.forward(*value);
             let typ = match symbollib.get_forwarded(idx) {
@@ -396,7 +392,6 @@ pub fn evaluate(
                     generic_params,
                     error_tracker,
                     typ,
-                    span,
                     symbollib,
                     solved_generics,
                 )
@@ -458,7 +453,9 @@ pub fn evaluate(
                             typ.references.first().unwrap().module_path;
                         add_error_if_possible(
                             &mut error_tracker,
-                            value_as_type(typ.name.clone(), *span),
+                            TypeErrorType::ValueAsType {
+                                name: typ.name.clone(),
+                            },
                         );
                         error_tracker.as_mut().unwrap().1 = old;
                     }
@@ -639,7 +636,7 @@ pub fn evaluate(
             };
         }
         IntermediateType::Placeholder => return EvaluatedType::Unknown,
-        IntermediateType::ArrayType { element_type, span } => {
+        IntermediateType::ArrayType { element_type, .. } => {
             if symbollib.array.is_some() {
                 return arrify(
                     evaluate(
@@ -654,11 +651,13 @@ pub fn evaluate(
             }
             add_error_if_possible(
                 error_tracker,
-                errors::missing_intrinsic(String::from("Array"), *span),
+                TypeErrorType::MissingIntrinsic {
+                    name: format!("Array"),
+                },
             );
             return EvaluatedType::Unknown;
         }
-        IntermediateType::MaybeType { value, span } => {
+        IntermediateType::MaybeType { value, .. } => {
             if symbollib.maybe.is_some() {
                 return maybify(
                     evaluate(
@@ -673,7 +672,9 @@ pub fn evaluate(
             }
             add_error_if_possible(
                 error_tracker,
-                errors::missing_intrinsic(String::from("Array"), *span),
+                TypeErrorType::MissingIntrinsic {
+                    name: format!("Maybe"),
+                },
             );
             return EvaluatedType::Unknown;
         }
@@ -685,10 +686,9 @@ fn evaluate_member_type(
     object: &Box<IntermediateType>,
     symbollib: &SymbolLibrary,
     solved_generics: Option<&Vec<(SymbolIndex, EvaluatedType)>>,
-    error_tracker: &mut Option<(&mut Vec<ProgramDiagnostic>, PathIndex)>,
+    error_tracker: &mut Option<(&mut Vec<ProgramDiagnostic>, PathIndex, Span)>,
     recursion_depth: u64,
     property: &crate::IntermediateTypeProperty,
-    span: &Span,
 ) -> Result<EvaluatedType, EvaluatedType> {
     let object_type = evaluate(
         &*object,
@@ -714,10 +714,12 @@ fn evaluate_member_type(
                     let global_symbol = ast::unwrap_or_continue!(symbollib.get(*symbol_idx));
                     if global_symbol.name == property.name {
                         if !global_symbol.kind.is_public() {
-                            add_error_if_possible(
-                                error_tracker,
-                                errors::non_public_type(base_type(), property_name(), *span),
-                            )
+                            add_error_if_possible(error_tracker, {
+                                TypeErrorType::NonPublicType {
+                                    base_type: base_type(),
+                                    property: property_name(),
+                                }
+                            })
                         }
                         // Create an intermeduate type to evaluate.
                         let intermediate = IntermediateType::SimpleType {
@@ -737,12 +739,9 @@ fn evaluate_member_type(
                 // No match.
                 add_error_if_possible(
                     error_tracker,
-                    TypeError {
-                        _type: TypeErrorType::NoSuchProperty {
-                            base_type: base_type(),
-                            property: property_name(),
-                        },
-                        span: *span,
+                    TypeErrorType::NoSuchProperty {
+                        base_type: base_type(),
+                        property: property_name(),
                     },
                 );
                 return Err(EvaluatedType::Unknown);
@@ -753,7 +752,9 @@ fn evaluate_member_type(
     }
     add_error_if_possible(
         error_tracker,
-        errors::not_a_module_type(symbollib.format_evaluated_type(&object_type), object.span()),
+        TypeErrorType::NotAModuleType {
+            object_type: symbollib.format_evaluated_type(&object_type),
+        },
     );
     return Err(EvaluatedType::Unknown);
 }
@@ -763,7 +764,7 @@ fn evaluate_function_type(
     return_type: &Option<Box<IntermediateType>>,
     symbollib: &SymbolLibrary,
     solved_generics: Option<&Vec<(SymbolIndex, EvaluatedType)>>,
-    mut error_tracker: &mut Option<(&mut Vec<ProgramDiagnostic>, PathIndex)>,
+    mut error_tracker: &mut Option<(&mut Vec<ProgramDiagnostic>, PathIndex, Span)>,
     recursion_depth: u64,
     params: &Vec<ParameterType>,
 ) -> EvaluatedType {
@@ -812,26 +813,31 @@ fn evaluate_function_type(
 fn generate_generics_from_arguments(
     generic_args: &Vec<IntermediateType>,
     generic_params: &Vec<SymbolIndex>,
-    mut error_tracker: &mut Option<(&mut Vec<ProgramDiagnostic>, PathIndex)>,
+    mut error_tracker: &mut Option<(&mut Vec<ProgramDiagnostic>, PathIndex, Span)>,
     typ: &crate::SemanticSymbol,
-    span: &Span,
     symbollib: &SymbolLibrary,
     solved_generics: Option<&Vec<(SymbolIndex, EvaluatedType)>>,
 ) -> Vec<(SymbolIndex, EvaluatedType)> {
     if generic_args.len() > 0 && generic_params.len() == 0 {
         add_error_if_possible(
             &mut error_tracker,
-            errors::unexpected_generic_args(typ.name.clone(), *span),
+            TypeErrorType::UnexpectedGenericArgs {
+                name: typ.name.clone(),
+            },
         );
         vec![]
     } else {
         let args_len = generic_args.len();
         let param_len = generic_params.len();
         if args_len != param_len {
-            add_error_if_possible(
-                &mut error_tracker,
-                errors::mismatched_generics(typ.name.clone(), param_len, args_len, *span),
-            );
+            add_error_if_possible(&mut error_tracker, {
+                let name = typ.name.clone();
+                TypeErrorType::MismatchedGenericArgs {
+                    name,
+                    expected: param_len,
+                    assigned: args_len,
+                }
+            });
             vec![]
         } else {
             let mut generic_solutions = vec![];
@@ -871,13 +877,7 @@ fn generate_generics_from_arguments(
                     Ok(value) => value,
                     Err(error) => {
                         for error in error {
-                            add_error_if_possible(
-                                &mut error_tracker,
-                                TypeError {
-                                    _type: error,
-                                    span: generic_args[i].span(),
-                                },
-                            );
+                            add_error_if_possible(&mut error_tracker, error);
                         }
                         EvaluatedType::Unknown
                     }
@@ -891,13 +891,18 @@ fn generate_generics_from_arguments(
 }
 
 fn add_error_if_possible(
-    error_tracker: &mut Option<(&mut Vec<ProgramDiagnostic>, PathIndex)>,
-    error: TypeError,
+    error_tracker: &mut Option<(&mut Vec<ProgramDiagnostic>, PathIndex, Span)>,
+    error_type: TypeErrorType,
 ) {
-    if let Some((errors, path_idx)) = error_tracker {
+    if let Some((errors, path_idx, span)) = error_tracker {
         let error = ProgramDiagnostic {
             offending_file: *path_idx,
-            _type: DiagnosticType::Error(crate::Error::Typing(error)),
+            _type: DiagnosticType::Error(crate::Error::Typing({
+                TypeError {
+                    _type: error_type,
+                    span: *span,
+                }
+            })),
         };
         if !errors.iter().any(|prior| *prior == error) {
             errors.push(error);
@@ -918,11 +923,12 @@ pub fn evaluate_parameter_idxs(
         let inferred_type = match &parameter_symbol.kind {
             SemanticSymbolKind::Parameter { param_type, .. } => {
                 if let Some(declared_type) = param_type {
+                    let span = parameter_symbol.ident_span();
                     evaluate(
                         declared_type,
                         symbollib,
                         Some(&generic_arguments),
-                        &mut checker_ctx.tracker(),
+                        &mut checker_ctx.tracker(span),
                         0,
                     )
                 } else {

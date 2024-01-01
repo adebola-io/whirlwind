@@ -38,6 +38,7 @@ impl CallablePtr {
             name: String::from("main"),
             param_count: 0,
             start: 1,
+            end: 0,
             calls: 0,
         }
     }
@@ -50,7 +51,11 @@ pub struct CallablePtr {
     /// The number of parameters in the function/method call.
     pub param_count: usize,
     /// The index of the first byte or instruction.
+    /// It is determined duting emission.
     pub start: usize,
+    /// The index of the last instruction in the program.
+    /// It is determined during emission.
+    pub end: usize,
     /// The number of times the function/method has been called.
     pub calls: usize,
 }
@@ -115,7 +120,8 @@ impl<'standpoint> Callables<'standpoint> {
         CallablePtr {
             name,
             param_count,
-            start: 0, // to be determined when the function is actually reached.
+            start: 0, // tbd
+            end: 0,   // tbd
             calls: 0,
         }
     }
@@ -132,11 +138,17 @@ impl<'standpoint> Callables<'standpoint> {
         CallablePtrId(0)
     }
 
-    /// Creates or gets a function index while setting its starting instruction idx.
-    pub fn set_start(&mut self, name: SymbolIndex, start: usize) -> CallablePtrId {
+    /// Sets its starting instruction idx (index of the first instruction) in a callable.
+    pub fn set_start(&mut self, name: SymbolIndex, start: usize) {
         let idx_in_function_list = self.get_or_create(name);
         let mut function_list = self.table.borrow_mut();
         function_list[idx_in_function_list.0 as usize].start = start;
-        return idx_in_function_list;
+    }
+
+    /// Sets the end instruction idx (index of the last instruction, usually return) in a callable.
+    pub fn set_end(&mut self, name: SymbolIndex, end: usize) {
+        let idx_in_function_list = self.get_or_create(name);
+        let mut function_list = self.table.borrow_mut();
+        function_list[idx_in_function_list.0 as usize].end = end;
     }
 }

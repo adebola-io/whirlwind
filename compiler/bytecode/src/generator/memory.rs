@@ -86,7 +86,60 @@ impl RegisterGroup {
     /// Returns the register group that is distinct to an inferred type,
     /// according to the symbol library.
     pub fn of(inferred_type: &EvaluatedType, symbollib: &SymbolLibrary) -> RegisterGroup {
-        todo!()
+        match inferred_type {
+            EvaluatedType::ModelInstance {
+                model,
+                is_invariant,
+                generic_arguments,
+            } => match model {
+                _ if model == &symbollib.uint8.unwrap() => RegisterGroup::Int8,
+                _ if model == &symbollib.uint16.unwrap() => RegisterGroup::Int16,
+                _ if model == &symbollib.float32.unwrap() => RegisterGroup::F32,
+                _ if model == &symbollib.float64.unwrap() => RegisterGroup::F64,
+                _ => todo!(),
+            },
+            EvaluatedType::OpaqueTypeInstance {
+                available_methods,
+                available_interfaces,
+                aliased_as,
+                collaborators,
+                generic_arguments,
+            } => match aliased_as.unwrap() {
+                symbol if symbol == symbollib.uint.unwrap() => RegisterGroup::F64,
+                symbol if symbol == symbollib.int.unwrap() => RegisterGroup::F64,
+                symbol if symbol == symbollib.float.unwrap() => RegisterGroup::F64,
+
+                _ => todo!(),
+            },
+            _ => unreachable!(
+                "Bytecode gen failed. Cannot determine group for type {:?}",
+                symbollib.format_evaluated_type(inferred_type)
+            ),
+        }
+    }
+    /// Returns byte representation of the register group.
+    pub fn as_byte(&self) -> u8 {
+        match self {
+            RegisterGroup::Int8 => 0,
+            RegisterGroup::Int16 => 1,
+            RegisterGroup::F32 => 2,
+            RegisterGroup::F64 => 3,
+            RegisterGroup::Bool => 4,
+            RegisterGroup::FunctionPtr => 5,
+            _ => panic!("Cannot move from ether to register group {self:?}"),
+        }
+    }
+    /// Creates a register group from a byte representation.
+    pub fn from_byte(value: u8) -> Self {
+        match value {
+            0 => Self::Int8,
+            1 => Self::Int16,
+            2 => Self::F32,
+            3 => Self::F64,
+            4 => Self::Bool,
+            5 => Self::FunctionPtr,
+            _ => panic!("Unsupported conversion from byte to register group!"),
+        }
     }
 }
 
@@ -149,6 +202,7 @@ impl BytecodeMemoryManager {
             ),
         };
         self.code.push(base_opcode.into());
+        self.code.push(id.0);
         match group {
             RegisterGroup::Int8 => self.code.push(number as u8),
             RegisterGroup::Int16 => (number as u16)
@@ -172,6 +226,7 @@ impl BytecodeMemoryManager {
     ///
     /// It panics if the group is already full.
     pub fn create_register(&mut self, group: RegisterGroup) -> &mut Register {
+        let frame = self.frame_stack.len() - 1;
         let registers = self
             .frame_stack
             .last_mut()
@@ -184,7 +239,6 @@ impl BytecodeMemoryManager {
             panic!("Register allocation failed. Maximum register count for free values exceeded.");
         }
         let id = RegisterId(len as u8, group);
-        println!("created register %r{len} in group {group:?}");
         let new_register = Register {
             id,
             state: RegisterState::Empty,
@@ -204,10 +258,10 @@ impl BytecodeMemoryManager {
             .unwrap();
         registers.iter_mut().find(|register| {
             if register.state.is_empty() {
-                println!(
-                    "reusing existing register %r{} in group {:?}",
-                    register.id.0, register.id.1
-                );
+                // println!(
+                //     "reusing existing register %r{} in group {:?}",
+                //     register.id.0, register.id.1
+                // );
                 return true;
             }
             return false;
@@ -244,6 +298,7 @@ impl BytecodeMemoryManager {
 
         // code gen.
         self.code.push(Opcode::LoadFunctionPtr.into());
+        self.code.push(id.0);
         value
             .0
             .to_be_bytes()
@@ -253,21 +308,20 @@ impl BytecodeMemoryManager {
     }
     /// Generates the code to call a function in a given function register id.
     pub fn call_function_in(&mut self, register_id: RegisterId) {
-        let register = self.get_register_mut(&(RegisterGroup::FunctionPtr, register_id));
+        let register = self.get_register_mut(register_id);
         register.state.clear();
 
         // code gen.
         self.code.push(Opcode::Call.into());
         self.code.push(register_id.0);
     }
-
     /// Generate bytecode to move the value in a register of a
     /// register group to a stack address.
-    pub fn store(&mut self, from: (RegisterGroup, RegisterId), to: StackAddress) {
-        let register = self.get_register_mut(&from);
+    pub fn store(&mut self, from: RegisterId, to: StackAddress) {
+        let register = self.get_register_mut(from);
         register.state.clear();
         // code gen.
-        let base_opcode = match from.0 {
+        let base_opcode = match from.1 {
             RegisterGroup::Int8 => Opcode::StoreInt8,
             RegisterGroup::Int16 => Opcode::StoreInt16,
             RegisterGroup::F32 => Opcode::StoreFloat32,
@@ -282,7 +336,7 @@ impl BytecodeMemoryManager {
         stack_address
             .into_iter()
             .for_each(|byte| self.code.push(byte));
-        self.code.push(from.1 .0);
+        self.code.push(from.0);
     }
     /// Generates bytecode to retrieve a value in a stack address to a register.
     ///
@@ -316,19 +370,19 @@ impl BytecodeMemoryManager {
     }
 
     /// Returns a particular register. It will panic if the register does not exist.
-    pub fn get_register_mut(&mut self, from: &(RegisterGroup, RegisterId)) -> &mut Register {
+    pub fn get_register_mut(&mut self, from: RegisterId) -> &mut Register {
         &mut self
             .frame_stack
             .last_mut()
             .unwrap()
             .register_groups
-            .get_mut(&from.0)
-            .expect("Could not find group for data type")[from.1 .0 as usize]
+            .get_mut(&from.1)
+            .expect("Could not find group for data type")[from.0 as usize]
     }
 
     /// Clears the state of a register
-    pub fn clear_register(&mut self, register: (RegisterGroup, RegisterId)) {
-        let register = self.get_register_mut(&register);
+    pub fn clear_register(&mut self, register: RegisterId) {
+        let register = self.get_register_mut(register);
         register.state = RegisterState::Empty;
     }
 
@@ -367,6 +421,81 @@ impl BytecodeMemoryManager {
         self.code.push(id.0);
 
         return id;
+    }
+
+    /// Move a value from an ether register to a type-specific register.
+    pub fn typecast_ether(&mut self, from: RegisterId, to: RegisterGroup) -> RegisterId {
+        let register = self.get_register_mut(from);
+        register.state = RegisterState::Empty;
+
+        let id = self.get_free_or_create_register(to);
+        self.get_register_mut(id).state = RegisterState::Occupied;
+
+        // code gen.
+        self.code.push(Opcode::MoveEther.into());
+        let register_group = to.as_byte();
+        self.code.push(register_group);
+        self.code.push(id.0);
+        self.code.push(from.0);
+        return id;
+    }
+
+    fn get_free_or_create_register(&mut self, to: RegisterGroup) -> RegisterId {
+        let mut new_location = self.get_free_register(to);
+        if new_location.is_none() {
+            new_location = Some(self.create_register(to));
+        }
+        let new_location = new_location.unwrap();
+        let id = new_location.id;
+        id
+    }
+
+    /// Generates code that takes two registers, performs a binary operation and
+    /// returns the rgister that contains the result.
+    pub fn condense_into_one(
+        &mut self,
+        left_register: RegisterId,
+        right_register: RegisterId,
+        operator: BinOperator,
+    ) -> RegisterId {
+        assert_eq!(left_register.1, right_register.1);
+        // Empty both registers.
+        let lregister = self.get_register_mut(left_register);
+        lregister.state.clear();
+        let rregister = self.get_register_mut(right_register);
+        rregister.state.clear();
+
+        let result_register_id = self.get_free_or_create_register(left_register.1);
+        self.get_register_mut(result_register_id).state = RegisterState::Occupied;
+
+        // code-gen
+        let base_opcode = match operator {
+            BinOperator::Multiply => Opcode::Mul,
+            BinOperator::Divide => Opcode::Div,
+            BinOperator::PowerOf => todo!(),
+            BinOperator::BitAnd => todo!(),
+            BinOperator::BitOr => todo!(),
+            BinOperator::Equals => todo!(),
+            BinOperator::NotEquals => todo!(),
+            BinOperator::Remainder => todo!(),
+            BinOperator::Add => Opcode::Add,
+            BinOperator::Subtract => Opcode::Sub,
+            BinOperator::Range => todo!(),
+            BinOperator::LessThan => todo!(),
+            BinOperator::GreaterThan => todo!(),
+            BinOperator::LessThanOrEquals => todo!(),
+            BinOperator::GreaterThanOrEquals => todo!(),
+            BinOperator::LeftShift => todo!(),
+            BinOperator::RightShift => todo!(),
+        };
+        self.code.push(base_opcode.into());
+        let group = left_register.1.as_byte();
+        self.code.push(group);
+        self.code.push(result_register_id.0);
+        self.code.push(left_register.0);
+        self.code.push(right_register.0);
+
+        return result_register_id;
     }
 }
 

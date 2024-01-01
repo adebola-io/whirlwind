@@ -46,6 +46,17 @@ public interface Iteratable<I> {
     public function collect() -> []I {
         todo()
     }
+    /// Consumes the iterator and returns the number of elements left.
+    /// ### Usage
+    /// ```
+    /// arr := [1, 2, 3, 4, 5];
+    /// arrItem := arr.iter();
+    /// 
+    /// assertThat(arrItem.count() == 5);
+    /// ```
+    public function count() -> UnsignedInt {
+        todo()
+    }
     /// Consumes the iterator, running a callback for all the items produced by it.
     /// 
     /// ### Usage

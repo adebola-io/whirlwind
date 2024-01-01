@@ -12,6 +12,7 @@ use std::{
 };
 
 mod callable;
+mod expression;
 mod memory;
 
 pub use callable::*;
@@ -127,7 +128,9 @@ impl<'a> BytecodeGenerator<'a> {
         {
             self.memory.code.push(Opcode::Return.into());
         }
+        let end = self.memory.code.len() - 1;
         self.memory.clear_frame();
+        self.callables.set_end(symbol_idx, end);
     }
 
     /// Emits a statement.
@@ -149,11 +152,9 @@ impl<'a> BytecodeGenerator<'a> {
             TypedStmnt::InterfaceDeclaration(_) => todo!(),
             TypedStmnt::ExpressionStatement(expression)
             | TypedStmnt::FreeExpression(expression) => {
-                let register = self.emit_expression(expression);
-                let (literals, symbollib, _) = self.standpoint.data();
-                let inferred_type = symbollib.get_expression_type(expression, literals).unwrap();
-                let registertype = RegisterGroup::of(&inferred_type, symbollib);
-                self.memory.clear_register((registertype, register));
+                if let Some(register_id) = self.emit_expression(expression) {
+                    self.memory.clear_register(register_id);
+                }
             }
             TypedStmnt::ReturnStatement(retty) => self.emit_return(retty),
             TypedStmnt::BreakStatement(_) => todo!(),
@@ -173,7 +174,7 @@ impl<'a> BytecodeGenerator<'a> {
         &mut self,
         body: &'a analyzer::TypedBlock,
         is_function_block: bool,
-    ) -> RegisterId {
+    ) -> Option<RegisterId> {
         for (i, statement) in body.statements.iter().enumerate() {
             // Handle returns.
             match (i + 1 == body.statements.len(), statement, is_function_block) {
@@ -183,7 +184,7 @@ impl<'a> BytecodeGenerator<'a> {
                 _ => self.emit_statement(&statement),
             }
         }
-        todo!()
+        return None;
     }
 
     /// Emits a return statement.
@@ -195,71 +196,6 @@ impl<'a> BytecodeGenerator<'a> {
             self.memory.code.push(Opcode::MoveValtoRet.into())
         }
         self.memory.code.push(Opcode::Return.into())
-    }
-
-    /// Emits an expression as bytecode.
-    /// It returns the id of the register that contains the result
-    /// of the expression evaluation.
-    fn emit_expression(&mut self, expression: &'a TypedExpression) -> RegisterId {
-        match expression {
-            TypedExpression::Identifier(id) => todo!(),
-            TypedExpression::Literal(literal) => {
-                let literalmap = &self.standpoint.literals;
-                let literal_value = literalmap.get(*literal).unwrap();
-                match literal_value {
-                    Literal::StringLiteral { module, value } => todo!(),
-                    Literal::NumericLiteral {
-                        value,
-                        inferred_type,
-                        ..
-                    } => {
-                        let symbollib = &self.standpoint.symbol_library;
-                        let register_group = RegisterGroup::of(inferred_type, symbollib);
-                        self.memory
-                            .load_immediate_number(register_group, &value.value)
-                    }
-                    Literal::BooleanLiteral { value, .. } => {
-                        self.memory.load_immediate_boolean(*value)
-                    }
-                }
-            }
-            TypedExpression::NewExpr(_) => todo!(),
-            TypedExpression::ThisExpr(_) => todo!(),
-            TypedExpression::CallExpr(call) => self.emit_call_expression(call),
-            TypedExpression::FnExpr(_) => todo!(),
-            TypedExpression::Block(block) => self.emit_block(block, false),
-            TypedExpression::IfExpr(_) => todo!(),
-            TypedExpression::AccessExpr(_) => todo!(),
-            TypedExpression::ArrayExpr(_) => todo!(),
-            TypedExpression::IndexExpr(_) => todo!(),
-            TypedExpression::BinaryExpr(binexp) => self.emit_binary_expression(binexp),
-            TypedExpression::AssignmentExpr(_) => todo!(),
-            TypedExpression::UnaryExpr(_) => todo!(),
-            TypedExpression::LogicExpr(_) => todo!(),
-            TypedExpression::UpdateExpr(_) => todo!(),
-        }
-    }
-
-    /// Emits a call expression.
-    ///
-    /// It loads the parameters to the stack from left to right,
-    /// then calls the function.
-    fn emit_call_expression(&mut self, call: &'a analyzer::TypedCallExpr) -> RegisterId {
-        // todo: load parameters.
-        // todo: load optional parameters.
-        let register_id = self.emit_expression(&call.caller);
-        assert_eq!(register_id.1, RegisterGroup::FunctionPtr);
-        // Adds the call instruction to the bytecode.
-        self.memory.call_function_in(register_id);
-        let (literals, symbollib, _) = self.standpoint.data();
-        let caller_type = symbollib
-            .get_expression_type(&call.caller, literals)
-            .unwrap();
-        let return_type = distill_as_function_type(&caller_type, symbollib)
-            .unwrap()
-            .return_type;
-        let group = RegisterGroup::of(&return_type, symbollib);
-        self.memory.get_return_value(group)
     }
 
     /// Returns the nature of the caller in the call expression.
@@ -279,11 +215,6 @@ impl<'a> BytecodeGenerator<'a> {
                 _ => unreachable!("Could not construct nature on non-callable value."),
             }
         }
-        todo!()
-    }
-
-    /// Emits a binary expression.
-    fn emit_binary_expression(&mut self, binexp: &'a analyzer::TypedBinExpr) -> RegisterId {
         todo!()
     }
 }

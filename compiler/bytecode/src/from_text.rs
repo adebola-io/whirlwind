@@ -12,8 +12,14 @@ pub fn bytecode_from_text(text: &str) -> Result<BytecodeObject, BytecodeError> {
     let mut module = Module::from_text(text);
     module.module_path = Some(PathBuf::from("testing://main.wrl"));
     standpoint.entry_module = standpoint.add_module(module).unwrap();
+    standpoint.validate();
     if standpoint.diagnostics.len() > 0 {
-        panic!("Non-zero diagnostics.")
+        panic!(
+            "Non-zero diagnostics: \n\n
+        {:#?}
+        ",
+            standpoint.diagnostics
+        )
     }
     return generate_from(&standpoint);
 }
