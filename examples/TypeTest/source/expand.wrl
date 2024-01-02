@@ -1,0 +1,15 @@
+module expand;
+
+
+test "Expansive types" {
+    type Matrix<T> = Tuple<Tuple<T, T>, Tuple<T, T>>;
+    type CompositeMatrix<T = Int> = Matrix<T>;
+
+
+
+
+
+    var superMatrix: CompositeMatrix<CompositeMatrix> = todo();
+
+    
+}

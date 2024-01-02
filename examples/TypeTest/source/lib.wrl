@@ -136,7 +136,7 @@ test "Testing types." {
     function anyType<T>(value: T) {}
 
     // Generic Invariance.
-    function hello<T>(value: T, factory: fn(value: T): T): T {
+    function hello<T>(value: T, factory: fn(value: T): T) -> T {
         value = factory(value); // valid.
         if true {
             return value; // valid.

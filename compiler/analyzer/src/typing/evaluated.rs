@@ -331,6 +331,58 @@ impl EvaluatedType {
     pub(crate) fn is_soft_generic(&self) -> bool {
         matches!(self, EvaluatedType::Generic { .. })
     }
+
+    /// Traverses an evalutated type.
+    pub(crate) fn traverse(&self, predicate: &mut impl FnMut(&EvaluatedType)) {
+        predicate(self);
+        match self {
+            EvaluatedType::Partial { types } => {
+                types.iter().for_each(|typ| typ.traverse(predicate))
+            }
+            EvaluatedType::ModelInstance {
+                generic_arguments, ..
+            }
+            | EvaluatedType::InterfaceInstance {
+                generic_arguments, ..
+            }
+            | EvaluatedType::EnumInstance {
+                generic_arguments, ..
+            }
+            | EvaluatedType::FunctionInstance {
+                generic_arguments, ..
+            }
+            | EvaluatedType::MethodInstance {
+                generic_arguments, ..
+            } => generic_arguments
+                .iter()
+                .map(|(_, typ)| typ)
+                .for_each(|typ| typ.traverse(predicate)),
+            EvaluatedType::FunctionExpressionInstance {
+                params,
+                return_type,
+                generic_args,
+                ..
+            } => {
+                params
+                    .iter()
+                    .for_each(|param| param.inferred_type.traverse(predicate));
+                return_type.traverse(predicate);
+                generic_args
+                    .iter()
+                    .map(|(_, typ)| typ)
+                    .for_each(|typ| typ.traverse(predicate))
+            }
+            _ => {}
+        }
+    }
+
+    /// Returns `true` if the evaluated type is [`EnumInstance`].
+    ///
+    /// [`EnumInstance`]: EvaluatedType::EnumInstance
+    #[must_use]
+    pub fn is_enum_instance(&self) -> bool {
+        matches!(self, Self::EnumInstance { .. })
+    }
 }
 
 /// Converts an intermediate type into an evaluation.
@@ -394,6 +446,7 @@ pub fn evaluate(
                     typ,
                     symbollib,
                     solved_generics,
+                    recursion_depth
                 )
             };
             match &typ.kind {
@@ -817,6 +870,7 @@ fn generate_generics_from_arguments(
     typ: &crate::SemanticSymbol,
     symbollib: &SymbolLibrary,
     solved_generics: Option<&Vec<(SymbolIndex, EvaluatedType)>>,
+    mut recursion_depth: u64,
 ) -> Vec<(SymbolIndex, EvaluatedType)> {
     if generic_args.len() > 0 && generic_params.len() == 0 {
         add_error_if_possible(
@@ -829,64 +883,76 @@ fn generate_generics_from_arguments(
     } else {
         let args_len = generic_args.len();
         let param_len = generic_params.len();
-        if args_len != param_len {
-            add_error_if_possible(&mut error_tracker, {
-                let name = typ.name.clone();
-                TypeErrorType::MismatchedGenericArgs {
-                    name,
-                    expected: param_len,
-                    assigned: args_len,
-                }
-            });
-            vec![]
-        } else {
-            let mut generic_solutions = vec![];
-            // Unify each parameter to argument.
-            let mut i = 0;
-            while i < param_len {
-                // Convert each parameter symbol to an immediately evaluated generic param type.
-                // which can then be unified with the argument
-                // to determine the result value.
-                let param_idx = generic_params[i];
-                let intermediate_generic_type = IntermediateType::SimpleType {
-                    value: param_idx,
-                    generic_args: vec![],
-                    span: Span::default(),
-                };
-                let generic_param_evaluated = evaluate(
-                    &intermediate_generic_type,
-                    symbollib,
-                    solved_generics,
-                    &mut error_tracker,
-                    0,
-                );
-                let argument_evaluated = evaluate(
-                    &generic_args[i],
-                    symbollib,
-                    solved_generics,
-                    &mut error_tracker,
-                    0,
-                );
-                let result_evaluated_type = match unify_types(
-                    &generic_param_evaluated,
-                    &argument_evaluated,
-                    symbollib,
-                    UnifyOptions::HardConform,
-                    None,
-                ) {
-                    Ok(value) => value,
-                    Err(error) => {
-                        for error in error {
-                            add_error_if_possible(&mut error_tracker, error);
+
+        let mut generic_solutions = vec![];
+        // Unify each parameter to argument.
+        let mut i = 0;
+        while i < param_len {
+            // Convert each parameter symbol to an immediately evaluated generic param type.
+            // which can then be unified with the argument
+            // to determine the result value.
+            let param_idx = generic_params[i];
+            let intermediate_generic_type = IntermediateType::SimpleType {
+                value: param_idx,
+                generic_args: vec![],
+                span: Span::default(),
+            };
+            let generic_param_evaluated = evaluate(
+                &intermediate_generic_type,
+                symbollib,
+                solved_generics,
+                &mut error_tracker,
+                recursion_depth,
+            );
+            // If there is no generic argument at the current position, but the parameter has a default value,
+            // use that instead, else the matching is insufficient.
+            let mut generic_argument_intermediate = generic_args.get(i);
+            if generic_argument_intermediate.is_none() {
+                if let Some(SemanticSymbolKind::GenericParameter {
+                    default_value: Some(default_value),
+                    ..
+                }) = symbollib.get(param_idx).map(|symbol| &symbol.kind)
+                {
+                    generic_argument_intermediate = Some(default_value);
+                } else {
+                    add_error_if_possible(&mut error_tracker, {
+                        let name = typ.name.clone();
+                        TypeErrorType::MismatchedGenericArgs {
+                            name,
+                            expected: param_len,
+                            assigned: args_len,
                         }
-                        EvaluatedType::Unknown
-                    }
-                };
-                generic_solutions.push((param_idx, result_evaluated_type));
-                i += 1;
+                    });
+                    return generic_solutions;
+                }
             }
-            generic_solutions
+
+            let argument_evaluated = evaluate(
+                &generic_argument_intermediate.unwrap(),
+                symbollib,
+                solved_generics,
+                &mut error_tracker,
+                recursion_depth,
+            );
+            let result_evaluated_type = match unify_types(
+                &generic_param_evaluated,
+                &argument_evaluated,
+                symbollib,
+                UnifyOptions::HardConform,
+                None,
+            ) {
+                Ok(value) => value,
+                Err(error) => {
+                    for error in error {
+                        add_error_if_possible(&mut error_tracker, error);
+                    }
+                    EvaluatedType::Unknown
+                }
+            };
+            generic_solutions.push((param_idx, result_evaluated_type));
+            i += 1;
         }
+        generic_solutions
     }
 }
 

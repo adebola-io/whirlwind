@@ -1,3 +1,5 @@
+use ast::unwrap_or_continue;
+
 use super::{expressions::typecheck_block, *};
 use crate::TypedModelDeclaration;
 
@@ -40,7 +42,36 @@ pub fn typecheck_statement(
         TypedStmnt::ModelDeclaration(model) => {
             typecheck_model_declaration(model, checker_ctx, symbollib)
         }
+        TypedStmnt::TypeDeclaration(type_decl) => {
+            typecheck_type_declaration(type_decl, symbollib, checker_ctx)
+        }
         _ => {}
+    }
+}
+
+fn typecheck_type_declaration(
+    type_decl: &mut crate::TypedTypeDeclaration,
+    symbollib: &mut SymbolLibrary,
+    checker_ctx: &mut TypecheckerContext<'_>,
+) {
+    if let Some(SemanticSymbolKind::TypeName {
+        generic_params,
+        value,
+        ..
+    }) = symbollib.get(type_decl.name).map(|symbol| &symbol.kind)
+    {
+        typecheck_generic_params(generic_params, symbollib, checker_ctx);
+        let assigned = evaluate(
+            value,
+            symbollib,
+            None,
+            &mut checker_ctx.tracker(value.span()),
+            0,
+        );
+        if !is_concrete_type(&assigned) {
+            let name = symbollib.format_evaluated_type(&assigned);
+            checker_ctx.add_diagnostic(errors::expected_implementable(name, value.span()));
+        }
     }
 }
 
@@ -349,17 +380,24 @@ fn typecheck_model_declaration(
             }
         }
     }
+
     // Check that the method names inherited from interfaces do not clash with other.
-    // if let SemanticSymbolKind::Model {
-    //     is_constructable,
-    //     generic_params,
-    //     constructor_parameters,
-    //     implementations,
-    //     methods,
-    //     attributes,
-    //     ..
-    // } = &model_symbol.kind
-    // {}
+    let model_symbol = symbollib.get(model.name).unwrap();
+    if let SemanticSymbolKind::Model {
+        implementations, ..
+    } = &model_symbol.kind
+    {
+        let implementations = implementations.iter().map(|typ| {
+            evaluate(
+                typ,
+                symbollib,
+                None,
+                &mut checker_ctx.tracker(model_symbol.ident_span()),
+                0,
+            )
+        });
+    }
+
     for property in &mut model.body.properties {
         match &mut property._type {
             crate::TypedModelPropertyType::TypedAttribute => {
@@ -985,6 +1023,7 @@ pub fn typecheck_function(
             ..
         } = &symbol.kind
         {
+            typecheck_generic_params(generic_params, symbollib, checker_ctx);
             let generic_arguments = evaluate_generic_params(generic_params, true);
             let mut evaluated_param_types = vec![];
             for param in params {
@@ -1040,6 +1079,83 @@ pub fn typecheck_function(
         symbollib,
         return_type_span,
     );
+}
+
+/// Confirms that a list of generic params do not have impls that are not interface instances.
+pub fn typecheck_generic_params(
+    generic_params: &Vec<SymbolIndex>,
+    symbollib: &SymbolLibrary,
+    checker_ctx: &mut TypecheckerContext<'_>,
+) {
+    for param in generic_params.iter() {
+        let symbol = unwrap_or_continue!(symbollib.get(*param));
+        if let SemanticSymbolKind::GenericParameter {
+            interfaces,
+            default_value,
+        } = &symbol.kind
+        {
+            for interface in interfaces {
+                let interface_type = evaluate(
+                    interface,
+                    symbollib,
+                    None,
+                    &mut checker_ctx.tracker(interface.span()),
+                    0,
+                );
+                if !interface_type.is_interface_instance() {
+                    let name = symbollib.format_evaluated_type(&interface_type);
+                    checker_ctx.add_diagnostic(errors::interface_expected(name, interface.span()))
+                }
+            }
+            if let Some(default_value) = default_value.as_ref() {
+                let default_value_evaled = evaluate(
+                    default_value,
+                    symbollib,
+                    None,
+                    &mut checker_ctx.tracker(default_value.span()),
+                    0,
+                );
+                if !is_concrete_type(&default_value_evaled) {
+                    let name = symbollib.format_evaluated_type(&default_value_evaled);
+                    checker_ctx
+                        .add_diagnostic(errors::expected_implementable(name, default_value.span()))
+                } else {
+                    // Assert that the default value is assignable based on the constraints given.
+                    let main_generic_evaled = EvaluatedType::Generic { base: *param };
+                    if let Err(errors) = unify_types(
+                        &main_generic_evaled,
+                        &default_value_evaled,
+                        symbollib,
+                        UnifyOptions::Conform,
+                        None,
+                    ) {
+                        let name = symbollib.format_evaluated_type(&default_value_evaled);
+                        let main_error = TypeErrorType::InvalidDefaultType {
+                            name,
+                            generic: symbol.name.to_owned(),
+                        };
+                        checker_ctx.add_diagnostic(errors::composite_type_error(
+                            main_error,
+                            errors,
+                            default_value.span(),
+                        ))
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn is_concrete_type(default_value_evaled: &EvaluatedType) -> bool {
+    matches!(
+        default_value_evaled,
+        EvaluatedType::HardGeneric { .. }
+            | EvaluatedType::OpaqueTypeInstance { .. }
+            | EvaluatedType::Generic { .. }
+            | EvaluatedType::EnumInstance { .. }
+            | EvaluatedType::ModelInstance { .. }
+            | EvaluatedType::Never
+    )
 }
 
 fn validate_return_type_and_params(

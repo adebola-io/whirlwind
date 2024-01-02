@@ -151,7 +151,6 @@ pub fn is_updateable(expression: &TypedExpression, symbollib: &SymbolLibrary) ->
             matches!(&symbol.kind, SemanticSymbolKind::Variable { declared_type,.. } if declared_type.is_none())
         }),
         TypedExpression::BinaryExpr(b) => {
-            println!("Checking updateability...");
             is_updateable(&b.left, symbollib) && is_updateable(&b.right, symbollib)},
         TypedExpression::Literal(_) => true,
         _ => false,

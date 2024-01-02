@@ -78,3 +78,10 @@ pub fn numeric_exclusive_operation(typ: String, span: ast::Span) -> TypeError {
         span,
     }
 }
+
+pub fn interface_expected(name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::ExpectedInterface { got: name },
+        span,
+    }
+}

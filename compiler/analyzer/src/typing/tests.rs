@@ -274,6 +274,40 @@ fn unary_minus_or_plus() {
 }
 
 #[test]
+fn it_infers_default_generic_arguments() {
+    check_types!(
+        "module Test;
+        
+        function main() {
+            a := Generic();
+        }
+
+        function Generic<T = String>(value?: T): T {
+            todo()
+        }
+        ",
+        &[("a", "String")]
+    );
+}
+
+#[test]
+fn it_typechecks_type_declaration() {
+    text_produces_errors!(
+        "module Test;
+
+        type BoolIterator = Iteratable<Bool>;
+
+        function main() {
+            
+        }
+        ",
+        &[TypeErrorType::ExpectedImplementableGotSomethingElse(
+            format!("Iteratable<Bool>")
+        )]
+    )
+}
+
+#[test]
 fn it_errors_on_invalid_unary_exp() {}
 
 #[test]

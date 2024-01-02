@@ -187,7 +187,7 @@ fn disassemble_text() {
     module main;
 
     function main() {
-        doMoreMath();
+        
     }
     function doMath() -> UInt8 {
         return 1 + 2 + 3;

@@ -1,7 +1,7 @@
 mod assignment;
 mod binary;
 
-use super::*;
+use super::{statements::typecheck_generic_params, *};
 use crate::{
     programdiagnostic::DiagnosticType,
     utils::{is_unsigned, is_updateable},
@@ -1008,7 +1008,25 @@ fn typecheck_call_expression(
         symbollib,
         &mut generic_arguments,
     );
-    callexp.inferred_type = coerce(return_type, &generic_arguments);
+    return_type = coerce(return_type, &generic_arguments);
+    // The operations should produce a list of arguments that contain solutions
+    // for generic types. If at the end there is still no solution, then the specified
+    // default type is considered.
+    let mut remaining_unsolved = vec![];
+    return_type.traverse(&mut |child| {
+        if let EvaluatedType::Generic { base } = child {
+            if let Some(SemanticSymbolKind::GenericParameter {
+                default_value: Some(default),
+                ..
+            }) = symbollib.get(*base).map(|symbol| &symbol.kind)
+            {
+                let default_type_evaluated =
+                    evaluate(default, symbollib, Some(&generic_arguments), &mut None, 0);
+                remaining_unsolved.push((*base, default_type_evaluated));
+            }
+        };
+    });
+    callexp.inferred_type = coerce(return_type, &remaining_unsolved);
     update_expression_type(
         &mut callexp.caller,
         symbollib,
@@ -1261,6 +1279,7 @@ fn typecheck_function_expression(
 ) -> EvaluatedType {
     f.inferred_type = (|| {
         let mut parameter_types = vec![];
+        typecheck_generic_params(&f.generic_params, symbollib, checker_ctx);
         let generic_args = evaluate_generic_params(&f.generic_params, true);
         for param in &f.params {
             let parameter_symbol = symbollib.get_forwarded(*param).unwrap();

@@ -360,10 +360,20 @@ impl SymbolLibrary {
                 string.push_str("}");
             }
             EvaluatedType::Generic { base, .. } => {
-                string.push_str("{type ");
+                // Print default types if they are available
                 let symbol = self.get(*base).unwrap();
-                string.push_str(&symbol.name);
-                string.push_str("}");
+                if let SemanticSymbolKind::GenericParameter {
+                    default_value: Some(default_value),
+                    ..
+                } = &symbol.kind
+                {
+                    let default_evaled = evaluate(default_value, self, None, &mut None, 0);
+                    string.push_str(&self.format_evaluated_type(&default_evaled));
+                } else {
+                    string.push_str("{type ");
+                    string.push_str(&symbol.name);
+                    string.push_str("}");
+                }
             }
             EvaluatedType::HardGeneric { base } => {
                 let symbol = self.get(*base).unwrap();

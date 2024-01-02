@@ -29,7 +29,7 @@ impl std::fmt::Display for TypeErrorType {
         TypeErrorType::EnumInModelPlace { name } => format!("{name} refers to an enum, but it is being used as a model here."),
         TypeErrorType::TypeInModelPlace => format!("Type aliases cannot be used in model instantiations."),
         TypeErrorType::InvalidNewExpression => format!("This expression is not constructable."),
-        TypeErrorType::ExpectedImplementableGotSomethingElse(name) => format!("Expected a model or a interface, got '{name}'."),
+        TypeErrorType::ExpectedImplementableGotSomethingElse(name) => format!("Expected a model, interface, enum or generic, got '{name}'."),
         TypeErrorType::UnconstructableModel(name) => format!("'{name}' has no constructor, and therefore cannot be instantiated."),
         TypeErrorType::MismatchedModelArgs { name, expected, assigned } => {
             format!("'{name}' expects {expected} constructor arguments, but got {assigned}.")
@@ -95,11 +95,12 @@ impl std::fmt::Display for TypeErrorType {
         TypeErrorType::InvalidSize { error } => error.clone(),
         TypeErrorType::ThisInStaticMethod => format!("The 'this' identifier cannot be used in a static method."),
         TypeErrorType::CompositeError { main_error, sub_errors } => {
-            let mut string = main_error.to_string();
-            string += " ";
+            let mut string = format!("- {}", main_error.to_string());
+            string += " \n";
             for error in sub_errors {
+                string.push_str("- ");
                 string += &error.to_string();
-                string += " "
+                string += " \n"
             }
             string
         },
@@ -113,7 +114,9 @@ impl std::fmt::Display for TypeErrorType {
         TypeErrorType::MethodInConstructor => format!("Methods on a model instance cannot be called from inside its constructor."),
         TypeErrorType::NotOrderable { name, operator } => format!("Illegal operator {operator:?}. Values of type {name} do not implement Orderable."),
         TypeErrorType::NotSequenced { name} => format!("Range cannot be created because values of type {name} do not implement Sequenced."),
-        TypeErrorType::NumericExclusiveOperation { typ } => format!("{typ} is not a numeric type."), 
+        TypeErrorType::NumericExclusiveOperation { typ } => format!("{typ} is not a numeric type."),
+        TypeErrorType::ExpectedInterface { got } => format!("Expected an interface here, got type '{got}'."),
+        TypeErrorType::InvalidDefaultType { name, generic } => format!("{name} cannot be used as a default value for the generic type {generic}."),
         };
 
         write!(f, "{message}")

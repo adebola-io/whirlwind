@@ -259,6 +259,13 @@ pub enum TypeErrorType {
     NumericExclusiveOperation {
         typ: String,
     },
+    ExpectedInterface {
+        got: String,
+    },
+    InvalidDefaultType {
+        name: String,
+        generic: String,
+    },
 }
 
 pub fn invalid_binary(left: String, operator: BinOperator, right: String, span: Span) -> TypeError {

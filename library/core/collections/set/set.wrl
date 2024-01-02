@@ -85,7 +85,7 @@ public model Set<T implements Hash>
     /// set that are not in another set.
     public function difference(other: This) -> This {
         difference := new Set();
-        for {a as element} in this.items {
+        for { a as element } in this.items {
             if !other.has(element) {
                 difference.add(element);
             }
@@ -176,7 +176,7 @@ public model Set<T implements Hash>
     /// assertThat(setB.isSubsetOf(setA));
     /// ```
     public function isSubsetOf(other: This) -> Bool {
-        for {a as element} in this.items {
+        for { a as element } in this.items {
             if !other.has(element) {
                 return false;
             }
