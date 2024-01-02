@@ -94,14 +94,7 @@ fn disassemble_instruction(
         Opcode::RetrieveBool => todo!(),
         Opcode::RetrieveFunctionPtr => todo!(),
         Opcode::RetrieveAddr => todo!(),
-        Opcode::ReturnInt8 => todo!(),
-        Opcode::ReturnInt16 => todo!(),
-        Opcode::ReturnFloat32 => todo!(),
-        Opcode::ReturnFloat64 => todo!(),
-        Opcode::ReturnBool => todo!(),
-        Opcode::ReturnFunctionPtr => todo!(),
-        Opcode::ReturnAddr => todo!(),
-        Opcode::ReturnEther => todo!(),
+        Opcode::MovRetVal => disassemble_return_move_params(reader, &mut output),
         Opcode::Div
         | Opcode::Mod
         | Opcode::RightShift
@@ -131,7 +124,7 @@ fn disassemble_instruction(
         Opcode::NewArrayAddrA => todo!(),
         Opcode::NewArrayAddrE => todo!(),
         Opcode::GetPropertyOffset => todo!(),
-        Opcode::MoveValtoRet => todo!(),
+        Opcode::MoveToRet => disassemble_return_move_params(reader, &mut output),
         Opcode::SpawnSeq => todo!(),
         Opcode::SyncSeq => todo!(),
         Opcode::HaltSeq => todo!(),
@@ -139,6 +132,14 @@ fn disassemble_instruction(
         Opcode::Exit => todo!(),
     }
     string.push_str(&output.color().cyan().str());
+}
+
+fn disassemble_return_move_params(reader: &mut DisAsmBytecodeReader<'_>, output: &mut String) {
+    let group = RegisterGroup::from_byte(reader.next_byte());
+    let group_str = format!("{group:?}").to_ascii_lowercase();
+    let destination = reader.next_byte();
+    let data = format!("{group_str}, @r{destination}");
+    output.push_str(&data);
 }
 
 fn disassemble_arith_params(reader: &mut DisAsmBytecodeReader<'_>, output: &mut String) {
@@ -186,14 +187,13 @@ fn disassemble_text() {
     module main;
 
     function main() {
-        doMath();
         doMoreMath();
     }
-    function doMath() {
-        1 + 2 + 3;
+    function doMath() -> UInt8 {
+        return 1 + 2 + 3;
     }
-    function doMoreMath() {
-        (1 - (2 + 4) * (72 + 5)) + 61.3;
+    function doMoreMath() -> Float {
+        return doMath();
     }
     ",
     )

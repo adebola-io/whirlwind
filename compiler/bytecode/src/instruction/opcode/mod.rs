@@ -173,38 +173,18 @@ pub enum Opcode {
     // ------------------
     // Return-to-Register
     // ------------------
-    /// Moves the value in the global return register to an int8 register.
+    /// Moves the value in the global return register to a concrete type register.
     ///
-    /// Format: `[ReturnInt8] [register]`
-    ReturnInt8,
-    /// Moves the value in the global return register to an int16 register.
+    /// If the next byte is 0, it moves to an int8 register.
+    /// If the next byte is 1, it moves to an int16 register.
+    /// If the next byte is 2, it moves to a float32 register.
+    /// If the next byte is 3, it moves to a float64 register.
+    /// If the next byte is 4, it moves to a bool register.
+    /// If the next byte is 5, it moves to an addr register.
+    /// If the next byte is 6, it moves to an ether register.
     ///
-    /// Format: `[ReturnInt16] [register]`
-    ReturnInt16,
-    /// Moves the value in the global return register to a float32 register.
-    ///
-    /// Format: `[ReturnFloat32] [register]`
-    ReturnFloat32,
-    /// Moves the value in the global return register to a float64 register.
-    ///
-    /// Format: `[ReturnFloat64] [register]`
-    ReturnFloat64,
-    /// Moves the value in the global return register to a bool register.
-    ///
-    /// Format: `[ReturnBool] [register]`
-    ReturnBool,
-    /// Moves the value in the global return register to a functionptr register.
-    ///
-    /// Format: `[ReturnFunctionPtr] [register]`
-    ReturnFunctionPtr,
-    /// Moves the value in the global return register to an addr register.
-    ///
-    /// Format: `[ReturnAddr] [register]`
-    ReturnAddr,
-    /// Moves the value in the global return register to the ether register.
-    ///
-    /// Format: `[ReturnFunctionPtr] [register]`
-    ReturnEther,
+    /// Format: `[MovRetVal] [group] [register]`
+    MovRetVal,
 
     // ===================
     // ARITHMETIC OPCODES
@@ -386,11 +366,18 @@ pub enum Opcode {
     ///
     /// Format: `[GetPropertyOffset] [stackidx: [a, b, c, d]] [offset: [e, f, g, h]]`
     GetPropertyOffset,
-    /// Moves the value in the vala register to the ret register in preparation of a return.
-    /// It moves the empty value if the vala register is empty.
+    /// Moves the value in a register to the ret register in preparation of a return.
     ///
-    /// Format: `[MoveValtoRet]`
-    MoveValtoRet,
+    /// If the next byte is 0, it moves from an int8 register.
+    /// If the next byte is 1, it moves from an int16 register.
+    /// If the next byte is 2, it moves from a float32 register.
+    /// If the next byte is 3, it moves from a float64 register.
+    /// If the next byte is 4, it moves from a bool register.
+    /// If the next byte is 5, it moves from an addr register.
+    /// If the next byte is 6, it moves from an ether register.
+    ///
+    /// Format: `[MoveValtoRet] [group] [register]`
+    MoveToRet,
 
     // SEQUENCE OPCODES.
     // --

@@ -192,8 +192,9 @@ impl<'a> BytecodeGenerator<'a> {
     /// It evaluates the return value and moves the value into the return register.
     fn emit_return(&mut self, retty: &'a analyzer::TypedReturnStatement) {
         if let Some(expression) = &retty.value {
-            self.emit_expression(expression);
-            self.memory.code.push(Opcode::MoveValtoRet.into())
+            if let Some(register_id) = self.emit_expression(expression) {
+                self.memory.move_to_return_register(register_id);
+            }
         }
         self.memory.code.push(Opcode::Return.into())
     }

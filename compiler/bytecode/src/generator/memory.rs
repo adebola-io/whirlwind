@@ -94,8 +94,11 @@ impl RegisterGroup {
             } => match model {
                 _ if model == &symbollib.uint8.unwrap() => RegisterGroup::Int8,
                 _ if model == &symbollib.uint16.unwrap() => RegisterGroup::Int16,
+                _ if model == &symbollib.uint32.unwrap() => RegisterGroup::F32,
+                _ if model == &symbollib.uint64.unwrap() => RegisterGroup::F64,
                 _ if model == &symbollib.float32.unwrap() => RegisterGroup::F32,
                 _ if model == &symbollib.float64.unwrap() => RegisterGroup::F64,
+                _ if model == &symbollib.bool.unwrap() => RegisterGroup::Bool,
                 _ => todo!(),
             },
             EvaluatedType::OpaqueTypeInstance {
@@ -108,7 +111,6 @@ impl RegisterGroup {
                 symbol if symbol == symbollib.uint.unwrap() => RegisterGroup::F64,
                 symbol if symbol == symbollib.int.unwrap() => RegisterGroup::F64,
                 symbol if symbol == symbollib.float.unwrap() => RegisterGroup::F64,
-
                 _ => todo!(),
             },
             _ => unreachable!(
@@ -126,7 +128,8 @@ impl RegisterGroup {
             RegisterGroup::F64 => 3,
             RegisterGroup::Bool => 4,
             RegisterGroup::FunctionPtr => 5,
-            _ => panic!("Cannot move from ether to register group {self:?}"),
+            RegisterGroup::Addr => 6,
+            RegisterGroup::Ether => 7,
         }
     }
     /// Creates a register group from a byte representation.
@@ -408,16 +411,8 @@ impl BytecodeMemoryManager {
         let id = new_register.id;
 
         // code gen.
-        let base_opcode = match group {
-            RegisterGroup::Int8 => Opcode::ReturnInt8,
-            RegisterGroup::Int16 => Opcode::ReturnInt16,
-            RegisterGroup::F32 => Opcode::ReturnFloat32,
-            RegisterGroup::F64 => Opcode::ReturnFloat64,
-            RegisterGroup::Bool => Opcode::ReturnBool,
-            RegisterGroup::FunctionPtr => Opcode::ReturnFunctionPtr,
-            RegisterGroup::Addr => Opcode::ReturnAddr,
-            RegisterGroup::Ether => Opcode::ReturnEther,
-        };
+        self.code.push(Opcode::MovRetVal.into());
+        self.code.push(group.as_byte());
         self.code.push(id.0);
 
         return id;
@@ -496,6 +491,21 @@ impl BytecodeMemoryManager {
         self.code.push(right_register.0);
 
         return result_register_id;
+    }
+
+    /// Generates code to move the value in a register to the global return
+    /// register.
+    ///
+    /// The global return register only stores numeric values as f64, so it can
+    /// allow easy up and downscaling conversions between numeric types.
+    pub fn move_to_return_register(&mut self, register_id: RegisterId) {
+        let register = self.get_register_mut(register_id);
+        register.state.clear();
+
+        // code-gen
+        self.code.push(Opcode::MoveToRet.into());
+        self.code.push(register_id.1.as_byte());
+        self.code.push(register_id.0);
     }
 }
 
