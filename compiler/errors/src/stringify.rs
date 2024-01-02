@@ -179,6 +179,7 @@ impl std::fmt::Display for ParserErrorType {
             ParserErrorType::ContinueOutsideLoop => format!("continue statements can only be used from within a loop."),
             ParserErrorType::BreakOutsideLoop => format!("break statements can only be used from within a loop."),
             ParserErrorType::NumericValueInArray => format!("Numeric constraints are not supported in array types."),
+            ParserErrorType::TypeConditionExpected => format!("Ternary condition expected."), 
         };
         return write!(f, "{message}");
     }

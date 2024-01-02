@@ -68,7 +68,9 @@ fn typecheck_type_declaration(
             &mut checker_ctx.tracker(value.span()),
             0,
         );
-        if !is_concrete_type(&assigned) {
+        // Only concrete types (models, enums, generics) are allowed as type declaration
+        // values. (Ternaries already check for concreteness in the evaluate() function.)
+        if !assigned.is_concrete() && !value.is_ternary() {
             let name = symbollib.format_evaluated_type(&assigned);
             checker_ctx.add_diagnostic(errors::expected_implementable(name, value.span()));
         }
@@ -1115,11 +1117,11 @@ pub fn typecheck_generic_params(
                     &mut checker_ctx.tracker(default_value.span()),
                     0,
                 );
-                if !is_concrete_type(&default_value_evaled) {
+                if !&default_value_evaled.is_concrete() {
                     let name = symbollib.format_evaluated_type(&default_value_evaled);
                     checker_ctx
                         .add_diagnostic(errors::expected_implementable(name, default_value.span()))
-                } else {
+                } else if !default_value_evaled.is_never() {
                     // Assert that the default value is assignable based on the constraints given.
                     let main_generic_evaled = EvaluatedType::Generic { base: *param };
                     if let Err(errors) = unify_types(
@@ -1144,18 +1146,6 @@ pub fn typecheck_generic_params(
             }
         }
     }
-}
-
-fn is_concrete_type(default_value_evaled: &EvaluatedType) -> bool {
-    matches!(
-        default_value_evaled,
-        EvaluatedType::HardGeneric { .. }
-            | EvaluatedType::OpaqueTypeInstance { .. }
-            | EvaluatedType::Generic { .. }
-            | EvaluatedType::EnumInstance { .. }
-            | EvaluatedType::ModelInstance { .. }
-            | EvaluatedType::Never
-    )
 }
 
 fn validate_return_type_and_params(

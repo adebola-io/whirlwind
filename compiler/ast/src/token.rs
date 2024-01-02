@@ -213,6 +213,7 @@ pub enum Keyword {
     Function,
     If,
     In,
+    Is,
     Implements,
     Model,
     Module,

@@ -521,6 +521,32 @@ impl<'a> SymbolWriter<'a> {
                 }
                 string
             }
+            IntermediateType::TernaryType {
+                base,
+                condition,
+                consequent,
+                alternate,
+                ..
+            } => {
+                let mut string = String::from("if ");
+                let base = self.standpoint.symbol_library.get(*base).unwrap();
+                string.push_str(&base.name);
+                match condition.as_ref() {
+                    analyzer::IntermediateTypeCondition::Is(other) => {
+                        string.push_str(" is ");
+                        string.push_str(&self.print_intermediate_type(other))
+                    }
+                    analyzer::IntermediateTypeCondition::Implements(interface) => {
+                        string.push_str(" implements ");
+                        string.push_str(&self.print_intermediate_type(interface))
+                    }
+                }
+                string.push_str(" ");
+                string.push_str(&self.print_intermediate_type(&consequent));
+                string.push_str(" else ");
+                string.push_str(&self.print_intermediate_type(&alternate));
+                string
+            }
         }
     }
 

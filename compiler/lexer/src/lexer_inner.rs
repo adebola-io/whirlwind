@@ -486,6 +486,7 @@ pub trait LexerInner {
             "function" => token!(Keyword::Function, self),
             "if" => token!(Keyword::If, self),
             "in" => token!(Keyword::In, self),
+            "is" => token!(Keyword::Is, self),
             "implements" => token!(Keyword::Implements, self),
             "new" => token!(Keyword::New, self),
             "not" => token!(Operator::Not, self).unwrap(),

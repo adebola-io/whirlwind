@@ -1,9 +1,12 @@
 use crate::{
     unify_generic_arguments, unify_types,
-    utils::{arrify, get_interface_types_from_symbol, get_method_types_from_symbol, maybify},
-    DiagnosticType, IntermediateType, ParameterType, PathIndex, ProgramDiagnostic,
-    SemanticSymbolKind, SymbolIndex, SymbolLibrary, TypecheckerContext, UnifyOptions,
-    EVALUATION_DEPTH,
+    utils::{
+        arrify, get_implementation_of, get_interface_types_from_symbol,
+        get_method_types_from_symbol, maybify,
+    },
+    DiagnosticType, IntermediateType, IntermediateTypeCondition, ParameterType, PathIndex,
+    ProgramDiagnostic, SemanticSymbolKind, SymbolIndex, SymbolLibrary, TypecheckerContext,
+    UnifyOptions, EVALUATION_DEPTH,
 };
 use ast::Span;
 use errors::{
@@ -383,6 +386,19 @@ impl EvaluatedType {
     pub fn is_enum_instance(&self) -> bool {
         matches!(self, Self::EnumInstance { .. })
     }
+
+    /// Returns true if a type can be used in concrete type contexts.
+    pub fn is_concrete(&self) -> bool {
+        matches!(
+            self,
+            EvaluatedType::HardGeneric { .. }
+                | EvaluatedType::OpaqueTypeInstance { .. }
+                | EvaluatedType::Generic { .. }
+                | EvaluatedType::EnumInstance { .. }
+                | EvaluatedType::ModelInstance { .. }
+                | EvaluatedType::Never
+        )
+    }
 }
 
 /// Converts an intermediate type into an evaluation.
@@ -446,7 +462,7 @@ pub fn evaluate(
                     typ,
                     symbollib,
                     solved_generics,
-                    recursion_depth
+                    recursion_depth,
                 )
             };
             match &typ.kind {
@@ -731,7 +747,128 @@ pub fn evaluate(
             );
             return EvaluatedType::Unknown;
         }
+        IntermediateType::TernaryType {
+            base,
+            condition,
+            consequent,
+            alternate,
+            ..
+        } => evaluate_ternary_type(
+            base,
+            symbollib,
+            solved_generics,
+            error_tracker,
+            recursion_depth,
+            condition,
+            consequent,
+            alternate,
+        ),
     }
+}
+
+/// Evaluates a ternary type into an evaluation.
+fn evaluate_ternary_type(
+    base: &SymbolIndex,
+    symbollib: &SymbolLibrary,
+    solved_generics: Option<&Vec<(SymbolIndex, EvaluatedType)>>,
+    error_tracker: &mut Option<(&mut Vec<ProgramDiagnostic>, PathIndex, Span)>,
+    recursion_depth: u64,
+    condition: &Box<IntermediateTypeCondition>,
+    consequent: &Box<IntermediateType>,
+    alternate: &Box<IntermediateType>,
+) -> EvaluatedType {
+    let base_type_to_compare = IntermediateType::SimpleType {
+        value: *base,
+        generic_args: vec![],
+        span: Span::default(),
+    };
+    let base_type_to_compare = evaluate(
+        &base_type_to_compare,
+        symbollib,
+        solved_generics,
+        error_tracker,
+        recursion_depth,
+    );
+    let mut verity = false;
+    match condition.as_ref() {
+        IntermediateTypeCondition::Is(other_type) => {
+            let other_type = evaluate(
+                other_type,
+                symbollib,
+                solved_generics,
+                error_tracker,
+                recursion_depth,
+            );
+            // Direct equality. Unification may lead to weird results.
+            if base_type_to_compare == other_type {
+                verity = true;
+            }
+        }
+        IntermediateTypeCondition::Implements(target_interface) => {
+            let target = evaluate(
+                target_interface,
+                symbollib,
+                solved_generics,
+                error_tracker,
+                recursion_depth,
+            );
+
+            if let EvaluatedType::InterfaceInstance { interface_, .. } = &target {
+                let implemented =
+                    get_implementation_of(*interface_, &base_type_to_compare, symbollib);
+                if implemented.is_some()
+                    && unify_types(
+                        &target,
+                        &implemented.unwrap(),
+                        symbollib,
+                        UnifyOptions::None,
+                        None,
+                    )
+                    .is_ok()
+                {
+                    verity = true;
+                }
+            } else {
+                let name = symbollib.format_evaluated_type(&target);
+                add_error_if_possible(
+                    error_tracker,
+                    TypeErrorType::ExpectedInterface { got: name },
+                )
+            }
+        }
+    }
+    let consequent = evaluate(
+        &consequent,
+        symbollib,
+        solved_generics,
+        error_tracker,
+        recursion_depth,
+    );
+    let alternate = evaluate(
+        &alternate,
+        symbollib,
+        solved_generics,
+        error_tracker,
+        recursion_depth,
+    );
+
+    if !consequent.is_concrete() {
+        let name = symbollib.format_evaluated_type(&consequent);
+        add_error_if_possible(
+            error_tracker,
+            TypeErrorType::ExpectedImplementableGotSomethingElse(name),
+        );
+    }
+
+    if !alternate.is_concrete() {
+        let name = symbollib.format_evaluated_type(&alternate);
+        add_error_if_possible(
+            error_tracker,
+            TypeErrorType::ExpectedImplementableGotSomethingElse(name),
+        );
+    }
+
+    return if verity { consequent } else { alternate };
 }
 
 /// Evaluates an intermediate member type into an evaluated type.
@@ -870,7 +1007,7 @@ fn generate_generics_from_arguments(
     typ: &crate::SemanticSymbol,
     symbollib: &SymbolLibrary,
     solved_generics: Option<&Vec<(SymbolIndex, EvaluatedType)>>,
-    mut recursion_depth: u64,
+    recursion_depth: u64,
 ) -> Vec<(SymbolIndex, EvaluatedType)> {
     if generic_args.len() > 0 && generic_params.len() == 0 {
         add_error_if_possible(
@@ -951,6 +1088,16 @@ fn generate_generics_from_arguments(
             };
             generic_solutions.push((param_idx, result_evaluated_type));
             i += 1;
+        }
+        if generic_args.len() > generic_params.len() {
+            add_error_if_possible(&mut error_tracker, {
+                let name = typ.name.clone();
+                TypeErrorType::MismatchedGenericArgs {
+                    name,
+                    expected: param_len,
+                    assigned: args_len,
+                }
+            });
         }
         generic_solutions
     }

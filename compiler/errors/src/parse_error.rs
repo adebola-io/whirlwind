@@ -40,6 +40,7 @@ pub enum ParserErrorType {
     ContinueOutsideLoop,
     BreakOutsideLoop,
     NumericValueInArray,
+    TypeConditionExpected,
 }
 
 pub fn public_shorthand_var(span: Span) -> ParseError {
@@ -227,6 +228,13 @@ pub fn public_in_non_global_scope(span: ast::Span) -> ParseError {
 pub fn non_global_use(span: ast::Span) -> ParseError {
     ParseError {
         _type: ParserErrorType::UseImportInNonGlobalScope,
+        span,
+    }
+}
+
+pub fn type_condition_expected(span: ast::Span) -> ParseError {
+    ParseError {
+        _type: ParserErrorType::TypeConditionExpected,
         span,
     }
 }

@@ -111,9 +111,10 @@ Statement ::= ForStatement
 TypeExpression ::= DiscreteType 
                    | MemberType 
                    | FunctionType
-                   | UnionType
                    | ArrayType
-                   | BorrowedType
+                   | MaybeType
+                   | UnionType
+                   | ConditionalType
 
 Word ::= Letter+
 
@@ -191,7 +192,11 @@ UnionType ::= TypeExpression ("|" TypeExpression)+
 
 ArrayType := ("[]") TypeExpression
 
-BorrowedType := "&" TypeExpression
+MaybeType := ("?") TypeExpression
+
+ConditionalType := "if" TypeCondition TypeExpression "else" TypeExpression
+
+TypeCondition := Identifier (ImplementsLabel | "is" TypeExpression)
 
 Letter ::= [A-Z] | [a-z]
 
@@ -205,7 +210,7 @@ BooleanLiteral ::= "true " | "false "
 
 BinaryOperator ::= "+" | "-" | "/" | "*" | "%" | "^" | "&" | "|"| ">>" | "<<" | ">" | "<" | " is " | "|>"
 
-UnaryOperator ::= "!" | "&" | "*" | "+" | "-" | " not "
+UnaryOperator ::= "!" | "+" | "-" | " not "
 
 AssignableExpression ::= MemberExpression | Identifier | IndexExpression
 

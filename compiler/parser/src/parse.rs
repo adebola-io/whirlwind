@@ -9,10 +9,10 @@ use ast::{
     ModelDeclaration, ModelProperty, ModelPropertyType, ModelSignature, ModuleAmbience,
     ModuleDeclaration, NewExpr, Operator::*, Parameter, ReturnStatement, ScopeAddress, ScopeEntry,
     ScopeType, ShorthandVariableDeclaration, ShorthandVariableSignature, Span, Spannable,
-    Statement, TestDeclaration, ThisExpr, Token, TokenType, TypeDeclaration, TypeExpression,
-    TypeSignature, UnaryExpr, UnionType, UpdateExpr, UseDeclaration, UsePath, UseTarget,
-    UseTargetSignature, VariableDeclaration, VariablePattern, VariableSignature, WhileStatement,
-    WhirlBoolean, WhirlNumber, WhirlString,
+    Statement, TernaryType, TestDeclaration, ThisExpr, Token, TokenType, TypeCondition,
+    TypeDeclaration, TypeExpression, TypeSignature, UnaryExpr, UnionType, UpdateExpr,
+    UseDeclaration, UsePath, UseTarget, UseTargetSignature, VariableDeclaration, VariablePattern,
+    VariableSignature, WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
 };
 use errors::{self as errors, expected, ParseError};
 use lexer::Lexer;
@@ -3236,6 +3236,7 @@ impl<L: Lexer> Parser<L> {
 
         let type_expr = match token._type {
             TokenType::Keyword(Fn) => self.functional_type()?,
+            TokenType::Keyword(If) => self.ternary_type()?,
             TokenType::Keyword(Async) => return Err(errors::async_type(token.span)),
             // `This` type.
             TokenType::Keyword(This) => self.this_type()?,
@@ -3284,6 +3285,45 @@ impl<L: Lexer> Parser<L> {
         });
 
         Ok(self.type_reparse(functype)?)
+    }
+
+    /// Parses a conditional type. Assumes that `if` is the current token.
+    fn ternary_type(&self) -> Fallible<TypeExpression> {
+        let start = self.token().unwrap().span.start;
+        self.advance(); // Move past if.
+        let base = self.identifier()?;
+        match self.token() {
+            Some(Token {
+                _type: TokenType::Keyword(keyword),
+                ..
+            }) if matches!(keyword, Is | Implements) => {
+                let typecondition = if matches!(keyword, Is) {
+                    self.advance(); // Move past is
+                    TypeCondition::Is(self.type_expression()?)
+                } else {
+                    self.advance(); // Move past implements
+                    TypeCondition::Implements(self.type_expression()?)
+                };
+                let consequent = Box::new(self.type_expression()?);
+                expect!(TokenType::Keyword(Else), self);
+                self.advance(); // Move past else.
+                let alternate = Box::new(self.type_expression()?);
+
+                let span = Span {
+                    start,
+                    end: alternate.span().end,
+                };
+                let condtype = TypeExpression::Ternary(TernaryType {
+                    base,
+                    condition: Box::new(typecondition),
+                    consequent,
+                    alternate,
+                    span,
+                });
+                Ok(self.type_reparse(condtype)?)
+            }
+            _ => return Err(errors::type_condition_expected(self.last_token_end())),
+        }
     }
 
     /// Parses a discrete, member or union type. Assumes that identifier is the current token.
@@ -3366,11 +3406,10 @@ impl<L: Lexer> Parser<L> {
             }
         }
         // Only discrete types and other member types cant serve as namespaces.
-        if let TypeExpression::Functional(_)
-        | TypeExpression::Union(_)
-        | TypeExpression::Array(_)
-        | TypeExpression::Optional(_) = namespace
-        {
+        if !matches!(
+            namespace,
+            TypeExpression::Discrete(_) | TypeExpression::Member(_)
+        ) {
             return Err(errors::unexpected(self.last_token_span()));
         }
         self.push_precedence(ExpressionPrecedence::Access);

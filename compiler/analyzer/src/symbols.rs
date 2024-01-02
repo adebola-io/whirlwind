@@ -243,6 +243,19 @@ pub enum IntermediateType {
         value: Box<IntermediateType>,
         span: Span,
     },
+    TernaryType {
+        base: SymbolIndex,
+        condition: Box<IntermediateTypeCondition>,
+        consequent: Box<IntermediateType>,
+        alternate: Box<IntermediateType>,
+        span: Span,
+    },
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum IntermediateTypeCondition {
+    Is(IntermediateType),
+    Implements(IntermediateType),
 }
 
 impl IntermediateType {
@@ -254,9 +267,14 @@ impl IntermediateType {
             | IntermediateType::UnionType { span, .. }
             | IntermediateType::This { span, .. }
             | IntermediateType::ArrayType { span, .. }
-            | IntermediateType::MaybeType { span, .. } => *span,
+            | IntermediateType::MaybeType { span, .. }
+            | IntermediateType::TernaryType { span, .. } => *span,
             IntermediateType::Placeholder => Span::default(),
         }
+    }
+
+    pub(crate) fn is_ternary(&self) -> bool {
+        matches!(self, IntermediateType::TernaryType { .. })
     }
 }
 

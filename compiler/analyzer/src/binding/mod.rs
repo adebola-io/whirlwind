@@ -3320,7 +3320,9 @@ mod literals {
 
 /// Types
 mod types {
-    use crate::{EvaluatedType, IntermediateTypeProperty, ParameterType};
+    use crate::{
+        EvaluatedType, IntermediateTypeCondition, IntermediateTypeProperty, ParameterType,
+    };
 
     use super::*;
 
@@ -3437,6 +3439,39 @@ mod types {
                     ambience,
                 )),
                 span: a.span,
+            },
+            TypeExpression::Ternary(t) => IntermediateType::TernaryType {
+                base: bind_utils::find_or_create(
+                    binder,
+                    symbol_library,
+                    errors,
+                    ambience,
+                    &t.base,
+                    true,
+                ),
+                condition: Box::new(match &*t.condition {
+                    ast::TypeCondition::Implements(a) => IntermediateTypeCondition::Implements(
+                        bind_type_expression(a, binder, symbol_library, errors, ambience),
+                    ),
+                    ast::TypeCondition::Is(b) => IntermediateTypeCondition::Is(
+                        bind_type_expression(b, binder, symbol_library, errors, ambience),
+                    ),
+                }),
+                consequent: Box::new(bind_type_expression(
+                    &t.consequent,
+                    binder,
+                    symbol_library,
+                    errors,
+                    ambience,
+                )),
+                alternate: Box::new(bind_type_expression(
+                    &t.alternate,
+                    binder,
+                    symbol_library,
+                    errors,
+                    ambience,
+                )),
+                span: t.span,
             },
         }
     }

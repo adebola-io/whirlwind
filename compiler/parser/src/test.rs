@@ -266,6 +266,18 @@ fn parsing_union_types() {
 }
 
 #[test]
+fn parsing_conditional_types() {
+    let mut parser = parse_text("type A = if A is A<B> B<C> else B<A>;");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::TypeDeclaration(TypeDeclaration {
+            address: ScopeAddress::from([0, 0, 0]),
+            span: Span::from([1, 1, 1, 38])
+        })
+    );
+}
+
+#[test]
 fn parsing_functions() {
     // Empty function.
     let mut parser = parse_text("function SayHello(){}");
