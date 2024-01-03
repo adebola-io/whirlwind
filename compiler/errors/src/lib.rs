@@ -165,3 +165,19 @@ pub fn mismatched_method_static(
         span,
     }
 }
+
+pub fn mismatched_method_signature(
+    method_name: String,
+    left: String,
+    right: String,
+    span: ast::Span,
+) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::MismatchedMethodSignature {
+            method_name,
+            left,
+            right,
+        },
+        span,
+    }
+}

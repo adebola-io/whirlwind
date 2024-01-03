@@ -1445,13 +1445,18 @@ fn extract_property_of(
     match object_type {
         // Accessing a property on a model instance.
         EvaluatedType::ModelInstance {
-            model,
+            model: base,
             ref generic_arguments,
             is_invariant,
+        }
+        | EvaluatedType::InterfaceInstance {
+            interface_: base,
+            is_invariant,
+            ref generic_arguments,
         } => search_for_property(
             checker_ctx,
             symbollib,
-            model,
+            base,
             property_symbol_idx,
             generic_arguments.clone(),
             true,
@@ -1672,21 +1677,21 @@ fn extract_property_of(
     })
 }
 
-/// Look through all the possible methods and attributes of a model or generic
+/// Look through all the possible methods and attributes of a model, generic or interface
 /// to determine the property being referenced.
 pub fn search_for_property(
     checker_ctx: &mut TypecheckerContext,
     symbollib: &mut SymbolLibrary,
-    model: SymbolIndex,
+    base: SymbolIndex,
     property_symbol_idx: SymbolIndex,
     mut generic_arguments: Vec<(SymbolIndex, EvaluatedType)>,
     object_is_instance: bool,
     is_invariant: bool,
     property_span: Span,
 ) -> Option<EvaluatedType> {
-    // The base type of the model or generic.
-    let base_symbol = symbollib.get_forwarded(model).unwrap();
-    let property_symbol = symbollib.get(property_symbol_idx).unwrap();
+    // The base type of the model, generic or interface.
+    let base_symbol = symbollib.get_forwarded(base)?;
+    let property_symbol = symbollib.get(property_symbol_idx)?;
     let impls = match &base_symbol.kind {
         SemanticSymbolKind::Model {
             implementations, ..
@@ -1694,15 +1699,20 @@ pub fn search_for_property(
         | SemanticSymbolKind::GenericParameter {
             interfaces: implementations,
             ..
+        }
+        | SemanticSymbolKind::Interface {
+            implementations, ..
         } => implementations,
         _ => return None,
     };
+    let empty = vec![];
     let model_props = match &base_symbol.kind {
         SemanticSymbolKind::Model {
             methods,
             attributes,
             ..
         } => Some((methods, attributes)),
+        SemanticSymbolKind::Interface { methods, .. } => Some((methods, &empty)),
         _ => None,
     };
     // Gather methods from all the implementations.
@@ -1724,7 +1734,7 @@ pub fn search_for_property(
                     generic_arguments.push((
                         interface_,
                         EvaluatedType::ModelInstance {
-                            model,
+                            model: base,
                             generic_arguments: generic_arguments.clone(),
                             is_invariant: false,
                         },
@@ -1780,7 +1790,7 @@ pub fn search_for_property(
             method_symbol.add_reference(checker_ctx.path_idx, property_span);
             // Block non-public access.
             if !method_symbol.kind.is_public()
-                && checker_ctx.enclosing_model_or_interface != Some(model)
+                && checker_ctx.enclosing_model_or_interface != Some(base)
             {
                 checker_ctx.add_diagnostic(errors::private_property_leak(
                     method_symbol.name.clone(),
@@ -1791,7 +1801,7 @@ pub fn search_for_property(
             if checker_ctx
                 .current_constructor_context
                 .last()
-                .is_some_and(|constructor_ctx| constructor_ctx.model == model)
+                .is_some_and(|constructor_ctx| constructor_ctx.model == base)
                 && !method_is_static
             {
                 checker_ctx.add_diagnostic(errors::method_in_constructor(property_span));
@@ -1832,7 +1842,7 @@ pub fn search_for_property(
                 let attribute_symbol = symbollib.get_mut(attribute).unwrap();
                 attribute_symbol.add_reference(checker_ctx.path_idx, property_span);
                 if !attribute_symbol.kind.is_public()
-                    && checker_ctx.enclosing_model_or_interface != Some(model)
+                    && checker_ctx.enclosing_model_or_interface != Some(base)
                 {
                     checker_ctx.add_diagnostic(errors::private_property_leak(
                         attribute_symbol.name.clone(),

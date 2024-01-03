@@ -2,7 +2,9 @@ use ast::unwrap_or_continue;
 
 use super::{expressions::typecheck_block, *};
 
+mod interface_declaration;
 mod model_declaration;
+pub use interface_declaration::typecheck_interface;
 pub use model_declaration::typecheck_model_decl;
 
 pub fn typecheck_statement(
@@ -31,7 +33,9 @@ pub fn typecheck_statement(
         TypedStmnt::FunctionDeclaration(function) => {
             typecheck_function(function, checker_ctx, symbollib)
         }
-        // TypedStmnt::InterfaceDeclaration(_) => todo!(),
+        TypedStmnt::InterfaceDeclaration(interface) => {
+            typecheck_interface(interface, checker_ctx, symbollib)
+        }
         TypedStmnt::ExpressionStatement(expression) | TypedStmnt::FreeExpression(expression) => {
             expressions::typecheck_expression(expression, checker_ctx, symbollib);
         }
@@ -874,6 +878,7 @@ pub fn typecheck_function(
         checker_ctx,
         return_type_span,
         evaluated_param_types,
+        false,
     );
     typecheck_function_body(
         checker_ctx,
@@ -955,15 +960,18 @@ fn validate_return_type_and_params(
     checker_ctx: &mut TypecheckerContext<'_>,
     return_type_span: Option<Span>,
     evaluated_param_types: Vec<(SymbolIndex, EvaluatedType)>,
+    allow_interface: bool,
 ) {
     // Interfaces cannot be used as return types.
     if let EvaluatedType::InterfaceInstance { interface_, .. } = return_type {
-        show_interface_as_type_error(
-            symbollib,
-            *interface_,
-            checker_ctx,
-            return_type_span.unwrap_or_default(),
-        )
+        if !allow_interface {
+            show_interface_as_type_error(
+                symbollib,
+                *interface_,
+                checker_ctx,
+                return_type_span.unwrap_or_default(),
+            )
+        }
     }
     for (param_idx, mut new_type) in evaluated_param_types {
         let mut interface_in_label = None;
@@ -984,7 +992,9 @@ fn validate_return_type_and_params(
             *inferred_type = new_type;
         }
         if let Some((interface_, span)) = interface_in_label {
-            show_interface_as_type_error(symbollib, interface_, checker_ctx, span)
+            if !allow_interface {
+                show_interface_as_type_error(symbollib, interface_, checker_ctx, span)
+            }
         }
     }
 }

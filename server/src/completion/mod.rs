@@ -2,8 +2,8 @@
 use crate::message_store::MessageStore;
 use analyzer::{
     evaluate, span_of_typed_expression, span_of_typed_statement, utils::coerce, EvaluatedType,
-    SemanticSymbolKind, Standpoint, SymbolIndex, TypedExpression, TypedModelPropertyType,
-    TypedModule, TypedStmnt,
+    SemanticSymbolKind, Standpoint, SymbolIndex, TypedExpression, TypedInterfacePropertyType,
+    TypedModelPropertyType, TypedModule, TypedStmnt,
 };
 use ast::{maybe, Span};
 use pretty::SymbolWriter;
@@ -650,13 +650,6 @@ impl<'a> CompletionFinder<'a> {
         <Option<CompletionResponse>>::default()
     }
 
-    fn interface_declaration(
-        &self,
-        _interface: &'a analyzer::TypedInterfaceDeclaration,
-    ) -> Option<CompletionResponse> {
-        <Option<CompletionResponse>>::default()
-    }
-
     fn expr_statement(&self, exp: &'a analyzer::TypedExpression) -> Option<CompletionResponse> {
         self.expr(exp)
     }
@@ -900,6 +893,26 @@ impl<'a> CompletionFinder<'a> {
             match &property._type {
                 TypedModelPropertyType::TypedMethod { body }
                 | TypedModelPropertyType::InterfaceImpl { body, .. } => {
+                    maybe!(self.block(body))
+                }
+                _ => continue,
+            }
+        }
+        *self.enclosing_model_or_interface.borrow_mut() = former;
+        return None;
+    }
+
+    fn interface_declaration(
+        &self,
+        _interface: &'a analyzer::TypedInterfaceDeclaration,
+    ) -> Option<CompletionResponse> {
+        let mut enclosing = self.enclosing_model_or_interface.borrow_mut();
+        let former = enclosing.take();
+        *enclosing = Some(_interface.name);
+        std::mem::drop(enclosing);
+        for property in &_interface.body.properties {
+            match &property._type {
+                TypedInterfacePropertyType::Method { body } => {
                     maybe!(self.block(body))
                 }
                 _ => continue,

@@ -18,7 +18,7 @@ pub fn typecheck_model_decl(
         return;
     }
     // Signifies to the checker context that we are now in model X, so private properties can be used.
-    let former_enclosing_model_interface = checker_ctx.enclosing_model_or_interface.take();
+    let former_enclosing = checker_ctx.enclosing_model_or_interface.take();
     checker_ctx.enclosing_model_or_interface = Some(model.name);
     if let ControlFlow::Break(_) = typecheck_model_constructor(model, symbollib, checker_ctx) {
         return;
@@ -141,7 +141,8 @@ pub fn typecheck_model_decl(
                 }
                 // Compare markers.
                 if model_method_is_public != interface_method_is_public {
-                    let method_name = interface_method_name.to_owned();
+                    let method_name =
+                        format!("{}.{}", interface_symbol.name, interface_method_symbol.name);
                     checker_ctx.add_diagnostic(errors::mismatched_method_access(
                         method_name,
                         *model_method_is_public,
@@ -150,11 +151,12 @@ pub fn typecheck_model_decl(
                     ))
                 }
                 if model_method_is_static != interface_method_is_static {
-                    let method_name = interface_method_name.to_owned();
+                    let method_name =
+                        format!("{}.{}", interface_symbol.name, interface_method_symbol.name);
                     checker_ctx.add_diagnostic(errors::mismatched_method_static(
                         method_name,
-                        *model_method_is_static,
                         *interface_method_is_static,
+                        *model_method_is_static,
                         span,
                     ))
                 }
@@ -200,9 +202,16 @@ pub fn typecheck_model_decl(
                     .and_then(|_| unify(&given_method_type, &expected_method_type))
                     .is_err()
                 {
+                    let method_name =
+                        format!("{}.{}", interface_symbol.name, interface_method_symbol.name);
                     let left = symbollib.format_evaluated_type(&expected_method_type);
                     let right = symbollib.format_evaluated_type(&given_method_type);
-                    checker_ctx.add_diagnostic(errors::mismatched_assignment(left, right, span))
+                    checker_ctx.add_diagnostic(errors::mismatched_method_signature(
+                        method_name,
+                        left,
+                        right,
+                        span,
+                    ))
                 }
             }
         }
@@ -212,7 +221,7 @@ pub fn typecheck_model_decl(
         typecheck_model_property(property, symbollib, checker_ctx)
     }
 
-    checker_ctx.enclosing_model_or_interface = former_enclosing_model_interface;
+    checker_ctx.enclosing_model_or_interface = former_enclosing;
 }
 
 fn typecheck_model_property(
@@ -283,6 +292,7 @@ fn typecheck_model_property(
                 checker_ctx,
                 return_type_span,
                 evaluated_param_types,
+                false,
             );
             typecheck_function_body(checker_ctx, return_type, body, symbollib, return_type_span);
             checker_ctx.current_function_is_static = former_is_static;
@@ -308,8 +318,12 @@ fn typecheck_model_property(
                         }
                     }
                     let base_type = interface_symbol.name.clone();
-                    let property = property_symbol.name.clone();
-                    checker_ctx.add_diagnostic(errors::unknown_property(base_type, property, span));
+                    let property_name = property_symbol.name.clone();
+                    checker_ctx.add_diagnostic(errors::unknown_property(
+                        base_type,
+                        property_name,
+                        property.span,
+                    ));
                 }
             } else {
                 checker_ctx.add_diagnostic(errors::interface_expected(

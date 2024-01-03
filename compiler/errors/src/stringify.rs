@@ -20,9 +20,13 @@ impl std::fmt::Display for TypeErrorType {
             expected,
             assigned,
         } => format!("'{name}' expects {expected} generic argument{}, but got {assigned} instead.", if *expected == 1 {""} else {"s"}),
-        TypeErrorType::MismatchedAssignment { left, right } => format!(
-            "Expected: '{left}', Got: '{right}'.",
-        ),
+        TypeErrorType::MismatchedAssignment { left, right } => {
+            if left == right {
+               format!("Expected: '{left} (type 1)', Got: '{right} (type 2)'.",)       
+            } else {
+                format!("Expected: '{left}', Got: '{right}'.",)
+            }
+         },
         TypeErrorType::InterfaceAsType { name } => {
             format!("{name} refers to a interface, but it is being used as a type here.")
         }
@@ -121,9 +125,9 @@ impl std::fmt::Display for TypeErrorType {
         TypeErrorType::MissingImplementation { inteface, method } => format!("Missing implementation for virtual method '{inteface}.{method}'."),
         TypeErrorType::ConflictingImplementation { former_interface, next_interface, method } => format!("Conflicting implementations: {former_interface} and {next_interface} provide different methods for {method}."),
         TypeErrorType::MismatchedGenericParam { method_name, expected, got } => format!("Mismatched implementation: {method_name} should have {expected} generic param{}, not {got}.", if *expected == 1 {""} else {"s"}),
-        TypeErrorType::MismatchedMethodAccess { method_name, expected, .. } => format!("Mismatched implementation: {method_name} is {}expected to be public.", if *expected {""} else {"not "}),
-        TypeErrorType::MismatchedMethodStatic { method_name, expected, .. } => format!("Mismatched implementation: {method_name} is {}expected to be static.", if *expected {""} else {"not "}),
-        
+        TypeErrorType::MismatchedMethodAccess { method_name, expected, .. } => format!("Mismatched implementation: {method_name}() is {}expected to be public.", if *expected {""} else {"not "}),
+        TypeErrorType::MismatchedMethodStatic { method_name, expected, .. } => format!("Mismatched implementation: {method_name}() is {}expected to be static.", if *expected {""} else {"not "}),
+        TypeErrorType::MismatchedMethodSignature { method_name, left, right } => format!("Virtual method {method_name}() has signature '{left}', but is implemented as '{right}'."),
         };
 
         write!(f, "{message}")

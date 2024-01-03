@@ -338,7 +338,7 @@ impl SymbolLibrary {
                 }
                 string.push_str(")");
                 if !return_type.is_void() {
-                    string.push_str(&format!(": {}", self.format_evaluated_type(return_type)));
+                    string.push_str(&format!(" -> {}", self.format_evaluated_type(return_type)));
                 }
             }
             EvaluatedType::MethodInstance {
@@ -495,7 +495,7 @@ impl SymbolLibrary {
         if let Some(typ) = return_type {
             let evaluated = evaluate(typ, self, Some(&generic_arguments), &mut None, 0);
             if !evaluated.is_void() {
-                string.push_str(": ");
+                string.push_str(" -> ");
                 string.push_str(&self.format_evaluated_type(&evaluated));
             }
         }

@@ -44,7 +44,16 @@ public interface Iteratable<I> {
     /// assertThat(characters.next().isNone());
     /// ```
     public function collect() -> []I {
-        todo()
+        array := [];
+        while true {
+            nextItem := this.next();
+            if nextItem.isNone() {
+                break;
+            };
+            nextItemVal := nextItem.unwrap();
+            array.push(nextItemVal);
+        }
+        array
     }
     /// Consumes the iterator and returns the number of elements left.
     /// ### Usage
@@ -123,15 +132,16 @@ public interface Iteratable<I> {
     /// assert(iterator.next()).equals(some(14));
     /// ```
     public function any(predicate: fn(value: I) -> Bool) -> Bool {
-        // while true {
-        //     next := this.next();
-        //     if next.isNone() {
-        //         return false;
-        //     }
-        //     if predicate(next.unwrap()) {
-        //         return true;
-        //     }
-        // }
+        while true {
+            next := this.next();
+            if next.isNone() {
+                break;
+            }
+            if predicate(next.unwrap()) {
+                return true;
+            }
+        }
+        return false;
     }
     /// Returns true if all the elements produced by the iterator match a predicate.
     /// ### Usage
@@ -151,15 +161,16 @@ public interface Iteratable<I> {
     /// assert(iter.next()).equals(some(20));
     /// ```
     public function all(predicate: fn(value: I) -> Bool) -> Bool {
-        // while true {
-        //     next := this.next();
-        //     if next.IsNone() {
-        //         return true;
-        //     }
-        //     if !predicate(next.Unwrap()) {
-        //         return false;
-        //     }
-        // }
+        while true {
+            next := this.next();
+            if next.isNone() {
+                break;
+            }
+            if !predicate(next.unwrap()) {
+                return false;
+            }
+        }
+        return true;
     }
     /// Returns a new iterator consisting of tuples, which are made up of an index value and the item type.
     /// 

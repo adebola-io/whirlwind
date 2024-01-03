@@ -293,6 +293,11 @@ pub enum TypeErrorType {
         got: bool,
         expected: bool,
     },
+    MismatchedMethodSignature {
+        method_name: String,
+        left: String,
+        right: String,
+    },
 }
 
 pub fn invalid_binary(left: String, operator: BinOperator, right: String, span: Span) -> TypeError {

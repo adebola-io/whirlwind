@@ -1,13 +1,21 @@
 module auth;
 
-function main<T>(value: T) -> T {
-    todo()
+model Person implements Display + Default + Iteratable<String> {
+    new() {
+
+    }
+    public function [Iteratable.next]() -> ?String {
+        todo()
+    }
+    static function [Default.init]() -> This {
+        return new Person();
+    }
+    public function [Display.toStr]() -> String {
+        todo()
+    }
 }
 
-
-test "" {
-    a := main("jddkfjg");
-    b := main(true);
-
-    
+function main() {
+    person := new Person();
 }
+

@@ -9,7 +9,7 @@ public interface Hash {}
 
 /// An interface to be implemented by models that can be transformed into
 /// a hashmap of sorts.
-public interface ToMap<K, V> {
+public interface ToMap<K implements Hash, V> {
     public function toMap() -> HashMap<K, V>;
 }
 

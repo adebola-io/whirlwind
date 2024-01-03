@@ -1,7 +1,6 @@
 module set;
 
 public use orderedSet;
-use core.primitives.String;
 use core.prelude.{
     Bool, UnsignedInt, todo, AsIterator, Iteratable,
     Maybe,
