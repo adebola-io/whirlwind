@@ -30,6 +30,7 @@ public model Set<T implements Hash>
     }
 
     public function [AsIterator.iter]() -> SetIterator<T> {
+
         todo()
     }
 

@@ -39,7 +39,7 @@ public use core.{
         String, Array, Number, Int, Float, UnsignedInt,
         UInt, Bool, UInt8, UInt16, UInt32, UInt64, Chars
     },
-    process.{todo, fatal},
+    process.sentinels.{todo, fatal},
     internals.never,
     collections.{Tuple, pair}
 };

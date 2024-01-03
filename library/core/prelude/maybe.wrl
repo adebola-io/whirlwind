@@ -3,7 +3,7 @@ module maybe;
 use core.{
     primitives.Bool,
     internals.never,
-    process.fatalOnCaller,
+    process.sentinels.fatalOnCaller,
 };
 use outcome.{ok, err, Outcome}; 
 use prelude.{String, fatal};

@@ -418,14 +418,19 @@ impl<'a> SymbolWriter<'a> {
                 return_type,
                 ..
             } => {
-                let mut string = String::from("fn(");
+                let mut string = String::from("fn");
+                if params.len() > 0 {
+                    string.push('(');
+                }
                 for (i, param) in params.iter().enumerate() {
                     string.push_str(&self.print_parameter_type(param));
                     if i + 1 < params.len() {
                         string.push_str(", ")
                     }
                 }
-                string.push(')');
+                if params.len() > 0 {
+                    string.push(')')
+                }
                 if let Some(ref rettype) = return_type {
                     string.push_str(" -> ");
                     string.push_str(&self.print_intermediate_type(rettype))

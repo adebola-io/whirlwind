@@ -3,7 +3,7 @@ module terminal;
 use core.prelude.{Display, Maybe, some};
 use core.primitives.{String, UInt8};
 use core.internals.builtin;
-use core.process.todo;
+use core.process.sentinels.todo;
 
 
 /// Prints a message or an object to the console, terminal 

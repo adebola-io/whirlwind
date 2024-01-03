@@ -1,6 +1,6 @@
 module eventual;
 
-use core.process.fatal;
+use core.process.sentinels.fatal;
 use core.prelude.{some, Bool, Guaranteed};
 use core.internals.{builtin};
 use concurrent.Sequence;

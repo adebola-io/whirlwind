@@ -712,7 +712,7 @@ pub fn typecheck_return_statement(
     checker_ctx: &mut TypecheckerContext,
     symbollib: &mut SymbolLibrary,
 ) {
-    let function_context = checker_ctx.current_function_context.last().cloned();
+    let mut function_context = checker_ctx.current_function_context.last().cloned();
     let maybe_eval_expr = retstat.value.as_mut().map(|expr| {
         if let Some(ctx) = &function_context {
             // try to guess the type for the returned expression.
@@ -730,10 +730,12 @@ pub fn typecheck_return_statement(
         }
         return_type
     });
-    let function_context = function_context.as_ref();
+    let function_context = function_context.as_mut();
     if let Some(eval_type) = &maybe_eval_expr {
         if function_context.is_none()
-            || function_context.is_some_and(|ctx| ctx.is_named && ctx.return_type.is_void())
+            || function_context
+                .as_ref()
+                .is_some_and(|ctx| ctx.is_named && ctx.return_type.is_void())
         {
             // returns with a value, but no value was requested.
             checker_ctx.add_diagnostic(TypeError {
@@ -745,7 +747,10 @@ pub fn typecheck_return_statement(
             });
             return;
         }
-        if function_context.is_some_and(|ctx| ctx.return_type.is_unknown()) {
+        if function_context
+            .as_ref()
+            .is_some_and(|ctx| ctx.return_type.is_unknown())
+        {
             // If the current function context is unknown,
             // but the result type of this return statement is known,
             // coerce the function context's return type to whatever type is produced here.
@@ -800,9 +805,14 @@ pub fn typecheck_return_statement(
             }
         }
     } else {
-        // does not return a value, but a type is specified by the function.
-        if let Some(return_type) = function_context.map(|ctx| &ctx.return_type) {
+        // does not return a value.
+        if let Some(return_type) = function_context.map(|ctx| &mut ctx.return_type) {
             if !return_type.is_void() {
+                if return_type.is_unknown() {
+                    // does not return a value and not value was requested.
+                    *return_type = EvaluatedType::Void;
+                    return;
+                }
                 checker_ctx.add_diagnostic(TypeError {
                     _type: TypeErrorType::MismatchedReturnType {
                         expected: symbollib.format_evaluated_type(return_type),

@@ -9,7 +9,7 @@ use core.{
         AsIterator, Iteratable, 
         Range, Display, some, Default
     },
-    process.todo,
+    process.sentinels.todo,
 };
 use numeric.{Int, UnsignedInt, UInt8};
 

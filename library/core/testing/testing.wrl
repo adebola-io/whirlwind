@@ -1,7 +1,7 @@
 module testing;
 
 use core.prelude.{Bool, Display, Array};
-use core.process.fatalOnCaller;
+use core.process.sentinels.fatalOnCaller;
 use core.io.fmt;
 use core.primitives.String;
 

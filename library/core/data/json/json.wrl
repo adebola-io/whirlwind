@@ -1,6 +1,7 @@
 module json;
 
 use core.prelude.{Bool, String, Number, none, some};
+use core.process.sentinels.todo;
 use core.collections.HashMap;
 
 public use jsonParsing.JsonParseError;
@@ -40,7 +41,7 @@ public interface JsonValue {
     /// use core.data.JsonNull;
     /// 
     /// null := new JsonNull();
-    /// AssertThat(null.isNull());
+    /// assertThat(null.isNull());
     /// ```
     public function isNull() -> Bool {
         return this.getType() == JsonValueType.Null;
@@ -51,7 +52,7 @@ public interface JsonValue {
     /// use core.data.JsonString;
     /// 
     /// str := new JsonString();
-    /// AssertThat(str.isString());
+    /// assertThat(str.isString());
     /// ```
     public function isString() -> Bool {
         return this.getType() == JsonValueType.String;
@@ -61,11 +62,29 @@ public interface JsonValue {
     /// ```
     /// use core.data.JsonNumber;
     /// 
-    /// str := new JsonNumber(some(42));
-    /// AssertThat(str.isNumber());
+    /// num := new JsonNumber(some(42));
+    /// assertThat(num.isNumber());
     /// ```
     public function isNumber() -> Bool {
         return this.getType() == JsonValueType.Number;
+    }
+    /// Returns true if the JSON value is an array.
+    /// ### Usage
+    /// ```
+    /// use core.data.JsonArray;
+    /// 
+    /// arr := new JsonArray();
+    /// assertThat(arr.isArray());
+    /// ```
+    public function isArray() -> Bool {
+        return this.getType() == JsonValueType.Array;
+    }
+    /// Masks the underlying value as a raw json value.
+    public function asValue() -> RawJsonVal {
+        if this.isString() { return new JsonString(this.asString()); };
+        if this.isArray() { return new JsonArray(this.asArray()); };
+        if this.isNumber() {return new JsonNumber(this.asNumber()); };
+        todo()
     }
     /// Converts a JSON array to its underlying value.
     /// If the underlying value is not an array, the method returns `None()`.

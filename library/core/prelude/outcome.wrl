@@ -4,7 +4,7 @@ use core.{
     primitives.Bool,
     prelude.{Try, Guaranteed, todo},
     internals.{never, builtin},
-    process.fatalOnCaller
+    process.sentinels.fatalOnCaller
 };
 use maybe.{some, none};
 

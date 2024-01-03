@@ -3273,7 +3273,14 @@ impl<L: Lexer> Parser<L> {
         let start = self.token().unwrap().span.start;
         self.advance(); // Move past fn.
         let generic_params = self.maybe_generic_params()?;
-        let params = self.parameters()?;
+        let params = if self
+            .token()
+            .is_some_and(|token| token._type == TokenType::Bracket(LParens))
+        {
+            self.parameters()?
+        } else {
+            vec![]
+        };
         let return_type = self.maybe_return_type()?.map(|exp| Box::new(exp));
         let span = Span::from([start, self.last_token_span().end]);
 

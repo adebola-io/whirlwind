@@ -324,7 +324,10 @@ impl SymbolLibrary {
                 if *is_async {
                     string.push_str("async ")
                 }
-                string.push_str("fn(");
+                string.push_str("fn");
+                if params.len() > 0 {
+                    string.push('(')
+                }
                 for (idx, param) in params.iter().enumerate() {
                     string.push_str(&param.name);
                     if param.is_optional {
@@ -336,7 +339,9 @@ impl SymbolLibrary {
                         string.push_str(", ");
                     }
                 }
-                string.push_str(")");
+                if params.len() > 0 {
+                    string.push(')')
+                }
                 if !return_type.is_void() {
                     string.push_str(&format!(" -> {}", self.format_evaluated_type(return_type)));
                 }
@@ -464,7 +469,10 @@ impl SymbolLibrary {
         if is_async {
             string.push_str("async ");
         }
-        string.push_str("fn(");
+        string.push_str("fn");
+        if params.len() > 0 {
+            string.push('(')
+        }
         // format (evaluated) parameter types.
         for (idx, param) in params.iter().enumerate() {
             let parameter_symbol = self.get(*param).unwrap();
@@ -491,7 +499,9 @@ impl SymbolLibrary {
                 string.push_str(", ");
             }
         }
-        string.push(')');
+        if params.len() > 0 {
+            string.push(')')
+        }
         if let Some(typ) = return_type {
             let evaluated = evaluate(typ, self, Some(&generic_arguments), &mut None, 0);
             if !evaluated.is_void() {

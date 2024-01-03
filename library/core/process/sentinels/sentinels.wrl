@@ -1,0 +1,181 @@
+/// ## Control Flow Sentinels.
+/// 
+/// This module provides a collection of special functions that handle edge cases,
+/// explain unconventional control flow, handle unexpected conditions and provide 
+/// utility.
+module sentinels;
+
+use core.{
+    primitives.String,
+    primitives.UInt8,
+    prelude.{none, some},
+    internals.{builtin, never},
+    concurrent.SequenceError,
+};
+
+/// Unwinds the stack by one frame and crashes with a fatal error.
+public function fatalOnCaller(message: String) -> never  {
+    return builtin.sequence.crashOneStep(message);
+}
+
+/// Indicates that the current piece of code is unfinished.
+/// 
+/// Developers can use this function as a temporary marker for incomplete work.
+/// It is also useful for satisfying the type system when implementing other functionality.
+/// 
+/// This function will *always* cause the sequence to crash.
+/// ### Usage
+/// ```
+/// function positiveSquare(a: Int) -> Outcome<Int, String> {
+///     if a >= 0 {
+///         return ok(a * a);
+///     } else {
+///         todo() // will implement later.
+///     }
+/// }
+/// ```
+public function todo(message?: String) -> never {
+    return fatalOnCaller(message.unwrapOr("Entered unfinished code."));
+}
+
+/// Marks a point that should never be reached by normal execution flow.
+/// 
+/// It serves as a fallback mechanism to explicitly denote a code path that cannot be
+/// encountered while running the program, but may not be written in a way that is provable by
+/// the typechecker.
+/// 
+/// ### Usage
+/// ```
+/// use core.process.sentinels.unreachable;
+/// 
+/// function validateInput(x: UnsignedInt) {
+///     if x < 0 {
+///         unreachable(); // unsigned integers are always positive.
+///     }
+///     // proceed with validation.
+/// }
+/// ```
+/// 
+/// The `unreachable` function will always cause an error, signifying an unexpected condition.
+public function unreachable(message?: String) -> never {
+    return fatalOnCaller(message.unwrapOr("Entered unreachable code."));
+}
+
+/// Enters an infinite loop, effectively halting the current execution sequence until the program
+/// ends. It is typically used to signal terminal conditions that should not immediately terminate, 
+/// such as unrecoverable errors. 
+/// 
+/// Once called, it never returns, preventing any further code (within the same sequence) from being
+/// executed.
+public function forever() -> never {
+    while true {}
+    unreachable()
+}
+
+/// Called when an execution sequence encounters an unrecoverable or
+/// unexpected condition. It causes the sequence to
+/// abruptly terminate or crash, unwinding the sequence's stack.
+/// 
+/// If the sequence has no recover callback attached, 
+/// then the crash will bubble up, crashing the parent sequence, and then its parent,
+/// up until it encounters a recovery, or it crashes the main program sequence.
+///
+/// ### Usage
+/// ```
+/// function divide(number: Int, divisor: Int) -> Float {
+///     if divisor == 0 {
+///         fatal("Cannot divide by zero!");
+///     } else {
+///         return a / b;
+///     }
+/// }
+/// ```
+public function fatal(message?: String) -> never {
+    return builtin.sequence.crash(message);
+}
+
+/// Closes all sequences and exits the program with a given code.
+/// ### Usage
+/// ```
+/// use core.process.exit;
+/// 
+/// exit(0);
+/// ```
+public function exit(code?: UInt8) -> never {
+    return builtin.exit(code);
+}
+
+function wrap<T>(func: fn -> T, catch: fn(e: SequenceError)) {
+    f := (async fn func())();
+    f.recover(catch);
+    f.run().await();
+}
+
+public function memoize<T>(func: fn -> T) -> fn -> T {
+    value := none();
+    return fn() {
+        if value.isNone() {
+            value = some(func());
+        }
+        return value.unwrap();
+    };
+}
+
+/// Wraps a function to ensures that it can only called once, and subsequent
+/// calls have no effect.
+/// 
+/// It is useful for initilialization routines or event handlers that should
+/// only run on the first trigger.
+/// 
+/// ### Usage
+/// ```
+/// use core.process.sentinels.once;
+/// 
+/// var initializeApp = once(fn {
+///     // perform initialization tasks.
+/// });
+/// initializeApp(); // Runs the tasks.
+/// initializeApp(); // Does nothing.
+/// ```
+public function once(func: fn) -> fn {
+    hasRun := false;
+    return fn {
+        if !hasRun { return; };
+        hasRun = true;
+        func()
+    };
+}
+
+/// Performs no operation and returns void. Used as a placeholder or to
+/// simply acknowledge a function call without any processing.
+/// 
+/// ### Usage
+/// ```
+/// use core.process.sentinels.noop;
+/// 
+/// function handleTask<T>(value: T, optionalCallback: fn()) {
+///     // tasks handling..
+/// }
+/// handleTask("", noop);
+/// ```
+public function noop() {}
+
+/// Returns a function that always returns the same value.
+/// 
+/// It can be used to simplify conditional logic or create
+/// 'constant' functions.
+/// 
+/// ### Usage
+/// ```
+/// use core.process.sentinels.always;
+/// 
+/// var alwaysTrue = always(true);
+/// var alwaysFalse = always(false);
+/// 
+/// if (alwaysTrue()) { // condition will always be true.
+///     // ...
+/// }
+/// ```
+public function always<T>(value: T) -> fn -> T {
+    return fn value;
+}
