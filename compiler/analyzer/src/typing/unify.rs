@@ -339,7 +339,7 @@ pub fn unify_types(
                 &left_return_type,
                 &right_return_type,
                 symbollib,
-                UnifyOptions::HardConform,
+                options,
                 map,
             );
             let return_type = match return_type_unification {

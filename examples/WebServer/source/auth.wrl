@@ -1,5 +1,13 @@
 module auth;
 
-function main() {
+function main<T>(value: T) -> T {
+    todo()
+}
+
+
+test "" {
+    a := main("jddkfjg");
+    b := main(true);
+
     
 }

@@ -1,6 +1,7 @@
 module main;
 
-
 function main() {
-    print("Hello, world.")
+    a := async fn () {
+        return "Hello";
+    }().run().await().chars().next();
 }

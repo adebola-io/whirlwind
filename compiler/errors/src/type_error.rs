@@ -266,6 +266,33 @@ pub enum TypeErrorType {
         name: String,
         generic: String,
     },
+    DuplicateImplementationOf {
+        name: String,
+    },
+    MissingImplementation {
+        inteface: String,
+        method: String,
+    },
+    ConflictingImplementation {
+        former_interface: String,
+        next_interface: String,
+        method: String,
+    },
+    MismatchedGenericParam {
+        method_name: String,
+        expected: usize,
+        got: usize,
+    },
+    MismatchedMethodAccess {
+        method_name: String,
+        got: bool,
+        expected: bool,
+    },
+    MismatchedMethodStatic {
+        method_name: String,
+        got: bool,
+        expected: bool,
+    },
 }
 
 pub fn invalid_binary(left: String, operator: BinOperator, right: String, span: Span) -> TypeError {

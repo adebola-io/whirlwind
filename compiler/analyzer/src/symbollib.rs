@@ -29,6 +29,7 @@ pub struct SymbolLibrary {
     pub uint32: Option<SymbolIndex>,
     pub uint64: Option<SymbolIndex>,
     pub uint: Option<SymbolIndex>,
+    pub bigint: Option<SymbolIndex>,
 
     pub string: Option<SymbolIndex>,
     pub array: Option<SymbolIndex>,

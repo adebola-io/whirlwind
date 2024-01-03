@@ -1,7 +1,9 @@
 use ast::unwrap_or_continue;
 
 use super::{expressions::typecheck_block, *};
-use crate::TypedModelDeclaration;
+
+mod model_declaration;
+pub use model_declaration::typecheck_model_decl;
 
 pub fn typecheck_statement(
     statement: &mut TypedStmnt,
@@ -39,17 +41,15 @@ pub fn typecheck_statement(
         // TypedStmnt::BreakStatement(_) => todo!(),
         TypedStmnt::ForStatement(forloop) => typecheck_for_loop(forloop, checker_ctx, symbollib),
         TypedStmnt::WhileStatement(whil) => typecheck_while_statement(whil, checker_ctx, symbollib),
-        TypedStmnt::ModelDeclaration(model) => {
-            typecheck_model_declaration(model, checker_ctx, symbollib)
-        }
+        TypedStmnt::ModelDeclaration(model) => typecheck_model_decl(model, checker_ctx, symbollib),
         TypedStmnt::TypeDeclaration(type_decl) => {
-            typecheck_type_declaration(type_decl, symbollib, checker_ctx)
+            typecheck_type_decl(type_decl, symbollib, checker_ctx)
         }
         _ => {}
     }
 }
 
-fn typecheck_type_declaration(
+fn typecheck_type_decl(
     type_decl: &mut crate::TypedTypeDeclaration,
     symbollib: &mut SymbolLibrary,
     checker_ctx: &mut TypecheckerContext<'_>,
@@ -288,205 +288,6 @@ fn typecheck_for_loop_body(
         let type_as_string = symbollib.format_evaluated_type(&block_type);
         checker_ctx.add_diagnostic(errors::implicit_loop_return(type_as_string, err_span));
     }
-}
-
-/// Typechecks a model declaration.
-fn typecheck_model_declaration(
-    model: &mut TypedModelDeclaration,
-    checker_ctx: &mut TypecheckerContext,
-    symbollib: &mut SymbolLibrary,
-) {
-    let model_symbol = symbollib.get(model.name);
-    if model_symbol.is_none() {
-        return;
-    }
-    // Signifies to the checker context that we are now in model X, so private properties can be used.
-    let former_enclosing_model_interface = checker_ctx.enclosing_model_or_interface.take();
-    checker_ctx.enclosing_model_or_interface = Some(model.name);
-    // If the model has a constructor:
-    if let Some(constructor) = &mut model.body.constructor {
-        // For a model to be validly constructed, all its attributes have been definitively assigned in its constructor.
-        // i.e. for every attribute, there must be an assignment expression (with =) where the attribute is the lhs.
-        // question: What about in cases where the attribute is used before it is assigned? e.g.:
-        // this.a = this.b;
-        // this.b = someValue;
-        // answer: All instances of the attribute are recorded and tracked. If the first instance is not an assignment, error.
-        let model_symbol = symbollib.get(model.name).unwrap();
-        let attribute_idxs =
-            if let SemanticSymbolKind::Model { attributes, .. } = &model_symbol.kind {
-                attributes
-            } else {
-                return;
-            };
-        let mut attributes = HashMap::new();
-        for idx in attribute_idxs {
-            let idx = *idx;
-            attributes.insert(idx, Vec::new());
-        }
-        checker_ctx
-            .current_constructor_context
-            .push(CurrentConstructorContext {
-                model: model.name,
-                scopes: Vec::new(),
-                attributes,
-            });
-        // Constructors should always return void.
-        checker_ctx
-            .current_function_context
-            .push(CurrentFunctionContext {
-                is_named: true,
-                return_type: EvaluatedType::Void,
-            });
-        let block_type = typecheck_block(constructor, true, checker_ctx, symbollib);
-        if !block_type.is_void() && !block_type.is_never() {
-            let span = constructor
-                .statements
-                .last()
-                .map(|statement| checker_ctx.span_of_stmnt(statement, symbollib))
-                .unwrap_or_else(|| constructor.span);
-            checker_ctx.add_diagnostic(errors::return_from_constructor(span));
-        }
-        checker_ctx.current_function_context.pop();
-        let constructor_context = checker_ctx.current_constructor_context.pop().unwrap();
-        for (attribute_idx, assignments) in constructor_context.attributes {
-            let attribute_symbol = symbollib.get(attribute_idx);
-            if attribute_symbol.is_none() {
-                continue;
-            }
-
-            let attribute_symbol = attribute_symbol.unwrap();
-            if let Some(AttributeAssignment::Definite { span }) = assignments
-                .iter()
-                .find(|assignment| matches!(assignment, AttributeAssignment::Definite { .. }))
-            {
-                let assignment_span = *span;
-                // Checks for prior usage before assignment with the spans.
-                // todo: something about using spans is icky.
-                let symbol_reference_list = attribute_symbol.references.first().unwrap(); // References in this module.
-                let reference_starts_in_constructor_block =
-                    symbol_reference_list.starts.iter().filter_map(|start| {
-                        let start = *start;
-                        constructor.span.contains(start).then(|| start)
-                    });
-                for start in reference_starts_in_constructor_block {
-                    let reference_span = Span::on_line(start, attribute_symbol.name.len() as u32);
-                    if reference_span.is_before(assignment_span) {
-                        checker_ctx
-                            .add_diagnostic(errors::using_attribute_before_assign(reference_span));
-                        break;
-                    }
-                }
-            } else {
-                checker_ctx
-                    .add_diagnostic(errors::unassigned_attribute(attribute_symbol.origin_span));
-            }
-        }
-    }
-
-    // Check that the method names inherited from interfaces do not clash with other.
-    let model_symbol = symbollib.get(model.name).unwrap();
-    if let SemanticSymbolKind::Model {
-        implementations, ..
-    } = &model_symbol.kind
-    {
-        let implementations = implementations.iter().map(|typ| {
-            evaluate(
-                typ,
-                symbollib,
-                None,
-                &mut checker_ctx.tracker(model_symbol.ident_span()),
-                0,
-            )
-        });
-    }
-
-    for property in &mut model.body.properties {
-        match &mut property._type {
-            crate::TypedModelPropertyType::TypedAttribute => {
-                // Only thing to do is check that the type is valid,
-                // and calculate the size.
-                let attribute_symbol = symbollib.get(property.name);
-                if attribute_symbol.is_none() {
-                    continue;
-                }
-                let attribute_symbol = attribute_symbol.unwrap();
-                let declared_type = match &attribute_symbol.kind {
-                    SemanticSymbolKind::Attribute { declared_type, .. } => declared_type,
-                    _ => continue,
-                };
-                let span = attribute_symbol.ident_span();
-                evaluate(
-                    declared_type,
-                    symbollib,
-                    None,
-                    &mut checker_ctx.tracker(span),
-                    0,
-                );
-            }
-            // todo: compare with interface definition.
-            crate::TypedModelPropertyType::TypedMethod { body }
-            | crate::TypedModelPropertyType::InterfaceImpl { body, .. } => {
-                let symbol = match symbollib.get_forwarded(property.name) {
-                    Some(symbol) => symbol,
-                    None => continue,
-                };
-                let former_is_static = checker_ctx.current_function_is_static.take();
-                let (evaluated_param_types, return_type, return_type_span) =
-                    if let SemanticSymbolKind::Method {
-                        params,
-                        generic_params,
-                        return_type,
-                        is_static,
-                        ..
-                    } = &symbol.kind
-                    {
-                        checker_ctx.current_function_is_static = Some(*is_static);
-                        let generic_arguments = evaluate_generic_params(generic_params, true);
-                        let evaluated_param_types = evaluate_parameter_idxs(
-                            params,
-                            symbollib,
-                            generic_arguments,
-                            checker_ctx,
-                        );
-                        let return_type = return_type.as_ref();
-                        (
-                            evaluated_param_types,
-                            return_type
-                                .map(|typ| {
-                                    let span = typ.span();
-                                    evaluate(
-                                        typ,
-                                        &symbollib,
-                                        None,
-                                        &mut checker_ctx.tracker(span),
-                                        0,
-                                    )
-                                })
-                                .unwrap_or_else(|| EvaluatedType::Void),
-                            return_type.map(|typ| typ.span()),
-                        )
-                    } else {
-                        (vec![], EvaluatedType::Void, None)
-                    };
-                validate_return_type_and_params(
-                    &return_type,
-                    symbollib,
-                    checker_ctx,
-                    return_type_span,
-                    evaluated_param_types,
-                );
-                typecheck_function_body(
-                    checker_ctx,
-                    return_type,
-                    body,
-                    symbollib,
-                    return_type_span,
-                );
-                checker_ctx.current_function_is_static = former_is_static;
-            }
-        }
-    }
-    checker_ctx.enclosing_model_or_interface = former_enclosing_model_interface;
 }
 
 /// Typechecks a function body.

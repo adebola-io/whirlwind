@@ -1,6 +1,6 @@
 module json;
 
-use core.prelude.{Display, Bool, String, Number, none, some};
+use core.prelude.{Bool, String, Number, none, some};
 use core.collections.HashMap;
 
 public use jsonParsing.JsonParseError;
@@ -162,13 +162,13 @@ public model JsonNumber implements JsonValue {
     public function [JsonValue.getType]() -> JsonValueType {
         return JsonValueType.Number;
     }
-    public function [JsonValue.asArray]() -> ?Number {
+    public function [JsonValue.asNumber]() -> ?Number {
         return some(this.value);
     }
 }
 
 /// An object in the JSON format.
-public model JsonObject implements Display + JsonValue {
+public model JsonObject implements JsonValue {
     public var map: HashMap<String, RawJsonVal>;
     new(map?: HashMap<String, RawJsonVal>) {
         this.map = map.unwrapOr(new HashMap());

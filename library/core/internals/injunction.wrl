@@ -61,6 +61,7 @@ public enum InjunctionType {
     ArrayIncludes,
     ArrayInsert,
     ArrayPrepend,
+    ArrayPenultimate,
     ArrPartition,
     ArrLen,
     ArrayPush,

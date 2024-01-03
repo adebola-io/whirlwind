@@ -373,7 +373,7 @@
          "patterns": [
             {
                "name": "punctuation",
-               "match": "\\&"
+               "match": "\\&|\\?"
             },
             {
                "name": "punctuation",

@@ -129,6 +129,7 @@ pub enum SemanticSymbolKind {
         is_public: bool,
         is_static: bool,
         is_async: bool,
+        is_virtual: bool,
         owner_model_or_interface: SymbolIndex,
         property_index: usize,
         params: Vec<SymbolIndex>,

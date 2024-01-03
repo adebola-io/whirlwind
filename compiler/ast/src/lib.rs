@@ -56,6 +56,17 @@ macro_rules! unwrap_or_continue {
     }};
 }
 
+/// Helper macro that unwraps an Option, or returns from the function.
+#[macro_export]
+macro_rules! unwrap_or_return {
+    ($expr: expr) => {{
+        match $expr {
+            Some(value) => value,
+            None => return,
+        }
+    }};
+}
+
 /// Returns a string containing the documentation comments from a particular range in a file.
 pub fn get_documentation_at(
     path: &std::path::Path,

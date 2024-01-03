@@ -40,7 +40,7 @@ public model String
     /// str := "Hello" + ", world!";
     /// assert(str).equals("Hello, world!");
     /// ```
-    function [Addition.add](other: This) -> This {
+    public function [Addition.add](other: This) -> This {
         newStr := this;
         for char in other.arr {
             newStr.arr.push(char);

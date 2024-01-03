@@ -117,6 +117,8 @@ pub fn is_numeric_type(evaluated_type: &EvaluatedType, symbollib: &SymbolLibrary
             symbollib.uint16,
             symbollib.uint32,
             symbollib.uint64,
+            symbollib.sint,
+            symbollib.bigint,
         ].iter().filter_map(|sym| *sym).any(|sym| sym == *model)
     ) || matches!(
         evaluated_type, EvaluatedType::OpaqueTypeInstance {aliased_as, ..}
@@ -654,6 +656,7 @@ pub fn get_numeric_type(
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub struct FunctionType<'a> {
     pub is_async: bool,
     pub parameter_types: Vec<ParameterType>,

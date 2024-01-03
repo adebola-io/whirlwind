@@ -3,7 +3,6 @@ module request;
 use core.prelude.{todo, String, Bool, UnsignedInt, Outcome, Display};
 use core.memory.Buffer;
 use core.collections.HashMap;
-use core.io.IoError;
 use response.HttpResponse;
 
 public enum HttpMethod {
@@ -91,7 +90,7 @@ public model RequestParams {
 /// 
 /// The error is non-fatal, meaning that it does not lead to the
 /// crashing of the server when it happens.
-public model HttpRequestError implements IoError + Display {
+public model HttpRequestError implements Display {
     var message: String;
     var route: String;
     var statusCode: UnsignedInt;

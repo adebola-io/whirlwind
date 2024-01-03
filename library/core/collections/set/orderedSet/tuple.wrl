@@ -1,7 +1,7 @@
 module tuple;
 
 use orderedSet.OrderedSet;
-use core.prelude.{never, some, Display, String};
+use core.prelude.{some, Display, String};
 use core.primitives.ops.Addition;
 
 /// A simple ordered pair of items. Elements within a tuple can be of any type,
@@ -10,9 +10,7 @@ use core.primitives.ops.Addition;
 /// ### Constructor Parameters.
 /// - a : The first item in the pair.
 /// - b : The second item in the pair.
-public model Tuple<T, U> 
-    implements OrderedSet<T, U, never, never, never, never>
-{
+public model Tuple<T, U> implements OrderedSet<T, U> {
     public var a: T;
     public var b: U;
     

@@ -14,6 +14,10 @@ public model BuiltIn implements Injunction {
     new(injunctionType: InjunctionType) {
         this.injunctionType = injunctionType;
     }
+
+    public function [Injunction.getType]() -> InjunctionType {
+        return this.injunctionType;
+    }
 }
 
 
@@ -48,6 +52,10 @@ public model arrays<T> {
 
     public static function prepend(array: Array<T>, prefix: []T) {
         invoke(builtin(InjunctionType.ArrayPrepend), some(array), some(prefix))
+    }
+
+    public static function penultimate(array: Array<T>) -> ?T {
+        invoke(builtin(InjunctionType.ArrayPenultimate), some(array))
     }
 
     public static function partition(array: Array<T>, check: fn(item: T) -> Bool) -> [][]T {

@@ -138,6 +138,16 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> + Default {
     public function prepend(prefix: []T) {
         builtin.arrays.prepend(this, prefix);
     }
+    /// Returns the element before the last element in this array,
+    /// if it exists.
+    /// ### Usage
+    /// ```
+    /// arr := [5, 6, 7, 8];
+    /// assertThat(arr.penultimate() == some(7));
+    /// ```
+    public function penultimate() -> ?T {
+        builtin.arrays.penultimate(this)
+    }
     /// Divides the array into two new arrays: one containing elements that pass
     /// a test function, and another with elements that don't.
     /// ### Usage

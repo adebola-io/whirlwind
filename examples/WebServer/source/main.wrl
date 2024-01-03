@@ -50,7 +50,7 @@ async function authenticationHandler(req: HttpRequest): MiddlewareResponse {
         token := if !auth.startsWith("Bearer ") {
             return err(req.createError("Invalid authentication header."));
         } else {
-            auth.slice(7..auth.Length()).unwrap()
+            auth.slice(7..auth.length()).unwrap()
         };
         maybeSecret := getEnv("JWT_SECRET");
         if maybeSecret.isNone() {

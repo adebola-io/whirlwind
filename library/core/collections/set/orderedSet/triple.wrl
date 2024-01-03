@@ -1,12 +1,12 @@
 module triple;
 
 use orderedSet.OrderedSet;
-use core.prelude.{some, never};
+use core.prelude.some;
 
 
 /// A set containing three individual items.
 public model Triple<T, U, V> 
-    implements OrderedSet<T, U, V, never, never, never> 
+    implements OrderedSet<T, U, V> 
 {
     public var a: T;
     public var b: U;

@@ -1,3 +1,4 @@
+/// ## Async Whirlwind.
 /// The `concurrent` module contains all primitive constructs in Whirlwind
 /// for the creation and utilization of asynchronous processes.
 module concurrent;

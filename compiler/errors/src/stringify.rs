@@ -117,6 +117,13 @@ impl std::fmt::Display for TypeErrorType {
         TypeErrorType::NumericExclusiveOperation { typ } => format!("{typ} is not a numeric type."),
         TypeErrorType::ExpectedInterface { got } => format!("Expected an interface here, got type '{got}'."),
         TypeErrorType::InvalidDefaultType { name, generic } => format!("{name} cannot be used as a default value for the generic type {generic}."),
+        TypeErrorType::DuplicateImplementationOf { name } => format!("Duplicate implementation of interface {name}."),
+        TypeErrorType::MissingImplementation { inteface, method } => format!("Missing implementation for virtual method '{inteface}.{method}'."),
+        TypeErrorType::ConflictingImplementation { former_interface, next_interface, method } => format!("Conflicting implementations: {former_interface} and {next_interface} provide different methods for {method}."),
+        TypeErrorType::MismatchedGenericParam { method_name, expected, got } => format!("Mismatched implementation: {method_name} should have {expected} generic param{}, not {got}.", if *expected == 1 {""} else {"s"}),
+        TypeErrorType::MismatchedMethodAccess { method_name, expected, .. } => format!("Mismatched implementation: {method_name} is {}expected to be public.", if *expected {""} else {"not "}),
+        TypeErrorType::MismatchedMethodStatic { method_name, expected, .. } => format!("Mismatched implementation: {method_name} is {}expected to be static.", if *expected {""} else {"not "}),
+        
         };
 
         write!(f, "{message}")

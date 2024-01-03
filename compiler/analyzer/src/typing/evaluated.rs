@@ -324,9 +324,24 @@ impl EvaluatedType {
             EvaluatedType::InterfaceInstance { is_invariant, .. }
             | EvaluatedType::EnumInstance { is_invariant, .. }
             | EvaluatedType::FunctionInstance { is_invariant, .. }
-            | EvaluatedType::FunctionExpressionInstance { is_invariant, .. }
             | EvaluatedType::MethodInstance { is_invariant, .. }
             | EvaluatedType::ModelInstance { is_invariant, .. } => *is_invariant = value,
+            EvaluatedType::FunctionExpressionInstance {
+                is_invariant,
+                generic_args,
+                params,
+                return_type,
+                ..
+            } => {
+                *is_invariant = value;
+                generic_args
+                    .iter_mut()
+                    .for_each(|(_, typ)| typ.set_invariance(value));
+                params
+                    .iter_mut()
+                    .for_each(|param| param.inferred_type.set_invariance(value));
+                return_type.set_invariance(value);
+            }
             _ => {}
         }
     }

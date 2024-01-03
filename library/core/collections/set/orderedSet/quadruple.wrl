@@ -2,11 +2,11 @@ module quadruple;
 
 use tuple.{Tuple, pair};
 use orderedSet.OrderedSet;
-use core.prelude.{never, some};
+use core.prelude.some;
 
 
 /// A set containing four individual items.
-public model Quadruple<T, U, V, W> implements OrderedSet<T, U, V, W, never, never> {
+public model Quadruple<T, U, V, W> implements OrderedSet<T, U, V, W> {
     public var a: T;
     public var b: U;
     public var c: V;

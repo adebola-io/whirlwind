@@ -85,3 +85,83 @@ pub fn interface_expected(name: String, span: ast::Span) -> TypeError {
         span,
     }
 }
+
+pub fn duplicate_implementation(name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::DuplicateImplementationOf { name },
+        span,
+    }
+}
+
+pub fn missing_implementation(interface: &str, method: &str, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::MissingImplementation {
+            inteface: interface.to_owned(),
+            method: method.to_owned(),
+        },
+        span,
+    }
+}
+
+pub fn conflicting_implementations(
+    previous: (&str, &str),
+    duet: (&str, &str),
+    span: ast::Span,
+) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::ConflictingImplementation {
+            former_interface: previous.0.to_owned(),
+            next_interface: duet.1.to_owned(),
+            method: previous.1.to_owned(),
+        },
+        span,
+    }
+}
+
+pub fn mismatched_generic_params(
+    method_name: String,
+    expected: usize,
+    got: usize,
+    span: ast::Span,
+) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::MismatchedGenericParam {
+            method_name,
+            expected,
+            got,
+        },
+        span,
+    }
+}
+
+pub fn mismatched_method_access(
+    method_name: String,
+    got: bool,
+    expected: bool,
+    span: ast::Span,
+) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::MismatchedMethodAccess {
+            method_name,
+            got,
+            expected,
+        },
+        span,
+    }
+}
+
+pub fn mismatched_method_static(
+    method_name: String,
+    expected: bool,
+    got: bool,
+    span: ast::Span,
+) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::MismatchedMethodStatic {
+            method_name,
+            got,
+            expected,
+        },
+        span,
+    }
+}

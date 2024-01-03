@@ -1,9 +1,9 @@
 module quintuple;
 
 use orderedSet.OrderedSet;
-use core.prelude.{never, some};
+use core.prelude.some;
 
-public model Quintuple<T, U, V, W, X> implements OrderedSet<T, U, V, W, X, never> {
+public model Quintuple<T, U, V, W, X> implements OrderedSet<T, U, V, W, X> {
     public var a: T;
     public var b: U;
     public var c: V;

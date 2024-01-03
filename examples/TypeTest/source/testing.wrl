@@ -1,0 +1,25 @@
+module testing;
+
+model True implements Default  {
+    static function init() -> True {
+        todo()
+    }
+}
+model False implements Default {
+    static function init() -> False {
+        todo()
+    }
+}
+
+type IsEqual<T, U> = if T is U True else False; 
+
+type IsFunction<F, U> = if F is fn() -> U True else False;
+
+test "conditional types" {
+
+    var a: IsEqual<?Bool, ?Bool>;
+    typeOfa := a;
+
+    var b: IsEqual<String, Bool>;
+    typeOfb := b;
+}
