@@ -8,9 +8,8 @@ module sentinels;
 use core.{
     primitives.String,
     primitives.UInt8,
-    prelude.{none, some},
+    prelude.{none, some, Display},
     internals.{builtin, never},
-    concurrent.SequenceError,
 };
 
 /// Unwinds the stack by one frame and crashes with a fatal error.
@@ -34,8 +33,12 @@ public function fatalOnCaller(message: String) -> never  {
 ///     }
 /// }
 /// ```
-public function todo(message?: String) -> never {
-    return fatalOnCaller(message.unwrapOr("Entered unfinished code."));
+public function todo<V implements Display>(message?: V) -> never {
+    return fatalOnCaller(
+                message
+                    .map(fn (message) message.toStr())
+                    .unwrapOr("Entered unfinished code.")
+            );
 }
 
 /// Marks a point that should never be reached by normal execution flow.
@@ -105,12 +108,29 @@ public function exit(code?: UInt8) -> never {
     return builtin.exit(code);
 }
 
-function wrap<T>(func: fn -> T, catch: fn(e: SequenceError)) {
-    f := (async fn func())();
-    f.recover(catch);
-    f.run().await();
-}
 
+/// Caches the return value of a function based on its arguments. Subsequent
+/// calls return the cached value instead of reexecuting the function.
+/// 
+/// It is useful for performance-sensitove scenarios where functions are 
+/// repeatedly called with predictable outputs.
+/// 
+/// ### Usage
+/// ```
+/// use core.process.sentinels.memoize;
+/// 
+/// function doStuff() -> Number {
+///     print("Computing value...")
+///     // Perform computations.
+///     return 42;
+/// }
+/// 
+/// var memoized = memoize(doStuff);
+/// 
+/// assertThat(memoized() == 42); // prints "Computing value."
+/// assertThat(memoized() == 42); // returns the value withut running the function again.
+/// 
+/// ```
 public function memoize<T>(func: fn -> T) -> fn -> T {
     value := none();
     return fn() {

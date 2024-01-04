@@ -187,6 +187,17 @@ pub fn unify_types(
                 generic_arguments: second_gen_args,
                 ..
             },
+        ) | (
+            EnumInstance {
+                enum_: first,
+                generic_arguments: first_gen_args,
+                ..
+            },
+            EnumInstance {
+                enum_: second,
+                generic_arguments: second_gen_args,
+                ..
+            },
         ) => {
             let first_instance_symbol = symbollib.get(*first).unwrap();
             let second_instance_symbol = symbollib.get(*second).unwrap();
@@ -242,8 +253,10 @@ pub fn unify_types(
                 model: *first,
                 generic_arguments,
                 is_invariant: false,
-            }} else {
+            }} else if first_instance_symbol.kind.is_interface() {
                 InterfaceInstance { interface_: *first, generic_arguments, is_invariant: false }   
+            } else {
+                EnumInstance { enum_: *first, is_invariant: false, generic_arguments }
             });
         }
         // Either type is unknown.

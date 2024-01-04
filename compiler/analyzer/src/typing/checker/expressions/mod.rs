@@ -4,7 +4,7 @@ mod binary;
 use super::{statements::typecheck_generic_params, *};
 use crate::{
     programdiagnostic::DiagnosticType,
-    utils::{is_unsigned, is_updateable},
+    utils::{distill_as_function_type, is_unsigned, is_updateable},
     Error, IntermediateType,
 };
 use assignment::typecheck_assignment_expression;
@@ -926,69 +926,41 @@ fn typecheck_call_expression(
         return caller;
     }
     // Extract parameters, generic arguments and return_type from caller.
-    let (is_async, parameter_types, mut generic_arguments, mut return_type) = match caller {
-        EvaluatedType::MethodInstance {
-            method,
-            mut generic_arguments,
-            ..
-        }
-        | EvaluatedType::FunctionInstance {
-            function: method,
-            mut generic_arguments,
-            ..
-        } => {
-            let method_symbol = symbollib.get(method).unwrap();
-            match &method_symbol.kind {
-                SemanticSymbolKind::Method {
-                    is_async,
-                    params,
-                    generic_params,
-                    return_type,
+    let (is_async, parameter_types, mut generic_arguments, mut return_type) = {
+        // Rendered as a function expression instance so that generic function
+        // parameters can be coerced to the solutions found by owner models of methods.
+        let function_type = distill_as_function_type(&caller, symbollib).unwrap();
+        let final_caller_type = coerce(
+            EvaluatedType::FunctionExpressionInstance {
+                is_async: function_type.is_async,
+                is_invariant: true,
+                params: function_type.parameter_types,
+                return_type: Box::new(function_type.return_type),
+                generic_args: function_type.generic_arguments.to_vec(),
+            },
+            &(match caller {
+                EvaluatedType::FunctionExpressionInstance {
+                    generic_args: generic_arguments,
                     ..
                 }
-                | SemanticSymbolKind::Function {
-                    is_async,
-                    params,
-                    generic_params,
-                    return_type,
-                    ..
-                } => {
-                    let parameter_types = convert_param_list_to_type(
-                        params,
-                        symbollib,
-                        &generic_arguments,
-                        checker_ctx,
-                    );
-                    let return_type = return_type
-                        .as_ref()
-                        .map(|typ| {
-                            let span = checker_ctx.span_of_expr(&callexp.caller, symbollib);
-                            evaluate(typ, symbollib, None, &mut checker_ctx.tracker(span), 0)
-                        })
-                        .unwrap_or(EvaluatedType::Void);
-                    (
-                        *is_async,
-                        parameter_types,
-                        {
-                            generic_arguments
-                                .append(&mut evaluate_generic_params(generic_params, false));
-                            generic_arguments
-                        },
-                        return_type,
-                    )
+                | EvaluatedType::FunctionInstance {
+                    generic_arguments, ..
                 }
-                _ => unreachable!("Expected functional symbol but found {:?}", method_symbol),
-            }
-        }
-        EvaluatedType::FunctionExpressionInstance {
-            is_async,
-            params,
-            return_type,
-            generic_args,
-            ..
-        } => (is_async, params, generic_args, *return_type),
-        _ => {
-            return EvaluatedType::Unknown;
+                | EvaluatedType::MethodInstance {
+                    generic_arguments, ..
+                } => generic_arguments,
+                _ => unreachable!(),
+            }),
+        );
+        match final_caller_type {
+            EvaluatedType::FunctionExpressionInstance {
+                is_async,
+                params,
+                return_type,
+                generic_args,
+                ..
+            } => (is_async, params, generic_args, *return_type),
+            _ => unreachable!(),
         }
     };
     // Try to preemptively guess the type of the first argument.
@@ -1101,7 +1073,8 @@ fn zip_arguments(
                     };
                 if param_generics.iter().all(|generic| {
                     caller_generics.is_some_and(|generics| generics.contains(generic))
-                }) {
+                }) || parameter_type.is_function_expression_instance()
+                {
                     UnifyOptions::HardConform
                 } else {
                     UnifyOptions::Conform
@@ -1199,30 +1172,40 @@ fn convert_param_list_to_type(
         .iter()
         .map(|param| {
             let parameter_symbol = symbollib.get(*param).unwrap();
-            let (is_optional, type_label, span) = match &parameter_symbol.kind {
+            let (is_optional, type_label, span, inferred_type) = match &parameter_symbol.kind {
                 SemanticSymbolKind::Parameter {
                     is_optional,
                     param_type,
+                    inferred_type,
                     ..
-                } => (*is_optional, param_type, parameter_symbol.ident_span()),
+                } => (
+                    *is_optional,
+                    param_type,
+                    parameter_symbol.ident_span(),
+                    inferred_type,
+                ),
                 _ => unreachable!("Expected parameter but got {parameter_symbol:?}"),
             };
             ParameterType {
                 name: parameter_symbol.name.clone(),
                 is_optional,
                 type_label: type_label.clone(),
-                inferred_type: type_label
-                    .as_ref()
-                    .map(|typ| {
-                        evaluate(
-                            typ,
-                            symbollib,
-                            Some(solved_generics),
-                            &mut checker_ctx.tracker(span),
-                            0,
-                        )
-                    })
-                    .unwrap_or(EvaluatedType::Unknown),
+                inferred_type: if inferred_type.is_unknown() {
+                    type_label
+                        .as_ref()
+                        .map(|typ| {
+                            evaluate(
+                                typ,
+                                symbollib,
+                                Some(solved_generics),
+                                &mut checker_ctx.tracker(span),
+                                0,
+                            )
+                        })
+                        .unwrap_or(EvaluatedType::Unknown)
+                } else {
+                    inferred_type.clone()
+                },
             }
         })
         .collect::<Vec<_>>()
@@ -1283,17 +1266,27 @@ fn typecheck_function_expression(
         let generic_args = evaluate_generic_params(&f.generic_params, true);
         for param in &f.params {
             let parameter_symbol = symbollib.get_forwarded(*param).unwrap();
-            let (param_type, is_optional, span) = match &parameter_symbol.kind {
+            let (param_type, is_optional, span, inferred_type) = match &parameter_symbol.kind {
                 SemanticSymbolKind::Parameter {
                     param_type,
                     is_optional,
+                    inferred_type,
                     ..
-                } => (param_type, *is_optional, parameter_symbol.ident_span()),
+                } => (
+                    param_type,
+                    *is_optional,
+                    parameter_symbol.ident_span(),
+                    inferred_type,
+                ),
                 _ => unreachable!(),
             };
-            let inferred_type = param_type
-                .as_ref()
-                .map(|typ| evaluate(typ, symbollib, None, &mut checker_ctx.tracker(span), 0))
+            let inferred_type = (!inferred_type.is_unknown())
+                .then(|| inferred_type.clone())
+                .or_else(|| {
+                    param_type.as_ref().map(|typ| {
+                        evaluate(typ, symbollib, None, &mut checker_ctx.tracker(span), 0)
+                    })
+                })
                 .unwrap_or(EvaluatedType::Unknown);
             // Interfaces cannot be used as parameter types.
             if let EvaluatedType::InterfaceInstance { interface_, .. } = &inferred_type {

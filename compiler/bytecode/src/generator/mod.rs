@@ -21,7 +21,7 @@ pub use memory::*;
 /// The final object to be produced by the bytecode generator.
 pub struct BytecodeObject {
     pub constants: ConstantPool,
-    pub functions: Vec<CallablePtr>,
+    pub callables: Vec<CallablePtr>,
     pub layouts: Vec<Layout>,
     pub instructions: Vec<u8>,
 }
@@ -57,7 +57,7 @@ impl From<BytecodeGenerator<'_>> for BytecodeObject {
     fn from(value: BytecodeGenerator<'_>) -> Self {
         BytecodeObject {
             constants: value.constants,
-            functions: value.callables.table.take(),
+            callables: value.callables.table.take(),
             instructions: value.memory.code,
             layouts: vec![],
         }

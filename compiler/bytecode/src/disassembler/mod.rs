@@ -19,7 +19,7 @@ pub fn disassemble(object: &BytecodeObject) -> String {
     );
 
     let mut i = 0;
-    for callable in &object.functions {
+    for callable in &object.callables {
         let mut label = String::new();
         label.push_str("[callable] ");
         label.push_str(&callable.name);
@@ -177,7 +177,7 @@ fn disassemble_load_func_params(
     let register = reader.next_byte();
     output.push_str(&format!("@r{register}"));
     let id = u32::from_be_bytes(reader.next_four_bytes()) as usize;
-    output.push_str(&format!("  ({})", &object.functions[id].name));
+    output.push_str(&format!("  ({})", &object.callables[id].name));
 }
 
 #[test]
@@ -186,14 +186,10 @@ fn disassemble_text() {
         "
     module main;
 
+    use core.process.sentinels.noop;
+
     function main() {
-        doMoreMath();
-    }
-    function doMath() -> UInt8 {
-        return 1 + 2 + 3;
-    }
-    function doMoreMath() -> Float {
-        return doMath();
+        noop();
     }
     ",
     )

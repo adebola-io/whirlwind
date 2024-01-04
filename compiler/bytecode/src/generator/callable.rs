@@ -99,7 +99,7 @@ impl<'standpoint> Callables<'standpoint> {
     /// based on the symbol signature
     pub fn construct_callableptr(&self, symbol: SymbolIndex) -> CallablePtr {
         let standpoint = self.standpoint;
-        let symbol = standpoint.symbol_library.get(symbol).unwrap();
+        let symbol = standpoint.symbol_library.get_forwarded(symbol).unwrap();
         let (name, param_count) = match &symbol.kind {
             SemanticSymbolKind::Method {
                 owner_model_or_interface,

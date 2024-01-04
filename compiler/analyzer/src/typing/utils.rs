@@ -551,7 +551,7 @@ pub fn get_implementation_of(
         }
         | EvaluatedType::Generic { base }
         | EvaluatedType::HardGeneric { base } => {
-            let base_symbol = symbollib.get(*base)?;
+            let base_symbol = symbollib.get_forwarded(*base)?;
             let implementation_list = match &base_symbol.kind {
                 SemanticSymbolKind::Model {
                     implementations, ..
@@ -681,7 +681,7 @@ pub fn distill_as_function_type<'a>(
             generic_arguments,
             ..
         } => {
-            let function_symbol = symbollib.get(*function).unwrap();
+            let function_symbol = symbollib.get_forwarded(*function).unwrap();
             match &function_symbol.kind {
                 SemanticSymbolKind::Method {
                     is_async,
@@ -699,32 +699,35 @@ pub fn distill_as_function_type<'a>(
                     let parameter_types = params
                         .iter()
                         .map(|param| {
-                            let parameter_symbol = symbollib.get(*param).unwrap();
-                            let (is_optional, type_label) = match &parameter_symbol.kind {
+                            let parameter_symbol = symbollib.get_forwarded(*param).unwrap();
+                            let (is_optional, type_label, inferred_type) = match &parameter_symbol
+                                .kind
+                            {
                                 SemanticSymbolKind::Parameter {
                                     is_optional,
                                     param_type,
+                                    inferred_type,
                                     ..
-                                } => (*is_optional, param_type),
+                                } => (
+                                    *is_optional,
+                                    param_type,
+                                    (!inferred_type.is_unknown()).then(|| inferred_type.clone()),
+                                ),
                                 _ => {
-                                    unreachable!("Expected parameter but got {parameter_symbol:?}")
+                                    unreachable!("Expected param, got {parameter_symbol:?}")
                                 }
+                            };
+                            let compute_from_label = || {
+                                type_label.as_ref().map(|typ| {
+                                    evaluate(typ, symbollib, Some(generic_arguments), &mut None, 0)
+                                })
                             };
                             ParameterType {
                                 name: parameter_symbol.name.clone(),
                                 is_optional,
                                 type_label: type_label.clone(),
-                                inferred_type: type_label
-                                    .as_ref()
-                                    .map(|typ| {
-                                        evaluate(
-                                            typ,
-                                            symbollib,
-                                            Some(generic_arguments),
-                                            &mut None,
-                                            0,
-                                        )
-                                    })
+                                inferred_type: inferred_type
+                                    .or_else(compute_from_label)
                                     .unwrap_or(EvaluatedType::Unknown),
                             }
                         })
@@ -853,7 +856,7 @@ pub fn update_expression_type(
         TypedExpression::Identifier(ident) => {
             // DOUBLED SO SYMBOLLIB CAN BE BORROWED IMMUTABLY.
             let mut unified_type = None;
-            let ident_symbol = symbollib.get(ident.value).unwrap();
+            let ident_symbol = symbollib.get_forwarded(ident.value).unwrap();
             if let SemanticSymbolKind::Variable {
                 inferred_type,
                 declared_type,

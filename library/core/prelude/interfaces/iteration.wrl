@@ -195,7 +195,13 @@ public interface Iteratable<I> {
     /// assert(namesIter.next()).equals(some("Bao"));
     /// ```
     public function find(predicate: fn(value: I) -> Bool) -> ?I {
-        todo()
+        while true {
+            item := this.next()?;
+            if predicate(item) {
+                return some(item);
+            }
+        }
+        return none();
     }
     /// collects the next _n_ elements from the iterator into an array.
     /// 

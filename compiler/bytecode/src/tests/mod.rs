@@ -40,7 +40,7 @@ fn simple_empty_main() {
     )
     .unwrap();
     assert_eq!(
-        object.functions,
+        object.callables,
         vec![CallablePtr {
             name: String::from("main"),
             param_count: 0,
@@ -77,7 +77,7 @@ fn function_call() {
     )
     .unwrap();
     assert_eq!(
-        object.functions,
+        object.callables,
         vec![
             CallablePtr {
                 name: String::from("main"),
@@ -114,7 +114,7 @@ fn recursive_function_call() {
     )
     .unwrap();
     assert_eq!(
-        object.functions,
+        object.callables,
         vec![
             CallablePtr {
                 name: String::from("main"),

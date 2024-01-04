@@ -1,4 +1,6 @@
-use analyzer::{utils::distill_as_function_type, Literal, SemanticSymbolKind, TypedExpression};
+use analyzer::{
+    utils::distill_as_function_type, Literal, SemanticSymbolKind, SymbolIndex, TypedExpression,
+};
 
 use crate::{Callable, FunctionRetriever, RegisterGroup, RegisterId};
 
@@ -108,33 +110,34 @@ impl<'a> BytecodeGenerator<'a> {
     /// Emits an identifier.
     fn emit_identifier(&mut self, id: &'a analyzer::TypedIdent) -> Option<RegisterId> {
         let (_, symbollib, _) = self.standpoint.data();
-        let identifier_symbol = symbollib.get(id.value).unwrap();
+        let true_symbol_idx = symbollib.forward(id.value);
+        let identifier_symbol = symbollib.get(true_symbol_idx).unwrap();
         match &identifier_symbol.kind {
-            /// Loads a function and enqueues its block.
             SemanticSymbolKind::Function {
                 is_public,
                 is_async,
                 params,
                 generic_params,
                 return_type,
-            } => self.emit_named_function_name(id, identifier_symbol),
+            } => self.emit_named_function_name(true_symbol_idx, identifier_symbol),
             _ => todo!(),
         }
     }
 
+    /// Loads a function name and enqueues its block if it has not yet been emitted.
     fn emit_named_function_name(
         &mut self,
-        id: &'a analyzer::TypedIdent,
+        id: SymbolIndex,
         identifier_symbol: &'a analyzer::SemanticSymbol,
     ) -> Option<RegisterId> {
-        if !self.callables.has(id.value) {
+        if !self.callables.has(id) {
             let function_declaration = FunctionRetriever::new(self.standpoint, identifier_symbol)
                 .retrieve()
                 .unwrap();
             self.queue
                 .push_back(Callable::NamedFunction(function_declaration));
         }
-        let callable_ptr_id = self.callables.get_or_create(id.value);
+        let callable_ptr_id = self.callables.get_or_create(id);
         let id = self.memory.load_immediate_function_ptr(callable_ptr_id);
         Some(id)
     }

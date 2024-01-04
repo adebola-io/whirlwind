@@ -200,6 +200,10 @@ impl SemanticSymbolKind {
             _ => false,
         }
     }
+
+    pub(crate) fn is_interface(&self) -> bool {
+        matches!(self, SemanticSymbolKind::Interface { .. })
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]

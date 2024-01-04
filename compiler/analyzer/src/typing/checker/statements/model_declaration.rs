@@ -8,7 +8,7 @@ use crate::{
 use ast::{unwrap_or_continue, unwrap_or_return};
 
 /// Typechecks a model declaration.
-pub fn typecheck_model_decl(
+pub fn typecheck_model_declaration(
     model: &mut TypedModelDeclaration,
     checker_ctx: &mut TypecheckerContext,
     symbollib: &mut SymbolLibrary,

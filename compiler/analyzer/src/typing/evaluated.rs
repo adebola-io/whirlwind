@@ -414,6 +414,14 @@ impl EvaluatedType {
                 | EvaluatedType::Never
         )
     }
+
+    /// Returns `true` if the evaluated type is [`FunctionExpressionInstance`].
+    ///
+    /// [`FunctionExpressionInstance`]: EvaluatedType::FunctionExpressionInstance
+    #[must_use]
+    pub fn is_function_expression_instance(&self) -> bool {
+        matches!(self, Self::FunctionExpressionInstance { .. })
+    }
 }
 
 /// Converts an intermediate type into an evaluation.

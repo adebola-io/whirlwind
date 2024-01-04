@@ -5,7 +5,7 @@ use super::{expressions::typecheck_block, *};
 mod interface_declaration;
 mod model_declaration;
 pub use interface_declaration::typecheck_interface;
-pub use model_declaration::typecheck_model_decl;
+pub use model_declaration::typecheck_model_declaration;
 
 pub fn typecheck_statement(
     statement: &mut TypedStmnt,
@@ -45,7 +45,9 @@ pub fn typecheck_statement(
         // TypedStmnt::BreakStatement(_) => todo!(),
         TypedStmnt::ForStatement(forloop) => typecheck_for_loop(forloop, checker_ctx, symbollib),
         TypedStmnt::WhileStatement(whil) => typecheck_while_statement(whil, checker_ctx, symbollib),
-        TypedStmnt::ModelDeclaration(model) => typecheck_model_decl(model, checker_ctx, symbollib),
+        TypedStmnt::ModelDeclaration(model) => {
+            typecheck_model_declaration(model, checker_ctx, symbollib)
+        }
         TypedStmnt::TypeDeclaration(type_decl) => {
             typecheck_type_decl(type_decl, symbollib, checker_ctx)
         }
