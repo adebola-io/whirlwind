@@ -25,6 +25,15 @@ macro_rules! text_produces_errors{
 }
 
 macro_rules! check_types {
+    ($text: expr) => {{
+        let mut module = Module::from_text($text);
+        module.module_path = Some(PathBuf::from("testing://Test.wrl"));
+        let mut standpoint = Standpoint::new(true, Some(CORE_LIBRARY_PATH.into()));
+        standpoint.validate();
+        standpoint.add_module(module);
+        standpoint.validate();
+        standpoint
+    }};
     ($text: expr, $types: expr) => {{
         let mut module = Module::from_text($text);
         module.module_path = Some(PathBuf::from("testing://Test.wrl"));
@@ -62,6 +71,41 @@ fn it_solves_generics() {}
 
 #[test]
 fn it_solves_interface_impls_for_generics() {}
+
+#[test]
+fn coerces_this_type() {
+    let standpoint = check_types!(
+        "
+    module Test;
+    interface Identity {
+        public function self() -> This;
+    }
+
+    model WrapInt implements Identity {
+        new() {}
+        public function [Identity.self]() -> This {
+            todo()
+        }
+    }
+
+    model Object<T implements Identity> {
+        var value: T;
+        new(value: T) {
+            this.value = value;
+        }
+        public function val() -> T {
+            return this.value.self();
+        }
+    }
+
+    function main() {
+        obj := new Object(new WrapInt());
+        objValue := obj.val();
+    }
+    ",
+        &[("objValue", "WrapInt")]
+    );
+}
 
 #[test]
 fn it_solves_assignment() {}

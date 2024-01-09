@@ -6,7 +6,8 @@ use ops.{Orderable, Addition};
 use core.prelude.{
     iteration.Reversed,
     AsIterator, none, some, todo, 
-    String, Default, Iteratable, Display
+    String, Default, Iteratable, Display,
+    Clonable
 };
 use core.math.{max, min};
 use core.internals.builtin;
@@ -277,6 +278,14 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> + Default {
         if this.length() == 0 { none() } 
         else some(this[this.length() - 1])
     }
+    /// Returns a deep clone of an array.
+    public static function clone<U implements Clonable>(array: []U) -> []U {
+        newArray := [];
+        for element in array {
+            newArray.push(element.clone())
+        }
+        return newArray;
+    }
     /// Converts an array to a string representation,
     /// given that its elements implement `Display`.
     /// ### Usage
@@ -288,14 +297,14 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> + Default {
     /// ```
     public static function toStr<T implements Display>(array: Array<T>) -> String {
         string := "[";
-        i := 0;
-        for { a as index, b as item } in array.iter().enumerate() 
-        {
+
+        array.iter().enumerate().forEach(fn(tuple) {
+            var { a as index, b as item} = tuple;
             string.append(item.toStr());
             if index + 1 != array.length() {
                 string.append(",")
             }
-        }
+        });
         string.append("]");
         return string;
     }
@@ -353,7 +362,6 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> + Default {
         array.iter().forEach(fn(value) maximum = max(maximum, value));
         some(maximum)
     }
-
     /// Returns the smallest value in an array.
     /// It returns an empty value if the array is empty.
     /// ### Usage
@@ -368,7 +376,6 @@ public model Array<T> implements AsIterator<T, ArrayIter<T>> + Default {
         array.iter().forEach(fn(value) minimum = min(minimum, value));
         some(minimum)
     }
-
     /// Returns the sum of all the elements in the array.
     /// If there are no elements in the array, it returns the default value of
     /// the given type.

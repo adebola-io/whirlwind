@@ -71,6 +71,15 @@ impl VariablePatternForm {
     }
 }
 
+/// Whether or not a model has a child that contains it.
+/// Blocking cycles will be useful in the runtime.
+#[derive(Debug, Clone, Copy)]
+pub enum ModelCyclicState {
+    Unchecked,
+    True,
+    False,
+}
+
 #[derive(Debug)]
 pub enum SemanticSymbolKind {
     Module {
@@ -93,6 +102,7 @@ pub enum SemanticSymbolKind {
         implementations: Vec<IntermediateType>,
         methods: Vec<SymbolIndex>,
         attributes: Vec<SymbolIndex>,
+        cyclic: ModelCyclicState,
     },
     // An enum.
     Enum {

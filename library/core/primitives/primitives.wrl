@@ -4,7 +4,7 @@
 /// the building blocks for more complex data representations.
 module primitives;
 
-public use string.{String, Chars};
+public use string.{String, Chars, FromStr};
 public use array.Array;
 public use bool.Bool;
 public use numeric;

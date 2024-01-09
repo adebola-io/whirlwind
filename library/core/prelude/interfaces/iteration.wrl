@@ -8,7 +8,7 @@
 /// a more finegrained control over iteration.
 module iteration;
 
-use core.prelude.{Bool, todo, some, none, UnsignedInt};
+use core.prelude.{Bool, todo, some, none, UnsignedInt, Region};
 use core.collections.Tuple;
 
 /// ## The Iteratable interface
@@ -74,7 +74,15 @@ public interface Iteratable<I> {
     /// [1, 2, 3].iter().forEach(fn(value) print(value));
     /// ```
     public function forEach(callback: fn(value: I)) {
-        todo()
+        while true {
+            Region.scope(fn {
+                next := this.next();
+                if next.isNone() {
+                    break;
+                };
+                callback(next.unwrap());
+            });
+        }
     }
     /// Reduces an iteratable to a single value by applying a function against an
     /// accumulator and each element in the sequence. It allows combinatory or aggregative 

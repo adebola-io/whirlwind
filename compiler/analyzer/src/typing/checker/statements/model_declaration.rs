@@ -217,6 +217,8 @@ pub fn typecheck_model_declaration(
         }
     }
 
+    // todo: Block model cycles.
+
     for property in &mut model.body.properties {
         typecheck_model_property(property, symbollib, checker_ctx)
     }

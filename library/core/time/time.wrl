@@ -1,2 +1,19 @@
 module time;
 
+use core.primitives.UnsignedInt;
+use core.prelude.todo;
+
+public type Duration = Second | Millisecond;
+
+public model Second {
+
+    public static function times(number: UnsignedInt) -> This {
+        todo()
+    }
+}
+
+public model Millisecond {
+    public static function times(number: UnsignedInt) -> This {
+        todo()
+    }
+}

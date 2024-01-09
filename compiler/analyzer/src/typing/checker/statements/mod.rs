@@ -803,7 +803,7 @@ pub fn typecheck_return_statement(
                         found: symbollib.format_evaluated_type(eval_type),
                     },
                     span: retstat.span,
-                })
+                });
             }
         }
     } else {

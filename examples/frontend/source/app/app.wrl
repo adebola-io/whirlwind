@@ -1,0 +1,48 @@
+module app;
+
+public use state;
+public use styling;
+public use views;
+public use utils;
+
+// use tangent.thread;
+
+function main() {
+    
+}
+
+// use tangent.{
+//     Button, State, StateStore, Root, Span, View
+// };
+
+// model ClientState implements StateStore {
+//     public var count: State<Number>
+//     new() {
+//         this.count = new State(0);
+//         this.shouldDisplayButton = new State(false);
+//     }
+// }
+
+// function createRoot(state: ClientState) -> Root {
+//     t.root()
+//         .style(styles.Root)
+//         .id("app")
+//         .class("window")
+//         .append(
+//             t.button()
+//                 .style(styles.Button)
+//                 .append(State.asText(state.count))
+//                 .click(fn state.count.update(fn (value) value + 1))
+//                 .hover(fn(_, btn) btn!.setStyle("color", "red")),
+//         )
+//         .append(
+//             t.span()
+//                 .style(styles.Span)
+//                 .text("Click the button.")
+//         );
+// }
+
+// function main() {
+//     state := new ClientState();
+//     view := new View(createRoot(state)); 
+// }

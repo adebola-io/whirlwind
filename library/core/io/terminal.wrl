@@ -36,7 +36,8 @@ public model TerminalString implements Display {
     var codes: []UInt8;
 
     new(text?: String) {
-        this.text = Maybe.unwrapOrDefault(text);
+        this.text = todo();
+        // this.text = Maybe.unwrapOrDefault(text);
         this.codes = [];
     }
 

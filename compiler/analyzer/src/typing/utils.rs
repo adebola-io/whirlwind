@@ -125,7 +125,8 @@ pub fn is_numeric_type(evaluated_type: &EvaluatedType, symbollib: &SymbolLibrary
         if [
             symbollib.float,
             symbollib.int,
-            symbollib.uint
+            symbollib.uint,
+            symbollib.number,
         ].iter().any(|sym| sym.as_ref() == aliased_as.as_ref())
     )
 }

@@ -1677,7 +1677,7 @@ pub fn search_for_property(
     symbollib: &mut SymbolLibrary,
     base: SymbolIndex,
     property_symbol_idx: SymbolIndex,
-    mut generic_arguments: Vec<(SymbolIndex, EvaluatedType)>,
+    mut generic_args: Vec<(SymbolIndex, EvaluatedType)>,
     object_is_instance: bool,
     is_invariant: bool,
     property_span: Span,
@@ -1712,8 +1712,7 @@ pub fn search_for_property(
     let implementation_methods = impls
         .iter()
         .filter_map(|int_typ| {
-            let implementation =
-                evaluate(int_typ, symbollib, Some(&generic_arguments), &mut None, 0);
+            let implementation = evaluate(int_typ, symbollib, Some(&generic_args), &mut None, 0);
             match implementation {
                 EvaluatedType::InterfaceInstance {
                     interface_,
@@ -1721,17 +1720,27 @@ pub fn search_for_property(
                     ..
                 } => {
                     // Update the solutions of the interfaces generics.
-                    generic_arguments.append(&mut interface_generics);
+                    generic_args.append(&mut interface_generics);
                     // Here a interface is treated as a generic argument and given a solution.
                     // This allows the `This` marker to refer to the implementing model, rather than the interface.
-                    generic_arguments.push((
-                        interface_,
-                        EvaluatedType::ModelInstance {
+                    let generic_arguments = generic_args.clone();
+                    let this_solution = match &base_symbol.kind {
+                        SemanticSymbolKind::GenericParameter { .. } => {
+                            EvaluatedType::HardGeneric { base }
+                        }
+                        SemanticSymbolKind::Model { .. } => EvaluatedType::ModelInstance {
                             model: base,
-                            generic_arguments: generic_arguments.clone(),
+                            generic_arguments,
                             is_invariant: false,
                         },
-                    ));
+                        SemanticSymbolKind::Interface { .. } => EvaluatedType::InterfaceInstance {
+                            interface_: base,
+                            is_invariant: false,
+                            generic_arguments,
+                        },
+                        _ => unreachable!(),
+                    };
+                    generic_args.push((interface_, this_solution));
                     let interface_symbol = symbollib.get_forwarded(interface_)?;
                     match &interface_symbol.kind {
                         SemanticSymbolKind::Interface { methods, .. } => Some(methods),
@@ -1801,7 +1810,7 @@ pub fn search_for_property(
             }
             return Some(EvaluatedType::MethodInstance {
                 method,
-                generic_arguments,
+                generic_arguments: generic_args,
                 is_invariant,
             });
         }
@@ -1819,7 +1828,7 @@ pub fn search_for_property(
                         evaluate(
                             &declared_type,
                             symbollib,
-                            Some(&generic_arguments),
+                            Some(&generic_args),
                             &mut checker_ctx.tracker(span),
                             0,
                         )

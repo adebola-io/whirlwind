@@ -1,0 +1,26 @@
+module page;
+
+use tangent.{Style, Div, Element, Component};
+
+
+model Page implements Component {
+    var base: Div;
+
+    public function [Component.base]() -> Element {
+        this.base
+    }
+
+    public function render() -> Element {
+        this.base()
+            .style(css.Page)
+    }
+}
+
+model css {
+    public static function Page() -> Style {
+        (@Style)
+            .height("400px")
+            .width("900px")
+
+    }
+}

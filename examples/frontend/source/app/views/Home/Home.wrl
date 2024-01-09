@@ -1,0 +1,13 @@
+module Home;
+
+use core.memory.Allocator;
+
+function main() {
+    allocator := createAllocator();
+
+    
+
+    print("In the beginning...");
+
+    allocator.close();
+}

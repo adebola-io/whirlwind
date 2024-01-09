@@ -88,6 +88,7 @@ pub trait LexerInner {
             '!' => token!(Operator::Exclamation, ['=', Operator::NotEqual], self),
             '?' => token!(Operator::QuestionMark, self),
             ',' => token!(Operator::Comma, self),
+            '@' => token!(Operator::At, self),
             '=' => token!(
                 Operator::Assign,
                 ['>', Operator::Arrow, '=', Operator::Equal],

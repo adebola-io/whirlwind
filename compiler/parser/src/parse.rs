@@ -276,7 +276,7 @@ impl<L: Lexer> Parser<L> {
             TokenType::Keyword(Fn) => self.function_expression(false, token.span.start),
             TokenType::Keyword(Async) => self.async_function_expression(),
             TokenType::Keyword(True | False) => self.spring(Partial::from(self.boolean_literal())),
-            TokenType::Keyword(New) => self.new_expression(),
+            TokenType::Keyword(New) | TokenType::Operator(At) => self.new_expression(),
             TokenType::Keyword(If) => self.if_expression(),
             TokenType::Keyword(_this) => self.this_expression(),
             TokenType::Operator(op @ (Exclamation | Not | Plus | Minus)) => {
@@ -317,7 +317,9 @@ impl<L: Lexer> Parser<L> {
 
     /// Parses a new epxression.
     fn new_expression(&self) -> Imperfect<Expression> {
-        expect_or_return!(TokenType::Keyword(New), self);
+        let is_shorthand = self
+            .token()
+            .is_some_and(|token| token._type == TokenType::Operator(At));
         let start = self.token().unwrap().span.start;
         self.advance(); // Move past operator.
         self.push_precedence(ExpressionPrecedence::New);
@@ -329,7 +331,11 @@ impl<L: Lexer> Parser<L> {
         let value = operand.unwrap();
         let end = value.span().end;
         let span = Span::from([start, end]);
-        let un_exp = NewExpr { value, span };
+        let un_exp = NewExpr {
+            value,
+            span,
+            is_shorthand,
+        };
         let exp = Partial {
             value: Some(Expression::NewExpr(Box::new(un_exp))),
             errors,
@@ -1964,8 +1970,12 @@ impl<L: Lexer> Parser<L> {
         let info = self.get_doc_comment();
         let name = check!(self.identifier());
         let var_type = check!(self.type_label());
-        expect_or_return!(TokenType::Operator(SemiColon), self);
-        self.advance(); // Move past ;.
+        if self
+            .token()
+            .is_some_and(|token| token._type == TokenType::Operator(SemiColon))
+        {
+            self.advance(); // Move past ;.
+        }
 
         let signature = AttributeSignature {
             name,

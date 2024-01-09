@@ -99,6 +99,7 @@ pub enum Operator {
     Equal,              // ==
     LesserThan,         // <
     GreaterThan,        // >
+    At,                 // @
 }
 
 impl From<Operator> for ExpressionPrecedence {

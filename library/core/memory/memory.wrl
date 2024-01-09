@@ -4,10 +4,114 @@ use core.{
     primitives.{UInt8, UnsignedInt},
     prelude.{
         Guaranteed, Iteratable, none, some, Display, 
-        String, todo,
+        String, todo, Bool
     },
     internals.builtin,
 };
+
+/// This interface specifies that an instance of a model can be cloned.
+public interface Clonable {
+    /// Creates a clone of the current instance.
+    public function clone() -> This;
+}
+
+public model Region {
+    /// Moves an object instance from the current region to a parent region,
+    /// basically extending its lifetime, and ensuring that it is not deallocated when
+    /// the current region is destroyed.
+    /// 
+    /// ### Usage
+    /// ```
+    /// r := Region.create();
+    /// array := [1, 2, 3]; // Creates in region r.
+    /// 
+    /// r.pin(array);
+    /// r.destroy();
+    /// 
+    /// print(array[1]); // Still valid, because array is no longer owned by region r.
+    /// ```
+    /// The method is recursive, meaning that pinning an object will also pin all
+    /// its attributes.
+    /// ```
+    /// model Person {
+    ///     var name: String;
+    ///     new(name: String) {
+    ///         this.name = name;
+    ///     }
+    ///     public function sayHello() {
+    ///         print(this.name + " says Hello!")
+    ///     }
+    /// }
+    /// 
+    /// r2 := Region.create();
+    /// 
+    /// name := "Michael"; // Created inside array.
+    /// person := new Person(name); // Created inside region r.
+    /// r2.pin(person);
+    /// 
+    /// r2.destroy();
+    /// person.sayHello(); // Valid because person is pinned.
+    /// print(name); // Valid because name is an attribute of person, making it also pinned.
+    /// ```
+    public function pin<T>(instance: T) {
+        todo()
+    }
+    /// Moves the lifetime of an object instance into the current region. This means that whenever
+    /// the region gets 
+    public function capture<T>(instance: T) {
+        todo()
+    }
+    /// Returns true if the lifetime of the given instance is bound to the scope
+    /// of the current region.
+    public function contains<T>(instance: T) -> Bool {
+        todo()
+    }
+    public function clear() {
+        todo()
+    }
+    /// Deallocates the memory in an instance of an object.
+    public function free<T>(instance: T) {
+        todo()
+    }
+    public function capacity() -> UnsignedInt {
+        todo()
+    }
+    public function grow(newCapacity: UnsignedInt) {
+        todo()
+    }
+    public function retire() {
+        todo()
+    }
+    public function shrinkToFit() {
+        todo()
+    }
+    /// Scoping provides a more explicit way to denote 
+    public static function scope(executor: fn) {
+        r := Region.create();
+        executor();
+        r.destroy();
+    }
+    /// Releases all resources associated with the specified memory arena.
+    /// It frees allocated memory and cleans up any data structures used.
+    /// ### Parameters:
+    /// 1. handle: The handle or identifier of the memory arena to be destroyed.
+    /// ### Usage
+    /// ```
+    /// destroyArena(handle);
+    /// ```
+    public function destroy() {
+        todo()
+    }
+
+    /// Creates a new memory region and returns a handle to it.
+    public static function create() -> This {
+        todo()
+    }
+     /// Returns a reference to the current region.
+    public static function current() -> Region {
+        todo()
+    }
+}
 
 /// Swaps the address of two values.
 /// # Usage

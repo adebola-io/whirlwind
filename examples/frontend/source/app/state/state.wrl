@@ -1,0 +1,19 @@
+module state;
+
+// use tangent.{StateStore, State};
+
+interface StateStore {}
+model State<T> {
+    var value: T;
+    new(value: T) {
+        this.value = value;
+    }
+}
+
+public model ClientState implements StateStore {
+    public var navMobile: State<Bool>;
+
+    new() {
+        this.navMobile = new State(false);
+    }
+}

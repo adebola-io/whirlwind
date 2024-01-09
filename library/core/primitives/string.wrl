@@ -2,12 +2,14 @@ module string;
 
 use ops.{Addition};
 use bool.Bool;
+use array.Array;
 use core.{ 
     internals.builtin,
     collections.Hash,
     prelude.{
         AsIterator, Iteratable, 
-        Range, Display, some, Default
+        Range, Display, some, Default,
+        Clonable
     },
     process.sentinels.todo,
 };
@@ -18,6 +20,7 @@ use numeric.{Int, UnsignedInt, UInt8};
 public model String 
     implements Addition 
     + AsIterator<String, Chars> 
+    + Clonable
     + Default
     + Display
     + Hash
@@ -26,9 +29,14 @@ public model String
     new() {
         this.arr = [];
     }
+    public function [Clonable.clone]() -> This {
+        string := new String();
+        string.arr = Array.clone(this.arr);
+        return string;
+    }
     /// Implementation of the Display trait.
     public function [Display.toStr]() -> String {
-        return this;
+       return this.clone();
     }
     /// Implementation of the Default trait.
     static function [Default.init]() -> This {
@@ -41,7 +49,7 @@ public model String
     /// assert(str).equals("Hello, world!");
     /// ```
     public function [Addition.add](other: This) -> This {
-        newStr := this;
+        newStr := this.clone();
         for char in other.arr {
             newStr.arr.push(char);
         }
@@ -94,7 +102,7 @@ public model String
             this.arr.push(unit);
         }
     }
-    /// Returns a copy of the bytes in the string.
+    /// Returns the underlying bytes in the string.
     /// ## Usage
     /// ```
     /// ```
@@ -135,7 +143,7 @@ public model String
     /// assert(str.length()).equals(0);
     /// ```
     public function clear() {
-        this.arr = [];
+        this.arr.clear();
     }
     /// Returns true if a substring is contained within the string.
     /// ## Usage
@@ -313,9 +321,7 @@ public model String
     /// ```
     public function reverse() -> String {
         newStr := new String();
-        for unit in this.arr.reverse() {
-            newStr.arr.push(unit);
-        }
+        this.arr.reverse().forEach(fn (unit) newStr.arr.push(unit));
         return newStr;
     }
     /// Returns a section of the string.
@@ -424,14 +430,11 @@ public model String
     public function startsWith(pat: String) -> Bool {
         if pat.arr.length() > this.arr.length() {
             return false;
-        }
-        for { a, b } in this.arr.iter().zip(pat.arr.iter()) 
-        {
-            if a != b {
-                return false;
-            }
-        }
-        return true;
+        };
+        this.arr
+            .iter()
+            .zip(pat.arr.iter())
+            .all(fn (tuple) tuple.a == tuple.b)
     }
     /// Creates a string from a value that implements Display.
     /// ## Usage

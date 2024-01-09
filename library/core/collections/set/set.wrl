@@ -22,11 +22,11 @@ public model Set<T implements Hash>
     var items: HashMap<T, Bool>;
 
     new(data?: []T) {
-        dataVal := Maybe.unwrapOrDefault(data);
+        // dataVal := Maybe.unwrapOrDefault(data);
         this.items = new HashMap();
-        for element in dataVal {
-            this.items.set(element, true);
-        }
+        // for element in dataVal {
+        //     this.items.set(element, true);
+        // }
     }
 
     public function [AsIterator.iter]() -> SetIterator<T> {

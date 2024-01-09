@@ -16,6 +16,10 @@ public function getEnv(varName: String) -> ?String {
     todo()
 }
 
+public model Error {
+    
+}
+
 
 /// Returns a string value corresponding to the path of the current working directory.
 /// ### Usage

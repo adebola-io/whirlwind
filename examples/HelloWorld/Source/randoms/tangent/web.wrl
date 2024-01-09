@@ -1,0 +1,69 @@
+module web;
+
+use tangent.{
+    Button, State, StateStore, Root, Span, View
+};
+
+model ClientState implements StateStore {
+    public var count: State<Number>
+    new() {
+        this.count = new State(0);
+        this.shouldDisplayButton = new State(false);
+    }
+}
+
+function createRoot(state: ClientState) -> Root {
+    t.root()
+        .style(styles.Root)
+        .id("app")
+        .class("window")
+        .append(
+            t.button()
+                .style(styles.Button)
+                .append(State.asText(state.count))
+                .click(fn state.count.update(fn (value) value + 1))
+                .hover(fn(_, btn) btn!.setStyle("color", "red")),
+        )
+        .append(
+            t.span()
+                .style(styles.Span)
+                .text("Click the button.")
+        );
+}
+
+
+model styles {
+    public static function Root() -> Style {
+        css()
+            .display("flex")
+            .justifyContent("center")
+            .alignItems("center")
+            .height("100h")
+            .width("100vw")
+            .background("#fff000")
+    }
+    
+    public static function Button(): Style {
+        css()
+            .display("flex")
+            .justifyContent("center")
+            .alignItems("center")
+            .height("100px")
+            .width("200px")
+            .color("blue")
+            .background("white")
+            .borderRadius("3rem")
+            .transitionDuration("300ms")
+    }
+    
+    public static function Span(): Style {
+        css()
+            .textTransform("uppercase")
+            .textDecoration("underline")
+    }
+}
+
+function main() {
+    state := new ClientState();
+    view := new View(createRoot(state)); 
+}

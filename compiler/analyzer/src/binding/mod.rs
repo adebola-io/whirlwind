@@ -3,9 +3,9 @@ mod typed_module;
 mod typed_statement;
 
 use crate::{
-    CurrentModuleType, Error, IntermediateType, Literal, LiteralIndex, LiteralMap, Module,
-    PathIndex, ProgramDiagnostic, SemanticSymbol, SemanticSymbolKind, SymbolIndex, SymbolLibrary,
-    SymbolReferenceList,
+    CurrentModuleType, Error, IntermediateType, Literal, LiteralIndex, LiteralMap,
+    ModelCyclicState, Module, PathIndex, ProgramDiagnostic, SemanticSymbol, SemanticSymbolKind,
+    SymbolIndex, SymbolLibrary, SymbolReferenceList,
 };
 use ast::{
     Block, ConstantDeclaration, EnumDeclaration, EnumVariant, Expression, FunctionExpr,
@@ -346,6 +346,8 @@ mod bind_utils {
                         implementations: vec![],
                         methods: vec![],
                         attributes: vec![],
+                        // This one is written in the typechecker phase
+                        cyclic: ModelCyclicState::Unchecked,
                     },
                     references: vec![SymbolReferenceList {
                         module_path: binder.path,
@@ -568,6 +570,7 @@ mod bind_utils {
                     "UInt64" => &mut symbol_library.uint64,
                     "Float32" => &mut symbol_library.float32,
                     "Float64" => &mut symbol_library.float64,
+                    "Number" => &mut symbol_library.number,
                     _ => return index,
                 },
                 (CurrentModuleType::Internal, name) => match name {
@@ -2784,6 +2787,7 @@ mod expressions {
         ambience: &mut ModuleAmbience,
     ) -> TypedNewExpr {
         TypedNewExpr {
+            is_shorthand: new_expr.is_shorthand,
             value: bind_expression(
                 new_expr.value,
                 binder,
