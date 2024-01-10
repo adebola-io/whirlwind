@@ -1,10 +1,10 @@
 use crate::{
-    unify_generic_arguments, unify_types,
+    converge_types, unify_generic_arguments, unify_types,
     utils::{
         arrify, get_implementation_of, get_interface_types_from_symbol,
-        get_method_types_from_symbol, maybify,
+        get_method_types_from_symbol, maybify, symbol_to_type,
     },
-    DiagnosticType, IntermediateType, IntermediateTypeCondition, ParameterType, PathIndex,
+    DiagnosticType, IntermediateType, IntermediateTypeClause, ParameterType, PathIndex,
     ProgramDiagnostic, SemanticSymbolKind, SymbolIndex, SymbolLibrary, TypecheckerContext,
     UnifyOptions, EVALUATION_DEPTH,
 };
@@ -241,7 +241,7 @@ impl EvaluatedType {
             } => generic_arguments
                 .iter()
                 .for_each(|(_, eval)| eval.gather_generics_into(generic_map)),
-            EvaluatedType::HardGeneric { base } | EvaluatedType::Generic { base } => {
+            EvaluatedType::HardGeneric { base, .. } | EvaluatedType::Generic { base } => {
                 generic_map.push(*base)
             }
             _ => {}
@@ -441,6 +441,12 @@ pub fn evaluate(
         recursion_depth += 1;
     }
     match typ {
+        // Dependent types should only be allowed in method returns and
+        // implementation names, so they cannot be evaluated directly.
+        IntermediateType::BoundConstraintType { .. } => {
+            add_error_if_possible(error_tracker, TypeErrorType::IllegalBoundConstraintType);
+            return EvaluatedType::Unknown;
+        }
         IntermediateType::FunctionType {
             params,
             return_type,
@@ -641,7 +647,7 @@ pub fn evaluate(
                         collaborators.append(&mut subcollaborators);
                         continue;
                     }
-                    EvaluatedType::Generic { base } | EvaluatedType::HardGeneric { base } => {
+                    EvaluatedType::Generic { base } | EvaluatedType::HardGeneric { base, .. } => {
                         collaborators.push(base)
                     }
                     // if any of the united types evaluates to a never,
@@ -771,127 +777,60 @@ pub fn evaluate(
             return EvaluatedType::Unknown;
         }
         IntermediateType::TernaryType {
-            base,
-            condition,
+            clause,
             consequent,
             alternate,
             ..
         } => evaluate_ternary_type(
-            base,
             symbollib,
             solved_generics,
             error_tracker,
             recursion_depth,
-            condition,
+            clause,
             consequent,
             alternate,
         ),
     }
 }
 
-/// Evaluates a ternary type into an evaluation.
+/// Computes a ternary type into a single evaluation.
+/// Type evaluation is eager, meaning that it will compute both branches
+/// before determining the one to return.
 fn evaluate_ternary_type(
-    base: &SymbolIndex,
     symbollib: &SymbolLibrary,
     solved_generics: Option<&Vec<(SymbolIndex, EvaluatedType)>>,
     error_tracker: &mut Option<(&mut Vec<ProgramDiagnostic>, PathIndex, Span)>,
     recursion_depth: u64,
-    condition: &Box<IntermediateTypeCondition>,
+    clause: &Box<IntermediateTypeClause>,
     consequent: &Box<IntermediateType>,
     alternate: &Box<IntermediateType>,
 ) -> EvaluatedType {
-    let base_type_to_compare = IntermediateType::SimpleType {
-        value: *base,
-        generic_args: vec![],
-        span: Span::default(),
-    };
-    let base_type_to_compare = evaluate(
-        &base_type_to_compare,
-        symbollib,
-        solved_generics,
-        error_tracker,
-        recursion_depth,
-    );
-    let mut verity = false;
-    match condition.as_ref() {
-        IntermediateTypeCondition::Is(other_type) => {
-            let other_type = evaluate(
-                other_type,
-                symbollib,
-                solved_generics,
-                error_tracker,
-                recursion_depth,
-            );
-            // Direct equality. Unification may lead to weird results.
-            if base_type_to_compare == other_type {
-                verity = true;
-            }
-        }
-        IntermediateTypeCondition::Implements(target_interface) => {
-            let target = evaluate(
-                target_interface,
-                symbollib,
-                solved_generics,
-                error_tracker,
-                recursion_depth,
-            );
-
-            if let EvaluatedType::InterfaceInstance { interface_, .. } = &target {
-                let implemented =
-                    get_implementation_of(*interface_, &base_type_to_compare, symbollib);
-                if implemented.is_some()
-                    && unify_types(
-                        &target,
-                        &implemented.unwrap(),
-                        symbollib,
-                        UnifyOptions::None,
-                        None,
-                    )
-                    .is_ok()
-                {
-                    verity = true;
-                }
-            } else {
-                let name = symbollib.format_evaluated_type(&target);
-                add_error_if_possible(
-                    error_tracker,
-                    TypeErrorType::ExpectedInterface { got: name },
-                )
-            }
-        }
-    }
-    let consequent = evaluate(
+    let evaluated_consequent = evaluate(
         &consequent,
         symbollib,
         solved_generics,
         error_tracker,
         recursion_depth,
     );
-    let alternate = evaluate(
+    let evaluated_alternate = evaluate(
         &alternate,
         symbollib,
         solved_generics,
         error_tracker,
         recursion_depth,
     );
-
-    if !consequent.is_concrete() {
-        let name = symbollib.format_evaluated_type(&consequent);
-        add_error_if_possible(
-            error_tracker,
-            TypeErrorType::ExpectedImplementableGotSomethingElse(name),
-        );
+    let verity = evaluate_type_clause(
+        clause,
+        symbollib,
+        solved_generics,
+        error_tracker,
+        recursion_depth,
+    );
+    match verity {
+        Some(true) => evaluated_consequent,
+        Some(false) => evaluated_alternate,
+        None => EvaluatedType::Unknown,
     }
-
-    if !alternate.is_concrete() {
-        let name = symbollib.format_evaluated_type(&alternate);
-        add_error_if_possible(
-            error_tracker,
-            TypeErrorType::ExpectedImplementableGotSomethingElse(name),
-        );
-    }
-
-    return if verity { consequent } else { alternate };
 }
 
 /// Evaluates an intermediate member type into an evaluated type.
@@ -1023,6 +962,151 @@ fn evaluate_function_type(
     }
 }
 
+/// Computes a type clause and returns whether it is true or not.
+fn evaluate_type_clause(
+    clause: &Box<IntermediateTypeClause>,
+    symbollib: &SymbolLibrary,
+    solved_generics: Option<&Vec<(SymbolIndex, EvaluatedType)>>,
+    error_tracker: &mut Option<(&mut Vec<ProgramDiagnostic>, PathIndex, Span)>,
+    recursion_depth: u64,
+) -> Option<bool> {
+    match clause.as_ref() {
+        // e.g. A is B and C implements D
+        IntermediateTypeClause::Binary {
+            left,
+            operator,
+            right,
+        } => evaluate_binary_type_clause(
+            left,
+            right,
+            operator,
+            symbollib,
+            solved_generics,
+            error_tracker,
+            recursion_depth,
+        ),
+        IntermediateTypeClause::Is { base, other } => {
+            let symbol = symbollib.get(*base)?;
+            let lhs = match symbol_to_type(symbol, *base, symbollib) {
+                Ok(evaluated_type) => evaluated_type,
+                Err(error_type) => {
+                    add_error_if_possible(error_tracker, error_type);
+                    return None;
+                }
+            };
+            let rhs = evaluate(
+                other,
+                symbollib,
+                solved_generics,
+                error_tracker,
+                recursion_depth,
+            );
+            return converge_types(lhs, rhs, symbollib).map(|_| true);
+        }
+        IntermediateTypeClause::Implements { base, interfaces } => {
+            let symbol = symbollib.get(*base)?;
+            let lhs = match symbol_to_type(symbol, *base, symbollib) {
+                Ok(evaluated_type) => evaluated_type,
+                Err(error_type) => {
+                    add_error_if_possible(error_tracker, error_type);
+                    return None;
+                }
+            };
+            // For every interface in the clause, check if it is implemented as is in the left hand type.
+            for intermediate_type in interfaces {
+                let evaled_interface = evaluate(
+                    intermediate_type,
+                    symbollib,
+                    solved_generics,
+                    error_tracker,
+                    recursion_depth,
+                );
+                if let EvaluatedType::InterfaceInstance { interface_, .. } = &evaled_interface {
+                    match get_implementation_of(*interface_, &lhs, symbollib) {
+                        Some(actual_impl_type) => {
+                            if converge_types(evaled_interface, actual_impl_type, symbollib)
+                                .is_none()
+                            {
+                                return Some(false);
+                            }
+                        }
+                        None => return Some(false),
+                    }
+                } else {
+                    let asstr = symbollib.format_evaluated_type(&evaled_interface);
+                    add_error_if_possible(
+                        error_tracker,
+                        TypeErrorType::ExpectedInterface { got: asstr },
+                    );
+                    return None;
+                }
+            }
+            return Some(true);
+        }
+    }
+}
+
+fn evaluate_binary_type_clause(
+    left: &Box<IntermediateTypeClause>,
+    right: &Box<IntermediateTypeClause>,
+    operator: &ast::LogicOperator,
+    symbollib: &SymbolLibrary,
+    solved_generics: Option<&Vec<(SymbolIndex, EvaluatedType)>>,
+    error_tracker: &mut Option<(&mut Vec<ProgramDiagnostic>, PathIndex, Span)>,
+    recursion_depth: u64,
+) -> Option<bool> {
+    let left = evaluate_type_clause(
+        left,
+        symbollib,
+        solved_generics,
+        error_tracker,
+        recursion_depth,
+    )?;
+    let right = evaluate_type_clause(
+        right,
+        symbollib,
+        solved_generics,
+        error_tracker,
+        recursion_depth,
+    )?;
+    match operator {
+        ast::LogicOperator::And | ast::LogicOperator::AndLiteral => Some(left && right),
+        ast::LogicOperator::Or | ast::LogicOperator::OrLiteral => Some(left || right),
+    }
+}
+
+/// Converts a set of parameter indexes into their correct inferred type.
+pub fn evaluate_parameter_idxs(
+    params: &Vec<SymbolIndex>,
+    symbollib: &SymbolLibrary,
+    generic_arguments: Vec<(SymbolIndex, EvaluatedType)>,
+    checker_ctx: &mut TypecheckerContext<'_>,
+) -> Vec<(SymbolIndex, EvaluatedType)> {
+    let mut evaluated_param_types = vec![];
+    for param in params {
+        let parameter_symbol = symbollib.get(*param).unwrap();
+        let inferred_type = match &parameter_symbol.kind {
+            SemanticSymbolKind::Parameter { param_type, .. } => {
+                if let Some(declared_type) = param_type {
+                    let span = parameter_symbol.ident_span();
+                    evaluate(
+                        declared_type,
+                        symbollib,
+                        Some(&generic_arguments),
+                        &mut checker_ctx.tracker(span),
+                        0,
+                    )
+                } else {
+                    EvaluatedType::Unknown
+                }
+            }
+            _ => EvaluatedType::Unknown,
+        };
+        evaluated_param_types.push((*param, inferred_type));
+    }
+    evaluated_param_types
+}
+
 fn generate_generics_from_arguments(
     generic_args: &Vec<IntermediateType>,
     generic_params: &Vec<SymbolIndex>,
@@ -1144,36 +1228,4 @@ fn add_error_if_possible(
             errors.push(error);
         }
     }
-}
-
-/// Converts a set of parameter indexes into their correct inferred type.
-pub fn evaluate_parameter_idxs(
-    params: &Vec<SymbolIndex>,
-    symbollib: &SymbolLibrary,
-    generic_arguments: Vec<(SymbolIndex, EvaluatedType)>,
-    checker_ctx: &mut TypecheckerContext<'_>,
-) -> Vec<(SymbolIndex, EvaluatedType)> {
-    let mut evaluated_param_types = vec![];
-    for param in params {
-        let parameter_symbol = symbollib.get(*param).unwrap();
-        let inferred_type = match &parameter_symbol.kind {
-            SemanticSymbolKind::Parameter { param_type, .. } => {
-                if let Some(declared_type) = param_type {
-                    let span = parameter_symbol.ident_span();
-                    evaluate(
-                        declared_type,
-                        symbollib,
-                        Some(&generic_arguments),
-                        &mut checker_ctx.tracker(span),
-                        0,
-                    )
-                } else {
-                    EvaluatedType::Unknown
-                }
-            }
-            _ => EvaluatedType::Unknown,
-        };
-        evaluated_param_types.push((*param, inferred_type));
-    }
-    evaluated_param_types
 }

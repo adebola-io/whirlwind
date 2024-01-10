@@ -497,6 +497,30 @@ fn parsing_this_type() {
 }
 
 #[test]
+fn parse_constrained_type() {
+    let mut parser = parse_text("type A = B[where C implements D];");
+    let statement = parser.next().unwrap().unwrap();
+    let module_ambience = parser.module_ambience();
+
+    assert!(module_ambience
+        .lookaround("A")
+        .is_some_and(|search| matches!(
+            search.entry, ast::ScopeEntry::Type(t) if matches!(
+                t.value,
+                TypeExpression::Constraint{ .. }
+            )
+        )));
+
+    assert_eq!(
+        statement,
+        Statement::TypeDeclaration(TypeDeclaration {
+            address: ScopeAddress::from([0, 0, 0]),
+            span: Span::from([1, 1, 1, 34])
+        })
+    );
+}
+
+#[test]
 fn parse_array_type() {
     let mut parser = parse_text("type Bytes = []UInt8;");
     let statement = parser.next().unwrap().unwrap();
@@ -922,6 +946,7 @@ fn parse_fn_expressions() {
                         span: [1, 8, 1, 14].into()
                     },
                     generic_args: None,
+
                     span: [1, 8, 1, 14].into()
                 })),
                 is_optional: false,
@@ -933,6 +958,7 @@ fn parse_fn_expressions() {
                     span: [1, 17, 1, 23].into()
                 },
                 generic_args: None,
+
                 span: [1, 17, 1, 23].into()
             })),
             body: Expression::Identifier(Identifier {
@@ -2105,6 +2131,7 @@ fn parse_model_with_interface_impl() {
                                     span: [3, 28, 3, 36].into()
                                 },
                                 generic_args: None,
+
                                 span: [3, 28, 3, 36].into()
                             }
                         ],

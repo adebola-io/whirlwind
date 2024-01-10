@@ -527,31 +527,67 @@ impl<'a> SymbolWriter<'a> {
                 string
             }
             IntermediateType::TernaryType {
-                base,
-                condition,
+                clause,
                 consequent,
                 alternate,
                 ..
             } => {
                 let mut string = String::from("if ");
-                let base = self.standpoint.symbol_library.get(*base).unwrap();
-                string.push_str(&base.name);
-                match condition.as_ref() {
-                    analyzer::IntermediateTypeCondition::Is(other) => {
-                        string.push_str(" is ");
-                        string.push_str(&self.print_intermediate_type(other))
-                    }
-                    analyzer::IntermediateTypeCondition::Implements(interface) => {
-                        string.push_str(" implements ");
-                        string.push_str(&self.print_intermediate_type(interface))
-                    }
-                }
+                self.print_type_clause_into(clause, &mut string);
                 string.push_str(" ");
                 string.push_str(&self.print_intermediate_type(&consequent));
                 string.push_str(" else ");
                 string.push_str(&self.print_intermediate_type(&alternate));
                 string
             }
+            IntermediateType::BoundConstraintType {
+                consequent, clause, ..
+            } => {
+                let mut string = self.print_intermediate_type(&consequent);
+                string.push_str("[where ");
+                self.print_type_clause_into(&clause, &mut string);
+                string.push_str("]");
+                string
+            }
+        }
+    }
+
+    fn print_type_clause_into(
+        &self,
+        condition: &analyzer::IntermediateTypeClause,
+        string: &mut String,
+    ) {
+        match condition {
+            analyzer::IntermediateTypeClause::Binary { left, operator, right } => {
+                self.print_type_clause_into(&left, string);
+                let operator_str = match operator {
+                    ast::LogicOperator::And => " && ",
+                    ast::LogicOperator::AndLiteral => " and ",
+                    ast::LogicOperator::Or => " || ",
+                    ast::LogicOperator::OrLiteral => " or ",
+                };
+                string.push_str(operator_str);
+                self.print_type_clause_into(&right, string)
+            },
+            analyzer::IntermediateTypeClause::Is { base, other } => {
+                let symboltable = &self.standpoint.symbol_library;
+                let symbol = ast::unwrap_or_return!(symboltable.get(*base));
+                string.push_str(&symbol.name);
+                string.push_str(" is ");
+                string.push_str(&self.print_intermediate_type(other));
+            },
+            analyzer::IntermediateTypeClause::Implements { base, interfaces } => {
+                let symboltable = &self.standpoint.symbol_library;
+                let symbol = ast::unwrap_or_return!(symboltable.get(*base));
+                string.push_str(&symbol.name);
+                string.push_str(" implements ");
+                for (idx, interface) in interfaces.iter().enumerate() {
+                    string.push_str(&self.print_intermediate_type(interface));
+                    if idx + 1 != interfaces.len() {
+                        string.push_str(" + ")
+                    }
+                }
+            },
         }
     }
 

@@ -36,7 +36,7 @@ pub enum TypeErrorType {
     },
     /// Assigning two unassignable types.
     MismatchedAssignment {
-        left: String,
+        target: String,
         right: String,
     },
     /// Using a interface in a type expression.
@@ -298,6 +298,7 @@ pub enum TypeErrorType {
         left: String,
         right: String,
     },
+    IllegalBoundConstraintType,
 }
 
 pub fn invalid_binary(left: String, operator: BinOperator, right: String, span: Span) -> TypeError {
@@ -343,7 +344,10 @@ pub fn mismatched_generics(
 
 pub fn mismatched_assignment(left: String, right: String, span: Span) -> TypeError {
     TypeError {
-        _type: TypeErrorType::MismatchedAssignment { left, right },
+        _type: TypeErrorType::MismatchedAssignment {
+            target: left,
+            right,
+        },
         span,
     }
 }

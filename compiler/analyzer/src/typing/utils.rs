@@ -374,7 +374,7 @@ pub fn symbol_to_type(
     symbol: &crate::SemanticSymbol,
     name: SymbolIndex,
     symbollib: &SymbolLibrary,
-) -> Result<EvaluatedType, Result<EvaluatedType, TypeErrorType>> {
+) -> Result<EvaluatedType, TypeErrorType> {
     let eval_type = match &symbol.kind {
         SemanticSymbolKind::Module { .. } => EvaluatedType::Module(name),
         SemanticSymbolKind::Interface { .. } => EvaluatedType::Interface(name),
@@ -415,9 +415,9 @@ pub fn symbol_to_type(
             }
         }
         SemanticSymbolKind::GenericParameter { .. } | SemanticSymbolKind::TypeName { .. } => {
-            return Err(Err(TypeErrorType::TypeAsValue {
+            return Err(TypeErrorType::TypeAsValue {
                 type_: symbol.name.clone(),
-            }));
+            });
         }
         SemanticSymbolKind::Function { generic_params, .. } => EvaluatedType::FunctionInstance {
             function: name,
@@ -551,7 +551,7 @@ pub fn get_implementation_of(
             interface_: base, ..
         }
         | EvaluatedType::Generic { base }
-        | EvaluatedType::HardGeneric { base } => {
+        | EvaluatedType::HardGeneric { base, .. } => {
             let base_symbol = symbollib.get_forwarded(*base)?;
             let implementation_list = match &base_symbol.kind {
                 SemanticSymbolKind::Model {

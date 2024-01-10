@@ -2,14 +2,12 @@ module string;
 
 use ops.{Addition};
 use bool.Bool;
-use array.Array;
 use core.{ 
     internals.builtin,
     collections.Hash,
     prelude.{
         AsIterator, Iteratable, 
-        Range, Display, some, Default,
-        Clonable
+        Range, Display, some, Default
     },
     process.sentinels.todo,
 };
@@ -20,7 +18,6 @@ use numeric.{Int, UnsignedInt, UInt8};
 public model String 
     implements Addition 
     + AsIterator<String, Chars> 
-    + Clonable
     + Default
     + Display
     + Hash
@@ -29,14 +26,9 @@ public model String
     new() {
         this.arr = [];
     }
-    public function [Clonable.clone]() -> This {
-        string := new String();
-        string.arr = Array.clone(this.arr);
-        return string;
-    }
     /// Implementation of the Display trait.
     public function [Display.toStr]() -> String {
-       return this.clone();
+       return this;
     }
     /// Implementation of the Default trait.
     static function [Default.init]() -> This {
@@ -49,7 +41,7 @@ public model String
     /// assert(str).equals("Hello, world!");
     /// ```
     public function [Addition.add](other: This) -> This {
-        newStr := this.clone();
+        newStr := this.toStr();
         for char in other.arr {
             newStr.arr.push(char);
         }

@@ -1,4 +1,4 @@
-use crate::{Identifier, Parameter, ScopeAddress, Span};
+use crate::{Identifier, LogicOperator, Parameter, ScopeAddress, Span};
 
 /// Stores the address of a symbol in relation to an entire workspace.
 #[derive(Debug, PartialEq)]
@@ -71,8 +71,8 @@ pub enum TypeExpression {
     #[default]
     Invalid,
     Optional(MaybeType),
-
     Ternary(TernaryType),
+    Constraint(BoundConstraintType),
 }
 
 /// A union type e.g.
@@ -110,6 +110,32 @@ pub struct DiscreteType {
     pub span: Span,
 }
 
+/// A type that can only be used when a certain condition is true.
+/// e.g. type Name<T> = Value<T>[where T implements Default];
+#[derive(PartialEq, Debug, Clone, Hash)]
+pub struct BoundConstraintType {
+    pub consequent: DiscreteType,
+    pub clause: Box<TypeClause>,
+    pub span: Span,
+}
+
+#[derive(PartialEq, Debug, Clone, Hash)]
+pub enum TypeClause {
+    Binary {
+        left: Box<TypeClause>,
+        operator: LogicOperator,
+        right: Box<TypeClause>,
+    },
+    Implementations {
+        base: Identifier,
+        interfaces: Vec<TypeExpression>,
+    },
+    Is {
+        base: Identifier,
+        other: TypeExpression,
+    },
+}
+
 /// A shorthand for a list type. e.g. `type Bytes = []Uint8;`
 #[derive(Debug, PartialEq, Clone, Hash)]
 pub struct ArrayType {
@@ -128,19 +154,10 @@ pub struct MaybeType {
 /// e.g. `type StringOrBool<T> = if T implements Default String else Bool;`
 #[derive(Debug, PartialEq, Clone, Hash)]
 pub struct TernaryType {
-    pub base: Identifier,
-    pub condition: Box<TypeCondition>,
+    pub clause: Box<TypeClause>,
     pub consequent: Box<TypeExpression>,
     pub alternate: Box<TypeExpression>,
     pub span: Span,
-}
-
-#[derive(Debug, PartialEq, Clone, Hash)]
-pub enum TypeCondition {
-    /// Checks that a type implements an interface.
-    Implements(TypeExpression),
-    /// Checks that a type is directly equal to another.
-    Is(TypeExpression),
 }
 
 impl std::fmt::Display for TypeExpression {
@@ -171,6 +188,7 @@ impl TypeExpression {
             TypeExpression::Optional(o) => o.span,
             TypeExpression::Ternary(c) => c.span,
             TypeExpression::Invalid => Span::default(),
+            TypeExpression::Constraint(b) => b.span,
         }
     }
 }

@@ -382,7 +382,7 @@ impl SymbolLibrary {
                     string.push_str("}");
                 }
             }
-            EvaluatedType::HardGeneric { base } => {
+            EvaluatedType::HardGeneric { base, .. } => {
                 let symbol = self.get(*base).unwrap();
                 string.push_str(&symbol.name);
             }

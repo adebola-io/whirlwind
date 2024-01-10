@@ -1,7 +1,7 @@
 use crate::{EvaluatedType, PathIndex};
 use ast::{
-    ConstantSignature, EnumSignature, ShorthandVariableSignature, Span, TypeSignature, WhirlNumber,
-    WhirlString,
+    ConstantSignature, EnumSignature, LogicOperator, ShorthandVariableSignature, Span,
+    TypeSignature, WhirlNumber, WhirlString,
 };
 use std::{path::Path, vec};
 
@@ -259,18 +259,33 @@ pub enum IntermediateType {
         span: Span,
     },
     TernaryType {
-        base: SymbolIndex,
-        condition: Box<IntermediateTypeCondition>,
+        clause: Box<IntermediateTypeClause>,
         consequent: Box<IntermediateType>,
         alternate: Box<IntermediateType>,
+        span: Span,
+    },
+    BoundConstraintType {
+        consequent: Box<IntermediateType>,
+        clause: Box<IntermediateTypeClause>,
         span: Span,
     },
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum IntermediateTypeCondition {
-    Is(IntermediateType),
-    Implements(IntermediateType),
+pub enum IntermediateTypeClause {
+    Binary {
+        left: Box<IntermediateTypeClause>,
+        operator: LogicOperator,
+        right: Box<IntermediateTypeClause>,
+    },
+    Is {
+        base: SymbolIndex,
+        other: IntermediateType,
+    },
+    Implements {
+        base: SymbolIndex,
+        interfaces: Vec<IntermediateType>,
+    },
 }
 
 impl IntermediateType {
@@ -283,7 +298,8 @@ impl IntermediateType {
             | IntermediateType::This { span, .. }
             | IntermediateType::ArrayType { span, .. }
             | IntermediateType::MaybeType { span, .. }
-            | IntermediateType::TernaryType { span, .. } => *span,
+            | IntermediateType::TernaryType { span, .. }
+            | IntermediateType::BoundConstraintType { span, .. } => *span,
             IntermediateType::Placeholder => Span::default(),
         }
     }

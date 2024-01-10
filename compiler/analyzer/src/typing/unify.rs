@@ -14,31 +14,31 @@ pub enum UnifyOptions {
     Return,
 }
 
-/// Take two evaluated types and finds the most suitable type
-/// that can uphold the properties of both.
+/// Given a target type T and a candidate type U, the unification of T <- U is 
+/// an operation that subsumes the type T, compares all its bounds and constraints,
+/// and produces the lowest upper bound for which U is equivalent to T, if it exists,
+/// or type errors if it does not.
 /// 
 /// It optionally takes in a map so it can track the generic parameters
 /// that have been transformed.
 // TODO: Return custom error if one type is a Maybe of the other.
 // TODO: Return custom error if one type is an array of the other.
 pub fn unify_types(
-    left: &EvaluatedType,
-    right: &EvaluatedType,
+    target: &EvaluatedType,
+    candidate: &EvaluatedType,
     symbollib: &SymbolLibrary,
     options: UnifyOptions,
     mut map: Option<&mut HashMap<SymbolIndex, EvaluatedType>>,
 ) -> Result<EvaluatedType, Vec<TypeErrorType>> {
     let default_error = || TypeErrorType::MismatchedAssignment {
-        left: symbollib.format_evaluated_type(left),
-        right: symbollib.format_evaluated_type(right),
+        target: symbollib.format_evaluated_type(target),
+        right: symbollib.format_evaluated_type(candidate),
     };
     let maybify = |typ| utils::maybify(typ, symbollib);
-    // Types are directly equal.
-    // therefore they are unifiable.
-    if left == right {
-        return Ok(left.clone());
-    }
-    match (left, right) {
+    
+    match (target, candidate) {
+        // Types are directly equal, therefore they are unifiable.
+        (_, _) if target == candidate => return Ok(target.clone()),
         // Left type is a hard generic, and hard generic massaging is requested.
         (HardGeneric { base } | Generic { base }, free_type)
             if matches!(options, UnifyOptions::HardConform) =>
@@ -87,80 +87,12 @@ pub fn unify_types(
                 options,
             )
         }
-        // Comparing and casting numeric types.
-        // The casting chain is rtl,
-        // meaning that the right type must be smaller or equal in size
-        // to the left.
-        // Therefore:
-        // UInt8 <: UInt8
-        // UInt16 <: UInt8
-        // UInt32 <: UInt16
-        // UInt64 <: UInt32
-        // Float32 <: Int
-        // Float64 <: Float32
+        // Numbers
         (
-            ModelInstance {
-                model: first_model, ..
-            },
-            ModelInstance {
-                model: second_model,
-                ..
-            },
-        ) if is_numeric_type(left, symbollib) && is_numeric_type(right, symbollib) => {
-            let first_model = *first_model;
-            let second_model = *second_model;
-            if first_model == second_model {
-                return Ok(left.clone());
-            }
-            let (first_is_uint8, second_is_unint8) = if let Some(idx) = symbollib.uint8 {
-                (first_model == idx, second_model == idx)
-            } else {
-                (false, false)
-            };
-            let (first_is_uint16, second_is_unint16) = if let Some(idx) = symbollib.uint16 {
-                (first_model == idx, second_model == idx)
-            } else {
-                (false, false)
-            };
-            let (first_is_uint32, second_is_unint32) = if let Some(idx) = symbollib.uint32 {
-                (first_model == idx, second_model == idx)
-            } else {
-                (false, false)
-            };
-            let (_, second_is_unint64) = if let Some(idx) = symbollib.uint64 {
-                (first_model == idx, second_model == idx)
-            } else {
-                (false, false)
-            };
-            let (first_is_float32, second_is_float32) = if let Some(idx) = symbollib.float32 {
-                (first_model == idx, second_model == idx)
-            } else {
-                (false, false)
-            };
-            let (first_is_float64, second_is_float64) = if let Some(idx) = symbollib.float64 {
-                (first_model == idx, second_model == idx)
-            } else {
-                (false, false)
-            };
-            // UInt8 is castable to every other numeric type.
-            if second_is_unint8 || 
-                // UInt16 is castable to every other type that isn't UInt8.
-                (second_is_unint16 && !first_is_uint8) ||
-                // UInt32 is castable to every type that isn't UInt8 or UInt16.
-                (second_is_unint32 && !(first_is_uint16 || first_is_uint8)) ||
-                // UInt64 is castable to every type bigger than UInt32.
-                (second_is_unint64 && !(first_is_uint8 || first_is_uint16 || first_is_uint32)) ||
-                // Float32 is castable only to itself and Float64.
-                (second_is_float32 && (first_is_float32 || first_is_float64)) ||
-                // Float64 is only castable to Float64.
-                (second_is_float64 && first_is_float64)
-            {
-                return Ok(left.clone());
-            }
-            return Err(vec![default_error(), TypeErrorType::NumericCastingError {
-                left: symbollib.format_evaluated_type(left),
-                right: symbollib.format_evaluated_type(right)
-            }])
+            ModelInstance { model: first_model, .. },
+            ModelInstance { model: second_model, .. },
+        ) if is_numeric_type(target, symbollib) && is_numeric_type(candidate, symbollib) => {
+            unify_numbers(first_model, second_model, target, candidate, symbollib, default_error)
         }
         // Comparing model or interface instances.
         // Two instances are unifiable if they refer to the same symbol,
@@ -270,12 +202,12 @@ pub fn unify_types(
             FunctionExpressionInstance { .. } | FunctionInstance { .. } | MethodInstance { .. },
         ) => {
             let FunctionType {is_async: left_is_async, parameter_types: left_params, generic_arguments: left_generic_arguments, return_type: mut left_return_type} =
-                match distill_as_function_type(left, symbollib) {
+                match distill_as_function_type(target, symbollib) {
                     Some(functiontype) => functiontype,
                     None => return Ok(EvaluatedType::Unknown)
                 };
             let FunctionType {is_async: right_is_async, parameter_types: right_params, generic_arguments: right_generic_arguments, return_type: mut right_return_type} =
-                match distill_as_function_type(right, symbollib) {
+                match distill_as_function_type(candidate, symbollib) {
                     Some(functiontype) => functiontype,
                     None => return Ok(EvaluatedType::Unknown)
                 };
@@ -407,8 +339,8 @@ pub fn unify_types(
             let mut errors = vec![];
             if !collaborators.iter().any(|collab| collab == child) {
                 let error = TypeErrorType::InvalidOpaqueTypeAssignment {
-                    left: symbollib.format_evaluated_type(left),
-                    right: symbollib.format_evaluated_type(right),
+                    left: symbollib.format_evaluated_type(target),
+                    right: symbollib.format_evaluated_type(candidate),
                 };
                 errors.push(default_error());
                 errors.push(error);
@@ -443,14 +375,14 @@ pub fn unify_types(
             let mut errors = vec![];
             if !collaborators.iter().any(|collab| collab == base) {
                 let error = TypeErrorType::InvalidOpaqueTypeAssignment {
-                    left: symbollib.format_evaluated_type(left),
-                    right: symbollib.format_evaluated_type(right),
+                    left: symbollib.format_evaluated_type(target),
+                    right: symbollib.format_evaluated_type(candidate),
                 };
                 errors.push(default_error());
                 errors.push(error);
                 return Err(errors);
             }
-            return Ok(left.clone());
+            return Ok(target.clone());
         }
         // Both types are opaque.
         // Unification is possible if left type is a superset of right type.
@@ -473,8 +405,8 @@ pub fn unify_types(
             for ri in right_collaborators {
                 if !left_collaborators.iter().any(|c| c == ri) {
                     errors.push(TypeErrorType::MissingOpaqueComponent {
-                        left: symbollib.format_evaluated_type(left),
-                        right: symbollib.format_evaluated_type(right),
+                        left: symbollib.format_evaluated_type(target),
+                        right: symbollib.format_evaluated_type(candidate),
                     });
                     return Err(errors);
                 }
@@ -504,10 +436,85 @@ pub fn unify_types(
         }
         // Otherwise, both types cannot be unified.
         _ => Err(vec![TypeErrorType::MismatchedAssignment {
-            left: symbollib.format_evaluated_type(left),
-            right: symbollib.format_evaluated_type(right),
+            target: symbollib.format_evaluated_type(target),
+            right: symbollib.format_evaluated_type(candidate),
         }]),
     }
+}
+
+/// Unify two instances of numeric models.
+/// The casting chain is rtl,
+/// meaning that the right type must be smaller or equal in size
+/// to the left.
+/// Therefore:
+/// - UInt8 <: UInt8
+/// - UInt16 <: UInt8
+/// - UInt32 <: UInt16
+/// - UInt64 <: UInt32
+/// - Float32 <: Int
+/// - Float64 <: Float32
+fn unify_numbers(
+    first_number: &SymbolIndex, 
+    second_number: &SymbolIndex, 
+    target: &EvaluatedType, 
+    candidate: &EvaluatedType,
+    symbollib: &SymbolLibrary, 
+    default_error: impl Fn() -> TypeErrorType, 
+) -> Result<EvaluatedType, Vec<TypeErrorType>> {
+    let first_model = *first_number;
+    let second_model = *second_number;
+    if first_model == second_model {
+        return Ok(target.clone());
+    }
+    let (first_is_uint8, second_is_unint8) = if let Some(idx) = symbollib.uint8 {
+        (first_model == idx, second_model == idx)
+    } else {
+        (false, false)
+    };
+    let (first_is_uint16, second_is_unint16) = if let Some(idx) = symbollib.uint16 {
+        (first_model == idx, second_model == idx)
+    } else {
+        (false, false)
+    };
+    let (first_is_uint32, second_is_unint32) = if let Some(idx) = symbollib.uint32 {
+        (first_model == idx, second_model == idx)
+    } else {
+        (false, false)
+    };
+    let (_, second_is_unint64) = if let Some(idx) = symbollib.uint64 {
+        (first_model == idx, second_model == idx)
+    } else {
+        (false, false)
+    };
+    let (first_is_float32, second_is_float32) = if let Some(idx) = symbollib.float32 {
+        (first_model == idx, second_model == idx)
+    } else {
+        (false, false)
+    };
+    let (first_is_float64, second_is_float64) = if let Some(idx) = symbollib.float64 {
+        (first_model == idx, second_model == idx)
+    } else {
+        (false, false)
+    };
+    // UInt8 is castable to every other numeric type.
+    if second_is_unint8 || 
+        // UInt16 is castable to every other type that isn't UInt8.
+        (second_is_unint16 && !first_is_uint8) ||
+        // UInt32 is castable to every type that isn't UInt8 or UInt16.
+        (second_is_unint32 && !(first_is_uint16 || first_is_uint8)) ||
+        // UInt64 is castable to every type bigger than UInt32.
+        (second_is_unint64 && !(first_is_uint8 || first_is_uint16 || first_is_uint32)) ||
+        // Float32 is castable only to itself and Float64.
+        (second_is_float32 && (first_is_float32 || first_is_float64)) ||
+        // Float64 is only castable to Float64.
+        (second_is_float64 && first_is_float64)
+    {
+        return Ok(target.clone());
+    }
+    return Err(vec![default_error(), TypeErrorType::NumericCastingError {
+        left: symbollib.format_evaluated_type(target),
+        right: symbollib.format_evaluated_type(candidate)
+    }])
 }
 
 /// Generates a solution for a generic based on another evaluated type.
@@ -775,7 +782,7 @@ pub fn unify_freely(
     mut map: Option<&mut HashMap<SymbolIndex, EvaluatedType>>,
 ) -> Result<EvaluatedType, Vec<TypeErrorType>> {
     let default_error = || TypeErrorType::MismatchedAssignment {
-        left: symbollib.format_evaluated_type(left),
+        target: symbollib.format_evaluated_type(left),
         right: symbollib.format_evaluated_type(right),
     };
     match (left, right) {
@@ -789,4 +796,24 @@ pub fn unify_freely(
         ),
         _ => unify_types(left, right, symbollib, UnifyOptions::Conform, map),
     }
+}
+
+
+/// Two types T and U are convergent if `unify_types(T, U) == unify_types(U, T) == Ok(V)`
+pub fn converge_types(
+    type_a: EvaluatedType,
+    type_b: EvaluatedType,
+    symbollib: &SymbolLibrary,
+) -> Option<EvaluatedType> {
+    unify_types(&type_a, &type_b, symbollib, UnifyOptions::None, None)
+        .ok()
+        .map(|forward| {
+            unify_types(&type_b, &type_a, symbollib, UnifyOptions::None, None)
+                .ok()
+                .and_then(|backward| match forward == backward {
+                    true => Some(forward),
+                    false => None,
+                })
+        })
+        .flatten()
 }

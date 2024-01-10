@@ -299,8 +299,7 @@
          "end": "(?=\\s*\\))"
       },
       "interface_implementation": {
-         "name": "entity.name.function support.function",
-         "match": "\\b(function)\\s+(\\[(\\s*[A-Za-z0-9]+\\s*(\\<.*\\>)?\\s*\\.)+\\s*)[A-Za-z0-9]+(?=\\s*\\]\\s*(\\<.*\\>)?\\s*\\()",
+         "match": "\\b(function)\\s*(\\[[^\\]]+\\])\\s*(\\<[^\\>]+\\>\\s*)?(\\[[^\\]]+\\])?(?=\\()",
          "captures": {
             "1": {
                "patterns": [
@@ -311,10 +310,20 @@
                "patterns": [
                   {
                      "name": "entity.name.class support.class",
-                     "match": "[A-Za-z0-9]+"
+                     "match": "[A-Za-z0-9_$]+(?=\\.)"
                   },
-                  { "match": "\\." }
+                  { "name": "punctuation", "match": "\\s*\\.\\s*" },
+                  {
+                     "name": "support.function entity.name.function",
+                     "match": "[A-Za-z0-9_$]+(?=\\])"
+                  }
                ]
+            },
+            "3": {
+               "patterns": [{ "include": "#generic_args" }]
+            },
+            "4": {
+               "patterns": [{ "include": "#type_expression" }]
             }
          }
       },
@@ -357,7 +366,7 @@
       "type_label": {
          "begin": "(\\:|\\-\\>)\\s*",
          "patterns": [{ "include": "#type_expression" }],
-         "end": "(,(?=\\s*([A-Za-z0-9]|_)+\\s*\\??\\s*(\\:|\\-\\>|\\))))|(?=[^A-Za-z0-9\\&\\?\\_\\.\\<\\>\\,\\s\\(\\)\\[\\]])"
+         "end": "(,(?=\\s*([A-Za-z0-9_$]|_)+\\s*\\??\\s*(\\:|\\-\\>|\\))))|(?=[^A-Za-z0-9\\&\\?\\_\\.\\<\\>\\,\\s\\(\\)\\[\\]])"
       },
       "discrete_type": {
          "patterns": [
@@ -404,11 +413,19 @@
                "name": "keyword.control"
             }
          },
-         "patterns": [{ "include": "#generic_params" }, { "include": "$self" }],
-         "end": "(?=\\))"
+         "patterns": [
+            { "include": "#generic_params" },
+            { "match": "\\(", "name": "punctuation" },
+            {
+               "include": "$self"
+            },
+            { "match": "\\)", "name": "punctuation" },
+            { "include": "#type_label" }
+         ],
+         "end": "(?=\\)|\\{|\\;)"
       },
       "conditional_type": {
-         "begin": "(\\bif\\b)",
+         "begin": "(\\bif|where\\b)",
          "beginCaptures": {
             "1": {
                "name": "keyword.control"

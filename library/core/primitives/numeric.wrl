@@ -2,7 +2,6 @@ module numeric;
 
 use core.prelude.{Display, Default};
 use string.FromStr;
-use core.memory.Clonable;
 use ops.{
     Addition, Sequenced, Subtraction, 
     Multiplication, Division, Orderable,
@@ -27,7 +26,6 @@ public model UInt8
         + Unsigned 
         + Orderable
         + FromStr 
-        + Clonable
 {
     // Compiler built in.
 }
@@ -45,7 +43,6 @@ public model UInt16
         + Unsigned 
         + Orderable 
         + FromStr
-        + Clonable
 {
     // Compiler built in.
 }
@@ -63,7 +60,6 @@ public model UInt32
         + Unsigned
         + Orderable 
         + FromStr
-        + Clonable
 {
     // Compiler built in.
 }
@@ -81,7 +77,6 @@ public model UInt64
         + Unsigned
         + Orderable 
         + FromStr
-        + Clonable
 {
     // Compiler built in.
 }
@@ -99,7 +94,6 @@ public model SignedInt
         + Unsigned
         + Orderable 
         + FromStr
-        + Clonable
 {
     // Compiler built in.
 }
@@ -122,7 +116,6 @@ public model Float32
     + Default 
     + Orderable 
     + FromStr
-    + Clonable
 {
     // Compiler built in.
 }
@@ -137,7 +130,6 @@ public model Float64
     + Default 
     + Orderable 
     + FromStr
-    + Clonable
 {
     // Compiler built in.
 }
@@ -154,7 +146,6 @@ public model BigInt
     + Division
     + Bitwise 
     + Orderable
-    + Clonable
 {
     // Compiler built in.
 }

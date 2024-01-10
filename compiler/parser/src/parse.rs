@@ -1,16 +1,16 @@
 use ast::{
     AccessExpr, ArrayExpr, ArrayType, AssignmentExpr, AttributeSignature, BinaryExpr, Block,
-    Bracket::*, BreakStatement, CallExpr, Comment, ConstantDeclaration, ConstantSignature,
-    ContinueStatement, DiscreteType, EnumDeclaration, EnumSignature, EnumVariant, Expression,
-    ExpressionPrecedence, ForStatement, FunctionDeclaration, FunctionExpr, FunctionSignature,
-    FunctionalType, GenericParameter, Identifier, IfExpression, IndexExpr, InterfaceBody,
-    InterfaceDeclaration, InterfaceProperty, InterfacePropertyType, InterfaceSignature, Keyword::*,
-    LogicExpr, LoopLabel, LoopVariable, MaybeType, MemberType, MethodSignature, ModelBody,
-    ModelDeclaration, ModelProperty, ModelPropertyType, ModelSignature, ModuleAmbience,
-    ModuleDeclaration, NewExpr, Operator::*, Parameter, ReturnStatement, ScopeAddress, ScopeEntry,
-    ScopeType, ShorthandVariableDeclaration, ShorthandVariableSignature, Span, Spannable,
-    Statement, TernaryType, TestDeclaration, ThisExpr, Token, TokenType, TypeCondition,
-    TypeDeclaration, TypeExpression, TypeSignature, UnaryExpr, UnionType, UpdateExpr,
+    BoundConstraintType, Bracket::*, BreakStatement, CallExpr, Comment, ConstantDeclaration,
+    ConstantSignature, ContinueStatement, DiscreteType, EnumDeclaration, EnumSignature,
+    EnumVariant, Expression, ExpressionPrecedence, ForStatement, FunctionDeclaration, FunctionExpr,
+    FunctionSignature, FunctionalType, GenericParameter, Identifier, IfExpression, IndexExpr,
+    InterfaceBody, InterfaceDeclaration, InterfaceProperty, InterfacePropertyType,
+    InterfaceSignature, Keyword::*, LogicExpr, LoopLabel, LoopVariable, MaybeType, MemberType,
+    MethodSignature, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType, ModelSignature,
+    ModuleAmbience, ModuleDeclaration, NewExpr, Operator::*, Parameter, ReturnStatement,
+    ScopeAddress, ScopeEntry, ScopeType, ShorthandVariableDeclaration, ShorthandVariableSignature,
+    Span, Spannable, Statement, TernaryType, TestDeclaration, ThisExpr, Token, TokenType,
+    TypeClause, TypeDeclaration, TypeExpression, TypeSignature, UnaryExpr, UnionType, UpdateExpr,
     UseDeclaration, UsePath, UseTarget, UseTargetSignature, VariableDeclaration, VariablePattern,
     VariableSignature, WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
 };
@@ -3308,39 +3308,22 @@ impl<L: Lexer> Parser<L> {
     fn ternary_type(&self) -> Fallible<TypeExpression> {
         let start = self.token().unwrap().span.start;
         self.advance(); // Move past if.
-        let base = self.identifier()?;
-        match self.token() {
-            Some(Token {
-                _type: TokenType::Keyword(keyword),
-                ..
-            }) if matches!(keyword, Is | Implements) => {
-                let typecondition = if matches!(keyword, Is) {
-                    self.advance(); // Move past is
-                    TypeCondition::Is(self.type_expression()?)
-                } else {
-                    self.advance(); // Move past implements
-                    TypeCondition::Implements(self.type_expression()?)
-                };
-                let consequent = Box::new(self.type_expression()?);
-                expect!(TokenType::Keyword(Else), self);
-                self.advance(); // Move past else.
-                let alternate = Box::new(self.type_expression()?);
+        let clause = self.type_clause()?;
+        let consequent = Box::new(self.type_expression()?);
+        expect!(TokenType::Keyword(Else), self);
+        self.advance(); // Move past else.
+        let alternate = Box::new(self.type_expression()?);
 
-                let span = Span {
-                    start,
-                    end: alternate.span().end,
-                };
-                let condtype = TypeExpression::Ternary(TernaryType {
-                    base,
-                    condition: Box::new(typecondition),
-                    consequent,
-                    alternate,
-                    span,
-                });
-                Ok(self.type_reparse(condtype)?)
-            }
-            _ => return Err(errors::type_condition_expected(self.last_token_end())),
-        }
+        let span = Span {
+            start,
+            end: alternate.span().end,
+        };
+        Ok(TypeExpression::Ternary(TernaryType {
+            clause: Box::new(clause),
+            consequent,
+            alternate,
+            span,
+        }))
     }
 
     /// Parses a discrete, member or union type. Assumes that identifier is the current token.
@@ -3350,13 +3333,62 @@ impl<L: Lexer> Parser<L> {
         let start = name.span.start;
         let end = self.last_token_span().end;
         let span = Span::from([start, end]);
-        let discrete = TypeExpression::Discrete(DiscreteType {
+
+        let consequent = DiscreteType {
             name,
             generic_args,
             span,
-        });
+        };
 
-        Ok(self.type_reparse(discrete)?)
+        // Parse constraint.
+        let expression = if let Some((clause, span)) = self.maybe_type_constraint()? {
+            TypeExpression::Constraint(BoundConstraintType {
+                consequent,
+                clause: Box::new(clause),
+                span,
+            })
+        } else {
+            TypeExpression::Discrete(consequent)
+        };
+        Ok(self.type_reparse(expression)?)
+    }
+
+    /// Optionally parses a type c. It will advance if `[` is the next token.
+    fn maybe_type_constraint(&self) -> Fallible<Option<(TypeClause, Span)>> {
+        match self.token() {
+            Some(token) if token._type == TokenType::Bracket(LSquare) => {
+                let start = token.span.start;
+                self.advance(); // Move past [
+                expect!(TokenType::Keyword(Where), self);
+                self.advance(); // Move past where.
+                let clause = self.type_clause()?;
+                expect!(TokenType::Bracket(RSquare), self);
+                let end = self.token().unwrap().span.end;
+                let span = Span { start, end };
+                self.advance(); // Move past ]
+                return Ok(Some((clause, span)));
+            }
+            _ => return Ok(None),
+        };
+    }
+
+    /// Parses a type clause.
+    fn type_clause(&self) -> Fallible<TypeClause> {
+        let token = self.token().unwrap();
+        let base = self.identifier()?;
+        let clause = match token._type {
+            TokenType::Keyword(Implements) => {
+                let interfaces = self.maybe_interface_implementations()?;
+                TypeClause::Implementations { base, interfaces }
+            }
+            TokenType::Keyword(Is) => {
+                self.advance(); // Move past is.
+                let other = self.regular_type_or_union()?;
+                TypeClause::Is { base, other }
+            }
+            _ => return Err(errors::expected(TokenType::Keyword(Implements), token.span)),
+        };
+        Ok(clause)
     }
 
     /// Parses an optional type. Assumes that `?` is the current token.

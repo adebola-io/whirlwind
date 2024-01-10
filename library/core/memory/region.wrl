@@ -1,0 +1,167 @@
+module region;
+
+use core.process.sentinels.todo;
+use core.primitives.UnsignedInt;
+use core.primitives.Bool;
+
+public enum RegionOperationError {
+    AlreadyDestroyed,
+}
+
+/// ## Regions and Deterministic Memory Management.
+/// A memory region is a defined scope for confining the lifetimes of heap allocated
+/// data.
+///
+/// Regions provide explicit control over memory allocation and deallocation within their
+/// boundaries. Objects created in the scope of a region are considered local to that region
+/// and automatically freed when the region is destroyed. This approach should simplify
+/// memory management compared to manual creation and deletion.
+/// 
+/// Internally regions are stacked on top of each other, meaning that the newest created region
+/// is the current region in use, and that regions can be nested within each other.
+/// 
+/// A region has a list of methods for interacting directly with data within it, such as:
+/// - prematurely freeing data that is no longer in use,
+/// - pinning data so that it can outlive the current region.
+/// - capturing data from parent region scopes, etc.
+public model Region {
+    /// Moves an object instance from the current region to a parent region,
+    /// basically extending its lifetime, and ensuring that it is not deallocated when
+    /// the current region is destroyed.
+    /// 
+    /// ### Usage
+    /// ```
+    /// r := Region.create();
+    /// array := [1, 2, 3]; // Created in region r.
+    /// r.pin(array);
+    /// 
+    /// r.destroy();
+    /// print(array[1]); // Still valid, because array is no longer owned by region r.
+    /// ```
+    /// The method is recursive, meaning that pinning an object will also pin all
+    /// its internal values and attributes.
+    /// ```
+    /// r2 := Region.create();
+    /// 
+    /// name := "Michael"; // Created inside region r.
+    /// nameList := [name]; // Created inside region r.
+    /// 
+    /// r2.pin(nameList);
+    /// r2.destroy();
+    /// 
+    /// print(nameList); // Valid because nameList is pinned.
+    /// print(name); // Valid because name is an item in nameList, inheriting its pinned state.
+    /// ```
+    public function pin<T>(instance: T) {
+        todo()
+    }
+    /// Moves the lifetime of an object instance into the current region. This means that whenever
+    /// the region gets destroyed, the object instance will be destroyed along with it.
+    /// ### Usage
+    /// ```
+    /// parentRegion := Region.create();
+    /// 
+    /// 
+    /// 
+    /// parentRegion.destroy();
+    /// ```
+    public function capture<T>(instance: T) {
+        todo()
+    }
+    // /// Creates a clone of an object instance that is local to the current region.
+    // /// ### Usage
+    // /// ```
+    // /// 
+    // /// ```
+    // public function localize<T implements Clonable>(instance: T) -> T {
+    //     return instance.clone();
+    // }
+    /// Returns true if the lifetime of a given instance is bound to the scope
+    /// of the current region.
+    /// ### Usage
+    /// ```
+    /// r := Region.create();
+    /// 
+    /// name := "Hello, world";
+    /// r.destroy();
+    /// ```
+    public function contains<T>(instance: T) -> Bool {
+        todo()
+    }
+    /// Frees all memory in the region.
+    public function clear() {
+        todo()
+    }
+    /// Deallocates the memory in an instance of an object.
+    public function free<T>(instance: T) {
+        todo()
+    }
+    public function capacity() -> UnsignedInt {
+        todo()
+    }
+    public function grow(newCapacity: UnsignedInt) {
+        todo()
+    }
+    public function retire() {
+        todo()
+    }
+    public function shrinkToFit() {
+        todo()
+    }
+    /// Releases all resources associated with the specified memory arena.
+    /// It frees allocated memory and cleans up any data structures used.
+    /// ### Parameters:
+    /// 1. handle: The handle or identifier of the memory arena to be destroyed.
+    /// ### Usage
+    /// ```
+    /// destroyArena(handle);
+    /// ```
+    public function destroy() {
+        todo()
+    }
+    /// Creates a new, isolated memory region and returns a handle to it.
+    /// Once the region is created it is pushed on top of the region stack, becoming the current
+    /// memory region for subsequent allocations.
+    /// ### Usage
+    /// ```
+    /// r1 := Region.create();
+    /// a := new String();
+    /// 
+    /// assertThat(r1.contains(a));
+    /// ```
+    /// Regions are nested implicitly based on their creation order, forming a stack-like hierarchy.
+    /// ```
+    /// r2 := Region.create();
+    /// r3 := Region.create(); // is created as a child of r2.
+    /// 
+    /// r2.destroy(); // r3 is also destroyed.
+    /// ```
+    public static function create() -> This {
+        todo()
+    }
+    /// Scoping provides an easier way to encapsulate the lifetime of objects by creating a temporary region 
+    /// for the execution of a function.
+    /// 
+    /// ### Usage
+    /// <!--ignore-->
+    /// ```
+    /// // Approach One:
+    /// r := Region.create();
+    /// performComputation(); // creates data in region r.
+    /// r.destroy();
+    /// 
+    /// // Approach Two:
+    /// Region.scope(performComputation);
+    /// ```
+    /// The above snippets are equivalent, but the scope is easier to reason about, because region destruction
+    /// happens automatically.
+    public static function scope(executor: fn) {
+        r := Region.create();
+        executor();
+        r.destroy();
+    }
+     /// Returns a reference to the current region.
+    public static function current() -> Region {
+        todo()
+    }
+}

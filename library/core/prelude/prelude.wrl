@@ -41,7 +41,7 @@ public use core.{
         FromStr
     },
     process.sentinels.{todo, fatal},
-    memory.{Region, Clonable},
+    memory.Region,
     internals.never,
     collections.{Tuple, pair}
 };

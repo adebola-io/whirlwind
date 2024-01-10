@@ -234,6 +234,7 @@ pub enum Keyword {
     Use,
     Var,
     While,
+    Where,
 }
 
 pub fn is_keyword_or_operator(text: &str) -> bool {

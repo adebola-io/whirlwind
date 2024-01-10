@@ -114,7 +114,7 @@ impl<'a> CompletionFinder<'a> {
                 &writer,
                 &mut completions,
             )?,
-            EvaluatedType::Generic { base } | EvaluatedType::HardGeneric { base } => {
+            EvaluatedType::Generic { base } | EvaluatedType::HardGeneric { base, .. } => {
                 let symbol = self.standpoint.symbol_library.get(base)?;
                 match &symbol.kind {
                     SemanticSymbolKind::GenericParameter { interfaces, .. } => {

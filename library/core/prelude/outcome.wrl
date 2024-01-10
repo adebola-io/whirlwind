@@ -23,7 +23,10 @@ use maybe.{some, none};
 /// - connecting to a server.
 /// 
 /// It presents a way to handle errors predictably.
-public model Outcome<T, E> implements Guaranteed<T> + Try<T, Outcome<never, E>> {
+public model Outcome<T, E> 
+    implements Guaranteed<T> 
+    + Try<T, Outcome<never, E>> 
+{
     /// flag representing the type of outcome.
     var flag: OutcomeType;
     var value: T | E;

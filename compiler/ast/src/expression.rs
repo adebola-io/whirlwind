@@ -191,7 +191,7 @@ pub enum UpdateOperator {
     TryFrom, // a?
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Hash)]
 pub enum LogicOperator {
     And,        // a && b
     AndLiteral, // a and b

@@ -13,7 +13,13 @@ pub fn bytecode_from_text(text: &str) -> Result<BytecodeObject, BytecodeError> {
     module.module_path = Some(PathBuf::from("testing://main.wrl"));
     standpoint.entry_module = standpoint.add_module(module).unwrap();
     standpoint.validate();
-    if standpoint.diagnostics.len() > 0 {
+    if standpoint
+        .diagnostics
+        .iter()
+        .filter(|diagnostic| diagnostic.is_error())
+        .count()
+        > 0
+    {
         panic!(
             "Non-zero diagnostics: \n\n
         {:#?}

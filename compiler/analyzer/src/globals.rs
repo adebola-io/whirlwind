@@ -6,6 +6,7 @@ use crate::EvaluatedType;
 pub const CORE_LIBRARY_PATH: &'static str = "../../library/core/core.wrl";
 
 /// The maximum recursion limit for a type evaluation.
+/// If leads to a stack overflow in Windows when its higher than 200, for some reason.
 pub const EVALUATION_DEPTH: u64 = 200;
 
 /// The number of related symbols to show in the hover of a symbol.

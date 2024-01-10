@@ -253,7 +253,7 @@ fn typecheck_model_property(
                 0,
             );
         }
-        // todo: compare with interface definition.
+        // For model methods, if the return type
         TypedModelPropertyType::TypedMethod { body }
         | TypedModelPropertyType::InterfaceImpl { body, .. } => {
             let symbol = match symbollib.get_forwarded(property.name) {

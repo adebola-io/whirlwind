@@ -20,7 +20,7 @@ impl std::fmt::Display for TypeErrorType {
             expected,
             assigned,
         } => format!("'{name}' expects {expected} generic argument{}, but got {assigned} instead.", if *expected == 1 {""} else {"s"}),
-        TypeErrorType::MismatchedAssignment { left, right } => {
+        TypeErrorType::MismatchedAssignment { target: left, right } => {
             if left == right {
                format!("Expected: '{left} (type 1)', Got: '{right} (type 2)'.",)       
             } else {
@@ -128,6 +128,8 @@ impl std::fmt::Display for TypeErrorType {
         TypeErrorType::MismatchedMethodAccess { method_name, expected, .. } => format!("Mismatched implementation: {method_name}() is {}expected to be public.", if *expected {""} else {"not "}),
         TypeErrorType::MismatchedMethodStatic { method_name, expected, .. } => format!("Mismatched implementation: {method_name}() is {}expected to be static.", if *expected {""} else {"not "}),
         TypeErrorType::MismatchedMethodSignature { method_name, left, right } => format!("Virtual method {method_name}() has signature '{left}', but is implemented as '{right}'."),
+        TypeErrorType::IllegalBoundConstraintType => format!("Type constraints are not allowed in this context."),
+        
         };
 
         write!(f, "{message}")

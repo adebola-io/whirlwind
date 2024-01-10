@@ -506,6 +506,7 @@ pub trait LexerInner {
             "use" => token!(Keyword::Use, self),
             "var" => token!(Keyword::Var, self),
             "while" => token!(Keyword::While, self),
+            "where" => token!(Keyword::Where, self),
             "module" => token!(Keyword::Module, self),
             _ => Token {
                 _type: TokenType::Ident(ident_text),

@@ -1,6 +1,6 @@
 module terminal;
 
-use core.prelude.{Display, Maybe, some};
+use core.prelude.{Display, some};
 use core.primitives.{String, UInt8};
 use core.internals.builtin;
 use core.process.sentinels.todo;

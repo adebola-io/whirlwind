@@ -3,7 +3,7 @@ module set;
 public use orderedSet;
 use core.prelude.{
     Bool, UnsignedInt, todo, AsIterator, Iteratable,
-    Maybe,
+    // Maybe,
 };
 use super.{Hash, HashMap};
 
@@ -17,12 +17,13 @@ public model SetIterator<T> implements Iteratable<T> {
 /// of unique elements, akin to the mathematical concept of a set.
 public model Set<T implements Hash> 
     implements AsIterator<T, SetIterator<T>> 
-    + Hash 
+    // + Clonable[where T implements Clonable]
+    // + Display[where T implements Display]
+    + Hash
 {
     var items: HashMap<T, Bool>;
-
     new(data?: []T) {
-        // dataVal := Maybe.unwrapOrDefault(data);
+        // dataVal := data.unwrapOrDefault();
         this.items = new HashMap();
         // for element in dataVal {
         //     this.items.set(element, true);
@@ -30,10 +31,16 @@ public model Set<T implements Hash>
     }
 
     public function [AsIterator.iter]() -> SetIterator<T> {
-
         todo()
     }
+    // public function [Clonable.clone][where T implements Clonable]() -> This {
+    //     todo()
+    // }
+    // public function [Display.toStr][where T implements Display]() -> String {
+    //     str := new String();
 
+    //     str
+    // }
     /// Adds an element to the set.
     /// 
     /// ### Usage

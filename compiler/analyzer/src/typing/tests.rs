@@ -74,7 +74,7 @@ fn it_solves_interface_impls_for_generics() {}
 
 #[test]
 fn coerces_this_type() {
-    let standpoint = check_types!(
+    check_types!(
         "
     module Test;
     interface Identity {

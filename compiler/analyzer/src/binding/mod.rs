@@ -3328,9 +3328,9 @@ mod literals {
 
 /// Types
 mod types {
-    use crate::{
-        EvaluatedType, IntermediateTypeCondition, IntermediateTypeProperty, ParameterType,
-    };
+    use ast::TypeClause;
+
+    use crate::{EvaluatedType, IntermediateTypeClause, IntermediateTypeProperty, ParameterType};
 
     use super::*;
 
@@ -3449,22 +3449,13 @@ mod types {
                 span: a.span,
             },
             TypeExpression::Ternary(t) => IntermediateType::TernaryType {
-                base: bind_utils::find_or_create(
+                clause: Box::new(bind_type_clause(
+                    &t.clause,
                     binder,
                     symbol_library,
                     errors,
                     ambience,
-                    &t.base,
-                    true,
-                ),
-                condition: Box::new(match &*t.condition {
-                    ast::TypeCondition::Implements(a) => IntermediateTypeCondition::Implements(
-                        bind_type_expression(a, binder, symbol_library, errors, ambience),
-                    ),
-                    ast::TypeCondition::Is(b) => IntermediateTypeCondition::Is(
-                        bind_type_expression(b, binder, symbol_library, errors, ambience),
-                    ),
-                }),
+                )),
                 consequent: Box::new(bind_type_expression(
                     &t.consequent,
                     binder,
@@ -3481,8 +3472,94 @@ mod types {
                 )),
                 span: t.span,
             },
+            TypeExpression::Constraint(d) => IntermediateType::BoundConstraintType {
+                consequent: Box::new(bind_discrete_type(
+                    &d.consequent,
+                    binder,
+                    symbol_library,
+                    errors,
+                    ambience,
+                )),
+                clause: Box::new(bind_type_clause(
+                    &d.clause,
+                    binder,
+                    symbol_library,
+                    errors,
+                    ambience,
+                )),
+                span: type_exp.span(),
+            },
         }
     }
+
+    // Binds a type clause.
+    pub fn bind_type_clause(
+        clause: &TypeClause,
+        binder: &mut Binder,
+        symbol_library: &mut SymbolLibrary,
+        errors: &mut Vec<ProgramDiagnostic>,
+        ambience: &ModuleAmbience,
+    ) -> IntermediateTypeClause {
+        match clause {
+            TypeClause::Binary {
+                left,
+                operator,
+                right,
+            } => IntermediateTypeClause::Binary {
+                left: Box::new(bind_type_clause(
+                    &left,
+                    binder,
+                    symbol_library,
+                    errors,
+                    ambience,
+                )),
+                operator: operator.clone(),
+                right: Box::new(bind_type_clause(
+                    &right,
+                    binder,
+                    symbol_library,
+                    errors,
+                    ambience,
+                )),
+            },
+            TypeClause::Implementations { base, interfaces } => {
+                IntermediateTypeClause::Implements {
+                    base: bind_utils::find_or_create(
+                        binder,
+                        symbol_library,
+                        errors,
+                        ambience,
+                        base,
+                        true,
+                    ),
+                    interfaces: interfaces
+                        .iter()
+                        .map(|interface| {
+                            bind_type_expression(
+                                interface,
+                                binder,
+                                symbol_library,
+                                errors,
+                                ambience,
+                            )
+                        })
+                        .collect(),
+                }
+            }
+            TypeClause::Is { base, other } => IntermediateTypeClause::Is {
+                base: bind_utils::find_or_create(
+                    binder,
+                    symbol_library,
+                    errors,
+                    ambience,
+                    base,
+                    true,
+                ),
+                other: bind_type_expression(other, binder, symbol_library, errors, ambience),
+            },
+        }
+    }
+
     /// Bind a discrete type.
     pub fn bind_discrete_type(
         discrete_type: &ast::DiscreteType,

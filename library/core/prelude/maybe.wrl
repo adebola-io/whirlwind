@@ -4,12 +4,13 @@ use core.{
     primitives.Bool,
     internals.never,
     process.sentinels.fatalOnCaller,
-    memory.Clonable,
-    io.fmt
 };
 use outcome.{ok, err, Outcome}; 
 use prelude.{String, fatal};
-use interfaces.{guaranteed.Guaranteed, try.Try, default.Default};
+use interfaces.{
+    guaranteed.Guaranteed, try.Try, 
+    default.Default
+};
 use core.internals.builtin;
 
 /// Creates a `Maybe` with no value.
@@ -25,11 +26,13 @@ public function some<T>(value: T) -> ?T {
 /// A value that may or may not exist.
 public model Maybe<T> 
     implements 
-    // + (Clonable if T implements Clonable)
-    // + (Display if T implements Display)
-    // +
-     Guaranteed<T> 
-    + Try<T, ?never> {
+    // Clonable[where T implements Clonable]
+    // + 
+    Default
+    // + Display[where T implements Display]
+    + Guaranteed<T> 
+    + Try<T, ?never> 
+{
     /// A simple flag for marking existence or non-existence.
     var exists: Bool;
     /// The internal value.
@@ -41,18 +44,25 @@ public model Maybe<T>
     /// internals of the model, or without first checking the
     /// flag.
     var value: T;
-    /// Returns a clone of the Maybe.
-    // public function [Clonable.clone]() -> T if T implements Clonable {
+    /// Implementation of the Default interface.
+    static function [Default.init]() -> This {
+        return none();
+    }
+    // /// Returns a clone of the Maybe.
+    // /// ### Usage
+    // /// ```
+    // /// ```
+    // public function [Clonable.clone][where T implements Clonable]() -> T {
     //     if this.isSome() {
     //         return some(this.value.clone());
     //     }
     //     return none();
     // }
-    // function [Display.toStr]() -> String if T implements Display {
+    // function [Display.toStr][where T implements Display]() -> String {
     //     if this.isNone() {
-    //         return "none";
+    //         return "Maybe.none";
     //     }
-    //     return fmt("some(%)").add(this.value).finish();
+    //     return fmt("Maybe.some(%)").add(this.value).finish();
     // }
     /// Implementation of the `Guaranteed` interface.
     function [Guaranteed.guarantee]() -> T {
@@ -240,26 +250,26 @@ public model Maybe<T>
         }
         return none();
     }
-    /// Unwraps a Maybe and returns its internal value if it exists.
-    /// 
-    /// If it does not, it returns the default value of the internal type.
-    /// ### Usage
-    /// ```
-    /// i := some(50);
-    /// assert(Maybe.unwrapOrDefault(i)).equals(50);
-    /// 
-    /// j: ?UInt8 := none();
-    /// assert(Maybe.unwrapOrDefault(j)).equals(0); // default value for UInt8.
-    /// ```
-    // public function unwrapOrDefault() -> T if T implements Default {
-    //     if this.isNone() {
-    //         var default: T;
-    //         return default;
-    //     } 
-    //     return maybe.value;
-    // }
+    // /// Unwraps a Maybe and returns its internal value if it exists.
+    // /// 
+    // /// If it does not, it returns the default value of the internal type.
+    // /// ### Usage
+    // /// ```
+    // /// i := some(50);
+    // /// assert(Maybe.unwrapOrDefault(i)).equals(50);
+    // /// 
+    // /// j: ?UInt8 := none();
+    // /// assert(Maybe.unwrapOrDefault(j)).equals(0); // default value for UInt8.
+    // /// ```
+    // // public function unwrapOrDefault[where T implements Default]() -> T {
+    // //     if this.isNone() {
+    // //         var default: T;
+    // //         return default;
+    // //     } 
+    // //     return maybe.value;
+    // // }
     // /// Tranforms a `Maybe<Maybe<T>>` to a `Maybe<T>`.
-    // public function flatten<U>() -> U if T is ?U {
+    // public function flatten<U>[where T is ?U]() -> U {
     //     if maybe.isNone() { none() } else { maybe.value }
     // }
 }

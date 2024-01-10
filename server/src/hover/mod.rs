@@ -1,6 +1,6 @@
 use crate::message_store::MessageStore;
 use analyzer::{
-    IntermediateType, IntermediateTypeCondition, SemanticSymbol, SemanticSymbolKind, Standpoint,
+    IntermediateType, IntermediateTypeClause, SemanticSymbol, SemanticSymbolKind, Standpoint,
     SymbolIndex, TypedCallExpr, TypedIdent, TypedModule, TypedThisExpr, TypedTypeDeclaration,
     TypedVisitorNoArgs,
 };
@@ -731,13 +731,39 @@ impl HoverFinder<'_> {
                 maybe!(self.type_hover(&element_type))
             }
             IntermediateType::TernaryType {
-                base,
-                condition,
+                clause,
                 consequent,
                 alternate,
                 span,
             } => {
                 within!(span, self);
+                // Hover over the condition.
+                maybe!(self.type_clause(clause));
+                // Hover over the consequent or alternate.
+                maybe!(self.type_hover(consequent.as_ref()));
+                maybe!(self.type_hover(alternate.as_ref()));
+            }
+            IntermediateType::BoundConstraintType {
+                consequent,
+                clause,
+                span,
+            } => {
+                within!(span, self);
+                maybe!(self.type_hover(&consequent));
+                // Hover over the condition.
+                maybe!(self.type_clause(clause));
+            }
+        }
+        return None;
+    }
+
+    fn type_clause(&self, condition: &Box<IntermediateTypeClause>) -> Option<HoverInfo> {
+        match condition.as_ref() {
+            IntermediateTypeClause::Binary { left, right, .. } => {
+                maybe!(self.type_clause(left));
+                self.type_clause(right)
+            }
+            IntermediateTypeClause::Is { base, other } => {
                 let symbol = self.standpoint.symbol_library.get(*base)?;
                 // Hovering over type name.
                 let references = symbol
@@ -753,19 +779,31 @@ impl HoverFinder<'_> {
                         return Some(HoverInfo::from((self.standpoint, *base)));
                     }
                 }
-                // Hover over the condition.
-                match condition.as_ref() {
-                    IntermediateTypeCondition::Is(other) => maybe!(self.type_hover(other)),
-                    IntermediateTypeCondition::Implements(interface) => {
-                        maybe!(self.type_hover(interface))
+                // Hovering over rhs.
+                self.type_hover(other)
+            }
+            IntermediateTypeClause::Implements { base, interfaces } => {
+                let symbol = self.standpoint.symbol_library.get(*base)?;
+                // Hovering over type name.
+                let references = symbol
+                    .references
+                    .iter()
+                    .find(|reflist| reflist.module_path == self.module.path_idx)?;
+                for span_start in references.starts.iter() {
+                    let span = Span::on_line(*span_start, symbol.name.len() as u32);
+                    if span.contains(self.pos) {
+                        self.message_store
+                            .borrow_mut()
+                            .inform("Hovering over a type.");
+                        return Some(HoverInfo::from((self.standpoint, *base)));
                     }
                 }
-                // Hover over the consequent or alternate.
-                maybe!(self.type_hover(consequent.as_ref()));
-                maybe!(self.type_hover(alternate.as_ref()));
+                for interface in interfaces {
+                    maybe!(self.type_hover(interface))
+                }
+                return None;
             }
         }
-        return None;
     }
 
     fn fn_parts_hover(
