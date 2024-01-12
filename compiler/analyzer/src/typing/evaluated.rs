@@ -963,7 +963,7 @@ fn evaluate_function_type(
 }
 
 /// Computes a type clause and returns whether it is true or not.
-fn evaluate_type_clause(
+pub fn evaluate_type_clause(
     clause: &Box<IntermediateTypeClause>,
     symbollib: &SymbolLibrary,
     solved_generics: Option<&Vec<(SymbolIndex, EvaluatedType)>>,
@@ -1004,14 +1004,19 @@ fn evaluate_type_clause(
             return converge_types(lhs, rhs, symbollib).map(|_| true);
         }
         IntermediateTypeClause::Implements { base, interfaces } => {
-            let symbol = symbollib.get(*base)?;
-            let lhs = match symbol_to_type(symbol, *base, symbollib) {
-                Ok(evaluated_type) => evaluated_type,
-                Err(error_type) => {
-                    add_error_if_possible(error_tracker, error_type);
-                    return None;
-                }
+            // The actual base type being checked.
+            let lhs = IntermediateType::SimpleType {
+                value: *base,
+                generic_args: vec![],
+                span: Span::default(),
             };
+            let lhs = evaluate(
+                &lhs,
+                symbollib,
+                solved_generics,
+                error_tracker,
+                recursion_depth,
+            );
             // For every interface in the clause, check if it is implemented as is in the left hand type.
             for intermediate_type in interfaces {
                 let evaled_interface = evaluate(
@@ -1022,16 +1027,8 @@ fn evaluate_type_clause(
                     recursion_depth,
                 );
                 if let EvaluatedType::InterfaceInstance { interface_, .. } = &evaled_interface {
-                    match get_implementation_of(*interface_, &lhs, symbollib) {
-                        Some(actual_impl_type) => {
-                            if converge_types(evaled_interface, actual_impl_type, symbollib)
-                                .is_none()
-                            {
-                                return Some(false);
-                            }
-                        }
-                        None => return Some(false),
-                    }
+                    let actual_impl_type = get_implementation_of(*interface_, &lhs, symbollib)?;
+                    // converge_types(evaled_interface, actual_impl_type, symbollib)?;
                 } else {
                     let asstr = symbollib.format_evaluated_type(&evaled_interface);
                     add_error_if_possible(

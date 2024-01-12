@@ -1,7 +1,8 @@
 use crate::{
-    evaluate, unify_generic_arguments, unify_types, DiagnosticType, EvaluatedType,
-    IntermediateType, LiteralMap, ParameterType, PathIndex, ProgramDiagnostic, SemanticSymbolKind,
-    SymbolIndex, SymbolLibrary, TypecheckerContext, TypedExpression, UnifyOptions,
+    evaluate, evaluate_type_clause, unify_generic_arguments, unify_types, DiagnosticType,
+    EvaluatedType, IntermediateType, LiteralMap, ParameterType, PathIndex, ProgramDiagnostic,
+    SemanticSymbolKind, SymbolIndex, SymbolLibrary, TypecheckerContext, TypedExpression,
+    UnifyOptions,
 };
 use errors::{TypeError, TypeErrorType};
 /// Returns an intrinsic symbol from the symbol table or returns an unknown type.
@@ -83,6 +84,7 @@ pub fn rangify(typ: EvaluatedType, symbollib: &SymbolLibrary) -> EvaluatedType {
     }
 }
 
+/// Returns true if an evaluated type is a boolean.
 pub fn is_boolean(evaluated_type: &EvaluatedType, symbollib: &SymbolLibrary) -> bool {
     matches!(
         evaluated_type, EvaluatedType::ModelInstance { model, .. }
@@ -557,56 +559,86 @@ pub fn get_implementation_of(
         }
         | EvaluatedType::Generic { base }
         | EvaluatedType::HardGeneric { base, .. } => {
-            let base_symbol = symbollib.get_forwarded(*base)?;
-            let implementation_list = match &base_symbol.kind {
-                SemanticSymbolKind::Model {
-                    implementations, ..
-                }
-                | SemanticSymbolKind::Interface {
-                    implementations, ..
-                }
-                | SemanticSymbolKind::GenericParameter {
-                    interfaces: implementations,
-                    ..
-                } => implementations,
-                _ => return None,
-            };
-            for implementation in implementation_list {
-                match implementation {
-                    IntermediateType::BoundConstraintType {
-                        consequent,
-                        clause,
-                        span,
-                    } => {
-                        let consequent = evaluate(&consequent, symbollib, None, &mut None, 0);
-                    }
-                    _ => {
-                        let evaluated = evaluate(implementation, symbollib, None, &mut None, 0);
-                        if let EvaluatedType::InterfaceInstance { interface_, .. } = &evaluated {
-                            if *interface_ == target_interface {
-                                return Some(evaluated);
-                            }
-                        }
-                    }
-                }
-            }
-            return None;
+            extract_impl(symbollib, base, eval_type, target_interface)
         }
         EvaluatedType::OpaqueTypeInstance {
             available_interfaces,
             ..
         } => {
-            for interface in available_interfaces {
-                if let EvaluatedType::InterfaceInstance { interface_, .. } = interface {
-                    if *interface_ == target_interface {
-                        return Some(interface.clone());
-                    }
-                }
-            }
-            return None;
+            return search_for_interface(available_interfaces, target_interface);
         }
         _ => None,
     }
+}
+
+fn search_for_interface(
+    available_interfaces: &Vec<EvaluatedType>,
+    target_interface: SymbolIndex,
+) -> Option<EvaluatedType> {
+    for interface in available_interfaces {
+        if let EvaluatedType::InterfaceInstance { interface_, .. } = interface {
+            if *interface_ == target_interface {
+                return Some(interface.clone());
+            }
+        }
+    }
+    return None;
+}
+
+fn extract_impl(
+    symbollib: &SymbolLibrary,
+    base: &SymbolIndex,
+    eval_type: &EvaluatedType,
+    target_interface: SymbolIndex,
+) -> Option<EvaluatedType> {
+    let base_symbol = symbollib.get_forwarded(*base)?;
+    let implementation_list = match &base_symbol.kind {
+        SemanticSymbolKind::Model {
+            implementations, ..
+        }
+        | SemanticSymbolKind::Interface {
+            implementations, ..
+        }
+        | SemanticSymbolKind::GenericParameter {
+            interfaces: implementations,
+            ..
+        } => implementations,
+        _ => return None,
+    };
+    let empty = vec![];
+    let generic_arguments = match eval_type {
+        EvaluatedType::ModelInstance {
+            generic_arguments, ..
+        } => generic_arguments,
+        EvaluatedType::InterfaceInstance {
+            generic_arguments, ..
+        } => generic_arguments,
+        _ => &empty,
+    };
+    for implementation in implementation_list {
+        let evaluated = match implementation {
+            IntermediateType::BoundConstraintType {
+                consequent, clause, ..
+            } => {
+                let consequent = evaluate(&consequent, symbollib, None, &mut None, 0);
+                let clause_is_valid =
+                    evaluate_type_clause(clause, symbollib, Some(generic_arguments), &mut None, 0)
+                        .unwrap_or_default();
+                if clause_is_valid {
+                    consequent
+                } else {
+                    continue;
+                }
+            }
+            _ => evaluate(implementation, symbollib, None, &mut None, 0),
+        };
+        if let EvaluatedType::InterfaceInstance { interface_, .. } = &evaluated {
+            if *interface_ == target_interface {
+                return Some(evaluated);
+            }
+        }
+    }
+    return None;
 }
 
 /// Returns the evaluated type of a WhirlNumber.

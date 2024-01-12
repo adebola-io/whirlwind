@@ -21,6 +21,7 @@ macro_rules! text_produces_errors{
                 panic!("Error not produced {error:?}")
             }
         }
+        standpoint
     }}
 }
 
@@ -105,6 +106,21 @@ fn coerces_this_type() {
     ",
         &[("objValue", "WrapInt")]
     );
+}
+
+#[test]
+fn conditional_interface_impl() {
+    let standpoint = text_produces_errors!(
+        "
+        module Test;
+        
+        function main() {
+            fmt('').add(['hello']);
+        }
+        ",
+        &[]
+    );
+    assert!(standpoint.diagnostics.len() == 0);
 }
 
 #[test]
@@ -348,7 +364,7 @@ fn it_typechecks_type_declaration() {
         &[TypeErrorType::ExpectedImplementableGotSomethingElse(
             format!("Iteratable<Bool>")
         )]
-    )
+    );
 }
 
 #[test]

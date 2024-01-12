@@ -15,6 +15,16 @@ use core.{
     string.{Display, String}
 };
 
+test "inheritting display" {
+    function displayable<T implements Display>(value: T) -> T {
+        return value;
+    }
+
+    model Person {
+        new() {}
+    }
+}
+
 /// A contiguous, growable list of items of the same type.
 public model Array<T> 
     implements AsIterator<T, ArrayIter<T>> 
