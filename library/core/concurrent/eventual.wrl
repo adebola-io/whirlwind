@@ -1,9 +1,13 @@
 module eventual;
 
-use core.process.sentinels.fatal;
-use core.prelude.{some, Bool, Guaranteed};
-use core.internals.{builtin};
 use concurrent.Sequence;
+use core.{
+    bool.Bool,
+    interfaces.Guaranteed,
+    internals.builtin,
+    maybe.some,
+    sentinels.fatal,
+};
 
 /// An eventual is an asynchronously running operation,
 /// produced by calling `.run()` on a `Prospect`.

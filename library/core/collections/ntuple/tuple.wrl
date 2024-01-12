@@ -1,0 +1,105 @@
+module tuple;
+
+use ntuple.NTuple;
+use core.string.{Display, fmt, String};
+use core.interfaces.Clonable;
+use core.maybe.some;
+use core.ops.Addition;
+
+/// A simple ordered pair of items. Elements within a tuple can be of any type,
+/// and the order in which they are defined is preserved.
+/// 
+/// ### Constructor Parameters.
+/// - a : The first item in the pair.
+/// - b : The second item in the pair.
+public model Tuple<T, U> 
+    implements Clonable|=(T implements Clonable and U implements Clonable)
+    + Display|=(T implements Display and U implements Display)
+    + NTuple<T, U> 
+{
+    public var a: T;
+    public var b: U;
+    
+    new(first: T, second: U) {
+        this.a = first;
+        this.b = second;
+    }
+
+    public function [Clonable.clone]|=(
+        T implements Clonable and U implements Clonable
+    )() -> This {
+        return new Tuple(
+            this.a.clone(),
+            this.b.clone()
+        );
+    }
+    /// Converts the tuple to a string, provided that its elements implement
+    /// Display.
+    /// ### Usage
+    /// ```
+    /// tuple := pair("hello", 123);
+    /// str := tuple.toStr();
+    /// 
+    /// assert(str).equals("Tuple(hello, 123)");
+    /// ```
+    public function [Display.toStr]|=(
+        T implements Display and U implements Display
+    )() -> String {
+        return fmt("Tuple(%, %)")
+            .add(this.a)
+            .add(this.b)
+            .finish();
+    }
+
+    public function [NTuple.first]() -> ?T {
+        return some(this.a);
+    }
+    public function [NTuple.second]() -> ?U {
+        return some(this.b);
+    }
+
+    /// Returns a new tuple with the position of the two items in the tuple reversed.
+    /// ### Usage
+    /// ```
+    /// use core.collections.Tuple;
+    /// 
+    /// tuple := new Tuple(true, "story");
+    /// swapped := tuple.swap();
+    /// assertThat(swapped == new Tuple("story", true));
+    /// ```
+    public function swap() -> Tuple<U, T> {
+        new Tuple(this.b, this.a)
+    }
+    /// Concatenates the elements of the pair into one.
+    /// ### Usage
+    /// ```
+    /// tuple := pair("John ", "Doe");
+    /// joined := tuple.join();
+    /// 
+    /// assert(joined).equals("John Doe");
+    /// ```
+    public function join|=(T is U and T implements Addition)() -> T {
+        this.a + this.b
+    }
+}
+
+/// Takes two arguments of any type and returns a `Tuple` containing them.
+/// 
+/// It is useful for grouping related data or for passing multiple values 
+/// as a single unit.
+/// 
+/// ### Usage
+/// ```
+/// pair1 := pair(1, "apple");
+/// pair2 := pair(true, [1, 2, 3]);
+/// 
+/// // Accessing elements of the tuple.
+/// first := pair1.a; 
+/// assert(first).equals(1);
+/// 
+/// second := pair1.b;
+/// assert(second).equals("apple");
+/// ```
+public function pair<T, U>(a: T, b: U) -> Tuple<T, U> {
+    return new Tuple(a, b);
+}

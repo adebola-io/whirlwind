@@ -1,0 +1,81 @@
+module triple;
+
+use core.maybe.some;
+use core.interfaces.Clonable;
+use core.string.{Display, String, fmt};
+use ntuple.NTuple;
+
+
+/// A set containing four individual items.
+public model Triple<T, U, V> 
+    implements Clonable|=(
+            T implements Clonable 
+            and U implements Clonable 
+            and V implements Clonable
+        ) + Display|=(
+            T implements Display
+            and U implements Display 
+            and V implements Display
+        ) + NTuple<T, U, V>
+{
+    public var a: T;
+    public var b: U;
+    public var c: V;
+
+    new(first: T, second: U, third: V) {
+        this.a = first;
+        this.b = second;
+        this.c = third;
+    }
+
+    public function [Clonable.clone]|=(
+            T implements Clonable 
+            and U implements Clonable 
+            and V implements Clonable
+        )() -> This 
+    {
+        return new Triple(
+            this.a.clone(),
+            this.b.clone(),
+            this.c.clone()
+        );
+    }
+
+    public function [Display.toStr]|=(
+            T implements Display 
+            and U implements Display
+            and V implements Display
+        )() -> String
+    {
+        return fmt("Triple(%, %, %)")
+            .add(this.a.toStr())
+            .add(this.b.toStr())
+            .add(this.c.toStr())
+            .finish();
+    }
+
+    public function [NTuple.first]() -> ?T {
+        return some(this.a);
+    }
+    public function [NTuple.second]() -> ?U {
+        return some(this.b);
+    }
+    public function [NTuple.third]() -> ?V {
+        return some(this.c);
+    }
+    /// Reverses the triple from `Triple<T, U, V>` to
+    /// `Triple<V, U, T>`.
+    /// ### Usage
+    /// ```
+    /// use core.collections.Triple;
+    /// 
+    /// quadruple := new Triple("hello", false, some(9));
+    /// transposed := triple.transpose();
+    /// 
+    /// assert(transposed).equals(new Triple(some(9), false, "hello"));
+    /// ```
+    public function transpose() -> Triple<V, U, T> {
+        return new Triple(this.c, this.b, this.a);
+    }
+}
+

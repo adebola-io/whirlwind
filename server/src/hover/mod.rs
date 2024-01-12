@@ -225,7 +225,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
         };
         let body = &function.body;
         // hovering over function parts.
-        return self.fn_parts_hover(generic_params, params, return_type, Some(body));
+        return self.fn_parts_hover(generic_params, params, return_type, None, Some(body));
     }
     /// Hover over an enum declaration.
     fn enum_decl(&self, enum_decl: &analyzer::TypedEnumDeclaration) -> Option<HoverInfo> {
@@ -385,6 +385,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
             &function_expr.generic_params,
             &function_expr.params,
             &function_expr.return_type,
+            None,
             None
         ));
         self.expr(&function_expr.body)
@@ -473,9 +474,16 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
                         params,
                         generic_params,
                         return_type,
+                        constraint,
                         ..
                     } => {
-                        return self.fn_parts_hover(generic_params, params, return_type, Some(body))
+                        return self.fn_parts_hover(
+                            generic_params,
+                            params,
+                            return_type,
+                            constraint.as_ref().map(|(c, _)| c),
+                            Some(body),
+                        )
                     }
                     _ => return None,
                 },
@@ -491,12 +499,14 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
                             params,
                             generic_params,
                             return_type,
+                            constraint,
                             ..
                         } => {
                             return self.fn_parts_hover(
                                 generic_params,
                                 params,
                                 return_type,
+                                constraint.as_ref().map(|(c, _)| c),
                                 Some(body),
                             )
                         }
@@ -552,9 +562,16 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
                         params,
                         generic_params,
                         return_type,
+                        constraint,
                         ..
                     } => {
-                        return self.fn_parts_hover(generic_params, params, return_type, Some(body))
+                        return self.fn_parts_hover(
+                            generic_params,
+                            params,
+                            return_type,
+                            constraint.as_ref().map(|(c, _)| c),
+                            Some(body),
+                        )
                     }
                     _ => return None,
                 },
@@ -563,8 +580,17 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
                         params,
                         generic_params,
                         return_type,
+                        constraint,
                         ..
-                    } => return self.fn_parts_hover(generic_params, params, return_type, None),
+                    } => {
+                        return self.fn_parts_hover(
+                            generic_params,
+                            params,
+                            return_type,
+                            constraint.as_ref().map(|(c, _)| c),
+                            None,
+                        )
+                    }
                     _ => panic!("{symbol:?}"),
                 },
             }
@@ -757,8 +783,8 @@ impl HoverFinder<'_> {
         return None;
     }
 
-    fn type_clause(&self, condition: &Box<IntermediateTypeClause>) -> Option<HoverInfo> {
-        match condition.as_ref() {
+    fn type_clause(&self, condition: &IntermediateTypeClause) -> Option<HoverInfo> {
+        match condition {
             IntermediateTypeClause::Binary { left, right, .. } => {
                 maybe!(self.type_clause(left));
                 self.type_clause(right)
@@ -811,6 +837,7 @@ impl HoverFinder<'_> {
         generic_params: &Vec<analyzer::SymbolIndex>,
         params: &Vec<analyzer::SymbolIndex>,
         return_type: &Option<analyzer::IntermediateType>,
+        constraints: Option<&IntermediateTypeClause>,
         body: Option<&analyzer::TypedBlock>,
     ) -> Option<HoverInfo> {
         let body = body?;
@@ -824,6 +851,8 @@ impl HoverFinder<'_> {
         for param in params {
             maybe!(self.parameter(*param));
         }
+        // CONSTRAINTS
+        maybe!(constraints.and_then(|c| self.type_clause(c)));
         // RETURN TYPES.
         // Hovering over return type.
         maybe!(return_type

@@ -1,11 +1,15 @@
 module prospect;
 
-use core.process.sentinels.fatal;
-use core.prelude.{some, Array, todo, Bool};
-use core.internals.builtin;
-use core.primitives.UnsignedInt;
-use eventual.Eventual;
 use concurrent.SequenceError;
+use core.{
+    array.Array,
+    bool.Bool,
+    internals.builtin,
+    maybe.some,
+    numeric.UnsignedInt,
+    sentinels.{fatal, todo},
+};
+use eventual.Eventual;
 
 /// Asynchronous functions do not run automatically in Whirlwind. 
 /// 

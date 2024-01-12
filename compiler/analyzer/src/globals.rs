@@ -37,23 +37,23 @@ pub enum CurrentModuleType {
 }
 pub trait IntrinsicPaths {
     const PRELUDE: &'static str = "prelude/prelude.wrl";
-    const STRING: &'static str = "primitives/string.wrl";
-    const ARRAY: &'static str = "primitives/array.wrl";
-    const BOOL: &'static str = "primitives/bool.wrl";
-    const NUMERIC: &'static str = "primitives/numeric.wrl";
+    const STRING: &'static str = "string/string.wrl";
+    const ARRAY: &'static str = "array/array.wrl";
+    const BOOL: &'static str = "bool/bool.wrl";
+    const NUMERIC: &'static str = "numeric/numeric.wrl";
     const CONCURRENT: &'static str = "concurrent/concurrent.wrl";
     const PROSPECT: &'static str = "concurrent/prospect.wrl";
     const EVENTUAL: &'static str = "concurrent/eventual.wrl";
     const INTERNAL: &'static str = "internals/internals.wrl";
     const NEVER: &'static str = "internals/never.wrl";
-    const OPS: &'static str = "primitives/ops.wrl";
-    const INTERFACES: &'static str = "prelude/interfaces.wrl";
-    const RANGE: &'static str = "prelude/range.wrl";
-    const ITERATABLE: &'static str = "prelude/interfaces/iteration.wrl";
-    const TRY: &'static str = "prelude/interfaces/try.wrl";
-    const GUARANTEED: &'static str = "prelude/interfaces/guaranteed.wrl";
-    const DEFAULT: &'static str = "prelude/interfaces/default.wrl";
-    const MAYBE: &'static str = "prelude/maybe.wrl";
+    const OPS: &'static str = "ops/ops.wrl";
+    const INTERFACES: &'static str = "interfaces/interfaces.wrl";
+    const RANGE: &'static str = "ops/range.wrl";
+    const ITERATABLE: &'static str = "iterate/iterate.wrl";
+    const TRY: &'static str = "interfaces/try.wrl";
+    const GUARANTEED: &'static str = "interfaces/guaranteed.wrl";
+    const DEFAULT: &'static str = "interfaces/default.wrl";
+    const MAYBE: &'static str = "maybe/maybe.wrl";
 }
 
 pub const UNKNOWN: EvaluatedType = EvaluatedType::Unknown;

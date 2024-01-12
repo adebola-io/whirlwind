@@ -1,0 +1,468 @@
+/// Provides the fundamental `Array` model for storing and managing
+/// ordered collections of values.
+module array;
+
+use core.{
+    bool.Bool,
+    interfaces.{Clonable, Default},
+    internals.builtin,
+    iterate.{AsIterator, Iteratable, Reversed},
+    math.{max, min},
+    maybe.{none, some},
+    numeric.{Int, UnsignedInt},
+    ops.{Addition, Orderable},
+    sentinels.todo,
+    string.{Display, String}
+};
+
+/// A contiguous, growable list of items of the same type.
+public model Array<T> 
+    implements AsIterator<T, ArrayIter<T>> 
+        + Clonable|=(T implements Clonable)
+        + Default 
+        + Display|=(T implements Display)
+{
+    /// Returns an iterator over elements in this array.
+    /// ### Usage
+    /// ```
+    /// arr := [1, 2, 3];
+    /// iter := arr.iter();
+    /// 
+    /// assert(iter.next()).equals(some(1));
+    /// assert(iter.next()).equals(some(2));
+    /// assert(iter.next()).equals(some(3));
+    /// ```
+    public function [AsIterator.iter]() -> ArrayIter<T> {
+        new ArrayIter(this)
+    }
+    /// Creates and returns a deep clone of an array.
+    /// ### Usage
+    /// ```
+    /// arr := ["meet", "me", "at", "midnight"];
+    /// cloned := arr.clone();
+    /// 
+    /// assert(cloned).equals(arr);
+    /// ```
+    public function [Clonable.clone]|=(T implements Clonable)() -> This {
+        newArray := [];
+        for element in this {
+            newArray.push(element.clone())
+        }
+        return newArray;
+    }
+    /// Implementation of the default trait.
+    /// ### Usage
+    /// ```
+    /// var empty: []Int;
+    /// 
+    /// assert(empty).equals([]);
+    /// ```
+    static function [Default.init]() -> This {
+        return [];
+    }
+    /// Converts an array to a string representation,
+    /// given that its elements implement `Display`.
+    /// ### Usage
+    /// ```
+    /// arr := [1, 6, 7, 8, 10];
+    /// arrAsStr := arr.toStr();
+    /// 
+    /// assert(arrAsStr).equals("[1, 6, 7, 8, 10]");
+    /// ```
+    public function [Display.toStr]|=(T implements Display)() -> String {
+        string := "[";
+        i := 0;
+        length := this.length();
+        while i < length {
+            string.append(this[i].toStr());
+            if i + 1 != length {
+                string.append(", ");
+            };
+            i += 1;
+        }
+        string.append("]");
+        return string;
+    }
+    /// Sorts the current array in place, given that its elements are orderable.
+    /// ### Usage
+    /// ```
+    /// arr := [34, 21, 89, 11, 20, 46];
+    /// arr.sortInPlace();
+    /// assert(arr).equals([11, 20, 21, 34, 46, 89]);
+    /// ```
+    public function sortInPlace|=(T implements Orderable)() {
+        todo()
+    }
+    /// Returns a Sorted version of an array
+    /// given that its elements are orderable.
+    /// 
+    /// Sorting is stable, meaning that elements that have equal ordering 
+    /// remain in their original position.
+    /// ### Usage
+    /// ```
+    /// arr := [26, 10, 35, 16, 87, 1, 12];
+    /// arrSorted := arr.sort();
+    /// 
+    /// assert(arrSorted).equals([1, 10, 12, 16, 26, 35, 87]);
+    /// ```
+    public function sort|=(T implements Orderable)() -> []T {
+        todo()
+    }
+    /// Fills an array with default values, given that the element type can be defaulted.
+    /// ### Usage
+    /// ```
+    /// arr := [1, 2, 3];
+    /// arr.reset();
+    /// assert(arr).equals([0, 0, 0])
+    /// ```
+    public function reset|=(T implements Default)() {
+        i := 0;
+        length := this.length();
+        while i < length {
+            var def: T; // default value.
+            this[i] = def;
+            i += 1;
+        }
+    }
+    /// Returns the largest value in an array.
+    /// It returns an empty value if the array is empty.
+    /// ### Usage
+    /// ```
+    /// array := [2, 3, 4, 5, 6, 7];
+    /// largest := array.max();
+    /// 
+    /// assert(largest).equals(some(7));
+    /// ```
+    public function max|=(T implements Orderable)() -> ?T {
+        maximum := this.first()?;
+        this.iter().forEach(fn(value) maximum = max(maximum, value));
+        some(maximum)
+    }
+    /// Returns the smallest value in an array.
+    /// It returns an empty value if the array is empty.
+    /// ### Usage
+    /// ```
+    /// array := [2, 3, 4, 5, 6, 7];
+    /// smallest := array.min();
+    /// 
+    /// assert(smallest).equals(some(2));
+    /// ```
+    public function min|=(T implements Orderable)() -> ?T {
+        minimum := this.first()?;
+        this.iter().forEach(fn(value) minimum = min(minimum, value));
+        some(minimum)
+    }
+    /// Returns the sum of all the elements in the array.
+    /// If there are no elements in the array, it returns the default value of
+    /// the given type.
+    /// ### Usage
+    /// ```
+    /// array := [1, 2, 3, 4];
+    /// summed = array.sum()
+    /// 
+    /// assertThat(summed == 10);
+    /// 
+    /// array2 := [""]
+    /// ```
+    public function sum|=(T implements Addition + Default)() -> T {
+        var sum: T;
+        this.iter().forEach(fn(item) sum += item);
+        sum
+    }
+    /// Concatenates the elements in an array into one string and returns it.
+    /// 
+    /// If no separator argument is specified, a single whitespace will be used instead.
+    /// ### Usage
+    /// ```
+    /// array := ["Best", "believe", "I'm", "still", "bejeweled"];
+    /// joined := array.join();
+    /// 
+    /// assertThat(joined == "Best believe I'm still bejeweled");
+    /// 
+    /// array2 := [1, 2, 3, 4, 5];
+    /// joined2 := array2.join("+");
+    /// 
+    /// assertThat(joined2 == "1+2+3+4+5");
+    /// ```
+    public function join|=(T implements Display)(separator?: String) -> String {
+        separatorValue := separator.unwrapOr(" ");
+        string := "";
+        for { a as i, b as element } in this.iter().enumerate() 
+        {
+            string += element.toStr();
+            if i + 1 != this.length() {
+                string += separatorValue;
+            }
+        }
+        return string;
+    }
+    /// Returns the item at a particular index in the array, if it exists.
+    /// Indexes are zero-based, meaning that the first item is at index 0.
+    /// ### Usage
+    /// ```
+    /// arr := [1, 2, 3, 4];
+    /// assertThat(arr.at(0) == some(1));
+    /// assertThat(arr.at(1) == some(2));
+    /// ```
+    /// Elements can also be indexed from behind the array.
+    /// Backward indexes are one-based, meaning the index -1 is the
+    /// last item in the array.
+    /// ```
+    /// arr := [15, 25, 35, 45, 55];
+    /// assert(arr.at(-1) == some(55))
+    /// ```
+    public function at(index: Int) -> ?T {
+        return builtin.arrays.at(this, index);
+    }
+    /// Checks if an item is contained in the array.
+    /// ### Usage
+    /// ```
+    /// str := "Hello, world";
+    /// array := [];
+    /// array.push(str);
+    /// 
+    /// assertThat(array.contains(str));
+    /// ```
+    public function contains(value: T) -> Bool {
+        return builtin.arrays.contains(this, value);
+    }
+    /// Removes all elements in the array.
+    /// ### Usage
+    /// ```
+    /// arr := [1, 2, 3, 4];
+    /// 
+    /// arr.clear();
+    /// assertThat(arr.length() == 0);
+    /// assertThat(arr == []);
+    /// ```
+    public function clear() {
+        builtin.arrays.clear(this)
+    }
+    /// Returns a reference to the first item in the array, if it exists.
+    /// ### Usage
+    /// ```
+    /// arr := [20, 30, 40, 50, 60];
+    /// assert(arr.first().unwrap()).equals(20);
+    /// 
+    /// empty: []Int := [];
+    /// assertThat(empty.first() == none());
+    /// ```
+    public function first() -> ?T {
+        if this.length() == 0 { none() } 
+        else some(this[0])
+    }
+    /// Determines whether a given sub-array is contained within
+    /// a main array. The order in the sub-array must be preserved
+    /// in the main array for the result to be true.
+    /// 
+    /// ### Usage
+    /// ```
+    /// mainArray := [1, 2, 3, 4, 5, 6];
+    /// subArray := [4, 5, 6];
+    /// 
+    /// assertThat(mainArray.includes(subArray));
+    /// 
+    /// anotherSubArray := [4, 6, 5];
+    /// assertThat(!mainArray.includes(anotherSubArray));
+    /// ```
+    public function includes(subarray: []T) -> Bool {
+        return builtin.arrays.includes(this, subarray);
+    }
+    /// Returns the zero-based index of a value in the array.
+    /// 
+    /// ### Usage
+    /// ```
+    /// str1 := "Hello, world!";
+    /// str2 := "Welcome to a new era!";
+    /// str3 := "This is the future!";
+    /// 
+    /// arr := [str1, str2, str3];
+    /// assert(arr.IndexOf(str2) == some(1)).
+    /// ```
+    public function indexOf(value: T) -> ?UnsignedInt {
+        return builtin.arrays.indexOf(this, value);
+    }
+    /// Inserts an element at an index in the array,
+    /// shifting all suceeding elements forward.
+    /// ### Usage
+    /// ```
+    /// arr := [1, 3, 4, 5];
+    /// arr.insert(1, 2);
+    /// assert(arr.at(1) == some(2));
+    /// ```
+    public function insert(index: UnsignedInt, value: T) {
+        builtin.arrays.insert(this, index, value);
+    }
+    /// Inserts all the items from another array at the start of this array,
+    /// shifting all its prior elements forward.
+    /// ### Usage
+    /// ```
+    /// arr := [5, 6, 7, 8];
+    /// arr.prepend([1, 2, 3, 4]);
+    /// assert(arr == [1, 2, 3, 4, 5, 6, 7, 8]);
+    /// ```
+    public function prepend(prefix: []T) {
+        builtin.arrays.prepend(this, prefix);
+    }
+    /// Returns the element before the last element in this array,
+    /// if it exists.
+    /// ### Usage
+    /// ```
+    /// arr := [5, 6, 7, 8];
+    /// assertThat(arr.penultimate() == some(7));
+    /// ```
+    public function penultimate() -> ?T {
+        builtin.arrays.penultimate(this)
+    }
+    /// Divides the array into two new arrays: one containing elements that pass
+    /// a test function, and another with elements that don't.
+    /// ### Usage
+    /// ```
+    /// arr := ["Arnold", "Daniel", "Harriet", "Donald", "Dele"];
+    /// 
+    /// var [startsWithD, others] = arr.partition(fn(x) x.startsWith("D"));
+    /// 
+    /// assertThat(startsWithD == ["Donald", "Dele", "Daniel"]);
+    /// assertThat(others == ["Arnold", "Harriet"]);
+    /// ```
+    public function partition(check: fn(item: T) -> Bool) -> [][]T {
+        return builtin.arrays.partition(this, check);
+    }
+    /// Returns the number of items in the array.
+    /// ### Usage
+    /// ```
+    /// arr := [1, 2, 3, 4];
+    /// assert(arr.length()).equals(4);
+    /// ```
+    public function length() -> UnsignedInt {
+        return builtin.arrays.length(this);
+    }
+    /// Adds an item to the end of the array.
+    /// ### Usage
+    /// ```
+    /// array := [2, 4, 6, 8];
+    /// assert(array.length()).equals(4);
+    /// 
+    /// array.push(10);
+    /// assert(array).equals([2, 4, 5, 8, 10]);
+    /// assert(array.length()).equals(5);
+    /// ```
+    public function push(value: T) {
+        builtin.arrays.push(this, value)
+    }
+    /// Removes an item from the end of the array.
+    /// ### Usage
+    /// ```
+    /// array := [1, 2, 3];
+    /// 
+    /// array.pop();
+    /// assert(array).equals([1, 2]);
+    /// 
+    /// array.pop();
+    /// assert(array).equals([1]);
+    /// ```
+    public function pop() -> ?T {
+        return builtin.arrays.pop(this);
+    }
+    /// Returns an iterator that produces elements from the end of the array
+    /// to the start.
+    /// ### Usage
+    /// ```
+    /// array := [7, 8, 9];
+    /// rev := array.reverse();
+    /// 
+    /// assertThat(rev.next() == some(9));
+    /// assertThat(rev.next() == some(8));
+    /// assertThat(rev.next() == some(7));
+    /// 
+    /// assertThat(rev.next() == none());
+    /// ```
+    public function reverse() -> Reversed<T> {
+        return new Reversed(this);
+    }
+    /// Randomly selects a specific number of elements from
+    /// the array.
+    /// 
+    /// If the length given is larger than the length of the
+    /// original array, then it will be ignored, and a shuffled
+    /// version of the whole array will be returned.
+    /// ### Usage
+    /// ```
+    /// arr := [1, 2, 3, 4, 5];
+    /// 
+    /// twoItems := arr.sample(2);
+    /// ```
+    public function sample(n: UnsignedInt) -> []T {
+        if n > this.length() {
+            return this.shuffled();
+        };
+        todo()
+    }
+    /// Removes the first item in the array
+    /// and shifts all the other items backward
+    /// by one index.
+    /// 
+    /// This operation has a time complexity of _O(n)_.
+    /// ### Usage
+    /// ```
+    /// arr := [1, 2, 3, 4];
+    /// firstItem := arr.shift();
+    /// 
+    /// assert(arr).equals([2, 3, 4]);
+    /// assert(firstItem).equals(some(1));
+    /// ```
+    /// If there is no element in the array,
+    /// then none() is returned, and the operation 
+    /// does nothing.
+    /// ```
+    /// arr := [];
+    /// firstItem := arr.shift();
+    /// 
+    /// assert(arr).equals([]);
+    /// assert(firstItem).equals(none());
+    /// ```
+    public function shift() -> ?T {
+        if this.length() == 0 {
+            return none();
+        } else {
+            todo()
+        }
+    }
+    /// Returns a new, shuffled version of the array.
+    /// ### Usage
+    /// ```
+    /// arr := [1, 2, 3];
+    /// 
+    /// shuffledArray := arr.shuffled();
+    /// ```
+    public function shuffled() -> []T {
+        todo()
+    }
+    /// Returns a reference to the last item in the array.
+    public function last() -> ?T {
+        if this.length() == 0 { none() } 
+        else some(this[this.length() - 1])
+    }
+}
+
+
+/// An iterator built from the elements of an array.
+public model ArrayIter<T> implements Iteratable<T> {
+    var array: Array<T>;
+    var idx: UnsignedInt;
+    
+    new(array: Array<T>) {
+        this.array = array;
+        this.idx = 0;
+    }
+
+    public function [Iteratable.next]() -> ?T {
+        length := this.array.length();
+        if length == this.idx {
+            return none();
+        };
+        nextItem := this.array[this.idx];
+        this.idx += 1;
+        return some(nextItem);
+    }
+}

@@ -141,6 +141,7 @@ pub enum SemanticSymbolKind {
         is_async: bool,
         is_virtual: bool,
         owner_model_or_interface: SymbolIndex,
+        constraint: Option<(IntermediateTypeClause, Span)>,
         property_index: usize,
         params: Vec<SymbolIndex>,
         generic_params: Vec<SymbolIndex>,

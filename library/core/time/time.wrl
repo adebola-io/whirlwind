@@ -1,7 +1,9 @@
 module time;
 
-use core.primitives.UnsignedInt;
-use core.prelude.todo;
+use core.{
+    numeric.UnsignedInt,
+    sentinels.todo
+};
 
 public type Duration = Second | Millisecond;
 

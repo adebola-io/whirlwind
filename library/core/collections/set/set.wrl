@@ -1,11 +1,15 @@
 module set;
 
-public use orderedSet;
-use core.prelude.{
-    Bool, UnsignedInt, todo, AsIterator, Iteratable,
-    // Maybe,
+use core.{
+    bool.Bool,
+    iterate.{AsIterator, Iteratable},
+    interfaces.Clonable,
+    numeric.UnsignedInt,
+    sentinels.todo,
+    string.{Display, String}
 };
 use super.{Hash, HashMap};
+
 
 public model SetIterator<T> implements Iteratable<T> {
     public function [Iteratable.next]() -> ?T {
@@ -17,8 +21,8 @@ public model SetIterator<T> implements Iteratable<T> {
 /// of unique elements, akin to the mathematical concept of a set.
 public model Set<T implements Hash> 
     implements AsIterator<T, SetIterator<T>> 
-    // + Clonable[where T implements Clonable]
-    // + Display[where T implements Display]
+    + Clonable|=(T implements Clonable)
+    + Display|=(T implements Display)
     + Hash
 {
     var items: HashMap<T, Bool>;
@@ -33,14 +37,21 @@ public model Set<T implements Hash>
     public function [AsIterator.iter]() -> SetIterator<T> {
         todo()
     }
-    // public function [Clonable.clone][where T implements Clonable]() -> This {
-    //     todo()
-    // }
-    // public function [Display.toStr][where T implements Display]() -> String {
-    //     str := new String();
-
-    //     str
-    // }
+    public function [Clonable.clone]|=(T implements Clonable)() -> This {
+        todo()
+    }
+    public function [Display.toStr]|=(T implements Display)() -> String {
+        str := "Set { ";
+        for { a as idx, b as tuple } in this.items.iter().enumerate() {
+            var { a as item } = tuple;
+            str += item.toStr();
+            if idx + 1 != this.items.length() {
+                str += ", "
+            }
+        }
+        str += " }";
+        str
+    }
     /// Adds an element to the set.
     /// 
     /// ### Usage

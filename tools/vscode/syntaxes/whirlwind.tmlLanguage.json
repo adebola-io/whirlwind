@@ -299,7 +299,7 @@
          "end": "(?=\\s*\\))"
       },
       "interface_implementation": {
-         "match": "\\b(function)\\s*(\\[[^\\]]+\\])\\s*(\\<[^\\>]+\\>\\s*)?(\\[[^\\]]+\\])?(?=\\()",
+         "match": "\\b(function)\\s*(\\[[^\\]]+\\])\\s*(\\<[^\\>]+\\>)?\\s*(\\|\\=.+)?(?=(\\(|\\|\\=))",
          "captures": {
             "1": {
                "patterns": [
@@ -341,6 +341,14 @@
                "end": "(?=[^[A-Za-z0-9]])"
             },
             { "include": "#generic_params" },
+            {
+               "match": "\\s*\\|\\=(.+\\s*)(?=\\()",
+               "captures": {
+                  "1": {
+                     "patterns": [{ "include": "#type_expression" }]
+                  }
+               }
+            },
             { "include": "$self" }
          ],
          "end": "(?=\\))"
@@ -392,6 +400,9 @@
                "name": "constant.language",
                "match": "\\s*This\\s*"
             },
+            {
+               "include": "#special_keyword"
+            },
             { "include": "#conditional_type" },
             { "include": "#function_type" },
             {
@@ -425,7 +436,7 @@
          "end": "(?=\\)|\\{|\\;)"
       },
       "conditional_type": {
-         "begin": "(\\bif|where\\b)",
+         "begin": "(\\bif\\b)",
          "beginCaptures": {
             "1": {
                "name": "keyword.control"

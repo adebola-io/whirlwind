@@ -1,0 +1,106 @@
+module sextuple;
+
+use core.maybe.some;
+use core.interfaces.Clonable;
+use core.string.{fmt, Display, String};
+use ntuple.NTuple;
+
+
+/// A set containing six individual items.
+public model Sextuple<T, U, V, W, X, Y> 
+    implements Clonable|=(
+            T implements Clonable 
+            and U implements Clonable 
+            and V implements Clonable
+            and W implements Clonable
+            and X implements Clonable
+            and Y implements Clonable
+        ) + Display|=(
+            T implements Display
+            and U implements Display 
+            and V implements Display
+            and W implements Display
+            and X implements Display
+            and Y implements Display
+        ) + NTuple<T, U, V, W, X, Y>
+{
+    public var a: T;
+    public var b: U;
+    public var c: V;
+    public var d: W;
+    public var e: X;
+    public var f: Y;
+
+    new(
+        first: T, 
+        second: U, 
+        third: V, 
+        fourth: W, 
+        fifth: X, 
+        sixth: Y
+    ) {
+        this.a = first;
+        this.b = second;
+        this.c = third;
+        this.d = fourth;
+        this.e = fifth;
+        this.f = sixth;
+    }
+
+    public function [Clonable.clone]|=(
+            T implements Clonable 
+            and U implements Clonable 
+            and V implements Clonable
+            and W implements Clonable
+            and X implements Clonable
+            and Y implements Clonable
+        )() -> This 
+    {
+        return new Sextuple(
+            this.a.clone(),
+            this.b.clone(),
+            this.c.clone(),
+            this.d.clone(),
+            this.e.clone(),
+            this.f.clone()
+        );
+    }
+
+    public function [Display.toStr]|=(
+            T implements Display
+            and U implements Display 
+            and V implements Display
+            and W implements Display
+            and X implements Display
+            and Y implements Display
+        )() -> String
+    {
+        return fmt("Sextuple(%, %, %, %, %, %)")
+            .add(this.a.toStr())
+            .add(this.b.toStr())
+            .add(this.c.toStr())
+            .add(this.d.toStr())
+            .add(this.e.toStr())
+            .add(this.f.toStr())
+            .finish();
+    }
+
+    public function [NTuple.first]() -> ?T {
+        return some(this.a);
+    }
+    public function [NTuple.second]() -> ?U {
+        return some(this.b);
+    }
+    public function [NTuple.third]() -> ?V {
+        return some(this.c);
+    }
+    public function [NTuple.fourth]() -> ?W {
+        return some(this.d);
+    }
+    public function [NTuple.fifth]() -> ?X {
+        return some(this.e);
+    }
+    public function [NTuple.sixth]() -> ?Y {
+        return some(this.f);
+    }
+}

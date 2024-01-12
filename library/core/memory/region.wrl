@@ -1,8 +1,10 @@
 module region;
 
-use core.process.sentinels.todo;
-use core.primitives.UnsignedInt;
-use core.primitives.Bool;
+use core.{
+    bool.Bool,
+    numeric.UnsignedInt,
+    sentinels.todo
+};
 
 public enum RegionOperationError {
     AlreadyDestroyed,

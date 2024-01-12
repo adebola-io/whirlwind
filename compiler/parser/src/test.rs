@@ -498,7 +498,7 @@ fn parsing_this_type() {
 
 #[test]
 fn parse_constrained_type() {
-    let mut parser = parse_text("type A = B[where C implements D];");
+    let mut parser = parse_text("type A = B|=C implements D;");
     let statement = parser.next().unwrap().unwrap();
     let module_ambience = parser.module_ambience();
 
@@ -515,7 +515,52 @@ fn parse_constrained_type() {
         statement,
         Statement::TypeDeclaration(TypeDeclaration {
             address: ScopeAddress::from([0, 0, 0]),
-            span: Span::from([1, 1, 1, 34])
+            span: Span::from([1, 1, 1, 28])
+        })
+    );
+
+    // with brackets.
+    let mut parser = parse_text("type A = B|=(C implements D|=A is B);");
+    let statement = parser.next().unwrap().unwrap();
+    let module_ambience = parser.module_ambience();
+
+    assert!(module_ambience
+        .lookaround("A")
+        .is_some_and(|search| matches!(
+            search.entry, ast::ScopeEntry::Type(t) if matches!(
+                t.value,
+                TypeExpression::Constraint{ .. }
+            )
+        )));
+
+    assert_eq!(
+        statement,
+        Statement::TypeDeclaration(TypeDeclaration {
+            address: ScopeAddress::from([0, 0, 0]),
+            span: Span::from([1, 1, 1, 38])
+        })
+    );
+
+    // binary clause.
+    let mut parser =
+        parse_text("type A = B|=(C implements D|=A is B and C is D<G> and E implements F);");
+    let statement = parser.next().unwrap().unwrap();
+    let module_ambience = parser.module_ambience();
+
+    assert!(module_ambience
+        .lookaround("A")
+        .is_some_and(|search| matches!(
+            search.entry, ast::ScopeEntry::Type(t) if matches!(
+                t.value,
+                TypeExpression::Constraint{ .. }
+            )
+        )));
+
+    assert_eq!(
+        statement,
+        Statement::TypeDeclaration(TypeDeclaration {
+            address: ScopeAddress::from([0, 0, 0]),
+            span: Span::from([1, 1, 1, 71])
         })
     );
 }

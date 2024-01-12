@@ -1,24 +1,2 @@
 module serialize;
 
-use core.memory.Buffer;
-use core.process.sentinels.todo;
-use core.prelude.Outcome;
-use json.JsonValue;
-
-
-public interface Serializeable {
-    public function toBytes() -> Buffer;
-    public function toJson() -> JsonValue {
-        todo()
-    }
-}
-
-enum SerializeErrorType {}
-public model SerializeError {
-    var typ: SerializeErrorType;
-}
-
-public interface Deserializeable {
-    public function fromBytes(bytes: Buffer) -> This;
-    public function fromJson(bytes: Buffer) -> Outcome<This, SerializeError>;
-}

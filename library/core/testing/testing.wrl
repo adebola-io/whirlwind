@@ -1,9 +1,11 @@
 module testing;
 
-use core.prelude.{Bool, Display, Array};
-use core.process.sentinels.fatalOnCaller;
-use core.io.fmt;
-use core.primitives.String;
+use core.{
+    bool.Bool,
+    iterate.{AsIterator, Iteratable},
+    sentinels.fatalOnCaller,
+    string.{Display, fmt, String}
+};
 
 /// Creates an assertion object.
 public function assert<T implements Display>(value: T) -> Assertion<T> {
@@ -53,19 +55,13 @@ public model Assertion<T implements Display> {
         };
         return this;
     }
-}
-
-
-/// Checks that an array is empty.
-public function arrayIsEmpty<T>(arr: Array<T>) {
-    if arr.length() != 0 {
-        message := fmt("Assertion failed because array is not empty.\n");
-        message.extend("Array Length: %").add(arr.length());
-        fatalOnCaller(message.finish());
+    /// Checks that a collection type is empty
+    public function isEmpty<U, V implements Iteratable<U>>|=(T implements AsIterator<U, V>)() {
+        length := this.value.iter().count();
+        if this.iter().next().isSome() {
+            message := fmt("Assertion failed because array is not empty.\n");
+            message.extend("Array Length: %").add(length);
+            fatalOnCaller(message.finish());
+        }
     }
-}
-
-
-test "doStuff" {
-   
 }

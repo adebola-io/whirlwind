@@ -1,0 +1,43 @@
+module try;
+
+use core.prelude.Outcome;
+
+/// The Try interface allows usage of the `?` operator on expressions
+/// that may have uncertain or error-prone values. It propagates the
+/// empty or error value if the expression has one, or returns the valid value
+/// otherwise.
+/// 
+/// The interface is implemented by the `Maybe` and `Outcome` models.
+/// It has a requirement that the enclosing function must have a return type
+/// equal or unifiable to the type of the expression.
+/// 
+/// For example, here are two approaches to doubling a stringified integer:
+/// 
+/// #### First Approach:
+/// ```
+/// use core.math.parseInt;
+/// 
+/// function parseAndDouble1(numberStr: String) -> Maybe<Int> {
+///     maybeInteger := parseInt(numberStr);
+///     if maybeInteger.isNone() {
+///         return none();
+///     }
+///     integer := maybeInteger.unwrap();
+///     return some(integer * integer);
+/// }
+/// ```
+/// #### Second Approach:
+/// ```
+/// function parseAndDouble2(numberStr: String) -> Maybe<Int> {
+///     // parseInt returns a Maybe<Int>. If the integer cannot be
+///     // parsed, the none() value gotten is immediately
+///     // returned from this function. If the parsing is 
+///     // successful, then the value is passed to the variable
+///     // "integer".
+///     integer := parseInt()?; 
+///     return some(integer * integer);
+/// }
+/// ```
+public interface Try<T, U> {
+    function try() -> Outcome<T, U>;
+}

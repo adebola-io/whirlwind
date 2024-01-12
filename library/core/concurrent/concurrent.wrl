@@ -3,12 +3,14 @@
 /// for the creation and utilization of asynchronous processes.
 module concurrent;
 
-use core.prelude.{todo, String};
-use core.internals.builtin;
-use core.primitives.UnsignedInt;
-
-public use prospect.Prospect;
+use core.{
+    internals.builtin,
+    numeric.UnsignedInt,
+    string.String,
+    sentinels.todo
+};
 public use eventual.Eventual;
+public use prospect.Prospect;
 
 /// Runs a prospect immediately, blocking the current execution sequence until it is finished.
 ///

@@ -1498,6 +1498,7 @@ mod statements {
                     is_async: method.is_async,
                     is_virtual: false,
                     owner_model_or_interface: owner,
+                    constraint: None,
                     property_index: index,
                     params: vec![],
                     generic_params: vec![],
@@ -1531,6 +1532,7 @@ mod statements {
         let method_generic_params = method.generic_params.take();
         let method_params = take(&mut method.params);
         let return_type = method.return_type.take();
+        let constraint = method.constraint.take();
         // Add return type, generic parameters and parameters.
         let generic_params_solved = bind_generic_parameters(
             method_generic_params.as_ref(),
@@ -1548,6 +1550,12 @@ mod statements {
             literals,
             ambience,
         );
+        let constraint_solved = constraint.as_ref().map(|(clause, span)| {
+            (
+                types::bind_type_clause(clause, binder, symbol_library, errors, ambience),
+                *span,
+            )
+        });
         let return_type_solved = return_type.as_ref().map(|rtype| {
             types::bind_type_expression(rtype, binder, symbol_library, errors, ambience)
         });
@@ -1556,11 +1564,13 @@ mod statements {
             params,
             generic_params,
             return_type,
+            constraint,
             ..
         } = &mut symbol_library.get_mut(symbol_idx).unwrap().kind
         {
             *generic_params = generic_params_solved;
             *return_type = return_type_solved;
+            *constraint = constraint_solved;
             *params = parameters;
         }
         let method = TypedModelProperty {
@@ -2060,6 +2070,7 @@ mod statements {
                     is_async: method.is_async,
                     is_virtual: true,
                     owner_model_or_interface: owner,
+                    constraint: None,
                     property_index: index,
                     params: vec![],
                     generic_params: vec![],
@@ -2085,7 +2096,8 @@ mod statements {
         let method_generic_params = method.generic_params.take();
         let method_params = take(&mut method.params);
         let return_type = method.return_type.take();
-        // Add return type, generic parameters and parameters.
+        let constraint = method.constraint.take();
+        // Add return type, generic parameters, constraints and parameters.
         let generic_params_solved = bind_generic_parameters(
             method_generic_params.as_ref(),
             binder,
@@ -2093,6 +2105,12 @@ mod statements {
             errors,
             ambience,
         );
+        let constraint_solved = constraint.as_ref().map(|(clause, span)| {
+            (
+                types::bind_type_clause(clause, binder, symbol_library, errors, ambience),
+                *span,
+            )
+        });
         let (_, parameters) = bind_function_block(
             // Fake block to uphold the function.
             {
@@ -2120,11 +2138,13 @@ mod statements {
             params,
             generic_params,
             return_type,
+            constraint,
             ..
         } = &mut symbol_library.get_mut(symbol_idx).unwrap().kind
         {
             *generic_params = generic_params_solved;
             *return_type = return_type_solved;
+            *constraint = constraint_solved;
             *params = parameters;
         }
         // Add to owner interfaceface's method list.
@@ -2197,6 +2217,7 @@ mod statements {
                     is_async: method.is_async,
                     is_virtual: false,
                     owner_model_or_interface: owner,
+                    constraint: None,
                     property_index: index,
                     params: vec![],
                     generic_params: vec![],
@@ -2222,7 +2243,8 @@ mod statements {
         let method_generic_params = method.generic_params.take();
         let method_params = take(&mut method.params);
         let return_type = method.return_type.take();
-        // Add return type, generic parameters and parameters.
+        let constraint = method.constraint.take();
+        // Add return type, generic parameters, constraints and parameters.
         let generic_params_solved = bind_generic_parameters(
             method_generic_params.as_ref(),
             binder,
@@ -2230,6 +2252,12 @@ mod statements {
             errors,
             ambience,
         );
+        let constraint_solved = constraint.as_ref().map(|(clause, span)| {
+            (
+                types::bind_type_clause(clause, binder, symbol_library, errors, ambience),
+                *span,
+            )
+        });
         let (body, parameters) = bind_function_block(
             body,
             method_params,
@@ -2247,11 +2275,13 @@ mod statements {
             params,
             generic_params,
             return_type,
+            constraint,
             ..
         } = &mut symbol_library.get_mut(symbol_idx).unwrap().kind
         {
             *generic_params = generic_params_solved;
             *return_type = return_type_solved;
+            *constraint = constraint_solved;
             *params = parameters;
         }
         // Add to owner interface's method list.

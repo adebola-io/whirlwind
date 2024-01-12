@@ -1,0 +1,107 @@
+module quadruple;
+
+use core.maybe.some;
+use core.interfaces.{Clonable};
+use core.string.{fmt, Display, String};
+use ntuple.NTuple;
+use tuple.{Tuple, pair};
+
+
+/// A set containing four individual items.
+public model Quadruple<T, U, V, W> 
+    implements Clonable|=(
+            T implements Clonable 
+            and U implements Clonable 
+            and V implements Clonable
+            and W implements Clonable
+        ) + Display|=(
+            T implements Display
+            and U implements Display 
+            and V implements Display
+            and W implements Display
+        ) + NTuple<T, U, V, W>
+{
+    public var a: T;
+    public var b: U;
+    public var c: V;
+    public var d: W;
+
+    new(first: T, second: U, third: V, fourth: W) {
+        this.a = first;
+        this.b = second;
+        this.c = third;
+        this.d = fourth;
+    }
+
+    public function [Clonable.clone]|=(
+            T implements Clonable 
+            and U implements Clonable 
+            and V implements Clonable
+            and W implements Clonable
+        )() -> This 
+    {
+        return new Quadruple(
+            this.a.clone(),
+            this.b.clone(),
+            this.c.clone(),
+            this.d.clone()
+        );
+    }
+
+    public function [Display.toStr]|=(
+            T implements Display 
+            and U implements Display
+            and V implements Display
+            and W implements Display
+        )() -> String
+    {
+        return fmt("Quadruple(%, %, %, %)")
+            .add(this.a.toStr())
+            .add(this.b.toStr())
+            .add(this.c.toStr())
+            .add(this.d.toStr())
+            .finish();
+    }
+
+    public function [NTuple.first]() -> ?T {
+        return some(this.a);
+    }
+    public function [NTuple.second]() -> ?U {
+        return some(this.b);
+    }
+    public function [NTuple.third]() -> ?V {
+        return some(this.c);
+    }
+    public function [NTuple.fourth]() -> ?W {
+        return some(this.d);
+    }
+
+    /// Groups the items in the quadruple to two tuples.
+    /// ###  Usage
+    /// ```
+    /// use core.collections.{Quadruple, Tuple};
+    /// 
+    /// quadruple := new Quadruple(1, "Sefunmi", true, [35.5]);
+    /// var { a as first, b as second } = quadruple.toTuple();
+    /// 
+    /// assert(first).equals(new Tuple(1, "Sefunmi"));
+    /// assert(second).equals(new Tuple(true, [35.5]));
+    /// ```
+    public function toTuple() -> Tuple<Tuple<T, U>, Tuple<V, W>> {
+        return pair(pair(this.a, this.b), pair(this.c, this.d));
+    }
+    /// Reverses the quadruple from `Quadruple<T, U, V, W>` to
+    /// `Quadruple<W, V, U, T>`.
+    /// ### Usage
+    /// ```
+    /// use core.collections.Quadruple;
+    /// 
+    /// quadruple := new Quadruple("hello", false, some(9), 1.44);
+    /// transposed := quadruple.transpose();
+    /// 
+    /// assert(transposed).equals(new Quadruple(1.44, some(9), false, "hello"));
+    /// ```
+    public function transpose() -> Quadruple<W, V, U, T> {
+        return new Quadruple(this.d, this.c, this.b, this.a);
+    }
+}

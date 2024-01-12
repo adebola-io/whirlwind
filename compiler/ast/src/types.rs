@@ -111,7 +111,7 @@ pub struct DiscreteType {
 }
 
 /// A type that can only be used when a certain condition is true.
-/// e.g. type Name<T> = Value<T>[where T implements Default];
+/// e.g. type Name<T> = Value<T>|=T implements Default;
 #[derive(PartialEq, Debug, Clone, Hash)]
 pub struct BoundConstraintType {
     pub consequent: DiscreteType,
@@ -134,6 +134,16 @@ pub enum TypeClause {
         base: Identifier,
         other: TypeExpression,
     },
+}
+
+impl TypeClause {
+    /// Returns `true` if the type clause is [`Binary`].
+    ///
+    /// [`Binary`]: TypeClause::Binary
+    #[must_use]
+    pub fn is_binary(&self) -> bool {
+        matches!(self, Self::Binary { .. })
+    }
 }
 
 /// A shorthand for a list type. e.g. `type Bytes = []Uint8;`

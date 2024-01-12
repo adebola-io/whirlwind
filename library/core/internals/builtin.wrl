@@ -1,9 +1,16 @@
 module builtin;
 
-use core.prelude.{Array, Bool, Outcome, Range, String, some};
-use core.primitives.{UnsignedInt, UInt8, Int};
-use core.concurrent.{Prospect, Eventual, Sequence};
-use core.memory.WeakRef;
+use core.{
+    array.Array, 
+    bool.Bool, 
+    concurrent.{Prospect, Eventual, Sequence},
+    maybe.some,
+    memory.WeakRef,
+    numeric.{Int, UInt8, UnsignedInt},
+    ops.Range, 
+    outcome.Outcome, 
+    string.String, 
+};
 use injunction.{InjunctionType, Injunction, invoke};
 use never.never;
 
@@ -199,10 +206,6 @@ public function weakref<T>(value: T) -> WeakRef<T> {
 
 public function deref<T>(value: WeakRef<T>) -> ?T {
     invoke(builtin(InjunctionType.Deref), some(value))
-}
-
-public function print(message: String) {
-    invoke(builtin(InjunctionType.Print), some(message))
 }
 
 public function exit(code?: UInt8) -> never {

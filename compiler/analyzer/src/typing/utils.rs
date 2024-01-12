@@ -1,7 +1,7 @@
 use crate::{
-    evaluate, unify_generic_arguments, unify_types, DiagnosticType, EvaluatedType, LiteralMap,
-    ParameterType, PathIndex, ProgramDiagnostic, SemanticSymbolKind, SymbolIndex, SymbolLibrary,
-    TypecheckerContext, TypedExpression, UnifyOptions,
+    evaluate, unify_generic_arguments, unify_types, DiagnosticType, EvaluatedType,
+    IntermediateType, LiteralMap, ParameterType, PathIndex, ProgramDiagnostic, SemanticSymbolKind,
+    SymbolIndex, SymbolLibrary, TypecheckerContext, TypedExpression, UnifyOptions,
 };
 use errors::{TypeError, TypeErrorType};
 /// Returns an intrinsic symbol from the symbol table or returns an unknown type.
@@ -539,13 +539,18 @@ pub fn get_interface_types_from_symbol(
     return interface_types;
 }
 
-/// Get an implementation of a interface from an evaluated type, if it exists.
+/// Extracts the implementation of an interface from an evaluated type,
+/// if it exists.
+///
+/// If the implementation is conditional, it will solve the constaint
+/// and return the implementation if the bounds are upheld. Otherwise
+/// it will return None.
 pub fn get_implementation_of(
     target_interface: SymbolIndex,
-    operand_type: &EvaluatedType,
+    eval_type: &EvaluatedType,
     symbollib: &SymbolLibrary,
 ) -> Option<EvaluatedType> {
-    match operand_type {
+    match eval_type {
         EvaluatedType::ModelInstance { model: base, .. }
         | EvaluatedType::InterfaceInstance {
             interface_: base, ..
@@ -567,10 +572,21 @@ pub fn get_implementation_of(
                 _ => return None,
             };
             for implementation in implementation_list {
-                let evaluated = evaluate(implementation, symbollib, None, &mut None, 0);
-                if let EvaluatedType::InterfaceInstance { interface_, .. } = &evaluated {
-                    if *interface_ == target_interface {
-                        return Some(evaluated);
+                match implementation {
+                    IntermediateType::BoundConstraintType {
+                        consequent,
+                        clause,
+                        span,
+                    } => {
+                        let consequent = evaluate(&consequent, symbollib, None, &mut None, 0);
+                    }
+                    _ => {
+                        let evaluated = evaluate(implementation, symbollib, None, &mut None, 0);
+                        if let EvaluatedType::InterfaceInstance { interface_, .. } = &evaluated {
+                            if *interface_ == target_interface {
+                                return Some(evaluated);
+                            }
+                        }
                     }
                 }
             }
@@ -603,7 +619,7 @@ pub fn get_numeric_type(
 ) -> EvaluatedType {
     let evaluate_index = |value| {
         evaluate(
-            &crate::IntermediateType::SimpleType {
+            &IntermediateType::SimpleType {
                 value,
                 generic_args: vec![],
                 span: ast::Span::default(),

@@ -1,11 +1,13 @@
 module json;
 
-use core.prelude.{Bool, String, Number, none, some};
-use core.process.sentinels.todo;
-use core.collections.HashMap;
-
-public use jsonParsing.JsonParseError;
-public use jsonParsing.stringify;
+use core.{
+    bool.Bool, 
+    collections.HashMap,
+    sentinels.todo,
+    string.String, 
+    numeric.Number, 
+    maybe.{none, some}
+};
 
 /// An simple union type that abstracts over underlying JSON values.
 public type RawJsonVal = 

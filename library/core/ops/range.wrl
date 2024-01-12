@@ -1,0 +1,21 @@
+module range;
+
+use core.{
+    iterate.Iteratable,
+    maybe.{none, some},
+    ops.Sequenced,
+};
+
+public model Range<T implements Sequenced> implements Iteratable<T> {
+    public var start: T;
+    public var end: T;
+
+    public function [Iteratable.next]() -> ?T {
+        // this.start = this.start.NextItem().Unwrap();
+        if this.start == this.end {
+            none()
+        } else {
+            some(this.start)
+        }
+    }
+}

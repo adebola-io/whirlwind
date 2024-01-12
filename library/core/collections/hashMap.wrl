@@ -1,9 +1,11 @@
 module hashMap;
 
-use core.prelude.{todo, AsIterator};
-use core.prelude.Iteratable;
-use core.prelude.UnsignedInt;
-use core.collections.Tuple;
+use core.{
+    sentinels.todo, 
+    iterate.{AsIterator, Iteratable},
+    numeric.UnsignedInt,
+};
+use ntuple.Tuple;
 
 public interface Hash {}
 

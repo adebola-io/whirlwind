@@ -95,7 +95,11 @@ pub trait LexerInner {
                 self
             ),
             '&' => token!(Operator::Ampersand, ['&', Operator::LogicalAnd], self),
-            '|' => token!(Operator::BitOr, ['|', Operator::LogicalOr], self),
+            '|' => token!(
+                Operator::BitOr,
+                ['|', Operator::LogicalOr, '=', Operator::Constraint],
+                self
+            ),
             '+' => token!(Operator::Plus, ['=', Operator::PlusAssign], self),
             '-' => token!(
                 Operator::Minus,
@@ -506,7 +510,6 @@ pub trait LexerInner {
             "use" => token!(Keyword::Use, self),
             "var" => token!(Keyword::Var, self),
             "while" => token!(Keyword::While, self),
-            "where" => token!(Keyword::Where, self),
             "module" => token!(Keyword::Module, self),
             _ => Token {
                 _type: TokenType::Ident(ident_text),

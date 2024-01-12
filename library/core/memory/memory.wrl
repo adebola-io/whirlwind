@@ -1,14 +1,16 @@
 module memory;
 
 use core.{
-    primitives.{UInt8, UnsignedInt},
-    prelude.{
-        Guaranteed, Iteratable, none, some, Display, 
-        String, todo,
-    },
+    interfaces.Guaranteed,
     internals.builtin,
+    iterate.Iteratable,
+    maybe.{some, none},
+    numeric.{UInt8, UnsignedInt},
+    sentinels.todo,
+    string.{Display, String},
 };
 public use region.Region;
+public use ref.WeakRef;
 
 /// Swaps the address of two values.
 /// # Usage
@@ -24,41 +26,6 @@ public use region.Region;
 /// ```
 public function swap<T>(a: T, b: T) {
     builtin.swap(a, b)
-}
-
-/// An intrinsic model that provides a way to hold a weak reference to a value of type `T`.
-/// 
-/// Unlike regular references, weak references don't prevent the underlying
-/// value from being dropped by the runtime. This means that if the 
-/// object is no longer reachable through other strong references, it will
-/// be cleared and the WeakRef will point to empty memory.
-/// 
-/// It is useful for circumventing Whirlwind's disallowance for
-/// circular references, while still preventing memory leaks.
-public model WeakRef<T> implements Guaranteed<T> {
-
-    /// Implementation of the Guaranteed interface.
-    function [Guaranteed.guarantee]() -> T {
-        this.unwrap()
-    }
-
-    /// Forcefully retrieves the value in the reference.
-    /// 
-    /// It is useful when there is a surety that the value
-    /// contained has not been dropped by the runtime.
-    public function unwrap() -> T {
-        this.deref().unwrap()
-    }    
-
-    /// Retrieves the value in the reference.
-    public function deref() -> ?T {
-        return builtin.deref(this);
-    }
-
-    /// Creates a weak reference to an object.
-    public static function to(value: T) -> This {
-        builtin.weakref(value)
-    }
 }
 
 

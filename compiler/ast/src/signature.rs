@@ -1,4 +1,6 @@
-use crate::{EnumVariant, GenericParameter, Identifier, ModuleAmbience, Span, TypeExpression};
+use crate::{
+    EnumVariant, GenericParameter, Identifier, ModuleAmbience, Span, TypeClause, TypeExpression,
+};
 
 use macros::Signature;
 
@@ -91,6 +93,8 @@ pub struct MethodSignature {
     pub is_public: bool,
     /// Generic Parameters of the function, if any.
     pub generic_params: Option<Vec<GenericParameter>>,
+    /// The constraint of the method (The type clause that must be satisfied for it to exist.)
+    pub constraint: Option<(TypeClause, Span)>,
     /// The parameters of the function, if any.
     pub params: Vec<Parameter>,
     /// Optional return type.

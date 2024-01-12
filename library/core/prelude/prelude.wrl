@@ -23,25 +23,25 @@
 module prelude;
 
 public use core;
-public use interfaces.{
-    default.Default, display.Display, 
-    iteration,
-    iteration.{Iteratable, AsIterator, flatten}, 
-    guaranteed.Guaranteed, try.Try
-};
-public use outcome.{ok, err, Outcome};
-public use maybe.{none, some, Maybe};
-public use range.Range;
 public use core.{
-    io.{print, fmt},
+    array.Array,
+    bool.Bool,
+    collections.{Tuple, pair},
     concurrent.{Eventual, Prospect, toSync},
-    primitives.{
-        String, Array, Number, Int, Float, UnsignedInt,
-        UInt, Bool, UInt8, UInt16, UInt32, UInt64, Chars,
-        FromStr
+    interfaces.{
+        Default, Clonable,
+        Guaranteed, Try
     },
-    process.sentinels.{todo, fatal},
+    iterate.{Iteratable, AsIterator},
+    maybe.{none, some, Maybe},
     memory.Region,
+    numeric.{
+        Number, Int, Float, UnsignedInt, UInt, UInt8, 
+        UInt16, UInt32, UInt64
+    },
+    outcome.{ok, err, Outcome},
+    ops.Range,
+    sentinels.{todo, fatal},
+    string.{Display, FromStr, fmt, String},
     internals.never,
-    collections.{Tuple, pair}
 };

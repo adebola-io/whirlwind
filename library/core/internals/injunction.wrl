@@ -7,12 +7,12 @@
 /// - interface with external resources.
 module injunction;
 
-use core.primitives.String;
+use core.string.String;
 use never.never;
  
 /// The `Injunction` interface allows its implementers to directly interact with, or
 /// operate outside the runtime. It can be implemented by any model that maps to a
-/// foreign function or a Whirlwind internal feature.
+/// foreign function or a Whirlwind internals feature.
 /// 
 /// Injunctions are utilized by being passed to the `invoke` function.
 /// 
@@ -34,7 +34,7 @@ public interface Injunction {
 /// most dangerous function in all of Whirlwind, and it is **very** easy 
 /// to use it to cause undefined behaviour_.
 /// 
-/// It should not be used outside the internal module. Ever.
+/// It should not be used outside the internals module. Ever.
 public function invoke
     <T implements Injunction, U, V, W, X>
     (

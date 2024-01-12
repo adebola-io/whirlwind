@@ -2011,6 +2011,7 @@ impl<L: Lexer> Parser<L> {
         // else parse normal function.
         let name = check!(self.identifier());
         let generic_params = check!(self.maybe_generic_params());
+        let constraint = check!(self.maybe_type_constraint());
         let params = check!(self.parameters());
         let return_type = check!(self.maybe_return_type());
         let (body, errors) = self
@@ -2026,6 +2027,7 @@ impl<L: Lexer> Parser<L> {
             name,
             info,
             is_static,
+            constraint,
             is_async,
             is_public,
             generic_params,
@@ -2084,6 +2086,7 @@ impl<L: Lexer> Parser<L> {
         // println!("{:?}\n\n\n", interface_target);
         self.advance(); // Move past ]
         let generic_params = check!(self.maybe_generic_params());
+        let constraint = check!(self.maybe_type_constraint());
         let params = check!(self.parameters());
         let return_type = check!(self.maybe_return_type());
         let (body, mut body_errors) = self
@@ -2104,6 +2107,7 @@ impl<L: Lexer> Parser<L> {
                 is_async,
                 is_public,
                 generic_params,
+                constraint,
                 params,
                 return_type,
             },
@@ -2528,6 +2532,7 @@ impl<L: Lexer> Parser<L> {
         let info = self.get_doc_comment();
         let name = check!(self.identifier());
         let generic_params = check!(self.maybe_generic_params());
+        let constraint = check!(self.maybe_type_constraint());
         let params = check!(self.parameters());
         let return_type = check!(self.maybe_return_type());
         if_ended!(
@@ -2542,6 +2547,7 @@ impl<L: Lexer> Parser<L> {
             is_async,
             is_public,
             generic_params,
+            constraint,
             params,
             return_type,
         };
@@ -3341,11 +3347,14 @@ impl<L: Lexer> Parser<L> {
         };
 
         // Parse constraint.
-        let expression = if let Some((clause, span)) = self.maybe_type_constraint()? {
+        let expression = if let Some((clause, clause_span)) = self.maybe_type_constraint()? {
             TypeExpression::Constraint(BoundConstraintType {
                 consequent,
                 clause: Box::new(clause),
-                span,
+                span: Span {
+                    start,
+                    end: clause_span.end,
+                },
             })
         } else {
             TypeExpression::Discrete(consequent)
@@ -3353,19 +3362,15 @@ impl<L: Lexer> Parser<L> {
         Ok(self.type_reparse(expression)?)
     }
 
-    /// Optionally parses a type c. It will advance if `[` is the next token.
+    /// Optionally parses a type constraint. It will advance if `|=` is the next token.
     fn maybe_type_constraint(&self) -> Fallible<Option<(TypeClause, Span)>> {
         match self.token() {
-            Some(token) if token._type == TokenType::Bracket(LSquare) => {
+            Some(token) if token._type == TokenType::Operator(Constraint) => {
                 let start = token.span.start;
-                self.advance(); // Move past [
-                expect!(TokenType::Keyword(Where), self);
-                self.advance(); // Move past where.
+                self.advance(); // Move past |=
                 let clause = self.type_clause()?;
-                expect!(TokenType::Bracket(RSquare), self);
-                let end = self.token().unwrap().span.end;
+                let end = self.last_token_end().end;
                 let span = Span { start, end };
-                self.advance(); // Move past ]
                 return Ok(Some((clause, span)));
             }
             _ => return Ok(None),
@@ -3375,6 +3380,17 @@ impl<L: Lexer> Parser<L> {
     /// Parses a type clause.
     fn type_clause(&self) -> Fallible<TypeClause> {
         let token = self.token().unwrap();
+        // grouped type clause.
+        if self
+            .token()
+            .is_some_and(|token| token._type == TokenType::Bracket(LParens))
+        {
+            self.advance(); // Move past (
+            let clause = self.type_clause()?;
+            expect!(TokenType::Bracket(RParens), self);
+            self.advance(); // Move past )
+            return Ok(clause);
+        }
         let base = self.identifier()?;
         let clause = match token._type {
             TokenType::Keyword(Implements) => {
@@ -3388,7 +3404,49 @@ impl<L: Lexer> Parser<L> {
             }
             _ => return Err(errors::expected(TokenType::Keyword(Implements), token.span)),
         };
-        Ok(clause)
+        Ok(self.type_clause_spring(clause)?)
+    }
+
+    /// Continues a type clause.
+    fn type_clause_spring(&self, clause: TypeClause) -> Fallible<TypeClause> {
+        if self.token().is_none() {
+            return Ok(clause);
+        }
+        match self.token().unwrap()._type {
+            TokenType::Operator(And) => {
+                self.advance(); // Move past and.
+                return Ok(TypeClause::Binary {
+                    left: Box::new(clause),
+                    operator: ast::LogicOperator::AndLiteral,
+                    right: Box::new(self.type_clause()?),
+                });
+            }
+            TokenType::Operator(Or) => {
+                self.advance(); // Move past or.
+                return Ok(TypeClause::Binary {
+                    left: Box::new(clause),
+                    operator: ast::LogicOperator::OrLiteral,
+                    right: Box::new(self.type_clause()?),
+                });
+            }
+            TokenType::Operator(LogicalAnd) => {
+                self.advance(); // Move past &&.
+                return Ok(TypeClause::Binary {
+                    left: Box::new(clause),
+                    operator: ast::LogicOperator::And,
+                    right: Box::new(self.type_clause()?),
+                });
+            }
+            TokenType::Operator(LogicalOr) => {
+                self.advance(); // Move past &&.
+                return Ok(TypeClause::Binary {
+                    left: Box::new(clause),
+                    operator: ast::LogicOperator::Or,
+                    right: Box::new(self.type_clause()?),
+                });
+            }
+            _ => return Ok(clause),
+        }
     }
 
     /// Parses an optional type. Assumes that `?` is the current token.

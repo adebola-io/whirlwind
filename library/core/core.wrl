@@ -6,20 +6,22 @@
 /// ranging from string manipulation and arrays to networking and file system handling.
 module core;
 
-public use concurrent;
+public use array;
+public use bool;
 public use collections;
-public use crypto;
+public use concurrent;
 public use data;
-public use fs;
+public use interfaces;
 public use internals;
-public use io;
+public use iterate;
 public use math;
+public use maybe;
 public use memory;
-public use net;
-public use os;
-public use path;
+public use numeric;
+public use ops;
+public use outcome;
 public use prelude;
-public use primitives;
-public use process;
-public use time;
+public use sentinels;
+public use string;
 public use testing;
+public use time;

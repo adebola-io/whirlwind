@@ -1,9 +1,12 @@
 module math;
 
-use core.primitives.ops.{Orderable, Ordering};
-use core.primitives.numeric.{Float64, Number, Int, UnsignedInt};
-use core.prelude.{todo, Bool};
-use core.internals.{Injunction, invoke};
+use core.{
+    bool.Bool,
+    internals.{Injunction, invoke},
+    numeric.{Float64, Number, Int, UnsignedInt},
+    ops.{Orderable, Ordering},
+    sentinels.todo,
+};
 
 /// Returns the minimum of two values that implement Orderable.
 /// 

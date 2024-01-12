@@ -84,6 +84,7 @@ pub enum Operator {
     LogicalAnd,         // &&
     BitOr,              // |
     LogicalOr,          // ||
+    Constraint,         // |=
     Plus,               // +
     PlusAssign,         // +=
     Minus,              // -
@@ -234,7 +235,6 @@ pub enum Keyword {
     Use,
     Var,
     While,
-    Where,
 }
 
 pub fn is_keyword_or_operator(text: &str) -> bool {
