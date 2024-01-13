@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use crate::{
     evaluate,
     utils::{get_numeric_type, symbol_to_type},
-    EvaluatedType, Literal, LiteralMap, PathIndex, SemanticSymbol, SemanticSymbolKind, SymbolIndex,
-    TypedExpression,
+    EvaluatedType, IntermediateTypeClause, Literal, LiteralMap, PathIndex, SemanticSymbol,
+    SemanticSymbolKind, SymbolIndex, TypedExpression,
 };
 
 #[derive(Debug, Default)]
@@ -19,17 +19,8 @@ pub enum SymbolEntry {
 pub struct SymbolLibrary {
     tables: HashMap<PathIndex, SymbolTable>,
     // Numeric intrinsic values.
-    pub float: Option<SymbolIndex>,
-    pub float32: Option<SymbolIndex>,
     pub float64: Option<SymbolIndex>,
-    pub int: Option<SymbolIndex>,
-    pub sint: Option<SymbolIndex>,
-    pub uint8: Option<SymbolIndex>,
-    pub uint16: Option<SymbolIndex>,
-    pub uint32: Option<SymbolIndex>,
-    pub uint64: Option<SymbolIndex>,
-    pub uint: Option<SymbolIndex>,
-    pub bigint: Option<SymbolIndex>,
+    pub int32: Option<SymbolIndex>,
     pub number: Option<SymbolIndex>,
 
     pub string: Option<SymbolIndex>,

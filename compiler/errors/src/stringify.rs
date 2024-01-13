@@ -292,6 +292,8 @@ impl std::fmt::Display for WarningType {
             WarningType::UnusedModelSymbol(name) => {
                 format!("'{name}' is never constructed or accessed statically.")
             }
+            WarningType::RedundantConstraint => format!("Redundant type constraint."),
+            
         };
         write!(f, "{message}")
     }

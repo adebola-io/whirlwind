@@ -4,15 +4,23 @@ module bool;
 
 use core.{
     maybe.{some, none},
-    interfaces.Clonable,
+    interfaces.{Clonable, Default},
     string.{Display, FromStr, String}
 };
 
 /// A representation of boolean values, `true` or `false`.
-public model Bool implements Display + Clonable + FromStr {
-    
+public model Bool 
+    implements Display 
+    + Default 
+    + Clonable 
+    + FromStr 
+{
     public function [Clonable.clone]() -> This {
-        return this;
+        return this; // boolean values are copied by default.
+    }
+
+    static function [Default.init]() -> This {
+        return false;
     }
 
     public function [Display.toStr]() -> String {

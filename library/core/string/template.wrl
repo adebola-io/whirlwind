@@ -2,7 +2,7 @@ module template;
 
 use core.{
     collections.HashMap,
-    numeric.UnsignedInt,
+    numeric.Int32,
     sentinels.todo
 };
 use display.Display;
@@ -101,7 +101,7 @@ public model Template implements Display {
     /// 
     /// assert(template.finish()).equals("Hello, John!");
     /// ```
-    public function transform(arg: UnsignedInt, transformer: fn(x: String) -> String) -> This {
+    public function transform(arg: Int32, transformer: fn(x: String) -> String) -> This {
         this.transforms.push(transformer);
         return this;
     }

@@ -6,8 +6,7 @@ use core.{
     interfaces.Default,
     internals.builtin,
     iterate.{AsIterator, Iteratable}, 
-    maybe.some, 
-    numeric.{Int, UnsignedInt, UInt8},
+    numeric.Int32,
     ops.{Addition, Range},
     sentinels.todo,
 };
@@ -23,17 +22,13 @@ public model String
     + Display
     + Hash
 {
-    var arr: []UInt8;
-    new() {
-        this.arr = [];
-    }
     /// Implementation of the Display trait.
     public function [Display.toStr]() -> String {
        return "\"" + this + "\""; // todo: escape inner double quotes.
     }
     /// Implementation of the Default trait.
     static function [Default.init]() -> This {
-        return new String();
+        return "";
     }
     /// Adds two strings together.
     /// ## Usage
@@ -42,11 +37,7 @@ public model String
     /// assert(str).equals("Hello, world!");
     /// ```
     public function [Addition.add](other: This) -> This {
-        newStr := this.toStr();
-        for char in other.arr {
-            newStr.arr.push(char);
-        }
-        return newStr;
+        builtin.strings.concat(this, other)
     }
     /// Creates an iterator from the contents of a string.
     /// ## Usage
@@ -60,27 +51,6 @@ public model String
     public function [AsIterator.iter]() -> Chars {
         return new Chars(this);
     }
-    /// Returns a `Maybe` with the _byte_ (not character) at a zero based index in the string.
-    ///
-    /// It also supports negative indexes, which will return values in reverse from the end of the string.
-    /// ## Usage
-    /// ```
-    /// str := "This is a string";
-    /// 
-    /// assertThat(str.at(0) == some("T".bytes()[0]));
-    /// assertThat(str.at(8) == some("a".bytes()[0]));
-    /// assertThat(str.at(11) == some("t".bytes()[0]));
-    /// ```
-    /// _Indexing from behind:_
-    /// 
-    /// ```
-    /// assertThat(str.at(-1) == some("g".bytes()[0]));
-    /// assertThat(str.at(-3) == some("i".bytes()[0]));
-    /// ```
-    /// It will return no value if the length of the string is exceeded.
-    public function at(position: Int) -> ?UInt8 {
-        some(this.arr.at(position)?)
-    }
     /// Adds text to the end of the string.
     /// ## Usage
     /// ```
@@ -91,16 +61,7 @@ public model String
     /// assert(str).equals("Hello, world!");
     /// ```
     public function append(suffix: String) {
-        for unit in suffix.arr {
-            this.arr.push(unit);
-        }
-    }
-    /// Returns the underlying bytes in the string.
-    /// ## Usage
-    /// ```
-    /// ```
-    public function bytes() -> []UInt8 {
-        return this.arr;
+        todo()
     }
     /// Changes the first character of every word in the string to upper case.
     /// ## Usage
@@ -136,7 +97,7 @@ public model String
     /// assert(str.length()).equals(0);
     /// ```
     public function clear() {
-        this.arr.clear();
+        this = ""
     }
     /// Returns true if a substring is contained within the string.
     /// ## Usage
@@ -147,7 +108,7 @@ public model String
     /// assertThat(str.contains("premiere"));
     /// ```
     public function contains(substr: String) -> Bool {
-       this.arr.includes(substr.arr)
+       todo()
     }
     /// Returns true if the string ends with a given pattern.
     /// ### Usage
@@ -157,17 +118,7 @@ public model String
     /// assertThat(name.endsWith("ael"));
     /// ```
     public function endsWith(pat: String) -> Bool {
-        if pat.arr.length() > this.arr.length() {
-            return false;
-        }
-        for { a as ch1, b as ch2 } 
-          in this.arr.reverse().zip(pat.arr.reverse()) 
-        {
-            if ch1 != ch2 {
-                return false;
-            }
-        }
-        return true;
+        todo()
     }
     /// Returns true if the string is made up entirely of alphabetic and numeric characters.
     /// ## Usage
@@ -191,7 +142,7 @@ public model String
     /// assertThat(!str.isEmpty());
     /// ```
     public function isEmpty() -> Bool {
-        return this.arr.length() == 0;
+        return this.length() == 0;
     }
     /// Returns the number of characters in the string.
     /// ## Usage
@@ -200,8 +151,8 @@ public model String
     /// 
     /// assert(str.length()).equals(5);
     /// ```
-    public function length() -> UnsignedInt {
-        this.arr.length()
+    public function length() -> Int32 {
+        todo()
     }
     /// Changes the case of all letters in the string to lower case.
     /// ## Usage
@@ -222,7 +173,7 @@ public model String
     /// 
     /// assert(str2).equals("   Alright   "); // 3 spaces before and after.
     /// ```
-    public function pad(count: UnsignedInt) -> String {
+    public function pad(count: Int32) -> String {
         return builtin.strings.pad(this, count);
     }
     /// Returns a version of the string with left padding.
@@ -233,7 +184,7 @@ public model String
     /// 
     /// assert(str2).equals("   Alright"); // 3 spaces before.
     /// ```
-    public function padLeft(count: UnsignedInt) -> String {
+    public function padLeft(count: Int32) -> String {
         return builtin.strings.padLeft(this, count);
     }
     /// Returns a version of the string with left padding.
@@ -244,7 +195,7 @@ public model String
     /// 
     /// assert(str2).equals("Alright   "); // 3 spaces before.
     /// ```
-    public function padRight(count: UnsignedInt) -> String {
+    public function padRight(count: Int32) -> String {
         return builtin.strings.padRight(this, count);
     }
     /// Pads the string in place with whitespace on the left and right sides.
@@ -255,7 +206,7 @@ public model String
     /// 
     /// assert(str).equals("   Hello, world!   ");
     /// ```
-    public function padInPlace(count: UnsignedInt) {
+    public function padInPlace(count: Int32) {
         this = this.pad(count);
     }
     /// Adds text to the start of the string.
@@ -267,7 +218,7 @@ public model String
     /// assert(str).equals("Hello, world!");
     /// ```
     public function prepend(prefix: String) {
-        this.arr.prepend(prefix.arr);
+        todo()
     }
     /// Returns a String value that is made from a number of copies of the original string.
     /// If count is 0, the empty string is returned.
@@ -284,8 +235,8 @@ public model String
     /// str3 := str.repeat(0);
     /// assertThat(str2.IsEmpty()); // No copies.
     /// ```
-    public function repeat(count: UnsignedInt) -> String {
-        str := new String();
+    public function repeat(count: Int32) -> String {
+        var str: String;
         for {} in 0..count {
            str.append(this);
         }
@@ -313,9 +264,7 @@ public model String
     /// assert(str2).equals("muinomednap");
     /// ```
     public function reverse() -> String {
-        newStr := new String();
-        this.arr.reverse().forEach(fn (unit) newStr.arr.push(unit));
-        return newStr;
+        todo()
     }
     /// Returns a section of the string.
     /// The range argument is exclusive, meaning it goes from the left index all the way to one before the right.
@@ -325,7 +274,7 @@ public model String
     /// 
     /// assert(str.slice(0..5)).equals(some("Hello")); // index 0 to 4.
     /// ```
-    public function slice(bounds: Range<UnsignedInt>) -> ?String {
+    public function slice(bounds: Range<Int32>) -> ?String {
         return builtin.strings.slice(this, bounds);
     }
     /// Divides the string into a list of substrings based on a delimeter.
@@ -421,13 +370,7 @@ public model String
     /// assertThat(name.startsWith("Jo"));
     /// ```
     public function startsWith(pat: String) -> Bool {
-        if pat.arr.length() > this.arr.length() {
-            return false;
-        };
-        this.arr
-            .iter()
-            .zip(pat.arr.iter())
-            .all(fn (tuple) tuple.a == tuple.b)
+        todo()
     }
     /// Creates a string from a value that implements Display.
     /// ## Usage
@@ -445,7 +388,7 @@ public model String
 
 /// A simple iterator over the characters in a string.
 public model Chars implements Iteratable<String> {
-    var idx: UnsignedInt;
+    var idx: Int32;
     var string: String;
     new(string: String) {
         this.idx = 0;
@@ -467,6 +410,6 @@ public interface FromStr {
 }
 
 /// Calculates the edit distance between two strings using the [Levenshtein's Algorithm](http://example.com).
-public function LevenshteinEditRatio(str1: String, str2: String) -> Int {
+public function LevenshteinEditRatio(str1: String, str2: String) -> Int32 {
     todo()
 }

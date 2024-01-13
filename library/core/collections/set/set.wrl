@@ -4,7 +4,7 @@ use core.{
     bool.Bool,
     iterate.{AsIterator, Iteratable},
     interfaces.Clonable,
-    numeric.UnsignedInt,
+    numeric.Int32,
     sentinels.todo,
     string.{Display, String}
 };
@@ -168,14 +168,14 @@ public model Set<T implements Hash>
     /// 
     /// assert(set.cardinality()).equals(4);
     /// ```
-    public function cardinality() -> UnsignedInt {
+    public function cardinality() -> Int32 {
         this.items.length()
     }
     /// Returns the number of elements in the set.
     /// ### Usage
     /// ```
     /// ```
-    public function length() -> UnsignedInt {
+    public function length() -> Int32 {
         this.items.length()
     }
     /// Returns the power set of the current set, i.e.

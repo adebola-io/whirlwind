@@ -3379,7 +3379,6 @@ impl<L: Lexer> Parser<L> {
 
     /// Parses a type clause.
     fn type_clause(&self) -> Fallible<TypeClause> {
-        let token = self.token().unwrap();
         // grouped type clause.
         if self
             .token()
@@ -3392,6 +3391,11 @@ impl<L: Lexer> Parser<L> {
             return Ok(clause);
         }
         let base = self.identifier()?;
+        self.ended(errors::expected(
+            TokenType::Keyword(Implements),
+            self.last_token_end(),
+        ))?;
+        let token = self.token().unwrap();
         let clause = match token._type {
             TokenType::Keyword(Implements) => {
                 let interfaces = self.maybe_interface_implementations()?;

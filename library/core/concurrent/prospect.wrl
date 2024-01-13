@@ -6,7 +6,7 @@ use core.{
     bool.Bool,
     internals.builtin,
     maybe.some,
-    numeric.UnsignedInt,
+    numeric.Int32,
     sentinels.{fatal, todo},
 };
 use eventual.Eventual;
@@ -37,7 +37,7 @@ public model Prospect<T> {
     /// by the callback.
     /// ### Usage
     /// ```
-    /// squared := async fn(a: Int) a * a;
+    /// squared := async fn(a: Int32) a * a;
     /// doubled := fn(a: Number) a * 2;
     /// 
     /// num := squared(2).then(doubled).run().await();
@@ -104,7 +104,7 @@ public model Prospect<T> {
     }
     /// Sets a timeout on the prospect's eventual execution. If the duration elapses 
     /// before the eventual can be resolved, it is abruptly aborted.
-    public function timeout(ms: UnsignedInt) -> Prospect<T> {
+    public function timeout(ms: Int32) -> Prospect<T> {
         todo();
         return this;
     }

@@ -1,14 +1,6 @@
 module memory;
 
-use core.{
-    interfaces.Guaranteed,
-    internals.builtin,
-    iterate.Iteratable,
-    maybe.{some, none},
-    numeric.{UInt8, UnsignedInt},
-    sentinels.todo,
-    string.{Display, String},
-};
+use core.internals.builtin;
 public use region.Region;
 public use ref.WeakRef;
 
@@ -27,28 +19,3 @@ public use ref.WeakRef;
 public function swap<T>(a: T, b: T) {
     builtin.swap(a, b)
 }
-
-
-public model Buffer implements Iteratable<UInt8> + Display {
-    var values: []UInt8;
-    var idx: UnsignedInt;
-
-    new(values: []UInt8) {
-        this.values = values;
-        this.idx = 0;
-    }
-
-    public function [Iteratable.next]() -> ?UInt8 {
-        if this.idx == this.values.length() {
-            return none();
-        };
-        nextByte := this.values[this.idx];
-        this.idx += 1;
-        return some(nextByte);
-    }
-
-    public function [Display.toStr]() -> String {
-        return todo();
-    }
-}
-

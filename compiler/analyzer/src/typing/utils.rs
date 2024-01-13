@@ -1,10 +1,10 @@
 use crate::{
     evaluate, evaluate_type_clause, unify_generic_arguments, unify_types, DiagnosticType,
-    EvaluatedType, IntermediateType, LiteralMap, ParameterType, PathIndex, ProgramDiagnostic,
-    SemanticSymbolKind, SymbolIndex, SymbolLibrary, TypecheckerContext, TypedExpression,
-    UnifyOptions,
+    EvaluatedType, IntermediateType, IntermediateTypeClause, LiteralMap, ParameterType, PathIndex,
+    ProgramDiagnostic, SemanticSymbolKind, SymbolIndex, SymbolLibrary, TypeEnvironment,
+    TypecheckerContext, TypedExpression, UnifyOptions,
 };
-use errors::{TypeError, TypeErrorType};
+use errors::{TypeError, TypeErrorType, Warning, WarningType};
 /// Returns an intrinsic symbol from the symbol table or returns an unknown type.
 macro_rules! get_intrinsic {
     ($expr: expr) => {{
@@ -113,41 +113,30 @@ pub fn is_numeric_type(evaluated_type: &EvaluatedType, symbollib: &SymbolLibrary
     matches!(
         evaluated_type, EvaluatedType::ModelInstance { model, .. }
         if [
-            symbollib.float32,
             symbollib.float64,
-            symbollib.uint8,
-            symbollib.uint16,
-            symbollib.uint32,
-            symbollib.uint64,
-            symbollib.sint,
-            symbollib.bigint,
+            symbollib.int32
         ].iter().filter_map(|sym| *sym).any(|sym| sym == *model)
     ) || matches!(
         evaluated_type, EvaluatedType::OpaqueTypeInstance {aliased_as, ..}
-        if [
-            symbollib.float,
-            symbollib.int,
-            symbollib.uint,
-            symbollib.number,
-        ].iter().any(|sym| sym.as_ref() == aliased_as.as_ref())
+        if symbollib.number.as_ref() == aliased_as.as_ref()
     )
 }
 
-/// Returns true if an evaluated type is unsigned.
-pub fn is_unsigned(evaluated_type: &EvaluatedType, symbollib: &SymbolLibrary) -> bool {
-    matches!(
-        evaluated_type, EvaluatedType::ModelInstance { model, .. }
-        if [
-            symbollib.uint8,
-            symbollib.uint16,
-            symbollib.uint32,
-            symbollib.uint64,
-        ].iter().filter_map(|sym| *sym).any(|sym| sym == *model)
-    ) || matches!(
-        evaluated_type, EvaluatedType::OpaqueTypeInstance {aliased_as, ..}
-        if symbollib.uint.as_ref() == aliased_as.as_ref()
-    )
-}
+// /// Returns true if an evaluated type is unsigned.
+// pub fn is_unsigned(evaluated_type: &EvaluatedType, symbollib: &SymbolLibrary) -> bool {
+//     matches!(
+//         evaluated_type, EvaluatedType::ModelInstance { model, .. }
+//         if [
+//             symbollib.uint8,
+//             symbollib.uint16,
+//             symbollib.uint32,
+//             symbollib.uint64,
+//         ].iter().filter_map(|sym| *sym).any(|sym| sym == *model)
+//     ) || matches!(
+//         evaluated_type, EvaluatedType::OpaqueTypeInstance {aliased_as, ..}
+//         if symbollib.uint.as_ref() == aliased_as.as_ref()
+//     )
+// }
 
 /// Checks if an expression type can be modified in retrospect.
 pub fn is_updateable(expression: &TypedExpression, symbollib: &SymbolLibrary) -> bool {
@@ -684,24 +673,13 @@ pub fn get_numeric_type(
                 }
             };
             if number.fract() == 0_f64 {
-                // Unsigned Integers.
-                if number >= 0_f64 {
-                    if number <= u8::MAX as f64 {
-                        return evaluate_index(get_intrinsic!(symbollib.uint8));
-                    } else if number <= u16::MAX as f64 {
-                        return evaluate_index(get_intrinsic!(symbollib.uint16));
-                    } else if number <= u32::MAX as f64 {
-                        return evaluate_index(get_intrinsic!(symbollib.uint32));
-                    } else if number <= u64::MAX as f64 {
-                        return evaluate_index(get_intrinsic!(symbollib.uint64));
-                    }
-                }
-                return evaluate_index(get_intrinsic!(symbollib.int));
+                // Integers.
+                return evaluate_index(get_intrinsic!(symbollib.int32));
             } else {
-                return evaluate_index(get_intrinsic!(symbollib.float));
+                return evaluate_index(get_intrinsic!(symbollib.float64));
             }
         }
-        _ => return evaluate_index(get_intrinsic!(symbollib.int)),
+        _ => return evaluate_index(get_intrinsic!(symbollib.float64)),
     }
 }
 
@@ -880,6 +858,8 @@ pub fn infer_ahead(
     }
 }
 
+/// Ensures that the type of value assigned to a variable is valid.
+/// Void types and Partial types cannot be assigned.
 pub fn ensure_assignment_validity(
     inference_result: &EvaluatedType,
     checker_ctx: &mut TypecheckerContext<'_>,
@@ -891,8 +871,34 @@ pub fn ensure_assignment_validity(
         checker_ctx.add_diagnostic(errors::partial_type_assignment(span));
     }
 }
+/// Takes a bounded type clause and creates an environment that supposes
+/// it is true. It takes the checker_ctx so it can:
+/// error for unsatisfiable constraints. e.g.`String is Number`,
+/// produce warnings for redundant constraints e.g. `T is T`
+pub fn assume_verity(
+    clause: &IntermediateTypeClause,
+    checker_ctx: &mut TypecheckerContext,
+    symbollib: &SymbolLibrary,
 
-/// Mutates the type of an expression based on the solved generics.
+    span: ast::Span,
+) -> Option<TypeEnvironment> {
+    // Before creating an environment, we check if the clause is currently true.
+    // If it is, this implies that it has always been true and it will always remain true
+    // (at least for the current environment), making it redundant to create an environment for.
+    let clause_is_true =
+        evaluate_type_clause(clause, symbollib, None, &mut checker_ctx.tracker(span), 0)
+            .unwrap_or_default();
+    if clause_is_true {
+        checker_ctx.add_warning(Warning {
+            span,
+            warning_type: WarningType::RedundantConstraint,
+        });
+        return None;
+    }
+    return None;
+}
+
+/// Mutates the type of previous expression based on the solved generics.
 pub fn update_expression_type(
     caller: &mut TypedExpression,
     symbollib: &mut SymbolLibrary,

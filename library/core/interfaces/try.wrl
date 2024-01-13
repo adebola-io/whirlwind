@@ -17,7 +17,7 @@ use core.prelude.Outcome;
 /// ```
 /// use core.math.parseInt;
 /// 
-/// function parseAndDouble1(numberStr: String) -> Maybe<Int> {
+/// function parseAndDouble1(numberStr: String) -> Maybe<Int32> {
 ///     maybeInteger := parseInt(numberStr);
 ///     if maybeInteger.isNone() {
 ///         return none();
@@ -28,8 +28,8 @@ use core.prelude.Outcome;
 /// ```
 /// #### Second Approach:
 /// ```
-/// function parseAndDouble2(numberStr: String) -> Maybe<Int> {
-///     // parseInt returns a Maybe<Int>. If the integer cannot be
+/// function parseAndDouble2(numberStr: String) -> Maybe<Int32> {
+///     // parseInt returns a Maybe<Int32>. If the integer cannot be
 ///     // parsed, the none() value gotten is immediately
 ///     // returned from this function. If the parsing is 
 ///     // successful, then the value is passed to the variable

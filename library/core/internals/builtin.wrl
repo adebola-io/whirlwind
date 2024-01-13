@@ -6,7 +6,7 @@ use core.{
     concurrent.{Prospect, Eventual, Sequence},
     maybe.some,
     memory.WeakRef,
-    numeric.{Int, UInt8, UnsignedInt},
+    numeric.Int32,
     ops.Range, 
     outcome.Outcome, 
     string.String, 
@@ -34,7 +34,7 @@ function builtin(_type: InjunctionType) -> BuiltIn {
 
 public model arrays<T> {
 
-    public static function at(array: Array<T>, index: Int) -> ?T {
+    public static function at(array: Array<T>, index: Int32) -> ?T {
         invoke(builtin(InjunctionType.ArrayAt), some(array), some(index))
     }
     public static function contains(array: Array<T>, value: T) -> Bool {
@@ -49,11 +49,11 @@ public model arrays<T> {
         invoke(builtin(InjunctionType.ArrayIncludes), some(array), some(subarray))
     }
 
-    public static function indexOf(array: Array<T>, value: T) -> ?UnsignedInt {
+    public static function indexOf(array: Array<T>, value: T) -> ?Int32 {
         invoke(builtin(InjunctionType.ArrayIndexOf), some(array), some(value))
     }
 
-    public static function insert(array: Array<T>, index: UnsignedInt, value: T) {
+    public static function insert(array: Array<T>, index: Int32, value: T) {
         invoke(builtin(InjunctionType.ArrayInsert), some(array), some(index), some(value))
     }
 
@@ -69,7 +69,7 @@ public model arrays<T> {
         invoke(builtin(InjunctionType.ArrPartition), some(check))
     }
 
-    public static function length(array: Array<T>) -> UnsignedInt {
+    public static function length(array: Array<T>) -> Int32 {
         invoke(builtin(InjunctionType.ArrLen), some(array))
     }
 
@@ -117,7 +117,7 @@ public model outcome<T, U> {
 }
 
 public model sequence {
-    public static function sequenceId(sequence: Sequence) -> UnsignedInt {
+    public static function sequenceId(sequence: Sequence) -> Int32 {
         invoke(builtin(InjunctionType.SequenceId), some(sequence))
     }
 
@@ -135,6 +135,9 @@ public model sequence {
 }
 
 public model strings {
+    public static function concat(left: String, right: String) -> String {
+        invoke(builtin(InjunctionType.StringConcat))
+    }
     public static function capitalCase(string: String) -> String {
         invoke(builtin(InjunctionType.StringCapitalCase), some(string))
     }
@@ -147,15 +150,15 @@ public model strings {
         invoke(builtin(InjunctionType.StringLowercase), some(string))
     }
 
-    public static function pad(string: String, count: UnsignedInt) -> String {
+    public static function pad(string: String, count: Int32) -> String {
         invoke(builtin(InjunctionType.StringPad), some(string), some(count))
     }
 
-    public static function padLeft(string: String, count: UnsignedInt) -> String {
+    public static function padLeft(string: String, count: Int32) -> String {
         invoke(builtin(InjunctionType.StringPadLeft), some(string), some(count))
     }
 
-    public static function padRight(string: String, count: UnsignedInt) -> String {
+    public static function padRight(string: String, count: Int32) -> String {
         invoke(builtin(InjunctionType.StringPadRight), some(string), some(count))
     }
 
@@ -163,7 +166,7 @@ public model strings {
         invoke(builtin(InjunctionType.StringReplace), some(string), some(subStr), some(newStr))
     }
 
-    public static function slice(string: String, bounds: Range<UnsignedInt>) -> ?String {
+    public static function slice(string: String, bounds: Range<Int32>) -> ?String {
         invoke(builtin(InjunctionType.StringSlice), some(string), some(bounds))
     }
 
@@ -208,6 +211,6 @@ public function deref<T>(value: WeakRef<T>) -> ?T {
     invoke(builtin(InjunctionType.Deref), some(value))
 }
 
-public function exit(code?: UInt8) -> never {
+public function exit(code?: Int32) -> never {
     invoke(builtin(InjunctionType.SequenceExit), some(code))
 }

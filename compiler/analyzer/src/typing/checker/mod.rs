@@ -14,7 +14,7 @@ use crate::{
     TypedStmnt, TypedThisExpr, UnifyOptions,
 };
 use ast::{Span, UnaryOperator};
-use errors::{missing_intrinsic, TypeError, TypeErrorType};
+use errors::{missing_intrinsic, TypeError, TypeErrorType, Warning};
 use std::collections::HashMap;
 
 mod expressions;
@@ -89,6 +89,13 @@ impl<'a> TypecheckerContext<'a> {
         self.diagnostics.push(ProgramDiagnostic {
             offending_file: self.path_idx,
             _type: DiagnosticType::Error(crate::Error::Typing(error)),
+        })
+    }
+    /// Adds a warning to the owner standpoint's list of diagnostics.
+    pub fn add_warning(&mut self, warning: Warning) {
+        self.diagnostics.push(ProgramDiagnostic {
+            offending_file: self.path_idx,
+            _type: DiagnosticType::Warning(warning),
         })
     }
     /// Returns a reference to the error list to be passed around by the evaluator.

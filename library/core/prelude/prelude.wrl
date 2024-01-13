@@ -35,10 +35,7 @@ public use core.{
     iterate.{Iteratable, AsIterator},
     maybe.{none, some, Maybe},
     memory.Region,
-    numeric.{
-        Number, Int, Float, UnsignedInt, UInt, UInt8, 
-        UInt16, UInt32, UInt64
-    },
+    numeric.{Number, Int32, Float64},
     outcome.{ok, err, Outcome},
     ops.Range,
     sentinels.{todo, fatal},

@@ -10,4 +10,5 @@ pub struct Warning {
 pub enum WarningType {
     UnusedImportSymbol(String),
     UnusedModelSymbol(String),
+    RedundantConstraint,
 }

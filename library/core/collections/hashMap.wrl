@@ -3,7 +3,7 @@ module hashMap;
 use core.{
     sentinels.todo, 
     iterate.{AsIterator, Iteratable},
-    numeric.UnsignedInt,
+    numeric.Int32,
 };
 use ntuple.Tuple;
 
@@ -47,7 +47,7 @@ public model HashMap<K implements Hash, V>
         todo()
     }
     /// Returns the number of elements in the map.
-    public function length() -> UnsignedInt {
+    public function length() -> Int32 {
         todo()
     }
 }

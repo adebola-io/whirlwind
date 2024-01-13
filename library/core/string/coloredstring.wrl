@@ -2,7 +2,7 @@ module coloredstring;
 
 use core.sentinels.todo;
 use core.maybe.some;
-use core.numeric.UInt8;
+use core.numeric.Int32;
 use string.String;
 use display.Display;
 
@@ -12,7 +12,7 @@ use display.Display;
 /// - @param (text?: String) The string to display.
 public model ColoredString implements Display {
     public var text: String;
-    var codes: []UInt8;
+    var codes: []Int32;
 
     new(text?: String) {
         this.text = todo();

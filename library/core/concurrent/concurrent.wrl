@@ -5,7 +5,7 @@ module concurrent;
 
 use core.{
     internals.builtin,
-    numeric.UnsignedInt,
+    numeric.Int32,
     string.String,
     sentinels.todo
 };
@@ -16,7 +16,7 @@ public use prospect.Prospect;
 ///
 /// ### Usage
 /// ```
-/// async function asyncSquare(a: Int) -> Int {
+/// async function asyncSquare(a: Int32) -> Int32 {
 ///     return a * a
 /// }
 /// num := toSync(asyncSquare(2));
@@ -31,7 +31,7 @@ public function toSync<T>(prospect: Prospect<T>) -> T {
 public model CurrentSequence {
     var handle: Sequence;
     /// Forces the current running sequence to halt for a duration.
-    public static function sleep(timeout: UnsignedInt) {
+    public static function sleep(timeout: Int32) {
         todo()
     }
 }
@@ -40,7 +40,7 @@ public model CurrentSequence {
 public model Sequence {
     /// Returns the id of the sequence.
     /// The id of the main sequence is always 0.
-    public function getId() -> UnsignedInt {
+    public function getId() -> Int32 {
         return builtin.sequence.sequenceId(this);
     }
 } 

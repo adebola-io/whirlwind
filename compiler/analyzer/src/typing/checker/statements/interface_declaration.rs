@@ -105,7 +105,14 @@ fn typecheck_interface_property(
                 evaluated_param_types,
                 true,
             );
-            typecheck_function_body(checker_ctx, return_type, body, symbollib, return_type_span);
+            typecheck_function_body(
+                property.name,
+                checker_ctx,
+                return_type,
+                body,
+                symbollib,
+                return_type_span,
+            );
             checker_ctx.current_function_is_static = former_is_static;
         }
     }

@@ -10,13 +10,8 @@ use core.{
     string.{Display, FromStr},
 };
 
-/// An interface to be implemented by values that can be cast to an unsigned integer.
-interface Unsigned {
-    public function unsigned() -> ?UnsignedInt;
-}
-
-/// An unsigned 8-bit integer.
-public model UInt8 
+/// An 32-bit integer.
+public model Int32 
     implements Display 
         + Addition 
         + Subtraction
@@ -25,105 +20,9 @@ public model UInt8
         + Bitwise
         + Sequenced 
         + Default 
-        + Unsigned 
-        + Orderable
-        + FromStr 
-        + Clonable
-{
-    // Compiler built in.
-}
-
-/// An unsigned 16-bit integer.
-public model UInt16 
-    implements Display 
-        + Addition 
-        + Subtraction
-        + Multiplication
-        + Division
-        + Bitwise
-        + Sequenced 
-        + Default 
-        + Unsigned 
         + Orderable 
         + FromStr
         + Clonable
-{
-    // Compiler built in.
-}
-
-/// An unsigned 32-bit integer.
-public model UInt32 
-    implements Display 
-        + Addition 
-        + Subtraction
-        + Multiplication
-        + Division
-        + Bitwise
-        + Sequenced 
-        + Default 
-        + Unsigned
-        + Orderable 
-        + FromStr
-        + Clonable
-{
-    // Compiler built in.
-}
-
-/// An unsigned 64-bit integer.
-public model UInt64 
-    implements Display 
-        + Addition 
-        + Subtraction
-        + Multiplication
-        + Division
-        + Bitwise
-        + Sequenced 
-        + Default 
-        + Unsigned
-        + Orderable 
-        + FromStr
-        + Clonable
-{
-    // Compiler built in.
-}
-
-/// An integer value with a direction sign.
-public model SignedInt 
-    implements Display 
-        + Addition 
-        + Subtraction
-        + Multiplication
-        + Division
-        + Bitwise
-        + Sequenced 
-        + Default 
-        + Unsigned
-        + Orderable 
-        + FromStr
-        + Clonable
-{
-    // Compiler built in.
-}
-
-/// A union data type to represent different unsigned integer values.
-public type UnsignedInt = UInt8 | UInt16 | UInt32 | UInt64;
-/// Alias for Unsigned integer.
-public type UInt = UnsignedInt;
-
-/// A union data type to represent different integer values.
-public type Int = UnsignedInt | SignedInt;
-
-/// An 32-bit floating number.
-public model Float32 
-    implements Display 
-    + Addition
-    + Subtraction
-    + Multiplication
-    + Division
-    + Default 
-    + Orderable 
-    + FromStr
-    + Clonable
 {
     // Compiler built in.
 }
@@ -142,21 +41,5 @@ public model Float64
     // Compiler built in.
 }
 
-/// A union data type to represent floating-point numbers.
-public type Float = Float32 | Float64 | Int;
-
-/// An arbitrarily large integer value.
-public model BigInt 
-    implements Display 
-    + Addition
-    + Subtraction
-    + Multiplication
-    + Division
-    + Bitwise 
-    + Orderable
-{
-    // Compiler built in.
-}
-
 /// A union data type to represent a number.
-public type Number = Int | Float | BigInt;
+public type Number = Int32 | Float64;

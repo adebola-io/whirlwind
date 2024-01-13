@@ -61,7 +61,7 @@ public model Maybe<T>
     /// ```
     /// maybeInt := some()
     /// ```
-    function [Display.toStr]|=(T implements Display)() -> String {
+    public function [Display.toStr]|=(T implements Display)() -> String {
         if this.isNone() {
             return "Maybe.none";
         }
@@ -128,7 +128,7 @@ public model Maybe<T>
     /// upholds a given predicate.
     /// ### Usage
     /// ```
-    /// predicate := fn(value: Int) value == 42;
+    /// predicate := fn(value: Int32) value == 42;
     /// 
     /// maybeInt := some(42);
     /// assertThat(maybeInt.isSomeAnd(predicate));
@@ -136,7 +136,7 @@ public model Maybe<T>
     /// maybeInt2 := some(100);
     /// assertThat(!maybeInt2.isSomeAnd(predicate));
     /// 
-    /// maybeInt3: ?Int := none()
+    /// maybeInt3: ?Int32 := none()
     /// assertThat(!maybeInt3.isSomeAnd(predicate));
     /// ```
     public function isSomeAnd(predicate: fn(value: T) -> Bool) -> Bool {
@@ -167,12 +167,12 @@ public model Maybe<T>
     /// upholds a given predicate.
     /// ### Usage
     /// ```
-    /// predicate := fn(value: Int) value > 5;
+    /// predicate := fn(value: Int32) value > 5;
     /// 
     /// maybeInt := some(10);
     /// assertThat(maybeInt.isNoneOr(predicate));
     /// 
-    /// maybeInt2: ?Int := none();
+    /// maybeInt2: ?Int32 := none();
     /// assertThat(maybeInt2.isNoneOr(predicate));
     /// 
     /// maybeInt3 := some(4);
@@ -253,25 +253,25 @@ public model Maybe<T>
         }
         return none();
     }
-    // /// Unwraps a Maybe and returns its internal value if it exists.
-    // /// 
-    // /// If it does not, it returns the default value of the internal type.
-    // /// ### Usage
-    // /// ```
-    // /// i := some(50);
-    // /// assert(Maybe.unwrapOrDefault(i)).equals(50);
-    // /// 
-    // /// j: ?UInt8 := none();
-    // /// assert(Maybe.unwrapOrDefault(j)).equals(0); // default value for UInt8.
-    // /// ```
-    // // public function unwrapOrDefault[where T implements Default]() -> T {
-    // //     if this.isNone() {
-    // //         var default: T;
-    // //         return default;
-    // //     } 
-    // //     return maybe.value;
-    // // }
-    // /// Tranforms a `Maybe<Maybe<T>>` to a `Maybe<T>`.
+    /// Unwraps a Maybe and returns its internal value if it exists.
+    /// 
+    /// If it does not, it returns the default value of the internal type.
+    /// ### Usage
+    /// ```
+    /// i := some(50);
+    /// assert(i.unwrapOrDefault()).equals(50);
+    /// 
+    /// j: ?Int32 := none();
+    /// assert(j.unwrapOrDefault()).equals(0); // default value for Int32.
+    //  ```
+    public function unwrapOrDefault|=(T implements Default)() -> T {
+        if this.isNone() {
+            var default: T;
+            return default;
+        } 
+        return this.value;
+    }
+    /// Tranforms a `Maybe<Maybe<T>>` to a `Maybe<T>`.
     // public function flatten<U>|=(T is ?U)() -> U {
     //     if maybe.isNone() { none() } else { maybe.value }
     // }

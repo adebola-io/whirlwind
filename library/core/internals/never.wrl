@@ -24,7 +24,7 @@ module never;
 /// function blackHole() -> never {
 ///     core.process.exit(1) // Exits the program and never returns.
 /// }
-/// num: Int := blackHole(); // valid.
+/// num: Int32 := blackHole(); // valid.
 /// str: String := blackHole(); // valid.
 /// 
 /// function produceValue() -> String {

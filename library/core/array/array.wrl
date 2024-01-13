@@ -9,21 +9,11 @@ use core.{
     iterate.{AsIterator, Iteratable, Reversed},
     math.{max, min},
     maybe.{none, some},
-    numeric.{Int, UnsignedInt},
+    numeric.Int32,
     ops.{Addition, Orderable},
     sentinels.todo,
     string.{Display, String}
 };
-
-test "inheritting display" {
-    function displayable<T implements Display>(value: T) -> T {
-        return value;
-    }
-
-    model Person {
-        new() {}
-    }
-}
 
 /// A contiguous, growable list of items of the same type.
 public model Array<T> 
@@ -63,7 +53,7 @@ public model Array<T>
     /// Implementation of the default trait.
     /// ### Usage
     /// ```
-    /// var empty: []Int;
+    /// var empty: []Int32;
     /// 
     /// assert(empty).equals([]);
     /// ```
@@ -129,8 +119,8 @@ public model Array<T>
         i := 0;
         length := this.length();
         while i < length {
-            var def: T; // default value.
-            this[i] = def;
+            var default: T; 
+            this[i] = default;
             i += 1;
         }
     }
@@ -221,7 +211,7 @@ public model Array<T>
     /// arr := [15, 25, 35, 45, 55];
     /// assert(arr.at(-1) == some(55))
     /// ```
-    public function at(index: Int) -> ?T {
+    public function at(index: Int32) -> ?T {
         return builtin.arrays.at(this, index);
     }
     /// Checks if an item is contained in the array.
@@ -254,7 +244,7 @@ public model Array<T>
     /// arr := [20, 30, 40, 50, 60];
     /// assert(arr.first().unwrap()).equals(20);
     /// 
-    /// empty: []Int := [];
+    /// empty: []Int32 := [];
     /// assertThat(empty.first() == none());
     /// ```
     public function first() -> ?T {
@@ -289,7 +279,7 @@ public model Array<T>
     /// arr := [str1, str2, str3];
     /// assert(arr.IndexOf(str2) == some(1)).
     /// ```
-    public function indexOf(value: T) -> ?UnsignedInt {
+    public function indexOf(value: T) -> ?Int32 {
         return builtin.arrays.indexOf(this, value);
     }
     /// Inserts an element at an index in the array,
@@ -300,7 +290,7 @@ public model Array<T>
     /// arr.insert(1, 2);
     /// assert(arr.at(1) == some(2));
     /// ```
-    public function insert(index: UnsignedInt, value: T) {
+    public function insert(index: Int32, value: T) {
         builtin.arrays.insert(this, index, value);
     }
     /// Inserts all the items from another array at the start of this array,
@@ -344,7 +334,7 @@ public model Array<T>
     /// arr := [1, 2, 3, 4];
     /// assert(arr.length()).equals(4);
     /// ```
-    public function length() -> UnsignedInt {
+    public function length() -> Int32 {
         return builtin.arrays.length(this);
     }
     /// Adds an item to the end of the array.
@@ -402,7 +392,7 @@ public model Array<T>
     /// 
     /// twoItems := arr.sample(2);
     /// ```
-    public function sample(n: UnsignedInt) -> []T {
+    public function sample(n: Int32) -> []T {
         if n > this.length() {
             return this.shuffled();
         };
@@ -459,7 +449,7 @@ public model Array<T>
 /// An iterator built from the elements of an array.
 public model ArrayIter<T> implements Iteratable<T> {
     var array: Array<T>;
-    var idx: UnsignedInt;
+    var idx: Int32;
     
     new(array: Array<T>) {
         this.array = array;
@@ -476,3 +466,4 @@ public model ArrayIter<T> implements Iteratable<T> {
         return some(nextItem);
     }
 }
+

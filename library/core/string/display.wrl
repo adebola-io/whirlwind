@@ -6,16 +6,14 @@ use string.String;
 /// This allows objects of different types to be seamlessly integrated into textual contexts,
 /// particularly for user-facing interfaces.
 /// 
-/// Models that implements Display can be printed using the `core.io.print` method.
 /// ## Usage
 /// ```
-/// use core.io.fmt;
 /// // Implementing Display on a model.
 /// model Rectangle implements Display {
-///     var length: UInt32;
-///     var width: UInt32;
+///     var length: Int32;
+///     var width: Int32;
 ///     
-///     new(length: UInt32, width: UInt32) {
+///     new(length: Int32, width: Int32) {
 ///         this.length = length;
 ///         this.width = width;
 ///     }
@@ -26,21 +24,7 @@ use string.String;
 ///     }
 /// }
 /// 
-/// print(new Rectangle(4, 6)) // Will print out "Rectangle { length: 4, breadth: 6 }"".
-/// ```
-/// Because the implementation is tedious to write again and again,
-/// especially for large models, it can be derived automatically.
-/// If all properties of a model implement Display, then the model itself 
-/// implements Display. All it needs is the `implements Display` interface appended.
-/// ```
-/// model Circle implements Display {
-///     var radius: UInt32;
-///     new(radius: UInt32) {
-///         this.radius = radius;
-///     }
-/// }
-/// 
-/// print(new Circle(10)); // Will print out "Circle { radius: 10 }"
+/// new Rectangle(4, 6).toStr(); // outputs "Rectangle { length: 4, breadth: 6 }"".
 /// ```
 public interface Display {
     /// Converts the implementing type to a string.

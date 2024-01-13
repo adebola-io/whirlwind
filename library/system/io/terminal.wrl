@@ -1,0 +1,23 @@
+module terminal;
+
+/// Prints a message or an object to the console, terminal 
+/// or any predefined output interface.
+public function print<T implements Display>(data: T) {
+    dataStr := data.toStr();
+    todo()
+}
+
+/// Displays an optional message to the console, terminal or
+/// any predefined input interface, prompting the user to enter
+/// text.
+public function prompt(message?: String) -> String {
+    todo()
+}
+
+/// Prints a message or an object to the console, terminal, 
+/// or any predefined output interface.
+public function printFmt<T implements Display>(data: T) {
+    dataStr := data.toFmtStr();
+    todo()
+}
+

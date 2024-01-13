@@ -2,8 +2,8 @@ use std::ops::ControlFlow;
 
 use super::{expressions::typecheck_block, *};
 use crate::{
-    utils::distill_as_function_type, IntermediateType, TypedModelDeclaration,
-    TypedModelPropertyType,
+    evaluate_and_ignore_constraint, utils::distill_as_function_type, IntermediateType,
+    TypedModelDeclaration, TypedModelPropertyType,
 };
 use ast::{unwrap_or_continue, unwrap_or_return};
 
@@ -296,7 +296,14 @@ fn typecheck_model_property(
                 evaluated_param_types,
                 false,
             );
-            typecheck_function_body(checker_ctx, return_type, body, symbollib, return_type_span);
+            typecheck_function_body(
+                property.name,
+                checker_ctx,
+                return_type,
+                body,
+                symbollib,
+                return_type_span,
+            );
             checker_ctx.current_function_is_static = former_is_static;
         }
     }
@@ -337,6 +344,7 @@ fn typecheck_model_property(
     }
 }
 
+/// Returns a full list of every implementation method from a list of impls.
 fn get_all_implementation_methods<'a>(
     implementations: &Vec<IntermediateType>,
     symbollib: &'a SymbolLibrary,
@@ -350,7 +358,7 @@ fn get_all_implementation_methods<'a>(
         .iter()
         .filter_map(|implementation| {
             let span = implementation.span();
-            let evaluated = evaluate(
+            let evaluated = evaluate_and_ignore_constraint(
                 implementation,
                 symbollib,
                 None,

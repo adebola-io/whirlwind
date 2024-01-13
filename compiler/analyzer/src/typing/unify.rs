@@ -447,12 +447,9 @@ pub fn unify_types(
 /// meaning that the right type must be smaller or equal in size
 /// to the left.
 /// Therefore:
-/// - UInt8 <: UInt8
-/// - UInt16 <: UInt8
-/// - UInt32 <: UInt16
-/// - UInt64 <: UInt32
-/// - Float32 <: Int
-/// - Float64 <: Float32
+/// - Int32 <: Int32
+/// - Float64 <: Int32
+/// - Float64 <: Float64
 fn unify_numbers(
     first_number: &SymbolIndex, 
     second_number: &SymbolIndex, 
@@ -466,27 +463,7 @@ fn unify_numbers(
     if first_model == second_model {
         return Ok(target.clone());
     }
-    let (first_is_uint8, second_is_unint8) = if let Some(idx) = symbollib.uint8 {
-        (first_model == idx, second_model == idx)
-    } else {
-        (false, false)
-    };
-    let (first_is_uint16, second_is_unint16) = if let Some(idx) = symbollib.uint16 {
-        (first_model == idx, second_model == idx)
-    } else {
-        (false, false)
-    };
-    let (first_is_uint32, second_is_unint32) = if let Some(idx) = symbollib.uint32 {
-        (first_model == idx, second_model == idx)
-    } else {
-        (false, false)
-    };
-    let (_, second_is_unint64) = if let Some(idx) = symbollib.uint64 {
-        (first_model == idx, second_model == idx)
-    } else {
-        (false, false)
-    };
-    let (first_is_float32, second_is_float32) = if let Some(idx) = symbollib.float32 {
+    let (first_is_int32, second_is_int32) = if let Some(idx) = symbollib.int32 {
         (first_model == idx, second_model == idx)
     } else {
         (false, false)
@@ -496,18 +473,11 @@ fn unify_numbers(
     } else {
         (false, false)
     };
-    // UInt8 is castable to every other numeric type.
-    if second_is_unint8 || 
-        // UInt16 is castable to every other type that isn't UInt8.
-        (second_is_unint16 && !first_is_uint8) ||
-        // UInt32 is castable to every type that isn't UInt8 or UInt16.
-        (second_is_unint32 && !(first_is_uint16 || first_is_uint8)) ||
-        // UInt64 is castable to every type bigger than UInt32.
-        (second_is_unint64 && !(first_is_uint8 || first_is_uint16 || first_is_uint32)) ||
-        // Float32 is castable only to itself and Float64.
-        (second_is_float32 && (first_is_float32 || first_is_float64)) ||
+    
+    // Int32 is castable to itself and Float64.
+    if (first_is_int32 && second_is_int32) ||
         // Float64 is only castable to Float64.
-        (second_is_float64 && first_is_float64)
+        (first_is_float64 && (second_is_float64 || second_is_int32))
     {
         return Ok(target.clone());
     }

@@ -3,9 +3,10 @@ module math;
 use core.{
     bool.Bool,
     internals.{Injunction, invoke},
-    numeric.{Float64, Number, Int, UnsignedInt},
+    numeric.{Float64, Number, Int32},
     ops.{Orderable, Ordering},
     sentinels.todo,
+    string.String
 };
 
 /// Returns the minimum of two values that implement Orderable.
@@ -52,7 +53,7 @@ public function max<T implements Orderable>(first: T, second: T) -> T {
 /// 
 /// @TODO: Define to 64-bits.
 public const PI: Float64 = 3.1415926535897932384626433;
-public const UINTMAX: UnsignedInt = invoke(Injunction.MaxUnsignedInt);
+public const UINTMAX: Int32 = invoke(Injunction.MaxUnsignedInt);
 
 /// Computes the square of a number.
 public function square(a: Number) -> Number {
@@ -72,12 +73,12 @@ public function sqrt(a: Number) -> Number {
 }
 
 /// Returns the smallest integer greater than or equal to x.
-public function ceil(x: Number) -> Int {
+public function ceil(x: Number) -> Int32 {
     return todo();
 }
 
 /// Returns the largest integer smaller than or equal to x.
-public function floor(x: Number) -> Int {
+public function floor(x: Number) -> Int32 {
     return todo();
 }
 
@@ -87,15 +88,27 @@ public function floor(x: Number) -> Int {
 /// ```
 /// use core.math.abs;
 /// 
-/// Assert(max(-4)).equals(4);
-/// Assert(max(10)).equals(10);
+/// assert(max(-4)).equals(4);
+/// assert(max(10)).equals(10);
 /// ```
-public function abs(a: Number) -> UnsignedInt {
+public function abs(a: Number) -> Int32 {
     todo()
 }
 
 /// Determines if a number is prime.
 public function isPrime(x: Number) -> Bool {
+    todo()
+}
+
+/// Parses a string into an integer.
+/// ### Usage
+/// ```
+/// use core.math.parseInt;
+/// 
+/// assert(parseInt("-9")!).equals(-9);
+/// 
+/// ```
+public function parseInt(string: String) -> ?Int32 {
     todo()
 }
 

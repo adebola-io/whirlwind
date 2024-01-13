@@ -1,7 +1,7 @@
-use crate::{EvaluatedType, PathIndex};
+use crate::{EvaluatedType, IntermediateType, IntermediateTypeClause, PathIndex};
 use ast::{
-    ConstantSignature, EnumSignature, LogicOperator, ShorthandVariableSignature, Span,
-    TypeSignature, WhirlNumber, WhirlString,
+    ConstantSignature, EnumSignature, ShorthandVariableSignature, Span, TypeSignature, WhirlNumber,
+    WhirlString,
 };
 use std::{path::Path, vec};
 
@@ -215,107 +215,6 @@ impl SemanticSymbolKind {
     pub(crate) fn is_interface(&self) -> bool {
         matches!(self, SemanticSymbolKind::Interface { .. })
     }
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct IntermediateTypeProperty {
-    pub actual: Option<SymbolIndex>,
-    pub name: String,
-    pub generic_args: Vec<IntermediateType>,
-    pub span: Span,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum IntermediateType {
-    FunctionType {
-        params: Vec<ParameterType>,
-        return_type: Option<Box<IntermediateType>>,
-        span: Span,
-    },
-    MemberType {
-        object: Box<IntermediateType>,
-        property: IntermediateTypeProperty,
-        span: Span,
-    },
-    SimpleType {
-        value: SymbolIndex,
-        generic_args: Vec<IntermediateType>,
-        span: Span,
-    },
-    UnionType {
-        types: Vec<IntermediateType>,
-        span: Span,
-    },
-    This {
-        meaning: Option<SymbolIndex>,
-        span: Span,
-    },
-    Placeholder,
-    ArrayType {
-        element_type: Box<IntermediateType>,
-        span: Span,
-    },
-    MaybeType {
-        value: Box<IntermediateType>,
-        span: Span,
-    },
-    TernaryType {
-        clause: Box<IntermediateTypeClause>,
-        consequent: Box<IntermediateType>,
-        alternate: Box<IntermediateType>,
-        span: Span,
-    },
-    BoundConstraintType {
-        consequent: Box<IntermediateType>,
-        clause: Box<IntermediateTypeClause>,
-        span: Span,
-    },
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum IntermediateTypeClause {
-    Binary {
-        left: Box<IntermediateTypeClause>,
-        operator: LogicOperator,
-        right: Box<IntermediateTypeClause>,
-    },
-    Is {
-        base: SymbolIndex,
-        other: IntermediateType,
-    },
-    Implements {
-        base: SymbolIndex,
-        interfaces: Vec<IntermediateType>,
-    },
-}
-
-impl IntermediateType {
-    pub fn span(&self) -> Span {
-        match self {
-            IntermediateType::FunctionType { span, .. }
-            | IntermediateType::MemberType { span, .. }
-            | IntermediateType::SimpleType { span, .. }
-            | IntermediateType::UnionType { span, .. }
-            | IntermediateType::This { span, .. }
-            | IntermediateType::ArrayType { span, .. }
-            | IntermediateType::MaybeType { span, .. }
-            | IntermediateType::TernaryType { span, .. }
-            | IntermediateType::BoundConstraintType { span, .. } => *span,
-            IntermediateType::Placeholder => Span::default(),
-        }
-    }
-
-    pub(crate) fn is_ternary(&self) -> bool {
-        matches!(self, IntermediateType::TernaryType { .. })
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct ParameterType {
-    pub name: String,
-    pub is_optional: bool,
-    pub type_label: Option<IntermediateType>,
-    pub inferred_type: EvaluatedType,
 }
 
 #[derive(Debug)]

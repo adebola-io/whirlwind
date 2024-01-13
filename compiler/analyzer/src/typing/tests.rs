@@ -110,17 +110,25 @@ fn coerces_this_type() {
 
 #[test]
 fn conditional_interface_impl() {
-    let standpoint = text_produces_errors!(
+    check_types!(
         "
         module Test;
+
+        function displayable<T implements Display>(value: T) -> T {
+            return value;
+        }
         
         function main() {
-            fmt('').add(['hello']);
+            // should implement Display, because child implements Display.
+            a := [\"hello, world\"];
+            b := displayable(a);
+            // should implement Display, because internal value implements Display.
+            c := some(true);
+            d := displayable(c);
         }
         ",
-        &[]
+        &[("b", "Array<String>"), ("d", "Maybe<Bool>")]
     );
-    assert!(standpoint.diagnostics.len() == 0);
 }
 
 #[test]

@@ -1,0 +1,44 @@
+module response;
+use request.HttpRequest;
+
+use core.prelude.{String, Int32, Int32, todo};
+use core.data.JsonValue;
+
+/// The headers on a 
+public model ResponseHeaders {
+    public function set(key: String, value: String) {
+        todo()
+    }
+    public function get(key: String) -> ?String {
+        todo()
+    }
+}
+
+public model HttpResponse {
+    var _status: Int32;
+    var headers: ResponseHeaders;
+    var data: String;
+    /// Build a response object from a request.
+    public static function from(request: HttpRequest) -> This {
+        return todo();
+    }
+    /// Returns the content type set in the response header.
+    public function contentType() -> ?String {
+        this.headers.get("Content-Type")
+    }
+    /// Sets the status code value of the response.
+    public function status(code: Int32) -> This {
+        this._status = code;
+        return this;
+    }
+    /// Sets the response type to HTML Text.
+    public function html(string: String) -> This {
+        this.headers.set("Content-Type", "text/html");
+        this.data = string;
+        return this;
+    }
+    public function json<J implements JsonValue>(json: J) -> This {
+        this.headers.set("Content-Type", "application/json");
+        return this;
+    }
+}

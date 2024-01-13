@@ -1,4 +1,6 @@
-use ast::unwrap_or_continue;
+use ast::{unwrap_or_continue, unwrap_or_return};
+
+use crate::utils::assume_verity;
 
 use super::{expressions::typecheck_block, *};
 
@@ -296,20 +298,42 @@ fn typecheck_for_loop_body(
     }
 }
 
-/// Typechecks a function body.
+/// Typechecks a function or method body.
 fn typecheck_function_body(
+    method_or_function_symbol_idx: SymbolIndex,
     checker_ctx: &mut TypecheckerContext<'_>,
     return_type: EvaluatedType,
     body: &mut TypedBlock,
     symbollib: &mut SymbolLibrary,
     return_type_span: Option<Span>,
 ) {
+    // If the function is a method, its type constraints must be assumed to be true for the
+    // duration of its typechecking. This is done by selecting the generics in the type
+    // clause and adding scoped type environments to symbollib (not the checker_ctx). This ensures that
+    // the assumptions do not clash with already established properties, and
+    // I do not have to rewrite the unification and evaluation functions to pass around the
+    // checker_ctx as an argument.
+    let symbol = unwrap_or_return!(symbollib.get_forwarded(method_or_function_symbol_idx));
+    let mut environment = None;
+    if let SemanticSymbolKind::Method {
+        constraint: Some((constraint, span)),
+        ..
+    } = &symbol.kind
+    {
+        environment = assume_verity(constraint, checker_ctx, symbollib, *span);
+    };
+    if let Some(environment) = environment {
+        // symbollib.apply_type_environment(environment);
+    }
+    // The function context keeps track of the return type (for checking deeply nested return statements)
+    // and whether or not the function is named (for function expressions).
     checker_ctx
         .current_function_context
         .push(CurrentFunctionContext {
             is_named: true,
             return_type: return_type.clone(),
         });
+    // todo: be more explicit that the `scopetype` used here is for tracking attribute assignment.
     push_scopetype(checker_ctx, ScopeType::Other);
     let mut block_return_type = expressions::typecheck_block(body, true, checker_ctx, symbollib);
     pop_scopetype(checker_ctx);
@@ -319,7 +343,6 @@ fn typecheck_function_body(
     {
         block_return_type = coerce_all_generics(&block_return_type, EvaluatedType::Never);
     }
-    checker_ctx.current_function_context.pop();
     if body
         .statements
         .last()
@@ -367,6 +390,8 @@ fn typecheck_function_body(
             ));
         }
     }
+    checker_ctx.current_function_context.pop();
+    // symbollib.remove_last_type_environment();
 }
 
 fn show_interface_as_type_error(
@@ -893,6 +918,7 @@ pub fn typecheck_function(
         false,
     );
     typecheck_function_body(
+        function.name,
         checker_ctx,
         return_type,
         &mut function.body,

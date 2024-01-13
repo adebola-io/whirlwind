@@ -2,7 +2,7 @@ module region;
 
 use core.{
     bool.Bool,
-    numeric.UnsignedInt,
+    numeric.Int32,
     sentinels.todo
 };
 
@@ -98,10 +98,10 @@ public model Region {
     public function free<T>(instance: T) {
         todo()
     }
-    public function capacity() -> UnsignedInt {
+    public function capacity() -> Int32 {
         todo()
     }
-    public function grow(newCapacity: UnsignedInt) {
+    public function grow(newCapacity: Int32) {
         todo()
     }
     public function retire() {

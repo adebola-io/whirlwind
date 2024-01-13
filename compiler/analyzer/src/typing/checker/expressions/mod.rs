@@ -6,7 +6,7 @@ mod calls;
 use super::{statements::typecheck_generic_params, *};
 use crate::{
     programdiagnostic::DiagnosticType,
-    utils::{distill_as_function_type, is_unsigned, is_updateable},
+    utils::{distill_as_function_type, is_updateable},
     Error, IntermediateType,
 };
 pub use access::search_for_property;
@@ -289,34 +289,6 @@ fn typecheck_unary_expression(
             }
             UnaryOperator::Plus | UnaryOperator::Minus => {
                 if is_numeric_type(&operand_type, symbollib) {
-                    if is_unsigned(&operand_type, symbollib) {
-                        if symbollib.int.is_none() {
-                            checker_ctx.add_diagnostic(errors::missing_intrinsic(
-                                format!("Int"),
-                                unaryexp.span,
-                            ));
-                            return EvaluatedType::Unknown;
-                        }
-                        let int = evaluate(
-                            &IntermediateType::SimpleType {
-                                value: symbollib.int.unwrap(),
-                                generic_args: vec![],
-                                span: Span::default(),
-                            },
-                            symbollib,
-                            None,
-                            &mut None,
-                            0,
-                        );
-                        update_expression_type(
-                            &mut unaryexp.operand,
-                            symbollib,
-                            checker_ctx.literals,
-                            &vec![],
-                            Some(&int),
-                        );
-                        return int;
-                    }
                     return operand_type;
                 } else {
                     let typ = symbollib.format_evaluated_type(&operand_type);
@@ -643,8 +615,8 @@ fn typecheck_index_expression(
                 return EvaluatedType::Unknown;
             }
         }
-        // Confirms that the indexer is at least a component of UnsignedInt.
-        if let Some(idx) = symbollib.uint {
+        // Confirms that the indexer is at least an int32.
+        if let Some(idx) = symbollib.int32 {
             let opaque_instance = evaluate(
                 &crate::IntermediateType::SimpleType {
                     value: idx,

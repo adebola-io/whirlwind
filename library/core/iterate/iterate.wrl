@@ -12,7 +12,7 @@ use core.{
     bool.Bool,
     collections.Tuple,
     maybe.{none, some},
-    numeric.UnsignedInt,
+    numeric.Int32,
     sentinels.todo
 };
 
@@ -68,7 +68,7 @@ public interface Iteratable<I> {
     /// 
     /// assertThat(arrItem.count() == 5);
     /// ```
-    public function count() -> UnsignedInt {
+    public function count() -> Int32 {
         count := 0;
         while this.next().isSome() {
             count += 1;
@@ -233,7 +233,7 @@ public interface Iteratable<I> {
     /// 
     /// assert(firstTen).equals([2, 4, 6, 8, 10]);
     /// ```
-    public function take(n: UnsignedInt) -> []I {
+    public function take(n: Int32) -> []I {
         todo()
     }
     /// Iterative adapter that advances as long as a condition is false.
@@ -301,7 +301,7 @@ public interface Iteratable<I> {
     /// 
     /// assert(iter.collect()).equals(["cherry", "date", "elderberry"]);
     /// ```
-    public function skip(n: UnsignedInt) -> Skip<I, This> {
+    public function skip(n: Int32) -> Skip<I, This> {
         return new Skip(this, n);
     }
     /// Specifies a side-effect that should run once the iterator stops producing elements.
@@ -339,14 +339,14 @@ public interface Iteratable<I> {
     }
 }
 
-public model Enumerate<I, J implements Iteratable<I>> implements Iteratable<Tuple<UnsignedInt, I>>> {
+public model Enumerate<I, J implements Iteratable<I>> implements Iteratable<Tuple<Int32, I>>> {
     var iterator: J;
-    var indexer: UnsignedInt;
+    var indexer: Int32;
     new(iterator: J) {
         this.indexer = 0;
         this.iterator = iterator;
     }
-    public function [Iteratable.next]() -> ?Tuple<UnsignedInt, I> {
+    public function [Iteratable.next]() -> ?Tuple<Int32, I> {
         value := this.iterator.next()?;
         this.indexer += 1;
         return some(new Tuple(this.indexer, value));
@@ -439,7 +439,7 @@ public model Interleave<I, J implements Iteratable<I>> implements Iteratable<I> 
 
 public model Reversed<I> implements Iteratable<I> {
     var array: []I;
-    var idx: UnsignedInt;
+    var idx: Int32;
     new(array: []I) {
         this.array = array;
         this.idx = array.length();
@@ -456,8 +456,8 @@ public model Reversed<I> implements Iteratable<I> {
 
 public model Skip<I, J implements Iteratable<I>> implements Iteratable<I> {
     var iterator: J;
-    var skipCount: UnsignedInt;
-    new(iterator: J, n: UnsignedInt) {
+    var skipCount: Int32;
+    new(iterator: J, n: Int32) {
         this.iterator = iterator;
         this.skipCount = n;
     }

@@ -964,13 +964,13 @@ fn evaluate_function_type(
 
 /// Computes a type clause and returns whether it is true or not.
 pub fn evaluate_type_clause(
-    clause: &Box<IntermediateTypeClause>,
+    clause: &IntermediateTypeClause,
     symbollib: &SymbolLibrary,
     solved_generics: Option<&Vec<(SymbolIndex, EvaluatedType)>>,
     error_tracker: &mut Option<(&mut Vec<ProgramDiagnostic>, PathIndex, Span)>,
     recursion_depth: u64,
 ) -> Option<bool> {
-    match clause.as_ref() {
+    match clause {
         // e.g. A is B and C implements D
         IntermediateTypeClause::Binary {
             left,
@@ -1028,7 +1028,7 @@ pub fn evaluate_type_clause(
                 );
                 if let EvaluatedType::InterfaceInstance { interface_, .. } = &evaled_interface {
                     let actual_impl_type = get_implementation_of(*interface_, &lhs, symbollib)?;
-                    // converge_types(evaled_interface, actual_impl_type, symbollib)?;
+                    converge_types(evaled_interface, actual_impl_type, symbollib)?;
                 } else {
                     let asstr = symbollib.format_evaluated_type(&evaled_interface);
                     add_error_if_possible(
@@ -1102,6 +1102,35 @@ pub fn evaluate_parameter_idxs(
         evaluated_param_types.push((*param, inferred_type));
     }
     evaluated_param_types
+}
+
+/// A variant of evaluate() that extracts consequents from bounded constraint types.
+pub fn evaluate_and_ignore_constraint(
+    typ: &IntermediateType,
+    symbollib: &SymbolLibrary,
+    // A map of the solutions for previously encountered generic types.
+    solved_generics: Option<&Vec<(SymbolIndex, EvaluatedType)>>,
+    // Error store from the standpoint, if it exists.
+    error_tracker: &mut Option<(&mut Vec<ProgramDiagnostic>, PathIndex, Span)>,
+    // A value that safe guards against infinitely recursive union types, or indirect recursion in type aliases.
+    recursion_depth: u64,
+) -> EvaluatedType {
+    match typ {
+        IntermediateType::BoundConstraintType { consequent, .. } => evaluate(
+            &consequent,
+            symbollib,
+            solved_generics,
+            error_tracker,
+            recursion_depth,
+        ),
+        _ => evaluate(
+            typ,
+            symbollib,
+            solved_generics,
+            error_tracker,
+            recursion_depth,
+        ),
+    }
 }
 
 fn generate_generics_from_arguments(
