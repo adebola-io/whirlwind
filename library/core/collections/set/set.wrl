@@ -42,14 +42,14 @@ public model Set<T implements Hash>
     }
     public function [Display.toStr]|=(T implements Display)() -> String {
         str := "Set { ";
-        for { a as idx, b as tuple } in this.items.iter().enumerate() {
-            var { a as item } = tuple;
-            str += item.toStr();
-            if idx + 1 != this.items.length() {
-                str += ", "
-            }
-        }
-        str += " }";
+        // for { a as idx, b as tuple } in this.items.iter().enumerate() {
+        //     var { a as item } = tuple;
+        //     str += item.toStr();
+        //     if idx + 1 != this.items.length() {
+        //         str += ", "
+        //     }
+        // }
+        // str += " }";
         str
     }
     /// Adds an element to the set.

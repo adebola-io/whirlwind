@@ -1,6 +1,7 @@
 module numeric;
 
 use core.{
+    bool.Bool,
     interfaces.{Default, Clonable},
     ops.{
         Addition, Sequenced, Subtraction, 
@@ -24,6 +25,15 @@ public model Int32
         + FromStr
         + Clonable
 {
+    /// Returns true if the value is less than 0.
+    /// ### Usage
+    /// ```
+    /// x := -1;
+    /// assertThat(x.isNegative());
+    /// ```
+    public function isNegative() -> Bool {
+        this < 0
+    }
     // Compiler built in.
 }
 

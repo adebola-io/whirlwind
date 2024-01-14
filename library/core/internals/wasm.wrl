@@ -1,0 +1,36 @@
+module wasm;
+
+import "jigsaw:arrays.wasm" {
+
+    public function at(array: Array<T>, index: Int32) -> ?T;
+
+    public function contains(array: Array<T>, value: T) -> Bool;
+
+    public function clear(array: Array<T>);
+
+    public function includes(array: Array<T>, subarray: Array<T>) -> Bool;
+
+    public function indexOf(array: Array<T>, value: T) -> ?Int32;
+
+    public function insert(array: Array<T>, index: Int32, value: T);
+
+    public function prepend(array: Array<T>, prefix: []T);
+
+    public function penultimate(array: Array<T>) -> ?T;
+
+    public function partition(array: Array<T>, check: fn(item: T) -> Bool) -> [][]T {
+        invoke(builtin(InjunctionType.ArrPartition), some(check))
+    }
+
+    public function length(array: Array<T>) -> Int32 {
+        invoke(builtin(InjunctionType.ArrLen), some(array))
+    }
+
+    public function push(array: Array<T>, value: T) {
+        invoke(builtin(InjunctionType.ArrayPush), some(array), some(value))
+    }
+
+    public function pop(array: Array<T>) -> ?T {
+        invoke(builtin(InjunctionType.ArrayPop), some(array))
+    }
+}

@@ -3,6 +3,7 @@ module ref;
 use core.interfaces.Guaranteed;
 use core.internals.builtin;
 
+
 /// An intrinsic model that provides a way to hold a weak reference to a value of type `T`.
 /// 
 /// Unlike regular references, weak references don't prevent the underlying

@@ -8,7 +8,7 @@
 /// for a consistent interface.
 module io;
 
-use core.prelude.{Outcome, Int32, Int32};
+use core.prelude.{Outcome, Int32};
 
 public use terminal.{print, prompt, printFmt};
 

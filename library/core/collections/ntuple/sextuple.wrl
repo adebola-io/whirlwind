@@ -3,6 +3,8 @@ module sextuple;
 use core.maybe.some;
 use core.interfaces.Clonable;
 use core.string.{fmt, Display, String};
+use core.sentinels.todo;
+
 use ntuple.NTuple;
 
 
@@ -56,14 +58,15 @@ public model Sextuple<T, U, V, W, X, Y>
             and Y implements Clonable
         )() -> This 
     {
-        return new Sextuple(
-            this.a.clone(),
-            this.b.clone(),
-            this.c.clone(),
-            this.d.clone(),
-            this.e.clone(),
-            this.f.clone()
-        );
+        todo()
+        // return new Sextuple(
+        //     this.a.clone(),
+        //     this.b.clone(),
+        //     this.c.clone(),
+        //     this.d.clone(),
+        //     this.e.clone(),
+        //     this.f.clone()
+        // );
     }
 
     public function [Display.toStr]|=(
@@ -75,14 +78,15 @@ public model Sextuple<T, U, V, W, X, Y>
             and Y implements Display
         )() -> String
     {
-        return fmt("Sextuple(%, %, %, %, %, %)")
-            .add(this.a.toStr())
-            .add(this.b.toStr())
-            .add(this.c.toStr())
-            .add(this.d.toStr())
-            .add(this.e.toStr())
-            .add(this.f.toStr())
-            .finish();
+        todo()
+        // return fmt("Sextuple(%, %, %, %, %, %)")
+        //     .add(this.a.toStr())
+        //     .add(this.b.toStr())
+        //     .add(this.c.toStr())
+        //     .add(this.d.toStr())
+        //     .add(this.e.toStr())
+        //     .add(this.f.toStr())
+        //     .finish();
     }
 
     public function [NTuple.first]() -> ?T {

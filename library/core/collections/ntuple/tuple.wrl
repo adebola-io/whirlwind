@@ -5,6 +5,7 @@ use core.string.{Display, fmt, String};
 use core.interfaces.Clonable;
 use core.maybe.some;
 use core.ops.Addition;
+use core.sentinels.todo;
 
 /// A simple ordered pair of items. Elements within a tuple can be of any type,
 /// and the order in which they are defined is preserved.
@@ -28,10 +29,11 @@ public model Tuple<T, U>
     public function [Clonable.clone]|=(
         T implements Clonable and U implements Clonable
     )() -> This {
-        return new Tuple(
-            this.a.clone(),
-            this.b.clone()
-        );
+        todo()
+        // return new Tuple(
+        //     this.a.clone(),
+        //     this.b.clone()
+        // );
     }
     /// Converts the tuple to a string, provided that its elements implement
     /// Display.
@@ -45,10 +47,11 @@ public model Tuple<T, U>
     public function [Display.toStr]|=(
         T implements Display and U implements Display
     )() -> String {
-        return fmt("Tuple(%, %)")
-            .add(this.a)
-            .add(this.b)
-            .finish();
+        todo()
+        // return fmt("Tuple(%, %)")
+        //     .add(this.a)
+        //     .add(this.b)
+        //     .finish();
     }
 
     public function [NTuple.first]() -> ?T {
@@ -79,7 +82,8 @@ public model Tuple<T, U>
     /// assert(joined).equals("John Doe");
     /// ```
     public function join|=(T is U and T implements Addition)() -> T {
-        this.a + this.b
+        todo()
+        // this.a + this.b
     }
 }
 

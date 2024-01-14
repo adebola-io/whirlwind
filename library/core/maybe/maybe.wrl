@@ -28,7 +28,7 @@ public model Maybe<T>
     + Try<T, ?never> 
 {
     /// A simple flag for marking existence or non-existence.
-    var exists: Bool;
+    var _exists: Bool;
     /// The internal value.
     /// 
     /// This will point to unintialized memory if 
@@ -51,21 +51,26 @@ public model Maybe<T>
     /// assert(maybeInt2).equals(some(42));
     /// ```
     public function [Clonable.clone]|=(T implements Clonable)() -> This {
-        if this.isSome() {
-            return some(this.value.clone());
-        }
+        // if this.isSome() {
+        //     return some(this.value.clone());
+        // }
         return none();
     }
     /// Converts the Maybe to a string.
     /// ### Usage
     /// ```
-    /// maybeInt := some()
+    /// maybeInt := some(90);
+    /// assert(maybeInt.toStr()).equals("Maybe.some(90)");
+    /// 
+    /// maybeInt = none();
+    /// assert(maybeInt.toStr()).equals("Maybe.none");
     /// ```
     public function [Display.toStr]|=(T implements Display)() -> String {
         if this.isNone() {
             return "Maybe.none";
         }
-        return fmt("Maybe.some(%)").add(this.value).finish();
+        core.sentinels.todo()
+        // return fmt("Maybe.some(%)").add(this.value).finish();
     }
     /// Implementation of the `Guaranteed` interface.
     function [Guaranteed.guarantee]() -> T {
@@ -110,7 +115,7 @@ public model Maybe<T>
     /// assertThat(!stringValue.isNone());
     /// ```
     public function isNone() -> Bool {
-        this.exists
+        this._exists
     }
     /// Returns a Bool indicating whether there is a value contained or not.
     /// ### Usage
@@ -122,7 +127,7 @@ public model Maybe<T>
     /// assertThat(!noValue.isSome());
     /// ```
     public function isSome() -> Bool {
-       !this.exists
+       !this._exists
     }
     /// Returns a Bool indicating whether there is a value contained, and it
     /// upholds a given predicate.
@@ -193,6 +198,12 @@ public model Maybe<T>
     /// value if there is nothing within.
     /// ### Usage
     /// ```
+    /// use core.math.parseInt;
+    /// parseError := fn new Error("Could not parse.");
+    /// 
+    /// intErr := parseInt("a9s").someOrElse(parseError);
+    /// 
+    /// assert(intErr).equals(err(new Error("Could not parse.")));
     /// ```
     public function someOrElse<E>(error: fn() -> E) -> Outcome<T, E> {
         if this.isNone() { err(error()) } else { ok(this.value) }
@@ -265,14 +276,15 @@ public model Maybe<T>
     /// assert(j.unwrapOrDefault()).equals(0); // default value for Int32.
     //  ```
     public function unwrapOrDefault|=(T implements Default)() -> T {
-        if this.isNone() {
-            var default: T;
-            return default;
-        } 
+        // if this.isNone() {
+        //     var default: T;
+        //     return default;
+        // } 
         return this.value;
     }
     /// Tranforms a `Maybe<Maybe<T>>` to a `Maybe<T>`.
-    // public function flatten<U>|=(T is ?U)() -> U {
-    //     if maybe.isNone() { none() } else { maybe.value }
-    // }
+    public function flatten<U>|=(T is ?U)() -> ?U {
+        core.sentinels.todo()
+        // if this.isNone() { none() } else { this.value }
+    }
 }

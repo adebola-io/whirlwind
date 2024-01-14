@@ -27,6 +27,19 @@ public enum RegionOperationError {
 /// - pinning data so that it can outlive the current region.
 /// - capturing data from parent region scopes, etc.
 public model Region {
+    var id: Int32;
+    /// Allocates a memory block with the specified size 
+    /// inside of the current memory region and returns 
+    /// the offset of the block's start.
+    /// 
+    /// If the allocation fails due to memory shortage, 
+    /// it will return a none() value.
+    /// ### Usage
+    /// ```
+    /// ```
+    public function alloc(size: Int32) -> Int32 {
+        todo()
+    }
     /// Moves an object instance from the current region to a parent region,
     /// basically extending its lifetime, and ensuring that it is not deallocated when
     /// the current region is destroyed.
@@ -35,12 +48,12 @@ public model Region {
     /// ```
     /// r := Region.create();
     /// array := [1, 2, 3]; // Created in region r.
-    /// r.pin(array);
+    /// r.escape(array);
     /// 
     /// r.destroy();
     /// print(array[1]); // Still valid, because array is no longer owned by region r.
     /// ```
-    /// The method is recursive, meaning that pinning an object will also pin all
+    /// The method is recursive, meaning that escaping an object will also escape all
     /// its internal values and attributes.
     /// ```
     /// r2 := Region.create();
@@ -48,13 +61,13 @@ public model Region {
     /// name := "Michael"; // Created inside region r.
     /// nameList := [name]; // Created inside region r.
     /// 
-    /// r2.pin(nameList);
+    /// r2.escape(nameList);
     /// r2.destroy();
     /// 
     /// print(nameList); // Valid because nameList is pinned.
     /// print(name); // Valid because name is an item in nameList, inheriting its pinned state.
     /// ```
-    public function pin<T>(instance: T) {
+    public function escape<T>(instance: T) {
         todo()
     }
     /// Moves the lifetime of an object instance into the current region. This means that whenever
@@ -164,6 +177,17 @@ public model Region {
     }
      /// Returns a reference to the current region.
     public static function current() -> Region {
+        todo()
+    }
+    /// Returns the memory region in charge of the internal contents of a variable.
+    /// 
+    /// This method will only return a valid region for values that are stored.
+    /// i.e. checking the owner of a primitive value is not defined, because primitive values
+    /// are not owned.
+    /// 
+    /// The method will also return no region if the value being checked is a reference to
+    /// the global region.
+    public static function owner<T>(value: T) -> ?This {
         todo()
     }
 }

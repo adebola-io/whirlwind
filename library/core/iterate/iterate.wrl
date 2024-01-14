@@ -203,7 +203,7 @@ public interface Iteratable<I> {
     /// namesIter := names.iter();
     /// startsWithA := namesiter().find(fn(name) name.startsWith("A"));
     /// 
-    /// assert(startsWithA).equals("Abdul");
+    /// assert(startsWithA).equals(some("Abdul"));
     /// 
     /// // If there are still elements, the iterator can still be used.
     /// assert(namesIter.next()).equals(some("Fatima"));
@@ -223,7 +223,7 @@ public interface Iteratable<I> {
     /// ### Usage
     /// ```
     /// numbers := [2, 4, 6, 8, 10];
-    /// firstThree := numbers.iter().Take(3);
+    /// firstThree := numbers.iter().take(3);
     /// 
     /// assert(firstThree).equals([2, 4, 6]);
     /// ```

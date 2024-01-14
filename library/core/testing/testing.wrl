@@ -57,11 +57,12 @@ public model Assertion<T implements Display> {
     }
     /// Checks that a collection type is empty
     public function isEmpty<U, V implements Iteratable<U>>|=(T implements AsIterator<U, V>)() {
-        length := this.value.iter().count();
-        if this.iter().next().isSome() {
-            message := fmt("Assertion failed because array is not empty.\n");
-            message.extend("Array Length: %").add(length);
-            fatalOnCaller(message.finish());
-        }
+        core.sentinels.todo()
+        // length := this.value.iter().count();
+        // if this.iter().next().isSome() {
+        //     message := fmt("Assertion failed because array is not empty.\n");
+        //     message.extend("Array Length: %").add(length);
+        //     fatalOnCaller(message.finish());
+        // }
     }
 }
