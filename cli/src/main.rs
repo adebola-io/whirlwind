@@ -22,9 +22,13 @@ fn main() {
             Some(CliCommand::Version) => {
                 println!("Whirlwind Version {VERSION} ({})", std::env::consts::OS)
             }
-            Some(CliCommand::Run | CliCommand::Build | CliCommand::Eval | CliCommand::Test) => {
-                manage(options, &mut code)
-            }
+            Some(
+                CliCommand::Run
+                | CliCommand::Build
+                | CliCommand::Eval
+                | CliCommand::Test
+                | CliCommand::Check,
+            ) => manage(options, &mut code),
             Some(CliCommand::Custom(string)) => {
                 terminal::error(format!("Unknown command: \"{string}\""));
                 terminal::inform("Format: whirlwind [command] [file.wrl] [arguments]");
@@ -76,7 +80,14 @@ fn check_paths(path: PathBuf, code: &mut i32, corelibpath: PathBuf, options: opt
     }
 
     // ---
-    let entry_path = options.file.unwrap();
+    let entry_path = match options.file {
+        Some(file) => file,
+        None => {
+            terminal::error("Entry file not specified.");
+            *code = 1;
+            return;
+        }
+    };
     terminal::clear();
     println!(
         "{} {}",
@@ -115,7 +126,7 @@ fn check_paths(path: PathBuf, code: &mut i32, corelibpath: PathBuf, options: opt
     }
 
     let elapsed = time.elapsed();
-    let build_finished = format!("Build finished in {elapsed:?}\n").color().green();
+    let build_finished = format!("Build finished in {elapsed:?}.\n").color().green();
     println!("{build_finished}",);
 
     // let object = bytecode::generate_from(&standpoint);

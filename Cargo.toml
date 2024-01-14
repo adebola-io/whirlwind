@@ -9,7 +9,7 @@ members = [
     "compiler/analyzer",
     "compiler/utils",
     "compiler/macros",
-    "compiler/cli",
+    "cli",
     "server",
     "repl",
 ]

@@ -65,7 +65,11 @@ pub fn parse_cli() -> Result<CliObject, CliError> {
 
     if matches!(
         command,
-        CliCommand::Run | CliCommand::Build | CliCommand::Eval | CliCommand::Test
+        CliCommand::Run
+            | CliCommand::Build
+            | CliCommand::Eval
+            | CliCommand::Test
+            | CliCommand::Check
     ) {
         let entry_file = args.next();
         if entry_file.is_none() {

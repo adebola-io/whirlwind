@@ -1,7 +1,7 @@
 module tuple;
 
 use ntuple.NTuple;
-use core.string.{Display, fmt, String};
+use core.string.{Display, String};
 use core.interfaces.Clonable;
 use core.maybe.some;
 use core.ops.Addition;

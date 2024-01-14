@@ -17,13 +17,13 @@ pub fn print_help() {
     let mut commands = TerminalTable::new("Commands:");
     commands
         .sideline(&sideline)
-        .row("build", vec!["Build a file to a bytecode object."])
+        .row("build (disabled)", vec!["Build a file to a wasm object."])
         .row("check", vec!["Checks file for syntax and semantic errors."])
-        .row("eval", vec!["Starts a new repl."])
-        .row("format", vec!["Formats a file."])
+        .row("eval (disabled)", vec!["Starts a new repl."])
+        .row("format (disabled)", vec!["Formats a file."])
         .row("h, help", vec!["Displays this message."])
-        .row("run", vec!["Builds and runs a file."])
-        .row("test", vec!["Runs the test blocks in the file."])
+        .row("run (disabled)", vec!["Builds and runs a file."])
+        .row("test (disabled)", vec!["Runs the test blocks in the file."])
         .row("v, version", vec!["Prints version of runtime installed."]);
     println!("{commands}");
 

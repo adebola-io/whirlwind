@@ -5,10 +5,15 @@ function helloWorld() {
     print("Hello, world!");
 }
 
-use core.io.fmt;
+use core.string.fmt;
 /// Greets a person.
 function greeting(name: String) {
     print(fmt("Good day, %!").add(name))
+}
+
+/// Stub for print, since system.io is not ready.
+function print<M implements Display>(message: M) {
+    todo()
 }
 
 /// A function that calculates the factorial of a given number.

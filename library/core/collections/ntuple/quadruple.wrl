@@ -2,7 +2,7 @@ module quadruple;
 
 use core.maybe.some;
 use core.interfaces.{Clonable};
-use core.string.{fmt, Display, String};
+use core.string.{Display, String};
 use core.sentinels.todo;
 
 use ntuple.NTuple;

@@ -5,7 +5,7 @@ use core.{
     interfaces.{Guaranteed, Try, Default, Clonable},
     internals.{builtin, never},
     outcome.{ok, err, Outcome},
-    string.{Display, fmt, String},
+    string.{Display, String},
     sentinels.{fatal, fatalOnCaller},
 };
 

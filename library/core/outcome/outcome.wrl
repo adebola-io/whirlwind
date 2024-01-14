@@ -6,7 +6,7 @@ use core.{
     internals.{never, builtin},
     maybe.{none, some},
     sentinels.{fatalOnCaller, todo},
-    string.{Display, fmt, String}
+    string.{Display, String}
 };
 
 /// An `Outcome` is a generic model 

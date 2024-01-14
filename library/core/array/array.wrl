@@ -6,7 +6,7 @@ use core.{
     bool.Bool,
     interfaces.{Clonable, Default},
     iterate.{AsIterator, Iteratable, Reversed},
-    math.{max, min},
+    // math.{max, min},
     maybe.{none, some},
     memory.{Ptr, Region},
     numeric.Int32,
