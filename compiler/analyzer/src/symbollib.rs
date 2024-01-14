@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use crate::{
     evaluate,
     utils::{get_numeric_type, symbol_to_type},
-    EvaluatedType, IntermediateTypeClause, Literal, LiteralMap, PathIndex, SemanticSymbol,
-    SemanticSymbolKind, SymbolIndex, TypedExpression,
+    EvaluatedType, Literal, LiteralMap, PathIndex, SemanticSymbol, SemanticSymbolKind, SymbolIndex,
+    TypedExpression,
 };
 
 #[derive(Debug, Default)]

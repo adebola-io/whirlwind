@@ -2,7 +2,7 @@ use crate::{
     converge_types, unify_generic_arguments, unify_types,
     utils::{
         arrify, get_implementation_of, get_interface_types_from_symbol,
-        get_method_types_from_symbol, maybify, symbol_to_type,
+        get_method_types_from_symbol, maybify,
     },
     DiagnosticType, IntermediateType, IntermediateTypeClause, ParameterType, PathIndex,
     ProgramDiagnostic, SemanticSymbolKind, SymbolIndex, SymbolLibrary, TypecheckerContext,
@@ -986,14 +986,18 @@ pub fn evaluate_type_clause(
             recursion_depth,
         ),
         IntermediateTypeClause::Is { base, other } => {
-            let symbol = symbollib.get(*base)?;
-            let lhs = match symbol_to_type(symbol, *base, symbollib) {
-                Ok(evaluated_type) => evaluated_type,
-                Err(error_type) => {
-                    add_error_if_possible(error_tracker, error_type);
-                    return None;
-                }
+            let lhs = IntermediateType::SimpleType {
+                value: *base,
+                generic_args: vec![],
+                span: Span::default(),
             };
+            let lhs = evaluate(
+                &lhs,
+                symbollib,
+                solved_generics,
+                error_tracker,
+                recursion_depth,
+            );
             let rhs = evaluate(
                 other,
                 symbollib,
