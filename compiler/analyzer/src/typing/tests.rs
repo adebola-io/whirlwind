@@ -146,7 +146,7 @@ fn it_creates_intrinsic_instances() {
         num := 34;
     }
     ",
-        &[("boolean", "Bool"), ("str", "String"), ("num", "UInt8")]
+        &[("boolean", "Bool"), ("str", "String"), ("num", "Int32")]
     );
 }
 
@@ -215,7 +215,7 @@ fn it_errors_on_string_and_number_binexp() {
     ",
         &[TypeErrorType::Incomparable {
             left: format!("String"),
-            right: format!("UInt16")
+            right: format!("Int32")
         }]
     );
 }
@@ -226,13 +226,13 @@ fn ordering_types() {
         "module Test;
         
         function main() {
-            a /*: UInt8 */ := 30;
-            b /*: UInt16 */ := 300;
+            a /*: Int32 */ := 30;
+            b /*: Int32 */ := 300;
 
             c := b > a;       
         }
         ",
-        &[("a", "UInt16"), ("b", "UInt16"), ("c", "Bool")]
+        &[("a", "Int32"), ("b", "Int32"), ("c", "Bool")]
     );
 }
 
@@ -242,13 +242,13 @@ fn sequencing_types() {
         "module Test;
         
         function main() {
-            a /*: UInt8 */ := 30;
-            b /*: UInt16 */ := 300;
+            a /*: Int32 */ := 30;
+            b /*: Int32 */ := 300;
 
             c := a..b;       
         }
         ",
-        &[("a", "UInt16"), ("b", "UInt16"), ("c", "Range<UInt16>")]
+        &[("a", "Int32"), ("b", "Int32"), ("c", "Range<Int32>")]
     );
 }
 
@@ -258,8 +258,8 @@ fn other_binary_operations() {
         "module Test;
         
         function main() {
-            a /*: UInt8 */ := 30;
-            b /*: UInt16 */ := 300;
+            a /*: Int32 */ := 30;
+            b /*: Int32 */ := 300;
 
             c := (a + b) - (a * b);
             d := a % 10;
@@ -267,11 +267,11 @@ fn other_binary_operations() {
         }
         ",
         &[
-            ("a", "UInt16"),
-            ("b", "UInt16"),
-            ("c", "UInt16"),
-            ("d", "Float"),
-            ("e", "Float")
+            ("a", "Int32"),
+            ("b", "Int32"),
+            ("c", "Int32"),
+            ("d", "Float64"),
+            ("e", "Float64")
         ]
     );
 }
@@ -291,7 +291,7 @@ fn test_assignment_types() {
             string += \"Welcome.\";
         }
         ",
-        &[("a", "Float"), ("string", "String")]
+        &[("a", "Float64"), ("string", "String")]
     );
     assert_eq!(
         standpoint
@@ -316,7 +316,7 @@ fn unary_minus_or_plus() {
             b = -b;
         }
         ",
-        &[("a", "Int"), ("b", "Int")]
+        &[("a", "Int32"), ("b", "Int32")]
     );
     assert_eq!(
         standpoint
