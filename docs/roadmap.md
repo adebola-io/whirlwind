@@ -12,11 +12,7 @@ This lists all things pending in regards to semantic analysis i.e. binding, impo
 
 ## Codegen.
 
-List of things planned with respect to lowering, intermediate analysis, bytecode generation, binary compilation, linking, etc.
-
-## Runtime.
-
-List of all things planned for the Whirlwind runtime.
+List of things planned with respect to lowering, desugaring, intermediate analysis, bytecode generation, binary compilation, linking, etc.
 
 ## Tools.
 

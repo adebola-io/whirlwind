@@ -6,10 +6,10 @@ members = [
     "compiler/lexer", 
     "compiler/parser",
     "compiler/prettyprint",
-    "compiler/bytecode",
     "compiler/analyzer",
     "compiler/utils",
     "compiler/macros",
+    "compiler/cli",
     "server",
     "repl",
 ]

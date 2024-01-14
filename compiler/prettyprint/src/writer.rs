@@ -238,6 +238,7 @@ impl<'a> SymbolWriter<'a> {
                 is_public,
                 is_static,
                 is_async,
+                constraint,
                 owner_model_or_interface,
                 params,
                 generic_params,
@@ -260,6 +261,10 @@ impl<'a> SymbolWriter<'a> {
                 string.push_str("function ");
                 string.push_str(&symbol.name);
                 self.maybe_print_generic_params_into_string(&mut string, generic_params);
+                constraint.as_ref().map(|(clause, _)| {
+                    string.push_str("|=");
+                    self.print_type_clause_into(clause, &mut string);
+                });
                 self.print_parameters_into_string(&mut string, params);
                 self.maybe_print_return_type_into_string(&mut string, return_type.as_ref());
             }
@@ -544,9 +549,8 @@ impl<'a> SymbolWriter<'a> {
                 consequent, clause, ..
             } => {
                 let mut string = self.print_intermediate_type(&consequent);
-                string.push_str("[where ");
+                string.push_str("|=");
                 self.print_type_clause_into(&clause, &mut string);
-                string.push_str("]");
                 string
             }
         }
@@ -557,8 +561,13 @@ impl<'a> SymbolWriter<'a> {
         condition: &analyzer::IntermediateTypeClause,
         string: &mut String,
     ) {
+        string.push_str("(");
         match condition {
-            analyzer::IntermediateTypeClause::Binary { left, operator, right } => {
+            analyzer::IntermediateTypeClause::Binary {
+                left,
+                operator,
+                right,
+            } => {
                 self.print_type_clause_into(&left, string);
                 let operator_str = match operator {
                     ast::LogicOperator::And => " && ",
@@ -568,14 +577,14 @@ impl<'a> SymbolWriter<'a> {
                 };
                 string.push_str(operator_str);
                 self.print_type_clause_into(&right, string)
-            },
+            }
             analyzer::IntermediateTypeClause::Is { base, other } => {
                 let symboltable = &self.standpoint.symbol_library;
                 let symbol = ast::unwrap_or_return!(symboltable.get(*base));
                 string.push_str(&symbol.name);
                 string.push_str(" is ");
                 string.push_str(&self.print_intermediate_type(other));
-            },
+            }
             analyzer::IntermediateTypeClause::Implements { base, interfaces } => {
                 let symboltable = &self.standpoint.symbol_library;
                 let symbol = ast::unwrap_or_return!(symboltable.get(*base));
@@ -587,8 +596,9 @@ impl<'a> SymbolWriter<'a> {
                         string.push_str(" + ")
                     }
                 }
-            },
+            }
         }
+        string.push_str(")");
     }
 
     pub fn print_intermediate_type_property(&self, prop: &IntermediateTypeProperty) -> String {

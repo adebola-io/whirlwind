@@ -3,7 +3,6 @@ use analyzer::{Module, Standpoint};
 use diagnostics::print_diagnostics;
 use help::print_help;
 use options::CliCommand;
-use runtime::VM;
 use std::{path::PathBuf, process::exit};
 use utils::terminal::{self, Colorable};
 
@@ -119,26 +118,26 @@ fn check_paths(path: PathBuf, code: &mut i32, corelibpath: PathBuf, options: opt
     let build_finished = format!("Build finished in {elapsed:?}\n").color().green();
     println!("{build_finished}",);
 
-    let object = bytecode::generate_from(&standpoint);
-    std::mem::drop(standpoint);
-    let object = match object {
-        Ok(object) => object,
-        Err(error) => {
-            terminal::error(format!("{error}"));
-            *code = 1;
-            return;
-        }
-    };
-    let mut vm = VM::from_object(object);
+    // let object = bytecode::generate_from(&standpoint);
+    // std::mem::drop(standpoint);
+    // let object = match object {
+    //     Ok(object) => object,
+    //     Err(error) => {
+    //         terminal::error(format!("{error}"));
+    //         *code = 1;
+    //         return;
+    //     }
+    // };
+    // let mut vm = VM::from_object(object);
 
     // println!("SIZE: {}B,\n\nBYTECODE:", vm.instructions.len());
     // print_instructions(&vm.instructions);
     // println!("FUNCTIONS: {}", vm.dispatch_table.len());
 
-    if let Err(error) = vm.run() {
-        terminal::error(error.to_string());
-        *code = 1;
-    };
+    // if let Err(error) = vm.run() {
+    //     terminal::error(error.to_string());
+    //     *code = 1;
+    // };
     // vm
     // --
 }

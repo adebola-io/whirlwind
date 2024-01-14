@@ -51,17 +51,3 @@ function fibonacci(n: Number): Number {
     return fibonacci(n - 1) + fibonacci(n - 2);
 }
 
-use core.io.IoError;
-use core.fs;
-/// Function to display content from a file.
-function readToString(path: fs.PathLike): Outcome<String, IoError> {
-    return todo();
-}
-
-use core.net.http.HttpServer;
-/// Server that returns hello world.
-function helloWorldServer() {
-    app := @HttpServer("new-server", 8080);
-    app.get("/", async fn(req) ok(req.respond().html(`<h1>Hello, world!</h1>`)));
-    app.start().run().await();
-}

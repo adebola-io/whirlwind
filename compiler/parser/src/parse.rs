@@ -253,13 +253,12 @@ impl<L: Lexer> Parser<L> {
                     self.advance(); // Move past ;
                     partial.map(|exp| Statement::ExpressionStatement(exp))
                 }
-                // No derivation produces <ident> <ident>. Add error and return the parsed expression.
-                TokenType::Ident(_) => partial
-                    .with_error(expected(
-                        TokenType::Operator(SemiColon),
-                        self.last_token_end(),
-                    ))
-                    .map(|expression| Statement::FreeExpression(expression)),
+                // TokenType::Ident(_) => partial
+                //     .with_error(expected(
+                //         TokenType::Operator(SemiColon),
+                //         self.last_token_end(),
+                //     ))
+                //     .map(|expression| Statement::FreeExpression(expression)),
                 _ => partial.map(|expression| Statement::FreeExpression(expression)),
             },
             None => partial.map(|expression| Statement::FreeExpression(expression)),
@@ -1202,12 +1201,13 @@ impl<L: Lexer> Parser<L> {
         {
             end = self.token().unwrap().span.end;
             self.advance(); // Move past ;
-        } else {
-            errors.push(expected(
-                TokenType::Operator(SemiColon),
-                self.last_token_end(),
-            ))
         }
+        //  else {
+        //     errors.push(expected(
+        //         TokenType::Operator(SemiColon),
+        //         self.last_token_end(),
+        //     ))
+        // }
         let span = Span::from([start, end]);
         let signature = TypeSignature {
             name,
@@ -1289,10 +1289,10 @@ impl<L: Lexer> Parser<L> {
             self.advance(); //
         } else {
             end = self.last_token_end().end;
-            errors.push(expected(
-                TokenType::Operator(SemiColon),
-                self.last_token_end(),
-            ));
+            // errors.push(expected(
+            //     TokenType::Operator(SemiColon),
+            //     self.last_token_end(),
+            // ));
         }
         let span = Span::from([start, end]);
         let target = UseTarget { name, path };
@@ -1544,10 +1544,10 @@ impl<L: Lexer> Parser<L> {
                 span.end
             }
             _ => {
-                errors.push(expected(
-                    TokenType::Operator(SemiColon),
-                    self.last_token_end(),
-                ));
+                // errors.push(expected(
+                //     TokenType::Operator(SemiColon),
+                //     self.last_token_end(),
+                // ));
                 name.span.end
             }
         };
@@ -2632,10 +2632,10 @@ impl<L: Lexer> Parser<L> {
                 .token()
                 .is_some_and(|t| t._type == TokenType::Operator(SemiColon))
             {
-                errors.push(expected(
-                    TokenType::Operator(SemiColon),
-                    self.last_token_span(),
-                ));
+                // errors.push(expected(
+                //     TokenType::Operator(SemiColon),
+                //     self.last_token_span(),
+                // ));
                 expression
                     .value
                     .as_ref()
@@ -2789,10 +2789,10 @@ impl<L: Lexer> Parser<L> {
                 self.advance(); // move past ;
             }
             _ => {
-                errors.push(expected(
-                    TokenType::Operator(SemiColon),
-                    self.last_token_end(),
-                ));
+                // errors.push(expected(
+                //     TokenType::Operator(SemiColon),
+                //     self.last_token_end(),
+                // ));
             }
         };
         let span = Span { start, end };
@@ -2836,10 +2836,10 @@ impl<L: Lexer> Parser<L> {
                 self.advance(); // move past ;
             }
             _ => {
-                errors.push(expected(
-                    TokenType::Operator(SemiColon),
-                    self.last_token_end(),
-                ));
+                // errors.push(expected(
+                //     TokenType::Operator(SemiColon),
+                //     self.last_token_end(),
+                // ));
             }
         };
         let span = Span { start, end };
@@ -3121,7 +3121,7 @@ impl<L: Lexer> Parser<L> {
 
         self.advance(); // Move past :=
 
-        let (expression, mut expr_errors) = self.expression().to_tuple();
+        let (expression, expr_errors) = self.expression().to_tuple();
         if expression.is_none() {
             return Partial::from_errors(expr_errors);
         }
@@ -3146,10 +3146,10 @@ impl<L: Lexer> Parser<L> {
             self.advance(); // Move past ;
             end
         } else {
-            expr_errors.push(expected(
-                TokenType::Operator(SemiColon),
-                self.last_token_end(),
-            ));
+            // expr_errors.push(expected(
+            //     TokenType::Operator(SemiColon),
+            //     self.last_token_end(),
+            // ));
             value.span().end
         };
 
@@ -3214,10 +3214,10 @@ impl<L: Lexer> Parser<L> {
                 end = self.token().unwrap().span.end;
                 self.advance();
             } else {
-                errors.push(expected(
-                    TokenType::Operator(SemiColon),
-                    self.last_token_end(),
-                ));
+                // errors.push(expected(
+                //     TokenType::Operator(SemiColon),
+                //     self.last_token_end(),
+                // ));
                 end = self.last_token_end().end;
             }
             Partial {
@@ -3403,7 +3403,7 @@ impl<L: Lexer> Parser<L> {
             }
             TokenType::Keyword(Is) => {
                 self.advance(); // Move past is.
-                let other = self.regular_type_or_union()?;
+                let other = self.type_expression()?;
                 TypeClause::Is { base, other }
             }
             _ => return Err(errors::expected(TokenType::Keyword(Implements), token.span)),
