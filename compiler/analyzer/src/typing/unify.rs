@@ -14,6 +14,7 @@ pub enum UnifyOptions {
     Return,
 }
 
+
 /// Given a target type T and a candidate type U, the unification of T <- U is 
 /// an operation that subsumes the type T, compares all its bounds and constraints,
 /// and produces the lowest upper bound for which U is equivalent to T, if it exists,
@@ -131,8 +132,14 @@ pub fn unify_types(
                 ..
             },
         ) => {
-            let first_instance_symbol = symbollib.get(*first).unwrap();
-            let second_instance_symbol = symbollib.get(*second).unwrap();
+            let first_instance_symbol = match symbollib.get(*first) {
+                Some(first) => first,
+                None => return Ok(EvaluatedType::Unknown),
+            };
+            let second_instance_symbol = match symbollib.get(*second) {
+                Some(second) => second,
+                None => return Ok(EvaluatedType::Unknown),
+            };
             if !std::ptr::eq(first_instance_symbol, second_instance_symbol) {
                 return Err(vec![default_error()]);
             }
@@ -520,7 +527,10 @@ fn solve_generic_type(
             }
         }
     }
-    let base_parameter = symbollib.get_forwarded(*base).unwrap();
+    let base_parameter = match symbollib.get_forwarded(*base) {
+        Some(base) => base,
+        None => return Ok(Unknown),
+    };
     let (interfaces, default_value) = match &base_parameter.kind {
         SemanticSymbolKind::GenericParameter {
             interfaces,
@@ -562,7 +572,11 @@ fn solve_generic_type(
             ModelInstance { model: base, .. }
             | InterfaceInstance { interface_: base,.. }
             | Generic { base }
-            | HardGeneric { base } => match &symbollib.get_forwarded(*base).unwrap().kind
+            | HardGeneric { base } => match &{
+                    match &symbollib.get_forwarded(*base){
+                    Some(base) => base,
+                    None => return Ok(EvaluatedType::Unknown), 
+                }}.kind
             {
                 SemanticSymbolKind::GenericParameter {
                     interfaces: implementations,

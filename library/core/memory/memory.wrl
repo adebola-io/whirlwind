@@ -4,14 +4,7 @@ use core.bool.Bool;
 use core.internals.builtin;
 use core.sentinels.todo;
 
-public use region.{
-    endregion,
-    currentregion,
-    ownerregion,
-    RegionHandle,
-    startregion,
-};
-public use ref.{WeakRef, Ptr};
+public use ref.{WeakRef};
 
 
 /// Determines whether two variables point to the same location in memory
