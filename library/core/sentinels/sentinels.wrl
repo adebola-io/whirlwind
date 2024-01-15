@@ -34,11 +34,7 @@ public function fatalOnCaller(message: String) -> never  {
 /// }
 /// ```
 public function todo<M implements Display>(message?: M) -> never {
-    return fatalOnCaller(
-                message
-                    .map(fn (message) message.toStr())
-                    .unwrapOr("Entered unfinished code.")
-            );
+    return fatalOnCaller(message.map(fn (message) message.toStr()).unwrapOr("Entered unfinished code."));
 }
 
 /// Marks a point that should never be reached by normal execution flow.

@@ -59,7 +59,6 @@ pub enum Number {
 pub struct NewExpr {
     pub value: Expression,
     pub span: Span,
-    pub is_shorthand: bool,
 }
 
 #[derive(PartialEq, Debug)]

@@ -10,8 +10,8 @@ use ntuple.NTuple;
 /// A set containing five individual items.
 public model Quintuple<T, U, V, W, X> 
     implements Clonable|=(
-            T implements Clonable 
-            and U implements Clonable 
+            T implements Clonable
+            and U implements Clonable
             and V implements Clonable
             and W implements Clonable
             and X implements Clonable
@@ -38,8 +38,8 @@ public model Quintuple<T, U, V, W, X>
     }
 
     public function [Clonable.clone]|=(
-            T implements Clonable 
-            and U implements Clonable 
+            T implements Clonable
+            and U implements Clonable
             and V implements Clonable
             and W implements Clonable
             and X implements Clonable

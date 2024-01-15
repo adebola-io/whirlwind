@@ -338,7 +338,13 @@
             {
                "begin": "(?<=function\\s+)",
                "contentName": "support.function entity.name.function",
-               "end": "(?=[^[A-Za-z0-9]])"
+               "patterns": [
+                  {
+                     "name": "meta.definition.variable variable.other.constant",
+                     "match": "\\b(start|end|current|owner)region\\b"
+                  }
+               ],
+               "end": "(?=[^[A-Za-z0-9$_]])"
             },
             { "include": "#generic_params" },
             {
@@ -360,9 +366,17 @@
       },
       "inferred_function": {
          "name": "entity.name.function support.function",
-         "match": "[A-Za-z0-9]+(?=\\s*(\\<.*\\>)?\\s*\\()",
+         "match": "([A-Za-z0-9]+)(?=\\s*(\\<.*\\>)?\\s*\\()",
          "captures": {
             "1": {
+               "patterns": [
+                  {
+                     "name": "meta.definition.variable variable.other.constant",
+                     "match": "\\b(start|end|current|owner)region\\b"
+                  }
+               ]
+            },
+            "2": {
                "patterns": [{ "include": "#generic_args" }]
             }
          }
@@ -496,8 +510,12 @@
       "identifier": {
          "patterns": [
             {
+               "name": "meta.definition.variable variable.other.constant",
+               "match": "\\b[[:upper:][:digit:]_]+\\b"
+            },
+            {
                "name": "entity variable",
-               "match": "\\b[A-Za-z0-9]+(?=\\.)\\b"
+               "match": "\\b[A-Za-z0-9$_]+(?=\\.)\\b"
             },
             {
                "name": "meta.definition.variable variable.other.constant",
@@ -505,7 +523,7 @@
             },
             {
                "name": "identifier meta.identifier variable.identifier",
-               "match": "[A-Za-z0-9]+"
+               "match": "[A-Za-z0-9$_]+"
             }
          ]
       },

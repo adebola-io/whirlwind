@@ -34,7 +34,7 @@ public use core.{
     },
     iterate.{Iteratable, AsIterator},
     maybe.{none, some, Maybe},
-    memory.Region,
+    memory.RegionHandle,
     numeric.{Number, Int32, Float64},
     outcome.{ok, err, Outcome},
     ops.Range,

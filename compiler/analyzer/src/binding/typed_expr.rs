@@ -62,7 +62,6 @@ pub struct TypedNewExpr {
     pub value: TypedExpression,
     pub span: Span,
     pub inferred_type: EvaluatedType,
-    pub is_shorthand: bool,
 }
 
 #[derive(Debug, PartialEq)]

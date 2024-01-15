@@ -1,10 +1,37 @@
 module sort;
 
 use core.ops.Orderable;
+use core.numeric.Int32;
 
-/// Implementation of the QuickSort algorithm in Whirlwind.
+/// Performs an in-place Quicksort on the given array. 
 public function quickSort<T implements Orderable>(array: []T) {
+    quickSortInner(array, 0, array.length() - 1)   
+}
 
+/// @inline.
+function quickSortInner<T implements Orderable>(arr: []T, left: Int32, right: Int32) {
+    if left >= right { 
+        return; // base case: single element or empty subarray.
+    } 
+    pivotIndex := core.math.floor((left + right) / 2);
+    pivot := arr[pivotIndex]; // Choose middle element as pivot.
+    i := left;
+    j := right;
+    while i <= j {
+        while arr[i] < pivot { i += 1; }
+        while arr[j] > pivot { j -= 1; }
+        if i <= j {
+            // Swap elements at i and j to partition around pivot.
+            temp := arr[j];
+            arr[j] = arr[i];
+            arr[i] = temp;
+            i += 1;
+            j -= 1;
+        }
+    }
+
+    quickSortInner(arr, left, j);
+    quickSortInner(arr, i, right);
 }
 
 /// Implementation of the MergeSort algorithm in Whirlwind.

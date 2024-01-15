@@ -11,8 +11,8 @@ use ntuple.NTuple;
 /// A set containing four individual items.
 public model Triple<T, U, V> 
     implements Clonable|=(
-            T implements Clonable 
-            and U implements Clonable 
+            T implements Clonable
+            and U implements Clonable
             and V implements Clonable
         ) + Display|=(
             T implements Display
@@ -31,8 +31,8 @@ public model Triple<T, U, V>
     }
 
     public function [Clonable.clone]|=(
-            T implements Clonable 
-            and U implements Clonable 
+            T implements Clonable
+            and U implements Clonable
             and V implements Clonable
         )() -> This 
     {

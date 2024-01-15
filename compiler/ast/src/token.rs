@@ -4,10 +4,10 @@ use crate::{
 };
 
 pub fn is_valid_identifier(ch: char) -> bool {
-    matches!(ch, '0'..='9' | 'A'..='Z' | 'a'..='z' | '_')
+    matches!(ch, '0'..='9' | 'A'..='Z' | 'a'..='z' | '_'| '$' )
 }
 pub fn is_valid_identifier_start(ch: char) -> bool {
-    matches!(ch, 'A'..='Z' | 'a'..='z' | '_')
+    matches!(ch, 'A'..='Z' | 'a'..='z' | '_' | '$')
 }
 
 /// A token is the smallest lexical unit of a Whirlwind program.

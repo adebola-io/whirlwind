@@ -29,7 +29,7 @@ function getStatusBar() {
 }
 
 function getLanguageClient() {
-   if (this.client == undefined) {
+   if (this.client === undefined) {
       /** @type {import("vscode-languageclient/node").Executable} */
       let executable = {
          command: server_path,

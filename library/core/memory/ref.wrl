@@ -1,7 +1,48 @@
 module ref;
 
+use core.numeric.Int32;
 use core.interfaces.Guaranteed;
 use core.internals.builtin;
+use core.interfaces.Clonable;
+use core.sentinels.todo;
+
+
+/// A representation of a raw memory pointer.
+public model Ptr implements Clonable {
+    public var offset: Int32;
+    public var size: Int32;
+
+    new(offset: Int32, size: Int32){
+        this.offset = offset;
+        this.size = size;
+    }
+
+    /// Returns a copy of the pointer.
+    public function [Clonable.clone]() -> This {
+        return new Ptr(this.offset, this.size);
+    }
+
+    /// Write a value into an address, starting
+    /// at a particular offset.
+    public static function write<T>(offset: Int32, value: T) -> T {
+        todo()
+    }
+    /// Reads a length of bytes from memory starting from an address.
+    public static function read<T>(offset: Int32, len: Int32, example: T) -> T {
+        todo()
+    }
+
+    /// Starting from `offset` in memory, it copies `len` number of bytes
+    /// to a new offset in memory, effective achieving a copy operation.
+    public static function copy(offset: Int32, len: Int32, newOffset: Int32) -> Ptr {
+        todo()
+    }
+
+    public static function from<T>(value: T) -> ?Ptr {
+        todo()
+    }
+}
+
 
 
 /// An intrinsic model that provides a way to hold a weak reference to a value of type `T`.

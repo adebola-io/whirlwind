@@ -235,11 +235,8 @@ impl<'a> CompletionFinder<'a> {
                     .flatten()
                     .chain(methods.iter()) // normal methods.
                     .filter_map(|method_idx| {
-                        let method_symbol = self.standpoint.symbol_library.get(*method_idx);
-                        if method_symbol.is_none() {
-                            return None;
-                        }
-                        match &method_symbol.unwrap().kind {
+                        let method_symbol = self.standpoint.symbol_library.get(*method_idx)?;
+                        match &method_symbol.kind {
                             SemanticSymbolKind::Method {
                                 is_static,
                                 is_public,
@@ -251,7 +248,7 @@ impl<'a> CompletionFinder<'a> {
                                         .enclosing_model_or_interface
                                         .borrow()
                                         .is_some_and(|enclosing| enclosing == model)))
-                            .then_some(Some((method_idx, method_symbol.unwrap(), params))), // todo: allow private access in appriopriate contexts.
+                            .then_some(Some((method_idx, method_symbol, params))), // todo: allow private access in appriopriate contexts.
                             _ => None,
                         }
                     })
@@ -308,7 +305,7 @@ impl<'a> CompletionFinder<'a> {
                         continue;
                     }
                     // Specially complete functions.
-                    let symbol = symbollib.get_forwarded(*symbol_index).unwrap();
+                    let symbol = symbollib.get_forwarded(*symbol_index)?;
                     let symbol_index = symbollib.forward(*symbol_index);
                     if let Some(completionitem) = self.create_completion(
                         &writer,

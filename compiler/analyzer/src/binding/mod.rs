@@ -2808,7 +2808,6 @@ mod expressions {
         ambience: &mut ModuleAmbience,
     ) -> TypedNewExpr {
         TypedNewExpr {
-            is_shorthand: new_expr.is_shorthand,
             value: bind_expression(
                 new_expr.value,
                 binder,

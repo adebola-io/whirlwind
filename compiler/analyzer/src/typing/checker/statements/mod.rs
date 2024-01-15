@@ -322,7 +322,7 @@ fn typecheck_function_body(
     {
         environment = assume_verity(constraint, checker_ctx, symbollib, *span);
     };
-    if let Some(environment) = environment {
+    if let Some(_environment) = environment {
         // symbollib.apply_type_environment(environment);
     }
     // The function context keeps track of the return type (for checking deeply nested return statements)

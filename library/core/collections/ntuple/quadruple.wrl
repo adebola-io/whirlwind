@@ -12,8 +12,8 @@ use tuple.{Tuple, pair};
 /// A set containing four individual items.
 public model Quadruple<T, U, V, W> 
     implements Clonable|=(
-            T implements Clonable 
-            and U implements Clonable 
+            T implements Clonable
+            and U implements Clonable
             and V implements Clonable
             and W implements Clonable
         ) + Display|=(
@@ -36,8 +36,8 @@ public model Quadruple<T, U, V, W>
     }
 
     public function [Clonable.clone]|=(
-            T implements Clonable 
-            and U implements Clonable 
+            T implements Clonable
+            and U implements Clonable
             and V implements Clonable
             and W implements Clonable
         )() -> This 

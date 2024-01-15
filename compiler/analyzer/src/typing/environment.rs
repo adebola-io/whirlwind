@@ -1,3 +1,4 @@
+#![allow(unused)]
 use std::collections::HashMap;
 
 use crate::{EvaluatedType, SymbolIndex};
@@ -15,8 +16,7 @@ pub struct Assumption {
     /// Possible variants of the type.
     /// When the logical operation `T is U or T is V` is assumed,
     /// it produces the opaque typeform U | V for T.
-    typeforms: Vec<EvaluatedType>,
-
+    type_forms: Vec<EvaluatedType>,
     implementations: Vec<EvaluatedType>,
 }
 
@@ -36,10 +36,12 @@ impl TypeEnvironment {
     ) -> Option<EvaluatedType> {
         todo!()
     }
-    /// Returns the possible typeforms of a type in the current environment.
-    /// A var
-    pub fn get_possible_typeforms(&self) -> impl Iterator<Item = EvaluatedType> {
-        vec![].into_iter()
+    /// Returns the possible type forms of a type in the current environment,
+    pub fn get_possible_type_forms(
+        &self,
+        base: SymbolIndex,
+    ) -> Option<impl Iterator<Item = EvaluatedType>> {
+        Some(vec![].into_iter())
     }
     /// Returns the methods of a
     pub fn get_methods_of(&self) -> Option<EvaluatedType> {

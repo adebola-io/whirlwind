@@ -12,7 +12,7 @@ use core.{
 public model Bool 
     implements Display 
     + Default 
-    + Clonable 
+    + Clonable
     + FromStr 
 {
     public function [Clonable.clone]() -> This {
@@ -44,5 +44,13 @@ public model Bool
     /// ```
     public function ifTrue<T>(consequent: fn() -> T) -> ?T {
         if this { some(consequent()) } else { none() }
+    }
+}
+
+
+
+test "" {
+    function convertToString<T implements FromStr>(value: T) {
+        T.fromStr(value)
     }
 }

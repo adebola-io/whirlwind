@@ -8,10 +8,9 @@ use core.{
     iterate.{AsIterator, Iteratable, Reversed},
     // math.{max, min},
     maybe.{none, some},
-    memory.{Ptr, Region},
     numeric.Int32,
     ops.{Addition, Orderable},
-    sentinels.todo,
+    sentinels.{todo},
     string.{Display, String}
 };
 
@@ -22,9 +21,7 @@ public model Array<T>
         + Default 
         + Display|=(T implements Display)
 {
-    var ptr: Ptr;
     var len: Int32;
-    var capacity: Int32;
     /// Returns an iterator over elements in this array.
     /// ### Usage
     /// ```
@@ -48,11 +45,11 @@ public model Array<T>
     /// ```
     public function [Clonable.clone]|=(T implements Clonable)() -> This {
         newArray := [];
-        // i := 0;
-        // while i < this.len {
+        i := 0;
+        while i < this.len {
         //     newArray.push(this[i].clone());
-        //     i += 1;
-        // }
+            i += 1;
+        }
         return newArray;
     }
     /// Implementation of the default trait.
@@ -75,15 +72,17 @@ public model Array<T>
     /// assert(arrAsStr).equals("[1, 6, 7, 8, 10]");
     /// ```
     public function [Display.toStr]|=(T implements Display)() -> String {
-        string := "[";
-        // i := 0;
-        // while i < this.len {
+        string := "["
+        i := 0
+        while i < this.len {
         //     string.append(this[i].toStr());
-        //     if i + 1 != this.len { string.append(", ") };
-        //     i += 1;
-        // }
-        string.append("]");
-        return string;
+            if i + 1 != this.len { 
+                string.append(", ") 
+            }
+            i += 1
+        }
+        string.append("]")
+        return string
     }
     /// Sorts the current array in place, given that its elements are orderable.
     /// ### Usage
@@ -119,11 +118,11 @@ public model Array<T>
     /// ```
     public function reset|=(T implements Default)() {
         i := 0;
-        // while i < this.len {
+        while i < this.len {
         //     var default: T; 
         //     this[i] = default;
-        //     i += 1;
-        // }
+            i += 1;
+        }
     }
     /// Returns the largest value in an array.
     /// It returns an empty value if the array is empty.
@@ -188,9 +187,10 @@ public model Array<T>
     public function join|=(T implements Display)(separator?: String) -> String {
         separatorValue := separator.unwrapOr(" ");
         string := "";
+        i := 0;
         // for { a as i, b as element } in this.iter().enumerate() 
         // {
-        //     string += element.toStr();
+        // //     string += element.toStr();
         //     if i + 1 != this.length() {
         //         string += separatorValue;
         //     }
@@ -278,9 +278,9 @@ public model Array<T>
             return true;
         };
         for element in this {
-            if element == subarray[0] {
-                return true;
-            }
+            // if element == subarray[0] {
+            //     return true;
+            // }
         }
         return false;
     }
@@ -373,6 +373,7 @@ public model Array<T>
         return this.len;
     }
     /// Adds an item to the end of the array.
+    /// 
     /// ### Usage
     /// ```
     /// array := [2, 4, 6, 8];
@@ -383,21 +384,7 @@ public model Array<T>
     /// assert(array.length()).equals(5);
     /// ```
     public function push(value: T) {
-        if this.len == this.capacity {
-            this.capacity = this.capacity * 2;
-            region := Region.owner(this)!;
-            newMemOffset := region.alloc(this.capacity * this.ptr.size);
-            oldPtr := this.ptr.clone();
-            // this.ptr = Ptr.copy(this.ptr, this.len, newMemOffset);
-            // Ptr.zero(oldPtr, this.len);
-        }
-        offset := (this.ptr.size * this.len) + 1;
-        Ptr.write(offset, value);
-        this.len += 1;
-    }
-    /// Returns the pointer to the first element in the array.
-    public function pointer() -> Ptr {
-        return this.ptr;
+        todo()
     }
     /// Removes an item from the end of the array.
     /// ### Usage

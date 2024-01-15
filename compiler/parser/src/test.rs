@@ -1240,7 +1240,6 @@ fn parse_new_expression() {
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::FreeExpression(Expression::NewExpr(Box::new(NewExpr {
-            is_shorthand: false,
             value: Expression::CallExpr(Box::new(CallExpr {
                 caller: Expression::Identifier(Identifier {
                     name: format! {"Stack"},
@@ -1258,7 +1257,6 @@ fn parse_new_expression() {
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::FreeExpression(Expression::NewExpr(Box::new(NewExpr {
-            is_shorthand: true,
             value: Expression::CallExpr(Box::new(CallExpr {
                 caller: Expression::Identifier(Identifier {
                     name: format! {"Stack"},

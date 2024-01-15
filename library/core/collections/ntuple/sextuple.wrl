@@ -11,8 +11,8 @@ use ntuple.NTuple;
 /// A set containing six individual items.
 public model Sextuple<T, U, V, W, X, Y> 
     implements Clonable|=(
-            T implements Clonable 
-            and U implements Clonable 
+            T implements Clonable
+            and U implements Clonable
             and V implements Clonable
             and W implements Clonable
             and X implements Clonable
@@ -50,8 +50,8 @@ public model Sextuple<T, U, V, W, X, Y>
     }
 
     public function [Clonable.clone]|=(
-            T implements Clonable 
-            and U implements Clonable 
+            T implements Clonable
+            and U implements Clonable
             and V implements Clonable
             and W implements Clonable
             and X implements Clonable

@@ -37,6 +37,46 @@ public model Int32
     // Compiler built in.
 }
 
+public model Int64
+    implements Display 
+        + Addition 
+        + Subtraction
+        + Multiplication
+        + Division
+        + Bitwise
+        + Sequenced 
+        + Default 
+        + Orderable 
+        + FromStr
+        + Clonable
+{
+    /// Returns true if the value is less than 0.
+    /// ### Usage
+    /// ```
+    /// x := -1;
+    /// assertThat(x.isNegative());
+    /// ```
+    public function isNegative() -> Bool {
+        this < 0
+    }
+    // Compiler built-in.
+}
+
+/// A 32-bit floating number.
+public model Float32
+    implements Display 
+    + Addition
+    + Subtraction
+    + Multiplication
+    + Division 
+    + Default 
+    + Orderable 
+    + FromStr
+{
+    // Compiler built in.
+}
+
+
 /// A 64-bit floating number.
 public model Float64 
     implements Display 

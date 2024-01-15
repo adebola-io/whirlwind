@@ -234,7 +234,18 @@ public interface Iteratable<I> {
     /// assert(firstTen).equals([2, 4, 6, 8, 10]);
     /// ```
     public function take(n: Int32) -> []I {
-        todo()
+        i := n;
+        taken := [];
+        while i > 0 {
+            maybeItem := this.next();
+            if maybeItem.isNone() {
+                break;
+            }
+            item := maybeItem.unwrap();
+            taken.push(item);
+            i -= 1;
+        }
+        return taken;
     }
     /// Iterative adapter that advances as long as a condition is false.
     /// 
