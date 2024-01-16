@@ -10,7 +10,7 @@ tokio = { version = "1", features = ["full"] }
 tower-lsp = {version = "0.20.0"}
 ast = {version = "*", path = "../compiler/ast"}
 analyzer = {version = "*", path = "../compiler/analyzer"}
-pretty = {version = "*", path = "../compiler/prettyprint"}
+pretty = {version = "*", path = "../compiler/pretty"}
 errors = {version="*", path="../compiler/errors"}
 utils = {version="*" , path="../compiler/utils"}
 url = "2.4.1"

@@ -9,7 +9,7 @@
       <sourceFolder url="file://$MODULE_DIR$/compiler/lexer/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/compiler/macros/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/compiler/parser/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/compiler/prettyprint/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/compiler/pretty/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/compiler/utils/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/repl/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/server/src" isTestSource="false" />

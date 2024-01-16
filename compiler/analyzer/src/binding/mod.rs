@@ -560,7 +560,10 @@ mod bind_utils {
                 (CurrentModuleType::Maybe, "Maybe") => &mut symbol_library.maybe,
                 (CurrentModuleType::Numeric, name) => match name {
                     "Int32" => &mut symbol_library.int32,
+                    "Int64" => &mut symbol_library.int64,
+                    "BigInt" => &mut symbol_library.bigint,
                     "Float64" => &mut symbol_library.float64,
+                    "Float32" => &mut symbol_library.float32,
                     "Number" => &mut symbol_library.number,
                     _ => return index,
                 },

@@ -22,6 +22,8 @@ public model Array<T>
         + Display|=(T implements Display)
 {
     var len: Int32;
+    var capacity: Int32;
+    // var buf: Unique<T>;
     /// Returns an iterator over elements in this array.
     /// ### Usage
     /// ```

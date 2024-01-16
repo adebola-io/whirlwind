@@ -92,4 +92,4 @@ public model Float64
 }
 
 /// A union data type to represent a number.
-public type Number = Int32 | Float64;
+public type Number = Int32 | Float32 | Int64 | Float64;

@@ -168,20 +168,6 @@ impl DocumentManager {
         if standpoint.contains_file(&path_buf) {
             return msgs;
         }
-        msgs.inform(format!(
-            "Could not find {} in the path list. The URI was {:?}",
-            path_buf.display(),
-            uri.to_file_path()
-                .map(|path| path.to_string_lossy().to_string())
-        ));
-        msgs.inform(format!(
-            "Full Path list: {:?}",
-            standpoint
-                .module_map
-                .paths()
-                .map(|(_, module)| module.path_buf.display())
-                .collect::<Vec<_>>()
-        ));
         match Module::from_path(path_buf) {
             Ok(module) => {
                 let path_idx = match standpoint.add_module(module) {
@@ -206,76 +192,6 @@ impl DocumentManager {
             }
         }
         return msgs;
-        // // Look 5 levels above to try to find the root of the project.
-        // for _ in 0..5 {
-        //     let children: Vec<_> = match root_folder.read_dir() {
-        //         Ok(rdir) => rdir,
-        //         Err(error) => error!(msgs, "Error reading directory: {error:?}"),
-        //     }
-        //     .filter_map(|entry| entry.ok())
-        //     .collect();
-        //     // Find Main source module.
-        //     let main_module = children
-        //         .iter()
-        //         .filter_map(|child| {
-        //             let path = child.path();
-        //             match path.is_file() && path.extension().is_some_and(|ext| ext == "wrl") {
-        //                 true => Some(path),
-        //                 false => None,
-        //             }
-        //         })
-        //         .filter_map(|file| Module::from_path(file).ok())
-        //         .find(|module| {
-        //             module
-        //                 .name
-        //                 .as_ref()
-        //                 .is_some_and(|name| name == "Main" || name == "Lib")
-        //         });
-        //     let main_module = match main_module {
-        //         Some(module) => module,
-        //         None => {
-        //             root_folder = match get_parent_dir(&root_folder) {
-        //                 Some(path) => path,
-        //                 None => {
-        //                     error!(msgs, "Could not determine parent folder during upwards traversal for {root_folder:?}.")
-        //                 }
-        //             };
-        //             continue;
-        //         }
-        //     };
-        //     // Start at main module.
-        //     if let Some(_) = standpoint.add_module(main_module) {
-        //         // now add the current module. (if it was not already automatically added.)
-        //         let path_idx = if !standpoint.contains_file(&path_buf) {
-        //             match Module::from_path(path_buf) {
-        //                 Ok(current_module) => match standpoint.add_module(current_module) {
-        //                     None => {
-        //                         error!(
-        //                         msgs,
-        //                         "Could not add this module to fresh standpoint. Skipping altogether.."
-        //                                                 )
-        //                     }
-        //                     Some(idx) => idx,
-        //                 },
-        //                 Err(error) => {
-        //                     msgs.inform(format!("Error creating current module: {error:?}"));
-        //                     return msgs;
-        //                 }
-        //             }
-        //         } else {
-        //             standpoint.module_map.map_path_to_index(&path_buf).unwrap()
-        //         };
-        //         standpoint.validate();
-        //         standpoint.refresh_module(path_idx, &params.text_document.text);
-        //         msgs.inform("Module added successfully.");
-        //     } else {
-        //         // Root not found, skip project altogether.
-        //         error!(msgs, "Could not determine main module for project.")
-        //     }
-        //     // Todo: read whirlwind.yaml to find source module instead.
-        //     break;
-        // }
-        // msgs
     }
 
     /// Hover over support.

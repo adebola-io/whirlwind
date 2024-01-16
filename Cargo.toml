@@ -5,11 +5,13 @@ members = [
     "compiler/errors", 
     "compiler/lexer", 
     "compiler/parser",
-    "compiler/prettyprint",
+    "compiler/pretty",
     "compiler/analyzer",
     "compiler/utils",
     "compiler/macros",
+    "compiler/middleend",
     "cli",
     "server",
     "repl",
+    "interpreter"
 ]

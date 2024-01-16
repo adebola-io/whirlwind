@@ -113,8 +113,10 @@ pub fn is_numeric_type(evaluated_type: &EvaluatedType, symbollib: &SymbolLibrary
     matches!(
         evaluated_type, EvaluatedType::ModelInstance { model, .. }
         if [
+            symbollib.int32,
+            symbollib.int64,
             symbollib.float64,
-            symbollib.int32
+            symbollib.float32,
         ].iter().filter_map(|sym| *sym).any(|sym| sym == *model)
     ) || matches!(
         evaluated_type, EvaluatedType::OpaqueTypeInstance {aliased_as, ..}
@@ -673,7 +675,13 @@ pub fn get_numeric_type(
                 }
             };
             if number.fract() == 0_f64 {
+                if number > i64::MAX as f64 {
+                    return evaluate_index(get_intrinsic!(symbollib.bigint));
+                }
                 // Integers.
+                if number > i32::MAX as f64 {
+                    return evaluate_index(get_intrinsic!(symbollib.int64));
+                }
                 return evaluate_index(get_intrinsic!(symbollib.int32));
             } else {
                 return evaluate_index(get_intrinsic!(symbollib.float64));

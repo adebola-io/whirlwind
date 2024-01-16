@@ -455,7 +455,9 @@ pub fn unify_types(
 /// to the left.
 /// Therefore:
 /// - Int32 <: Int32
-/// - Float64 <: Int32
+/// - Int64 <: Int32
+/// - Float32 <: Int64
+/// - Float64 <: Float32
 /// - Float64 <: Float64
 fn unify_numbers(
     first_number: &SymbolIndex, 
@@ -475,16 +477,22 @@ fn unify_numbers(
     } else {
         (false, false)
     };
-    let (first_is_float64, second_is_float64) = if let Some(idx) = symbollib.float64 {
+    let (_, second_is_int64) = if let Some(idx) = symbollib.int64 {
         (first_model == idx, second_model == idx)
     } else {
         (false, false)
     };
-    
-    // Int32 is castable to itself and Float64.
-    if (first_is_int32 && second_is_int32) ||
-        // Float64 is only castable to Float64.
-        (first_is_float64 && (second_is_float64 || second_is_int32))
+    let (first_is_float64, _) = if let Some(idx) = symbollib.float64 {
+        (first_model == idx, second_model == idx)
+    } else {
+        (false, false)
+    };
+    // Float64 can subsume any other numeric type.
+    if first_is_float64 || 
+        // Int32 is castable to any other type.
+        second_is_int32 ||
+        // Int64 is castable to itself, f32 and f64.
+        (second_is_int64 && !first_is_int32)
     {
         return Ok(target.clone());
     }

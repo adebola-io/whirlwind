@@ -10,4 +10,4 @@ ast = {version = "*", path = "../compiler/ast"}
 analyzer = {version = "*", path = "../compiler/analyzer"}
 utils = {version = "*", path = "../compiler/utils"}
 errors = {version = "*", path = "../compiler/errors"}
-pretty = {version = "*", path = "../compiler/prettyprint"}
+pretty = {version = "*", path = "../compiler/pretty"}

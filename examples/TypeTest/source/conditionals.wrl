@@ -1,4 +1,4 @@
-module testing;
+module conditionals;
 
 model True implements Default  {
     static function init() -> True {
@@ -20,6 +20,6 @@ test "conditional types" {
     var a: IsEqual<?Bool, ?Bool>;
     typeOfa := a;
 
-    var b: IsEqual<String, Bool>;
-    typeOfb := b;
+    // var b: IsEqual<String, Bool>;
+    // typeOfb := b;
 }

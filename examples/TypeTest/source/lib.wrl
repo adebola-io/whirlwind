@@ -14,7 +14,6 @@ test "Testing types." {
     // swapping variables.
     tuple := new Tuple(true, "hello");
     swapped := tuple.swap();
-    // Assert(tuple.Swap()).Equals(swapped);
     // Assert(Swap(tuple)).Equals(tuple.Swap());
  
     // Coercion.
@@ -114,10 +113,10 @@ test "Testing types." {
     // Destructuring.
     model Person implements Default {
         public var name: String;
-        public var age: UInt8; // Set automatically.
-        new(name: String, age?: UInt8) {
+        public var age: Int32; // Set automatically.
+        new(name: String, age?: Int32) {
             this.name = name;
-            this.age = Maybe.unwrapOrDefault(age);
+            this.age = age.unwrapOrDefault();
         }
         static function [Default.init]() -> This {
             return new Person("{unknown}");
@@ -130,7 +129,7 @@ test "Testing types." {
     // Destructuring in loops.
     people := [new Person("Susan Micheals"), new Person("Aaron Michaels")];
     for { name} in people {
-        print(name)
+        // print(name)
     }
 
     function anyType<T>(value: T) {}

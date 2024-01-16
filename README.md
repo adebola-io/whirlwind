@@ -1,4 +1,4 @@
-> **THIS PROJECT IS 60% INCOMPLETE. LOOK AWAY.**
+> **THIS PROJECT IS 55% INCOMPLETE. LOOK AWAY.**
 
 <h1 align=center>
    <img width="120" src="./assets/wrl_color_2.svg" alt="Whirlwind Icon"/>
@@ -7,13 +7,11 @@
 
 Whirlwind is an open-source, statically-typed programming language for quickly and easily writing maintenable software. It is designed to be practical, easy to read and efficient.
 
-## Documentation
+## Documentation 📑
 
-For more information about installing, using and understanding Whirlwind, check out the [Whirlwind website](http://whirlwind-lang.vercel.app).
+The [Whirlwind website](http://whirlwind-lang.vercel.app) is still pending. For more information relating to the source code, refer to the [docs](https://github.com/adebola-io/whirlwind/tree/master/docs) folder.
 
-For more information relating to the source code, refer to the [docs](./docs/README.md) folder.
-
-## Features
+## Features ✨
 
 -  First Class Functions.
 -  Static, Nominal Typing System.
@@ -22,11 +20,12 @@ For more information relating to the source code, refer to the [docs](./docs/REA
 -  Inbuilt Testing capabilities. (todo)
 -  Modular organization.
 
-## Syntax
+## Syntax 📐
 
 Whirlwind is inspired heavily by the syntax of already existing languages. An example of Whirlwind code is:
 
-```typescript
+```rs
+use system.io.print;
 /// Function to add two numbers.
 function add(a: Int, b: Int): Int {
    return a + b;
@@ -39,6 +38,6 @@ function main() {
 }
 ```
 
-## Roadmap and Implementation Status
+## Roadmap and Implementation Status 🛠️
 
-To view the planned and implemented features in the development of Whirlwind, please refer to the [roadmap](./docs/roadmap.md).
+To view the planned and implemented features in the development of Whirlwind, please refer to the [roadmap](./docs/roadmap).

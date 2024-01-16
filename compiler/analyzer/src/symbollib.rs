@@ -19,8 +19,11 @@ pub enum SymbolEntry {
 pub struct SymbolLibrary {
     tables: HashMap<PathIndex, SymbolTable>,
     // Numeric intrinsic values.
+    pub float32: Option<SymbolIndex>,
     pub float64: Option<SymbolIndex>,
     pub int32: Option<SymbolIndex>,
+    pub int64: Option<SymbolIndex>,
+    pub bigint: Option<SymbolIndex>,
     pub number: Option<SymbolIndex>,
 
     pub string: Option<SymbolIndex>,

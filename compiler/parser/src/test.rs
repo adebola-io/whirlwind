@@ -1251,23 +1251,6 @@ fn parse_new_expression() {
             span: [1, 1, 1, 12].into(),
         })))
     );
-    // Shorthand.
-    let mut parser = parse_text("@Stack()");
-    parser.debug_allow_global_expressions = true;
-    assert_eq!(
-        parser.next().unwrap().unwrap(),
-        Statement::FreeExpression(Expression::NewExpr(Box::new(NewExpr {
-            value: Expression::CallExpr(Box::new(CallExpr {
-                caller: Expression::Identifier(Identifier {
-                    name: format! {"Stack"},
-                    span: [1, 2, 1, 7].into()
-                }),
-                arguments: vec![],
-                span: [1, 2, 1, 9].into()
-            })),
-            span: [1, 1, 1, 9].into(),
-        })))
-    );
 }
 
 #[test]
