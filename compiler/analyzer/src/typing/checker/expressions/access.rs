@@ -421,7 +421,6 @@ pub fn search_for_property(
             let attribute_symbol = symbollib.get_forwarded(attribute).unwrap();
             if attribute_symbol.name == property_symbol.name {
                 let result_type = match &attribute_symbol.kind {
-                    // todo: Is attribute public?
                     SemanticSymbolKind::Attribute { declared_type, .. } => {
                         let span = attribute_symbol.ident_span();
                         evaluate(

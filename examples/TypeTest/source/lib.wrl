@@ -4,17 +4,14 @@ test "Testing types." {
     use core.collections.Tuple;
 
     /// Returns the value itself.
-    function identity<T>(value: T): T {
+    function identity<T>(value: T) -> T {
         return value;
-    }
-    /// Swaps the elements of a tuple.
-    function Swap<T, U>(tuple: Tuple<T, U>) -> Tuple<U, T> {
-        tuple.swap()
     }
     // swapping variables.
     tuple := new Tuple(true, "hello");
     swapped := tuple.swap();
     // Assert(Swap(tuple)).Equals(tuple.Swap());
+
  
     // Coercion.
     stringItself := identity("String"); // Should have type String.

@@ -769,7 +769,7 @@ pub fn distill_as_function_type<'a>(
                         .collect::<Vec<_>>();
                     let return_type = return_type
                         .as_ref()
-                        .map(|typ| evaluate(typ, symbollib, Some(&generic_arguments), &mut None, 0))
+                        .map(|typ| evaluate(typ, symbollib, None, &mut None, 0))
                         .unwrap_or(EvaluatedType::Void);
                     Some(FunctionType {
                         is_async,

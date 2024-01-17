@@ -376,6 +376,41 @@ fn it_typechecks_type_declaration() {
 }
 
 #[test]
+fn method_inherits_generic_arguments() {
+    check_types!(
+        "
+    module Test;
+
+    // Method generic inheritance.
+    model GenericModel<T> {
+        var value: T;
+        new(value: T) {
+            this.value = value
+        }
+        public function getValue() -> T {
+            return this.value
+        }
+        public function getStringClone() -> GenericModel<String> {
+            todo()
+        }
+    }
+
+    genericModelInst := new GenericModel(true);
+    outerValue := genericModelInst.getValue();
+    strClone := genericModelInst.getStringClone();
+
+    tuple := new Tuple(true, 'story');
+    swapped := tuple.swap();
+    ",
+        &[
+            ("outerValue", "Bool"),
+            ("strClone", "GenericModel<String>"),
+            ("swapped", "Tuple<String, Bool>")
+        ]
+    );
+}
+
+#[test]
 fn it_errors_on_invalid_unary_exp() {}
 
 #[test]

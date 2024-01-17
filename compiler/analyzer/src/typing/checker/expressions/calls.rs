@@ -20,14 +20,15 @@ pub fn typecheck_call_expression(
         // Rendered as a function expression instance so that generic function
         // parameters can be coerced to the solutions found by owner models of methods.
         let function_type = distill_as_function_type(&caller, symbollib).unwrap();
+        let final_caller_type = EvaluatedType::FunctionExpressionInstance {
+            is_async: function_type.is_async,
+            is_invariant: true,
+            params: function_type.parameter_types,
+            return_type: Box::new(function_type.return_type),
+            generic_args: function_type.generic_arguments.to_vec(),
+        };
         let final_caller_type = coerce(
-            EvaluatedType::FunctionExpressionInstance {
-                is_async: function_type.is_async,
-                is_invariant: true,
-                params: function_type.parameter_types,
-                return_type: Box::new(function_type.return_type),
-                generic_args: function_type.generic_arguments.to_vec(),
-            },
+            final_caller_type,
             &(match caller {
                 EvaluatedType::FunctionExpressionInstance {
                     generic_args: generic_arguments,
