@@ -55,6 +55,10 @@ public model Assertion<T implements Display> {
         };
         return this;
     }
+    /// Checks that the value is true.
+    public function isTrue|=(T is Bool)() {
+        core.sentinels.todo();
+    }
     /// Checks that a collection type is empty
     public function isEmpty<U, V implements Iteratable<U>>|=(T implements AsIterator<U, V>)() {
         core.sentinels.todo()

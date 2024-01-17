@@ -1,6 +1,6 @@
 use ast::{unwrap_or_continue, unwrap_or_return};
 
-use crate::utils::assume_verity;
+use crate::utils::{assume_verity, distill_as_function_type};
 
 use super::{expressions::typecheck_block, *};
 

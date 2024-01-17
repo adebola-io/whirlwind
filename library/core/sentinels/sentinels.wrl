@@ -195,3 +195,18 @@ public function noop() {}
 public function always<T>(value: T) -> fn -> T {
     return fn value;
 }
+
+/// The identity function simply returns whatever value is passed
+/// as an argument into it. Its best use is in cases where you need
+/// a function as an argument, but don't want to modify the input.
+/// 
+/// ### Usage
+/// ```
+/// originalValue := 42;
+/// returnedValue := identity(originalValue);
+/// 
+/// assert(originalValue).equals(returnedValue);
+/// ```
+public function identity<T>(value: T) -> T {
+    return value;
+}

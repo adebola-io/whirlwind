@@ -125,7 +125,7 @@ pub fn zip_arguments(
         .get_expression_type(&callexp.caller, checker_ctx.literals)
         .unwrap_or(EvaluatedType::Unknown);
     while i < parameter_types.len() {
-        // Generics in call expressions are hard by default, but
+        // HACK: Generics in call expressions are hard by default, but
         // they can be transformed into regular, coercible generics, depending
         // on whether the caller is a regular instance, a parameter type,
         // or a shadow instance (this). Parameter types inherit the invariance
@@ -134,46 +134,12 @@ pub fn zip_arguments(
         // Everything else is free real estate.
         let mut parameter_type = parameter_types[i].inferred_type.clone();
         let caller_is_invariant = caller_type.is_invariant();
-        let mut unification_option = if caller_is_invariant {
-            UnifyOptions::Conform
-        } else {
-            // If a parameter is a hard generic (or contains a hard generic),
-            // it needs to be in list of generics owned by the caller to be coercible.
-            if parameter_type.contains_child_for_which(&|child| {
-                matches!(child, EvaluatedType::HardGeneric { .. })
-            }) {
-                let mut param_generics = vec![];
-                parameter_type.gather_generics_into(&mut param_generics);
-                let caller_generics = match &caller_type {
-                        EvaluatedType::FunctionInstance {
-                            function: caller_base,
-                            ..
-                        }
-                        // todo: generic params from function types.
-                        | EvaluatedType::MethodInstance {
-                            method: caller_base,
-                            ..
-                        } => match &symbollib.get(*caller_base).unwrap().kind {
-                            SemanticSymbolKind::Method { generic_params, .. }
-                            | SemanticSymbolKind::Function { generic_params, .. } => {
-                                Some(generic_params)
-                            }
-                            _ => None,
-                        },
-                        _ => None,
-                    };
-                if param_generics.iter().all(|generic| {
-                    caller_generics.is_some_and(|generics| generics.contains(generic))
-                }) || parameter_type.is_function_expression_instance()
-                {
-                    UnifyOptions::HardConform
-                } else {
-                    UnifyOptions::Conform
-                }
-            } else {
-                UnifyOptions::HardConform
-            }
-        };
+        let mut unification_option = choose_unification_option(
+            caller_is_invariant,
+            &parameter_type,
+            &caller_type,
+            symbollib,
+        );
 
         // Account for optional types.
         let is_optional = parameter_types[i].is_optional;
@@ -251,6 +217,65 @@ pub fn zip_arguments(
         }
         i += 1;
     }
+}
+
+/// Based on the type of the generic and the context of a function expression,
+///
+/// this function decides whether conformity will be able to solve hard generics
+/// or only regular ones.
+fn choose_unification_option(
+    caller_is_invariant: bool,
+    right_type: &EvaluatedType,
+    caller_type: &EvaluatedType,
+    symbollib: &mut SymbolLibrary,
+) -> UnifyOptions {
+    if caller_is_invariant {
+        return UnifyOptions::Conform;
+    }
+    // If a parameter is a hard generic (or contains a hard generic),
+    // it needs to be in list of generics owned by the caller to be coercible.
+    if right_type
+        .contains_child_for_which(&|child| matches!(child, EvaluatedType::HardGeneric { .. }))
+    {
+        let mut param_generics = vec![];
+        right_type.gather_generics_into(&mut param_generics);
+        // The vector is for getting the generics from function expressions.
+        #[allow(unused_assignments)]
+        let mut caller_generics_if_function_expression = None;
+        let caller_generics = match caller_type {
+                    EvaluatedType::FunctionInstance {
+                        function: caller_base,
+                        ..
+                    }
+                    // todo: generic params from function types.
+                    | EvaluatedType::MethodInstance {
+                        method: caller_base,
+                        ..
+                    }
+                    => match &symbollib.get(*caller_base).unwrap().kind {
+                        SemanticSymbolKind::Method { generic_params, .. }
+                        | SemanticSymbolKind::Function { generic_params, .. } => {
+                            Some(generic_params)
+                        }
+                        _ => None,
+                    },
+                    | EvaluatedType::FunctionExpressionInstance { generic_args,.. } => {
+                        caller_generics_if_function_expression = Some(generic_args.iter().map(|(symbolidx, _)| *symbolidx).collect::<Vec<_>>());
+                        caller_generics_if_function_expression.as_ref()
+                    }
+                    _ => None,
+                };
+        if param_generics
+            .iter()
+            .all(|generic| caller_generics.is_some_and(|generics| generics.contains(generic)))
+            || right_type.is_function_expression_instance()
+        {
+            return UnifyOptions::HardConform;
+        } else {
+            return UnifyOptions::Conform;
+        }
+    }
+    return UnifyOptions::HardConform;
 }
 
 pub fn convert_param_list_to_type(

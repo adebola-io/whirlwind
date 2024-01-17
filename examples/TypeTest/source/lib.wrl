@@ -2,15 +2,19 @@ module lib;
 
 test "Testing types." {
     use core.collections.Tuple;
+    use core.testing.assert;
 
     /// Returns the value itself.
     function identity<T>(value: T) -> T {
         return value;
     }
-    // swapping variables.
+
+    // generic model methods.
+    swap := fn <T, U>(tuple: Tuple<T, U>) tuple.swap();
+
     tuple := new Tuple(true, "hello");
     swapped := tuple.swap();
-    // Assert(Swap(tuple)).Equals(tuple.Swap());
+    assert(swap(tuple)).equals(tuple.swap());
 
  
     // Coercion.
@@ -138,5 +142,9 @@ test "Testing types." {
             return value; // valid.
         };
         return factory(value);
+    }
+
+    function ad<a>(value: a) -> a {
+        todo()
     }
 }
