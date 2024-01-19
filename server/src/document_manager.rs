@@ -2,7 +2,7 @@ use crate::{
     completion::{sort_completions, CompletionFinder, DotCompletionType, Trigger},
     diagnostic::{progdiagnostic_to_diagnostic, to_range},
     error::DocumentError,
-    folding_range::FoldingRangeFinder,
+    // folding_range::FoldingRangeFinder,
     hover::{HoverFinder, HoverInfo},
     message_store::{MessageStore, WithMessages},
 };
@@ -25,15 +25,40 @@ use tower_lsp::{
     jsonrpc::Error,
     lsp_types::{
         request::{GotoDeclarationParams, GotoDeclarationResponse},
-        CompletionContext, CompletionItem, CompletionItemKind, CompletionParams,
-        CompletionResponse, Diagnostic, DidChangeTextDocumentParams, DidOpenTextDocumentParams,
-        DidSaveTextDocumentParams, DocumentDiagnosticParams, DocumentDiagnosticReport,
-        DocumentSymbol, DocumentSymbolParams, DocumentSymbolResponse, FoldingRange,
-        FoldingRangeParams, FullDocumentDiagnosticReport, HoverParams, InlayHint, InlayHintKind,
-        InlayHintLabel, InlayHintParams, Location, Position, ReferenceParams,
-        RelatedFullDocumentDiagnosticReport, RenameParams, SymbolKind, TextEdit, Url,
-        WorkspaceDiagnosticParams, WorkspaceDiagnosticReport, WorkspaceDiagnosticReportResult,
-        WorkspaceDocumentDiagnosticReport, WorkspaceEdit, WorkspaceFullDocumentDiagnosticReport,
+        CompletionContext,
+        CompletionItem,
+        CompletionItemKind,
+        CompletionParams,
+        CompletionResponse,
+        Diagnostic,
+        DidChangeTextDocumentParams,
+        DidOpenTextDocumentParams,
+        DidSaveTextDocumentParams,
+        DocumentDiagnosticParams,
+        DocumentDiagnosticReport,
+        DocumentSymbol,
+        DocumentSymbolParams,
+        DocumentSymbolResponse, //FoldingRange,
+        /* FoldingRangeParams */ FullDocumentDiagnosticReport,
+        HoverParams,
+        InlayHint,
+        InlayHintKind,
+        InlayHintLabel,
+        InlayHintParams,
+        Location,
+        Position,
+        ReferenceParams,
+        RelatedFullDocumentDiagnosticReport,
+        RenameParams,
+        SymbolKind,
+        TextEdit,
+        Url,
+        WorkspaceDiagnosticParams,
+        WorkspaceDiagnosticReport,
+        WorkspaceDiagnosticReportResult,
+        WorkspaceDocumentDiagnosticReport,
+        WorkspaceEdit,
+        WorkspaceFullDocumentDiagnosticReport,
     },
 };
 use utils::get_parent_dir;
@@ -710,26 +735,6 @@ impl DocumentManager {
         // *was_updated = false;
         // }
         // diagnostic_report.clone()
-    }
-
-    /// Returns the folding ranges for the document.
-    pub fn get_folding_ranges(
-        &self,
-        params: FoldingRangeParams,
-    ) -> WithMessages<Option<Vec<FoldingRange>>> {
-        let mut messages = self.remember(params.text_document.uri);
-        let standpoint = self.standpoint.lock().unwrap();
-        let module = match self.get_cached(&standpoint) {
-            Some(module) => module,
-            None => {
-                messages.error("Could not return the module.");
-                return (messages, None);
-            }
-        };
-        let folding_range_finder = FoldingRangeFinder::new(module);
-        folding_range_finder.gather();
-        let ranges = folding_range_finder.ranges.take();
-        (messages, Some(ranges))
     }
 
     pub fn get_symbols(&self, params: DocumentSymbolParams) -> Option<DocumentSymbolResponse> {

@@ -59,7 +59,7 @@ public model Quadruple<T, U, V, W>
         )() -> String
     {
         todo()
-        // return fmt("Quadruple(%, %, %, %)")
+        // return String.fmt("Quadruple(%, %, %, %)")
         //     .add(this.a.toStr())
         //     .add(this.b.toStr())
         //     .add(this.c.toStr())

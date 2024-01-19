@@ -64,7 +64,7 @@ public model Quintuple<T, U, V, W, X>
         )() -> String
     {
         todo()
-        // return fmt("Quintuple(%, %, %, %, %)")
+        // return String.fmt("Quintuple(%, %, %, %, %)")
         //     .add(this.a.toStr())
         //     .add(this.b.toStr())
         //     .add(this.c.toStr())

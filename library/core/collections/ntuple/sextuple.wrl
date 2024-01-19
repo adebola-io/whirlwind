@@ -79,7 +79,7 @@ public model Sextuple<T, U, V, W, X, Y>
         )() -> String
     {
         todo()
-        // return fmt("Sextuple(%, %, %, %, %, %)")
+        // return String.fmt("Sextuple(%, %, %, %, %, %)")
         //     .add(this.a.toStr())
         //     .add(this.b.toStr())
         //     .add(this.c.toStr())

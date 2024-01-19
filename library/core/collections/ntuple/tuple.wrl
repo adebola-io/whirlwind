@@ -48,7 +48,7 @@ public model Tuple<T, U>
         T implements Display and U implements Display
     )() -> String {
         todo()
-        // return fmt("Tuple(%, %)")
+        // return String.fmt("Tuple(%, %)")
         //     .add(this.a)
         //     .add(this.b)
         //     .finish();

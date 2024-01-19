@@ -19,7 +19,7 @@ use string.String;
 ///     }
 /// 
 ///     public function [Display.toStr]() -> String {
-///         template := fmt("Rectangle { length: %, breadth: % }");
+///         template := String.fmt("Rectangle { length: %, breadth: % }");
 ///         template.add(this.length).add(this.breadth).finish()
 ///     }
 /// }

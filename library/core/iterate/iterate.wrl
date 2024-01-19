@@ -322,7 +322,7 @@ public interface Iteratable<I> {
     /// ```
     /// fruits := ["blueberry", "mango", "pawpaw"];
     /// iter := fruits.iter().onEnd(fn {
-    ///     print(fmt("There are % fruits").add(fruits.length()));    
+    ///     print(String.fmt("There are % fruits").add(fruits.length()));    
     /// })
     /// iter.collect(); 
     /// 

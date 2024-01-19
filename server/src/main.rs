@@ -61,7 +61,7 @@ impl LanguageServer for Backend {
                 document_symbol_provider: Some(OneOf::Left(true)),
                 references_provider: Some(OneOf::Left(true)),
                 inlay_hint_provider: Some(OneOf::Left(true)),
-                folding_range_provider: Some(FoldingRangeProviderCapability::Simple(true)),
+                // folding_range_provider: Some(FoldingRangeProviderCapability::Simple(true)),
                 rename_provider: Some(OneOf::Left(true)),
                 diagnostic_provider: Some(DiagnosticServerCapabilities::Options(
                     DiagnosticOptions {
@@ -163,11 +163,11 @@ impl LanguageServer for Backend {
         Ok(completion)
     }
 
-    async fn folding_range(&self, params: FoldingRangeParams) -> Result<Option<Vec<FoldingRange>>> {
-        let (messages, ranges) = self.docs.get_folding_ranges(params);
-        self.log_all(messages).await;
-        Ok(ranges)
-    }
+    // async fn folding_range(&self, params: FoldingRangeParams) -> Result<Option<Vec<FoldingRange>>> {
+    //     let (messages, ranges) = self.docs.get_folding_ranges(params);
+    //     self.log_all(messages).await;
+    //     Ok(ranges)
+    // }
 
     async fn completion_resolve(&self, params: CompletionItem) -> Result<CompletionItem> {
         Ok(params)

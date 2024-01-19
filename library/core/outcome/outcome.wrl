@@ -30,7 +30,7 @@ public model Outcome<T, E>
     + Guaranteed<T> 
     + Try<T, Outcome<never, E>> 
 {
-    /// flag representing the type of outcome.
+    /// Flag representing the type of outcome.
     var flag: OutcomeType;
 
     public function [Clonable.clone]|=(T implements Clonable)() -> This {
@@ -42,10 +42,10 @@ public model Outcome<T, E>
     public function [Display.toStr]|=(T implements Display)() -> String {
         if this.isOk() {
             value := builtin.outcome.unwrap(this);
-            // return fmt("Outcome.ok(%)").add(value).finish();
+            // return String.fmt("Outcome.ok(%)").add(value).finish();
         };
         errValue := builtin.outcome.unwrapError(this);
-        // return fmt("Outcome.err(%)").add(errValue).finish();
+        // return String.fmt("Outcome.err(%)").add(errValue).finish();
         core.sentinels.todo()
     }
     function [Guaranteed.guarantee]() -> T {

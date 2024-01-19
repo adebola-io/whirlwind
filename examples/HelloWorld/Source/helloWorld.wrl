@@ -5,10 +5,9 @@ function helloWorld() {
     print("Hello, world!");
 }
 
-use core.string.fmt;
 /// Greets a person.
 function greeting(name: String) {
-    print(fmt("Good day, %!").add(name))
+    print(String.fmt("Good day, %!").add(name))
 }
 
 /// Stub for print, since system.io is not ready.

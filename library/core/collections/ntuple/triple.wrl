@@ -51,7 +51,7 @@ public model Triple<T, U, V>
         )() -> String
     {
         todo()
-        // return fmt("Triple(%, %, %)")
+        // return String.fmt("Triple(%, %, %)")
         //     .add(this.a.toStr())
         //     .add(this.b.toStr())
         //     .add(this.c.toStr())

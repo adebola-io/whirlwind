@@ -12,7 +12,7 @@ use core.{
 };
 public use display.Display;
 public use coloredstring.ColoredString;
-public use template.{fmt, Template};
+public use template.Template;
 
 /// Model for creating, manipulating and formatting text sequences.
 public model String 
@@ -373,7 +373,7 @@ public model String
         todo()
     }
     /// Creates a string from a value that implements Display.
-    /// ## Usage
+    /// ### Usage
     /// ```
     /// value := 1234;
     /// valueStr := String.from(value);
@@ -382,6 +382,18 @@ public model String
     /// ```
     public static function from<T implements Display>(value: T) -> This {
         value.toStr()
+    }
+
+    /// Creates a new formattable string template.
+    /// ### Usage
+    /// ```
+    /// greeting := String.fmt("Hello, %!");
+    /// greetingStr := greeting.add("John").finish()
+    /// 
+    /// assert(greetingStr).Equals("Hello, John!");
+    /// ```
+    public static function fmt(template: String) -> Template {
+        return new Template(template)
     }
 }
 

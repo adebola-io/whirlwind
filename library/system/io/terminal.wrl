@@ -2,8 +2,8 @@ module terminal;
 
 /// Prints a message or an object to the console, terminal 
 /// or any predefined output interface.
-public function print<T implements Display>(data: T) {
-    dataStr := data.toStr();
+public function print<M implements Display>(message: M) {
+    messageStr := message.toStr();
     todo()
 }
 

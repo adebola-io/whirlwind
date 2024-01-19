@@ -70,7 +70,7 @@ public model Maybe<T>
             return "Maybe.none";
         }
         core.sentinels.todo()
-        // return fmt("Maybe.some(%)").add(this.value).finish();
+        // return String.fmt("Maybe.some(%)").add(this.value).finish();
     }
     /// Implementation of the `Guaranteed` interface.
     function [Guaranteed.guarantee]() -> T {
@@ -154,7 +154,7 @@ public model Maybe<T>
     /// maybeValue := some(42);
     /// 
     /// maybeValue.isSomeThen(fn(value) {
-    ///     message := fmt("The value is %").add(value).finish();
+    ///     message := String.fmt("The value is %").add(value).finish();
     ///     print(message);
     /// })
     /// ```

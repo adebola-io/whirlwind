@@ -1,6 +1,6 @@
 use ast::{unwrap_or_continue, unwrap_or_return};
 
-use crate::utils::{assume_verity, distill_as_function_type};
+use crate::utils::assume_verity;
 
 use super::{expressions::typecheck_block, *};
 
@@ -337,6 +337,8 @@ fn typecheck_function_body(
     push_scopetype(checker_ctx, ScopeType::Other);
     let mut block_return_type = expressions::typecheck_block(body, true, checker_ctx, symbollib);
     pop_scopetype(checker_ctx);
+    // Ignore unreachable nested generics.
+    // if last statement was a return, there is no need to check type again, since it will still show the apprioprate errors.
     if !block_return_type.is_generic()
         && !block_return_type
             .contains_child_for_which(&|child| matches!(child, EvaluatedType::HardGeneric { .. }))
@@ -350,8 +352,6 @@ fn typecheck_function_body(
     {
         return;
     }
-    // Ignore unreachable nested generics.
-    // if last statement was a return, there is no need to check type again, since it will still show the apprioprate errors.
     match unify_types(
         &return_type,
         &block_return_type,
