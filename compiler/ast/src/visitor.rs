@@ -2,9 +2,9 @@ use crate::{
     AccessExpr, ArrayExpr, AssignmentExpr, BinaryExpr, Block, CallExpr, ConstantDeclaration,
     EnumDeclaration, Expression, ForStatement, FunctionDeclaration, FunctionExpr, Identifier,
     IfExpression, IndexExpr, InterfaceDeclaration, LogicExpr, ModelDeclaration, ModuleDeclaration,
-    NewExpr, Parameter, ReturnStatement, ShorthandVariableDeclaration, Statement, TestDeclaration,
-    ThisExpr, TypeDeclaration, UnaryExpr, UpdateExpr, UseDeclaration, VariableDeclaration,
-    WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
+    Parameter, ReturnStatement, ShorthandVariableDeclaration, Statement, TestDeclaration, ThisExpr,
+    TypeDeclaration, UnaryExpr, UpdateExpr, UseDeclaration, VariableDeclaration, WhileStatement,
+    WhirlBoolean, WhirlNumber, WhirlString,
 };
 
 #[allow(unused_variables)]
@@ -39,7 +39,6 @@ pub trait ASTVisitor<Arguments = (), Output: Default = ()> {
             Expression::StringLiteral(s) => self.string(s, args),
             Expression::NumberLiteral(n) => self.number(n, args),
             Expression::BooleanLiteral(b) => self.boolean(b, args),
-            Expression::NewExpr(n) => self.new_expr(n, args),
             Expression::ThisExpr(t) => self.this_expr(t, args),
             Expression::CallExpr(c) => self.call_expr(c, args),
             Expression::FnExpr(f) => self.function_expr(f, args),
@@ -140,9 +139,6 @@ pub trait ASTVisitor<Arguments = (), Output: Default = ()> {
     fn identifier(&self, ident: &Identifier, args: &Arguments) -> Output {
         Output::default()
     }
-    fn new_expr(&self, new_exp: &NewExpr, args: &Arguments) -> Output {
-        self.expr(&new_exp.value, args)
-    }
     fn shorthand_var_decl(
         &self,
         var_decl: &ShorthandVariableDeclaration,
@@ -214,7 +210,6 @@ pub trait ASTVisitorNoArgs<Output: Default = ()> {
             Expression::StringLiteral(s) => self.string(s),
             Expression::NumberLiteral(n) => self.number(n),
             Expression::BooleanLiteral(b) => self.boolean(b),
-            Expression::NewExpr(n) => self.new_expr(n),
             Expression::ThisExpr(t) => self.this_expr(t),
             Expression::CallExpr(c) => self.call_expr(c),
             Expression::FnExpr(f) => self.function_expr(f),
@@ -314,9 +309,6 @@ pub trait ASTVisitorNoArgs<Output: Default = ()> {
     }
     fn identifier(&self, ident: &Identifier) -> Output {
         Output::default()
-    }
-    fn new_expr(&self, new_exp: &NewExpr) -> Output {
-        self.expr(&new_exp.value)
     }
     fn shorthand_var_decl(&self, var_decl: &ShorthandVariableDeclaration) -> Output {
         Output::default()
@@ -520,7 +512,6 @@ pub trait ASTVisitorExprOutputNoArgs<Output: Default = ()> {
             Expression::NumberLiteral(n) => self.number(n),
             Expression::BooleanLiteral(b) => self.boolean(b),
             Expression::BinaryExpr(b) => self.binary_expr(b),
-            Expression::NewExpr(n) => self.new_expr(n),
             Expression::ThisExpr(t) => self.this_expr(t),
             Expression::CallExpr(c) => self.call_expr(c),
             Expression::FnExpr(f) => self.func_expr(f),
@@ -563,10 +554,6 @@ pub trait ASTVisitorExprOutputNoArgs<Output: Default = ()> {
 
     fn identifier(&self, ident: &Identifier) -> Output {
         Output::default()
-    }
-
-    fn new_expr(&self, new_expr: &NewExpr) -> Output {
-        self.expr(&new_expr.value)
     }
 
     fn this_expr(&self, this_expr: &ThisExpr) -> Output {

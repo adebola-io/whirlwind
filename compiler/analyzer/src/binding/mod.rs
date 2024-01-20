@@ -2670,9 +2670,6 @@ mod expressions {
             Expression::BooleanLiteral(boolean) => {
                 TypedExpression::Literal(literals::bind_boolean(boolean, binder.path, literals))
             }
-            Expression::NewExpr(new_expr) => TypedExpression::NewExpr(Box::new(
-                bind_new_expression(new_expr, binder, symbol_library, errors, literals, ambience),
-            )),
             Expression::ThisExpr(this) => TypedExpression::ThisExpr(this_expression(
                 this,
                 binder,
@@ -2798,29 +2795,6 @@ mod expressions {
         TypedIdent {
             value: symbol_index,
             start: identifier.span.start,
-        }
-    }
-
-    /// Bind a new expression.
-    pub fn bind_new_expression(
-        new_expr: Box<ast::NewExpr>,
-        binder: &mut Binder,
-        symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramDiagnostic>,
-        literals: &mut LiteralMap,
-        ambience: &mut ModuleAmbience,
-    ) -> TypedNewExpr {
-        TypedNewExpr {
-            value: bind_expression(
-                new_expr.value,
-                binder,
-                symbol_library,
-                errors,
-                literals,
-                ambience,
-            ),
-            span: new_expr.span,
-            inferred_type: EvaluatedType::Unknown,
         }
     }
 

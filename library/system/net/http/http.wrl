@@ -37,7 +37,7 @@ public model HttpServer {
     var isRunning: Bool;
     var port: Int32;
     new(name: String, port: Int32) {
-        this.endpoints = new Endpoints();
+        this.endpoints = Endpoints();
         this.middleware = [];
         this.isRunning = false;
         this.port = port;

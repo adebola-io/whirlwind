@@ -95,10 +95,6 @@ pub enum TypeErrorType {
     NotCallable {
         caller: String,
     },
-    /// Calling a model.
-    IllegalModelCall {
-        name: String,
-    },
     /// Calling a function with an incorrect number of arguments.
     MismatchedFunctionArgs {
         expected: usize,
@@ -490,13 +486,6 @@ pub fn instance_static_method_access(
 pub fn not_callable(caller: String, span: ast::Span) -> TypeError {
     TypeError {
         _type: TypeErrorType::NotCallable { caller },
-        span,
-    }
-}
-
-pub fn illegal_model_call(name: String, span: ast::Span) -> TypeError {
-    TypeError {
-        _type: TypeErrorType::IllegalModelCall { name },
         span,
     }
 }

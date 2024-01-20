@@ -162,7 +162,7 @@ enum OutcomeType {
 /// assertThat(outcome.isOk())
 /// ```
 public function ok<T, U>(value: T) -> Outcome<T, U> {
-    // new Outcome(OutcomeVal.Ok(value))
+    // Outcome(OutcomeVal.Ok(value))
     todo()
 }
 
@@ -173,6 +173,6 @@ public function ok<T, U>(value: T) -> Outcome<T, U> {
 /// assertThat(outcome.isErr())
 /// ```
 public function err<T, U>(error: U) -> Outcome<T, U> {
-    // new Outcome(OutcomeVal.Err(errorValue))
+    // Outcome(OutcomeVal.Err(errorValue))
     todo()
 }

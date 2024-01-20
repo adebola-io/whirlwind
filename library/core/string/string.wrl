@@ -49,7 +49,7 @@ public model String
     /// }
     /// ```
     public function [AsIterator.iter]() -> Chars {
-        return new Chars(this);
+        return Chars(this);
     }
     /// Adds text to the end of the string.
     /// ## Usage
@@ -84,7 +84,7 @@ public model String
     /// }
     /// ```
     public function chars() -> Chars {
-        return new Chars(this);
+        return Chars(this);
     }
     /// Empties the string of its characters.
     /// ## Usage
@@ -393,7 +393,7 @@ public model String
     /// assert(greetingStr).Equals("Hello, John!");
     /// ```
     public static function fmt(template: String) -> Template {
-        return new Template(template)
+        return Template(template)
     }
 }
 

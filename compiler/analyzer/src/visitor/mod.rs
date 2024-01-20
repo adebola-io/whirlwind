@@ -6,9 +6,9 @@ use crate::{
     TypedEnumDeclaration, TypedExpression, TypedFnExpr, TypedForStatement,
     TypedFunctionDeclaration, TypedIdent, TypedIfExpr, TypedIndexExpr, TypedInterfaceDeclaration,
     TypedInterfacePropertyType, TypedLogicExpr, TypedModelDeclaration, TypedModelPropertyType,
-    TypedModuleDeclaration, TypedNewExpr, TypedReturnStatement, TypedShorthandVariableDeclaration,
-    TypedStmnt, TypedTestDeclaration, TypedThisExpr, TypedTypeDeclaration, TypedUnaryExpr,
-    TypedUpdateExpr, TypedUseDeclaration, TypedVariableDeclaration, TypedWhileStatement,
+    TypedModuleDeclaration, TypedReturnStatement, TypedShorthandVariableDeclaration, TypedStmnt,
+    TypedTestDeclaration, TypedThisExpr, TypedTypeDeclaration, TypedUnaryExpr, TypedUpdateExpr,
+    TypedUseDeclaration, TypedVariableDeclaration, TypedWhileStatement,
 };
 
 #[allow(unused_variables)]
@@ -41,7 +41,6 @@ pub trait TypedTreeVisitor<Arguments = (), Output: Default = ()> {
         match exp {
             TypedExpression::Identifier(i) => self.identifier(i, args),
             TypedExpression::Literal(l) => self.literal(l, args),
-            TypedExpression::NewExpr(n) => self.new_expr(n, args),
             TypedExpression::ThisExpr(t) => self.this_expr(t, args),
             TypedExpression::CallExpr(c) => self.call_expr(c, args),
             TypedExpression::FnExpr(f) => self.function_expr(f, args),
@@ -137,9 +136,6 @@ pub trait TypedTreeVisitor<Arguments = (), Output: Default = ()> {
     fn identifier(&self, ident: &TypedIdent, args: &Arguments) -> Output {
         Output::default()
     }
-    fn new_expr(&self, new_exp: &TypedNewExpr, args: &Arguments) -> Output {
-        self.expr(&new_exp.value, args)
-    }
     fn shorthand_var_decl(
         &self,
         var_decl: &TypedShorthandVariableDeclaration,
@@ -211,7 +207,6 @@ pub trait TypedVisitorNoArgs<Output: Default = ()> {
         match exp {
             TypedExpression::Identifier(i) => self.identifier(i),
             TypedExpression::Literal(l) => self.literal(l),
-            TypedExpression::NewExpr(n) => self.new_expr(n),
             TypedExpression::ThisExpr(t) => self.this_expr(t),
             TypedExpression::CallExpr(c) => self.call_expr(c),
             TypedExpression::FnExpr(f) => self.function_expr(f),
@@ -305,9 +300,6 @@ pub trait TypedVisitorNoArgs<Output: Default = ()> {
     }
     fn literal(&self, literal: &LiteralIndex) -> Output {
         Output::default()
-    }
-    fn new_expr(&self, new_exp: &TypedNewExpr) -> Output {
-        self.expr(&new_exp.value)
     }
     fn shorthand_var_decl(&self, var_decl: &TypedShorthandVariableDeclaration) -> Output {
         Output::default()
@@ -427,7 +419,6 @@ pub trait ShortcircuitTypedVisitorNoArgs<'a, Output = ()> {
         match exp {
             TypedExpression::Identifier(i) => self.identifier(i),
             TypedExpression::Literal(l) => self.literal(l),
-            TypedExpression::NewExpr(n) => self.new_expr(n),
             TypedExpression::ThisExpr(t) => self.this_expr(t),
             TypedExpression::CallExpr(c) => self.call_expr(c),
             TypedExpression::FnExpr(f) => self.function_expr(f),
@@ -521,9 +512,6 @@ pub trait ShortcircuitTypedVisitorNoArgs<'a, Output = ()> {
     }
     fn literal(&self, literal: &'a LiteralIndex) -> Option<Output> {
         return None;
-    }
-    fn new_expr(&self, new_exp: &'a TypedNewExpr) -> Option<Output> {
-        self.expr(&new_exp.value)
     }
     fn shorthand_var_decl(
         &self,
@@ -754,7 +742,6 @@ pub trait ASTVisitorExprOutputNoArgs<Output: Default = ()> {
             TypedExpression::Identifier(i) => self.identifier(i),
             TypedExpression::Literal(s) => self.literal(s),
             TypedExpression::BinaryExpr(b) => self.binary_expr(b),
-            TypedExpression::NewExpr(n) => self.new_expr(n),
             TypedExpression::ThisExpr(t) => self.this_expr(t),
             TypedExpression::CallExpr(c) => self.call_expr(c),
             TypedExpression::FnExpr(f) => self.func_expr(f),
@@ -801,10 +788,6 @@ pub trait ASTVisitorExprOutputNoArgs<Output: Default = ()> {
 
     fn identifier(&self, ident: &TypedIdent) -> Output {
         Output::default()
-    }
-
-    fn new_expr(&self, new_expr: &TypedNewExpr) -> Output {
-        self.expr(&new_expr.value)
     }
 
     fn this_expr(&self, this_expr: &TypedThisExpr) -> Output {

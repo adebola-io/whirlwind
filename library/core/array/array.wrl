@@ -35,7 +35,7 @@ public model Array<T>
     /// assert(iter.next()).equals(some(3));
     /// ```
     public function [AsIterator.iter]() -> ArrayIter<T> {
-        new ArrayIter(this)
+        ArrayIter(this)
     }
     /// Creates and returns a deep clone of an array.
     /// ### Usage
@@ -418,7 +418,7 @@ public model Array<T>
     /// assertThat(rev.next() == none());
     /// ```
     public function reverse() -> Reversed<T> {
-        return new Reversed(this);
+        return Reversed(this);
     }
     /// Randomly selects a specific number of elements from
     /// the array.

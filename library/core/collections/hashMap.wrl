@@ -1,7 +1,8 @@
 module hashMap;
 
 use core.{
-    sentinels.todo, 
+    sentinels.todo,
+    interfaces.Default, 
     iterate.{AsIterator, Iteratable},
     numeric.Int32,
 };
@@ -17,11 +18,15 @@ public interface ToMap<K implements Hash, V> {
 
 public model HashMap<K implements Hash, V> 
     implements AsIterator<Tuple<K, V>, HashMapIteratable<K, V>> 
+    + Default
 {
     new(){}
 
     public function [AsIterator.iter]() -> HashMapIteratable<K, V> {
-        return new HashMapIteratable(this);
+        return HashMapIteratable(this);
+    }
+    static function [Default.init]() -> This {
+        return HashMap();
     }
     /// Inserts a key-value pair into the hashmap.
     /// 

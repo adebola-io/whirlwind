@@ -30,7 +30,7 @@ public model Tuple<T, U>
         T implements Clonable and U implements Clonable
     )() -> This {
         todo()
-        // return new Tuple(
+        // return Tuple(
         //     this.a.clone(),
         //     this.b.clone()
         // );
@@ -61,17 +61,17 @@ public model Tuple<T, U>
         return some(this.b);
     }
 
-    /// Returns a new tuple with the position of the two items in the tuple reversed.
+    /// Returns a tuple with the position of the two items in the tuple reversed.
     /// ### Usage
     /// ```
     /// use core.collections.Tuple;
     /// 
-    /// tuple := new Tuple(true, "story");
+    /// tuple := Tuple(true, "story");
     /// swapped := tuple.swap();
-    /// assertThat(swapped == new Tuple("story", true));
+    /// assertThat(swapped == Tuple("story", true));
     /// ```
     public function swap() -> Tuple<U, T> {
-        new Tuple(this.b, this.a)
+        Tuple(this.b, this.a)
     }
     /// Concatenates the elements of the pair into one.
     /// ### Usage
@@ -105,5 +105,5 @@ public model Tuple<T, U>
 /// assert(second).equals("apple");
 /// ```
 public function pair<T, U>(a: T, b: U) -> Tuple<T, U> {
-    return new Tuple(a, b);
+    return Tuple(a, b);
 }

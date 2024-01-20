@@ -395,11 +395,6 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
         None
     }
 
-    fn new_expr(&self, new_exp: &analyzer::TypedNewExpr) -> Option<HoverInfo> {
-        within!(new_exp.span, self);
-        self.expr(&new_exp.value)
-    }
-
     fn constant(&self, constant: &analyzer::TypedConstantDeclaration) -> Option<HoverInfo> {
         within!(constant.span, self);
         let symbol = self.standpoint.symbol_library.get(constant.name)?;

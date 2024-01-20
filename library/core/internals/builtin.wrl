@@ -29,7 +29,7 @@ public model BuiltIn implements Injunction {
 
 
 function builtin(_type: InjunctionType) -> BuiltIn {
-    return new BuiltIn(_type);
+    return BuiltIn(_type);
 }
 
 public model arrays<T> {

@@ -7,10 +7,10 @@ use ast::{
     InterfaceBody, InterfaceDeclaration, InterfaceProperty, InterfacePropertyType,
     InterfaceSignature, Keyword::*, LogicExpr, LoopLabel, LoopVariable, MaybeType, MemberType,
     MethodSignature, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType, ModelSignature,
-    ModuleAmbience, ModuleDeclaration, NewExpr, Operator::*, Parameter, ReturnStatement,
-    ScopeAddress, ScopeEntry, ScopeType, ShorthandVariableDeclaration, ShorthandVariableSignature,
-    Span, Spannable, Statement, TernaryType, TestDeclaration, ThisExpr, Token, TokenType,
-    TypeClause, TypeDeclaration, TypeExpression, TypeSignature, UnaryExpr, UnionType, UpdateExpr,
+    ModuleAmbience, ModuleDeclaration, Operator::*, Parameter, ReturnStatement, ScopeAddress,
+    ScopeEntry, ScopeType, ShorthandVariableDeclaration, ShorthandVariableSignature, Span,
+    Spannable, Statement, TernaryType, TestDeclaration, ThisExpr, Token, TokenType, TypeClause,
+    TypeDeclaration, TypeExpression, TypeSignature, UnaryExpr, UnionType, UpdateExpr,
     UseDeclaration, UsePath, UseTarget, UseTargetSignature, VariableDeclaration, VariablePattern,
     VariableSignature, WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
 };
@@ -275,7 +275,7 @@ impl<L: Lexer> Parser<L> {
             TokenType::Keyword(Fn) => self.function_expression(false, token.span.start),
             TokenType::Keyword(Async) => self.async_function_expression(),
             TokenType::Keyword(True | False) => self.spring(Partial::from(self.boolean_literal())),
-            TokenType::Keyword(New) => self.new_expression(),
+            // TokenType::Keyword(New) => self.new_expression(),
             TokenType::Keyword(If) => self.if_expression(),
             TokenType::Keyword(_this) => self.this_expression(),
             TokenType::Operator(op @ (Exclamation | Not | Plus | Minus)) => {
@@ -314,26 +314,26 @@ impl<L: Lexer> Parser<L> {
         Ok(Expression::BooleanLiteral(boolean))
     }
 
-    /// Parses a new epxression.
-    fn new_expression(&self) -> Imperfect<Expression> {
-        let start = self.token().unwrap().span.start;
-        self.advance(); // Move past operator.
-        self.push_precedence(ExpressionPrecedence::New);
-        let (operand, errors) = self.expression().to_tuple();
-        self.precedence_stack.borrow_mut().pop();
-        if operand.is_none() {
-            return Partial::from_errors(errors);
-        }
-        let value = operand.unwrap();
-        let end = value.span().end;
-        let span = Span::from([start, end]);
-        let un_exp = NewExpr { value, span };
-        let exp = Partial {
-            value: Some(Expression::NewExpr(Box::new(un_exp))),
-            errors,
-        };
-        self.spring(exp)
-    }
+    // /// Parses a new epxression.
+    // fn new_expression(&self) -> Imperfect<Expression> {
+    //     let start = self.token().unwrap().span.start;
+    //     self.advance(); // Move past operator.
+    //     self.push_precedence(ExpressionPrecedence::New);
+    //     let (operand, errors) = self.expression().to_tuple();
+    //     self.precedence_stack.borrow_mut().pop();
+    //     if operand.is_none() {
+    //         return Partial::from_errors(errors);
+    //     }
+    //     let value = operand.unwrap();
+    //     let end = value.span().end;
+    //     let span = Span::from([start, end]);
+    //     let un_exp = NewExpr { value, span };
+    //     let exp = Partial {
+    //         value: Some(Expression::NewExpr(Box::new(un_exp))),
+    //         errors,
+    //     };
+    //     self.spring(exp)
+    // }
 
     /// Parses a string literal.
     fn string_literal(&self) -> Fallible<Expression> {
@@ -2165,10 +2165,10 @@ impl<L: Lexer> Parser<L> {
                         self.advance(); // move past ;
                     }
                     _ => {
-                        errors.push(expected(
-                            TokenType::Operator(SemiColon),
-                            self.last_token_end(),
-                        ));
+                        // errors.push(expected(
+                        //     TokenType::Operator(SemiColon),
+                        //     self.last_token_end(),
+                        // ));
                         end = token.span.end;
                     }
                 }
@@ -2183,10 +2183,10 @@ impl<L: Lexer> Parser<L> {
             }
             // Some other variation.
             _ => {
-                errors.push(expected(
-                    TokenType::Operator(SemiColon),
-                    self.last_token_end(),
-                ));
+                // errors.push(expected(
+                //     TokenType::Operator(SemiColon),
+                //     self.last_token_end(),
+                // ));
                 end = self.last_token_span().end;
             }
         }

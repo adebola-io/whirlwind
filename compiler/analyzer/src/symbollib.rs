@@ -148,7 +148,6 @@ impl SymbolLibrary {
                 is_invariant: false,
                 generic_arguments: vec![],
             },
-            TypedExpression::NewExpr(new) => new.inferred_type.clone(),
             TypedExpression::ThisExpr(this) => this.inferred_type.clone(),
             TypedExpression::CallExpr(call) => call.inferred_type.clone(),
             TypedExpression::FnExpr(f) => f.inferred_type.clone(),

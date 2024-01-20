@@ -10,8 +10,8 @@ use crate::{
     DiagnosticType, EvaluatedType, Literal, LiteralMap, ParameterType, PathIndex,
     ProgramDiagnostic, ScopeId, SemanticSymbolKind, SymbolIndex, SymbolLibrary, TypedAccessExpr,
     TypedBlock, TypedCallExpr, TypedExpression, TypedFnExpr, TypedFunctionDeclaration, TypedIdent,
-    TypedIfExpr, TypedIndexExpr, TypedLogicExpr, TypedModule, TypedNewExpr, TypedReturnStatement,
-    TypedStmnt, TypedThisExpr, UnifyOptions,
+    TypedIfExpr, TypedIndexExpr, TypedLogicExpr, TypedModule, TypedReturnStatement, TypedStmnt,
+    TypedThisExpr, UnifyOptions,
 };
 use ast::{Span, UnaryOperator};
 use errors::{missing_intrinsic, TypeError, TypeErrorType, Warning};

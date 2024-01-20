@@ -33,7 +33,7 @@ public interface JsonValue {
     /// ```
     /// use core.data.JsonString;
     /// 
-    /// str := new JsonString();
+    /// str := JsonString();
     /// assert(str.getType()).equals(JsonValueType.String);
     /// ```
     public function getType() -> JsonValueType;
@@ -42,7 +42,7 @@ public interface JsonValue {
     /// ```
     /// use core.data.JsonNull;
     /// 
-    /// null := new JsonNull();
+    /// null := JsonNull();
     /// assertThat(null.isNull());
     /// ```
     public function isNull() -> Bool {
@@ -53,7 +53,7 @@ public interface JsonValue {
     /// ```
     /// use core.data.JsonString;
     /// 
-    /// str := new JsonString();
+    /// str := JsonString();
     /// assertThat(str.isString());
     /// ```
     public function isString() -> Bool {
@@ -64,7 +64,7 @@ public interface JsonValue {
     /// ```
     /// use core.data.JsonNumber;
     /// 
-    /// num := new JsonNumber(some(42));
+    /// num := JsonNumber(some(42));
     /// assertThat(num.isNumber());
     /// ```
     public function isNumber() -> Bool {
@@ -75,7 +75,7 @@ public interface JsonValue {
     /// ```
     /// use core.data.JsonArray;
     /// 
-    /// arr := new JsonArray();
+    /// arr := JsonArray();
     /// assertThat(arr.isArray());
     /// ```
     public function isArray() -> Bool {
@@ -83,9 +83,9 @@ public interface JsonValue {
     }
     /// Masks the underlying value as a raw json value.
     public function asValue() -> RawJsonVal {
-        if this.isString() { return new JsonString(this.asString()); };
-        if this.isArray() { return new JsonArray(this.asArray()); };
-        if this.isNumber() {return new JsonNumber(this.asNumber()); };
+        if this.isString() { return JsonString(this.asString()); };
+        if this.isArray() { return JsonArray(this.asArray()); };
+        if this.isNumber() {return JsonNumber(this.asNumber()); };
         todo()
     }
     /// Converts a JSON array to its underlying value.
@@ -94,10 +94,10 @@ public interface JsonValue {
     /// ```
     /// use core.data.{JsonArray, JsonString};
     /// 
-    /// arr := new JsonArray();
+    /// arr := JsonArray();
     /// Assert(arr.asArray()).equals(some([]));
     /// 
-    /// str := new JsonString();
+    /// str := JsonString();
     /// assert(str.asArray()).equals(none());
     /// ```
     public function asArray() -> ?[]RawJsonVal {
@@ -109,10 +109,10 @@ public interface JsonValue {
     /// ```
     /// use core.data.{JsonString, JsonBool};
     /// 
-    /// str := new JsonString();
+    /// str := JsonString();
     /// assert(str.asString()).equals(some(""));
     /// 
-    /// bool := new JsonBool(some(true));
+    /// bool := JsonBool(some(true));
     /// assert(str.asString()).equals(none());
     /// ```
     public function asString() -> ?String {
@@ -192,7 +192,7 @@ public model JsonNumber implements JsonValue {
 public model JsonObject implements JsonValue {
     public var map: HashMap<String, RawJsonVal>;
     new(map?: HashMap<String, RawJsonVal>) {
-        this.map = map.unwrapOr(new HashMap());
+        this.map = map.unwrapOr(HashMap());
     }
     public function [JsonValue.getType]() -> JsonValueType {
         return JsonValueType.Object;

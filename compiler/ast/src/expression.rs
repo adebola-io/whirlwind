@@ -6,7 +6,6 @@ pub enum Expression {
     StringLiteral(WhirlString),
     NumberLiteral(WhirlNumber),
     BooleanLiteral(WhirlBoolean),
-    NewExpr(Box<NewExpr>),
     ThisExpr(ThisExpr),
     CallExpr(Box<CallExpr>),
     FnExpr(Box<FunctionExpr>),
@@ -53,12 +52,6 @@ pub enum Number {
     Decimal(String),
     #[default]
     None,
-}
-
-#[derive(PartialEq, Debug)]
-pub struct NewExpr {
-    pub value: Expression,
-    pub span: Span,
 }
 
 #[derive(PartialEq, Debug)]
@@ -210,9 +203,9 @@ pub enum AssignOperator {
 pub enum ExpressionPrecedence {
     Access = 1,         // a.b
     Index = 2,          // a[b]
-    Call = 3,           // a(b)
-    AssertionOrTry = 4, // a?, a!
-    New = 5,            // new a
+    New = 3,            // new a
+    Call = 4,           // a(b)
+    AssertionOrTry = 5, // a?, a!
     // Referencing = 6,                // &a, *a
     Option = 6,
     Negation = 7,                   // !a, not a
@@ -251,7 +244,6 @@ impl Spannable for Expression {
             Expression::AccessExpr(a) => a.span,
             Expression::BooleanLiteral(b) => b.span,
             Expression::ThisExpr(t) => t.span,
-            Expression::NewExpr(n) => n.span,
             Expression::UpdateExpr(u) => u.span,
         }
     }
@@ -274,14 +266,12 @@ impl Spannable for Expression {
             Expression::AccessExpr(a) => a.span.start = start,
             Expression::BooleanLiteral(b) => b.span.start = start,
             Expression::ThisExpr(t) => t.span.start = start,
-            Expression::NewExpr(n) => n.span.start = start,
             Expression::UpdateExpr(u) => u.span.start = start,
         }
     }
     fn captured_scopes(&self) -> Vec<usize> {
         let mut nested = vec![];
         match self {
-            Expression::NewExpr(n) => nested.append(&mut n.value.captured_scopes()),
             Expression::CallExpr(c) => c
                 .arguments
                 .iter()

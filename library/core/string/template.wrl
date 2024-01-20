@@ -20,7 +20,7 @@ public model Template implements Display {
     var transforms: []fn(x: String) -> String;
     
     new(origin: String) {
-        this.map = new HashMap();
+        this.map = HashMap();
         this.template = origin;
         this.transforms = [];
         this.arguments = [];
@@ -116,7 +116,7 @@ public model Template implements Display {
 test "create templates" {
     use core.testing.assertThat;
 
-    template := new Template("Hello, %!");
+    template := Template("Hello, %!");
     template.add("world");
     assertThat(template.finish() == "Hello, world!");
 }

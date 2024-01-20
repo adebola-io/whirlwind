@@ -199,11 +199,11 @@ public model Maybe<T>
     /// ### Usage
     /// ```
     /// use core.math.parseInt;
-    /// parseError := fn new Error("Could not parse.");
+    /// parseError := fn Error("Could not parse.");
     /// 
     /// intErr := parseInt("a9s").someOrElse(parseError);
     /// 
-    /// assert(intErr).equals(err(new Error("Could not parse.")));
+    /// assert(intErr).equals(err(Error("Could not parse.")));
     /// ```
     public function someOrElse<E>(error: fn() -> E) -> Outcome<T, E> {
         if this.isNone() { err(error()) } else { ok(this.value) }

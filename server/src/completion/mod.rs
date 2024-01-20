@@ -672,7 +672,6 @@ impl<'a> CompletionFinder<'a> {
         }
         // Position is probably nested.
         match exp {
-            TypedExpression::NewExpr(n) => self.new_expr(n),
             TypedExpression::CallExpr(c) => self.call_expr(c),
             TypedExpression::FnExpr(f) => self.function_expr(f),
             TypedExpression::IfExpr(i) => self.if_expr(i),
@@ -812,10 +811,6 @@ impl<'a> CompletionFinder<'a> {
         type_decl: &'a analyzer::TypedTypeDeclaration,
     ) -> Option<CompletionResponse> {
         <Option<CompletionResponse>>::default()
-    }
-
-    fn new_expr(&self, new_exp: &'a analyzer::TypedNewExpr) -> Option<CompletionResponse> {
-        self.expr(&new_exp.value)
     }
 
     fn shorthand_var_decl(

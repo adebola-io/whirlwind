@@ -1,7 +1,6 @@
 module request;
 
 use core.prelude.{todo, String, Bool, Int32, Outcome, Display};
-use core.memory.Buffer;
 use core.collections.HashMap;
 use response.HttpResponse;
 
@@ -11,13 +10,17 @@ public enum HttpMethod {
     Put,
     Delete
 }
+
+model Buffer {
+
+}
   
 public model HttpRequest {
     var _url: String;
     var data: HashMap<String, String>;
     new(url: String) {
         this._url = url;
-        this.data = new HashMap();
+        this.data = HashMap();
     }
     public function pathParams() -> RequestParams {
         todo()
@@ -55,7 +58,7 @@ public model HttpRequest {
         message: String, 
         statusCode?: Int32
     ) -> HttpRequestError {
-        return new HttpRequestError(message, this, statusCode);
+        return HttpRequestError(message, this, statusCode);
     }
 }
 

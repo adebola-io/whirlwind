@@ -22,7 +22,7 @@ module guaranteed;
 /// 
 /// age: Outcome<Number, Error> := ok(25);
 /// message := "You are " + age! " years old";
-/// age = err(new Error("Invalid age."));
+/// age = err(Error("Invalid age."));
 /// age!; // causes an error.
 /// ```
 /// 
@@ -43,8 +43,8 @@ module guaranteed;
 ///     }
 /// }
 /// 
-/// acc := new BackAccount(100);
-/// invalidAcc := new BankAccount(-100);
+/// acc := BackAccount(100);
+/// invalidAcc := BankAccount(-100);
 /// 
 /// acc!; // 100.
 /// invalidAcc!; // causes an error.

@@ -26,7 +26,7 @@ public model ArrayStack<T> {
     /// ## Usage
     /// ```wrl
     /// use core.collections.ArrayStack;
-    /// stack := new ArrayStack();
+    /// stack := ArrayStack();
     ///
     /// AssertThat(stack.capacity() == 0);
     /// stack.setCapacity(1); // Sets the stack to contain only one item.
@@ -35,7 +35,7 @@ public model ArrayStack<T> {
     /// assertThat(stack.push(11).isErr()); // Cannot push since the stack is full.
     ///
     /// // Increasing the capacity.
-    /// stack = new ArrayStack();
+    /// stack = ArrayStack();
     /// stack.setCapacity(10);
     /// for item in 0..9 {
     ///     stack.push(item).Unwrap();   

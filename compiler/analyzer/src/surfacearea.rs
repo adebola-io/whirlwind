@@ -154,7 +154,6 @@ impl<'a> TypedVisitorNoArgs for SurfaceAreaCalculator<'a> {
         match exp {
             crate::TypedExpression::Identifier(i) => self.identifier(i),
             crate::TypedExpression::Literal(l) => self.literal(l),
-            crate::TypedExpression::NewExpr(n) => self.new_expr(n),
             crate::TypedExpression::ThisExpr(t) => self.this_expr(t),
             crate::TypedExpression::CallExpr(c) => self.call_expr(c),
             crate::TypedExpression::FnExpr(f) => self.function_expr(f),
@@ -270,10 +269,6 @@ impl<'a> TypedVisitorNoArgs for SurfaceAreaCalculator<'a> {
     }
 
     fn literal(&self, _literal: &crate::LiteralIndex) {}
-
-    fn new_expr(&self, new_exp: &crate::TypedNewExpr) {
-        self.expr(&new_exp.value)
-    }
 
     fn shorthand_var_decl(&self, var_decl: &crate::TypedShorthandVariableDeclaration) {
         self.surface_area().declared_in_module.push(var_decl.name);

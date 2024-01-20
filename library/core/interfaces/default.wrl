@@ -12,7 +12,7 @@ module default;
 ///       this.y = y; 
 ///    }
 ///    public static function origin() -> This {
-///        new Position(0, 0)
+///        Position(0, 0)
 ///    }
 /// }
 /// var p1 = Position.origin();
@@ -27,7 +27,7 @@ module default;
 ///       this.y = y; 
 ///    }
 ///    static function [Default.init]() -> This {
-///       new Position(0, 0)
+///       Position(0, 0)
 ///    }
 /// }
 /// var p1: Position; /// Is automatically assigned (0, 0)

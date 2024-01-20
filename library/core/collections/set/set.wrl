@@ -28,7 +28,7 @@ public model Set<T implements Hash>
     var items: HashMap<T, Bool>;
     new(data?: []T) {
         // dataVal := data.unwrapOrDefault();
-        this.items = new HashMap();
+        this.items = HashMap();
         // for element in dataVal {
         //     this.items.set(element, true);
         // }
@@ -58,7 +58,7 @@ public model Set<T implements Hash>
     /// ```
     /// use core.collections.Set;
     /// 
-    /// set := new Set();
+    /// set := Set();
     /// set.add("hello");
     /// 
     /// assertThat();
@@ -79,7 +79,7 @@ public model Set<T implements Hash>
     /// ### Usage
     /// ```
     /// use core.collections.Set;
-    /// set = new Set();
+    /// set = Set();
     /// 
     /// set.add(1);
     /// set.add(2);
@@ -103,7 +103,7 @@ public model Set<T implements Hash>
     /// Returns a new set consisting of the elements from the current
     /// set that are not in another set.
     public function difference(other: This) -> This {
-        difference := new Set();
+        difference := Set();
         for { a as element } in this.items {
             if !other.has(element) {
                 difference.add(element);
@@ -122,15 +122,15 @@ public model Set<T implements Hash>
     /// ```
     /// use core.collections.Set;
     /// 
-    /// setA := new Set([1, 2, 3, 4]);
-    /// setB := new Set([3, 4, 5, 6]);
+    /// setA := [1, 2, 3, 4]);
+    /// setB := Set([3, 4, 5, 6]);
     /// 
     /// union := setA.union(setB);
     /// 
-    /// assertThat(union.equals(new Set([1, 2, 3, 4, 5, 6])));
+    /// assertThat(union.equals(Set([1, 2, 3, 4, 5, 6])));
     /// ```
     public function union(other: This) -> This {
-        unionSet := new Set();
+        unionSet := Set();
         this.items
             .iter()
             .chain(other.items.iter())
@@ -143,12 +143,12 @@ public model Set<T implements Hash>
     /// ```
     /// use core.collections.Set;
     /// 
-    /// setA := new Set([1, 2, 3, 4]);
-    /// setB := new Set([3, 4, 5, 6]);
+    /// setA := Set([1, 2, 3, 4]);
+    /// setB := Set([3, 4, 5, 6]);
     /// 
     /// union := setA.intersection(setB);
     /// 
-    /// assertThat(union.equals(new Set([3, 4])));
+    /// assertThat(union.equals(Set([3, 4])));
     /// ```
     public function intersection(other: This) -> This {
         unionSet := this;
@@ -164,7 +164,7 @@ public model Set<T implements Hash>
     /// ```
     /// use core.collections.Set;
     /// 
-    /// set := new Set([1, 2, 8, 9]);
+    /// set := Set([1, 2, 8, 9]);
     /// 
     /// assert(set.cardinality()).equals(4);
     /// ```
@@ -189,8 +189,8 @@ public model Set<T implements Hash>
     /// ```
     /// use core.collections.Set;
     /// 
-    /// setA := new Set([1, 2, 3, 4, 5]);
-    /// setB := new Set([2, 3, 5]);
+    /// setA := Set([1, 2, 3, 4, 5]);
+    /// setB := Set([2, 3, 5]);
     /// 
     /// assertThat(setB.isSubsetOf(setA));
     /// ```
@@ -208,8 +208,8 @@ public model Set<T implements Hash>
     /// ```
     /// use core.collections.Set;
     /// 
-    /// setA := new Set([1, 2, 3, 4, 5]);
-    /// setB := new Set([2, 3, 5]);
+    /// setA := Set([1, 2, 3, 4, 5]);
+    /// setB := Set([2, 3, 5]);
     /// 
     /// assertThat(setA.isSupersetOf(setB));
     /// ```

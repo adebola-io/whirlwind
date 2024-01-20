@@ -37,7 +37,7 @@ public model Triple<T, U, V>
         )() -> This 
     {
         todo()
-        // return new Triple(
+        // return Triple(
         //     this.a.clone(),
         //     this.b.clone(),
         //     this.c.clone()
@@ -73,13 +73,13 @@ public model Triple<T, U, V>
     /// ```
     /// use core.collections.Triple;
     /// 
-    /// quadruple := new Triple("hello", false, some(9));
+    /// quadruple := Triple("hello", false, some(9));
     /// transposed := triple.transpose();
     /// 
-    /// assert(transposed).equals(new Triple(some(9), false, "hello"));
+    /// assert(transposed).equals(Triple(some(9), false, "hello"));
     /// ```
     public function transpose() -> Triple<V, U, T> {
-        return new Triple(this.c, this.b, this.a);
+        return Triple(this.c, this.b, this.a);
     }
 }
 

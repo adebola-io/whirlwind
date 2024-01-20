@@ -8,7 +8,6 @@ use ast::{AssignOperator, BinOperator, LogicOperator, Span, UnaryOperator, Updat
 pub enum TypedExpression {
     Identifier(TypedIdent),
     Literal(LiteralIndex),
-    NewExpr(Box<TypedNewExpr>),
     ThisExpr(TypedThisExpr),
     CallExpr(Box<TypedCallExpr>),
     FnExpr(Box<TypedFnExpr>),
@@ -55,13 +54,6 @@ impl TypedExpression {
 pub struct TypedIdent {
     pub value: SymbolIndex,
     pub start: [u32; 2],
-}
-
-#[derive(Debug, PartialEq)]
-pub struct TypedNewExpr {
-    pub value: TypedExpression,
-    pub span: Span,
-    pub inferred_type: EvaluatedType,
 }
 
 #[derive(Debug, PartialEq)]
@@ -212,7 +204,6 @@ pub fn span_of_typed_expression(
             start: [t.start_line, t.start_character],
             end: [t.start_line, t.start_character + 4],
         },
-        TypedExpression::NewExpr(n) => n.span,
         TypedExpression::UpdateExpr(u) => u.span,
     }
 }

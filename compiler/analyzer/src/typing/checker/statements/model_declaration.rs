@@ -452,12 +452,7 @@ fn typecheck_model_constructor(
         checker_ctx.current_function_context.pop();
         let constructor_context = checker_ctx.current_constructor_context.pop().unwrap();
         for (attribute_idx, assignments) in constructor_context.attributes {
-            let attribute_symbol = symbollib.get(attribute_idx);
-            if attribute_symbol.is_none() {
-                continue;
-            }
-
-            let attribute_symbol = attribute_symbol.unwrap();
+            let attribute_symbol = unwrap_or_continue!(symbollib.get(attribute_idx));
             if let Some(AttributeAssignment::Definite { span }) = assignments
                 .iter()
                 .find(|assignment| matches!(assignment, AttributeAssignment::Definite { .. }))
@@ -480,8 +475,24 @@ fn typecheck_model_constructor(
                     }
                 }
             } else {
-                checker_ctx
-                    .add_diagnostic(errors::unassigned_attribute(attribute_symbol.origin_span));
+                // If the attribute type implements Default, it can be omitted,
+                // but only if the attribute type is not generic.
+                let mut failed = true;
+                if let SemanticSymbolKind::Attribute { declared_type, .. } = &attribute_symbol.kind
+                {
+                    if let Some(default) = symbollib.default {
+                        let eval_type = evaluate(declared_type, symbollib, None, &mut None, 0);
+                        if !eval_type.is_generic()
+                            && get_implementation_of(default, &eval_type, symbollib).is_some()
+                        {
+                            failed = false;
+                        }
+                    }
+                }
+                if failed {
+                    checker_ctx
+                        .add_diagnostic(errors::unassigned_attribute(attribute_symbol.origin_span));
+                }
             }
         }
     }

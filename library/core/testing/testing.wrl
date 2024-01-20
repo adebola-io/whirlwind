@@ -9,7 +9,7 @@ use core.{
 
 /// Creates an assertion object.
 public function assert<T implements Display>(value: T) -> Assertion<T> {
-    return new Assertion(value);
+    return Assertion(value);
 }
 
 /// Tests that a condition is true.

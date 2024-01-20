@@ -100,7 +100,7 @@ fn coerces_this_type() {
     }
 
     function main() {
-        obj := new Object(new WrapInt());
+        obj := Object(WrapInt());
         objValue := obj.val();
     }
     ",
@@ -164,8 +164,8 @@ fn it_creates_instances() {
     }
 
     function main() {
-        var person = new Person();
-        var { name as personName } = new Person(\"John Doe\");
+        var person = Person();
+        var { name as personName } = Person(\"John Doe\");
     }    
     ",
         &[("person", "Person"), ("personName", "String")]
@@ -395,11 +395,11 @@ fn method_inherits_generic_arguments() {
         }
     }
 
-    genericModelInst := new GenericModel(true);
+    genericModelInst := GenericModel(true);
     outerValue := genericModelInst.getValue();
     strClone := genericModelInst.getStringClone();
 
-    tuple := new Tuple(true, 'story');
+    tuple := Tuple(true, 'story');
     swapped := tuple.swap();
     ",
         &[

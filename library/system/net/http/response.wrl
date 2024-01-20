@@ -1,8 +1,8 @@
 module response;
 use request.HttpRequest;
 
-use core.prelude.{String, Int32, Int32, todo};
-use core.data.JsonValue;
+use core.prelude.{String, Int32, todo};
+use core.data.json.JsonValue;
 
 /// The headers on a 
 public model ResponseHeaders {

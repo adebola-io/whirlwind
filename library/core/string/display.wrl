@@ -24,7 +24,7 @@ use string.String;
 ///     }
 /// }
 /// 
-/// new Rectangle(4, 6).toStr(); // outputs "Rectangle { length: 4, breadth: 6 }"".
+/// Rectangle(4, 6).toStr(); // outputs "Rectangle { length: 4, breadth: 6 }"".
 /// ```
 public interface Display {
     /// Converts the implementing type to a string.

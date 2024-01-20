@@ -56,7 +56,7 @@ public model Prospect<T> {
         if this.consumed {
             fatal(some("Cannot chain callback to a consumed prospect."))
         };
-        new Prospect(fn next(some(this.func())))
+        Prospect(fn next(some(this.func())))
     }
     /// Executes a prospect.
     /// 

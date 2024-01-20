@@ -9,6 +9,11 @@ pub fn typecheck_call_expression(
     let caller = typecheck_expression(&mut callexp.caller, checker_ctx, symbollib);
     let caller_span = checker_ctx.span_of_expr(&callexp.caller, &symbollib);
     let caller = extract_call_of(caller, symbollib, checker_ctx, caller_span);
+    // Model instantiations are handled differently.
+    if let EvaluatedType::Model(model) = caller {
+        return instantiate_model(symbollib, model, checker_ctx, callexp);
+    }
+
     if caller.is_unknown() {
         callexp.arguments.iter_mut().for_each(|arg| {
             typecheck_expression(arg, checker_ctx, symbollib);
@@ -98,6 +103,58 @@ pub fn typecheck_call_expression(
         Some(&callexp.inferred_type),
     );
     callexp.inferred_type.clone()
+}
+
+fn instantiate_model(
+    symbollib: &mut SymbolLibrary,
+    model: SymbolIndex,
+    checker_ctx: &mut TypecheckerContext<'_>,
+    callexp: &mut TypedCallExpr,
+) -> EvaluatedType {
+    let model_symbol = symbollib.get_forwarded(model).unwrap();
+    let (mut generic_arguments, generic_params, parameter_types) =
+        if let SemanticSymbolKind::Model {
+            generic_params,
+            is_constructable,
+            constructor_parameters,
+            ..
+        } = &model_symbol.kind
+        {
+            let name = model_symbol.name.clone();
+            let span = callexp.span;
+            // if model does not have a new() function.
+            if !*is_constructable {
+                checker_ctx.add_diagnostic(errors::model_not_constructable(name, span));
+                return EvaluatedType::Unknown;
+            }
+            let generic_arguments = evaluate_generic_params(generic_params, false);
+            let parameter_types = convert_param_list_to_type(
+                constructor_parameters.as_ref().unwrap_or(&vec![]),
+                symbollib,
+                &generic_arguments,
+                checker_ctx,
+            );
+            (generic_arguments, generic_params.clone(), parameter_types)
+        } else {
+            unreachable!()
+        };
+    zip_arguments(
+        parameter_types,
+        checker_ctx,
+        callexp,
+        symbollib,
+        &mut generic_arguments,
+    );
+    let result_model_instance = EvaluatedType::ModelInstance {
+        model,
+        // ignore irrelevant generic transforms.
+        generic_arguments: generic_arguments
+            .into_iter()
+            .filter(|argument| generic_params.iter().any(|base| *base == argument.0))
+            .collect(),
+        is_invariant: false,
+    };
+    return result_model_instance;
 }
 
 /// This function unifies a list of function parameters with a list of call arguments
@@ -334,7 +391,8 @@ fn extract_call_of(
     caller_span: Span,
 ) -> EvaluatedType {
     // Only valid expressions allowed in caller positions:
-    // - Enumerated values with tags.
+    // - Enumerated values with tags
+    // - Instantiable models
     // - methods
     // - functions
     // - function expressions
@@ -342,13 +400,9 @@ fn extract_call_of(
         EvaluatedType::EnumInstance { .. }
         | EvaluatedType::FunctionInstance { .. }
         | EvaluatedType::FunctionExpressionInstance { .. }
-        | EvaluatedType::MethodInstance { .. } => caller,
-        EvaluatedType::Model(base) => {
-            let symbol = symbollib.get_forwarded(base).unwrap();
-            checker_ctx
-                .add_diagnostic(errors::illegal_model_call(symbol.name.clone(), caller_span));
-            EvaluatedType::Unknown
-        }
+        | EvaluatedType::MethodInstance { .. }
+        | EvaluatedType::Model(_) => caller,
+
         EvaluatedType::Module(_)
         | EvaluatedType::ModelInstance { .. }
         | EvaluatedType::InterfaceInstance { .. }

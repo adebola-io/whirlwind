@@ -6,10 +6,10 @@ use ast::{
     ConstantDeclaration, ContinueStatement, DiscreteType, Else, EnumDeclaration, Expression,
     ForStatement, FunctionDeclaration, FunctionExpr, Identifier, IfExpression, IndexExpr,
     InterfaceBody, InterfaceDeclaration, InterfaceProperty, LogicExpr, ModelBody, ModelDeclaration,
-    ModelProperty, ModelPropertyType, ModuleDeclaration, NewExpr, Parameter, ReturnStatement,
-    ScopeAddress, ScopeEntry, Span, Statement, TestDeclaration, ThisExpr, TypeDeclaration,
-    TypeExpression, UnaryExpr, UpdateExpr, UpdateOperator, UseDeclaration, UsePath, UseTarget,
-    VariableDeclaration, WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
+    ModelProperty, ModelPropertyType, ModuleDeclaration, Parameter, ReturnStatement, ScopeAddress,
+    ScopeEntry, Span, Statement, TestDeclaration, ThisExpr, TypeDeclaration, TypeExpression,
+    UnaryExpr, UpdateExpr, UpdateOperator, UseDeclaration, UsePath, UseTarget, VariableDeclaration,
+    WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
 };
 
 #[test]
@@ -1233,25 +1233,25 @@ fn parse_index_expression() {
     )
 }
 
-#[test]
-fn parse_new_expression() {
-    let mut parser = parse_text("new Stack()");
-    parser.debug_allow_global_expressions = true;
-    assert_eq!(
-        parser.next().unwrap().unwrap(),
-        Statement::FreeExpression(Expression::NewExpr(Box::new(NewExpr {
-            value: Expression::CallExpr(Box::new(CallExpr {
-                caller: Expression::Identifier(Identifier {
-                    name: format! {"Stack"},
-                    span: [1, 5, 1, 10].into()
-                }),
-                arguments: vec![],
-                span: [1, 5, 1, 12].into()
-            })),
-            span: [1, 1, 1, 12].into(),
-        })))
-    );
-}
+// #[test]
+// fn parse_new_expression() {
+//     let mut parser = parse_text("new Stack()");
+//     parser.debug_allow_global_expressions = true;
+//     assert_eq!(
+//         parser.next().unwrap().unwrap(),
+//         Statement::FreeExpression(Expression::CallExpr(Box::new(CallExpr {
+//             caller: Expression::NewExpr(Box::new(NewExpr {
+//                 value: Expression::Identifier(Identifier {
+//                     name: format!("Stack"),
+//                     span: [1, 5, 1, 10].into()
+//                 }),
+//                 span: [1, 1, 1, 10].into()
+//             })),
+//             arguments: vec![],
+//             span: [1, 1, 1, 12].into()
+//         })))
+//     )
+// }
 
 #[test]
 fn parse_this_expression() {
@@ -2051,7 +2051,7 @@ public model Stack<T> {
     /// This method will fail if the size of the stack is already at maximum length.
     public function Push(data: T): Outcome<_, StackError> {
         if this.items.Length() == this.capacity {
-            Err(new StackError(\"The stack is already full.\"))
+            Err(StackError(\"The stack is already full.\"))
         } else {
             this.items.Push(data);
             Ok(_)

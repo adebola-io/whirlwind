@@ -537,7 +537,6 @@ pub fn collect_closest_within_expression<'a>(
 ) -> Vec<&'a Statement> {
     match expression {
         Expression::UnaryExpr(u) => expr_enclose!(owner, u.operand, span),
-        Expression::NewExpr(n) => expr_enclose!(owner, n.value, span),
         Expression::CallExpr(callexp) => {
             for argument in callexp.arguments.iter() {
                 expr_enclose!(owner, argument, span)

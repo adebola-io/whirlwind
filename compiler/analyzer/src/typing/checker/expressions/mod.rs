@@ -13,7 +13,7 @@ pub use access::search_for_property;
 use access::typecheck_access_expression;
 use assignment::typecheck_assignment_expression;
 use binary::typecheck_binary_expression;
-use calls::{convert_param_list_to_type, typecheck_call_expression, zip_arguments};
+use calls::typecheck_call_expression;
 
 /// Typechecks an expression.
 pub fn typecheck_expression(
@@ -36,9 +36,6 @@ pub fn typecheck_expression(
             }
         }
         TypedExpression::Literal(l) => typecheck_literal(l, checker_ctx, symbollib),
-        TypedExpression::NewExpr(newexp) => {
-            typecheck_new_expression(&mut *newexp, symbollib, checker_ctx)
-        }
         TypedExpression::ThisExpr(this) => typecheck_this_expression(this, symbollib, checker_ctx),
         TypedExpression::CallExpr(c) => typecheck_call_expression(&mut *c, symbollib, checker_ctx),
         TypedExpression::FnExpr(f) => {
@@ -495,104 +492,6 @@ fn typecheck_this_expression(
         }
     })();
     this.inferred_type.clone()
-}
-
-/// Typechecks a new expression.
-fn typecheck_new_expression(
-    newexp: &mut TypedNewExpr,
-    symbollib: &mut SymbolLibrary,
-    checker_ctx: &mut TypecheckerContext,
-) -> EvaluatedType {
-    newexp.inferred_type = (|| {
-        match &mut newexp.value {
-            // Helper to fix code if new X is called without parenthesis.
-            TypedExpression::Identifier(ident) => {
-                let symbol = match symbollib.get_forwarded(ident.value) {
-                    Some(symbol) => symbol,
-                    None => return EvaluatedType::Unknown,
-                };
-                if matches!(symbol.kind, SemanticSymbolKind::Model { .. }) {
-                    checker_ctx.add_diagnostic(errors::calling_new_on_identifier(
-                        symbol.name.clone(),
-                        Span::on_line(ident.start, symbol.name.len() as u32),
-                    ));
-                }
-                return EvaluatedType::Unknown;
-            }
-            TypedExpression::CallExpr(callexp) => {
-                let caller = &mut callexp.caller;
-                let evaluated_caller = typecheck_expression(caller, checker_ctx, symbollib);
-                match evaluated_caller {
-                    EvaluatedType::Model(model) => {
-                        let model_symbol = symbollib.get_forwarded(model).unwrap();
-                        let (mut generic_arguments, generic_params, parameter_types) =
-                            if let SemanticSymbolKind::Model {
-                                generic_params,
-                                is_constructable,
-                                constructor_parameters,
-                                ..
-                            } = &model_symbol.kind
-                            {
-                                let name = model_symbol.name.clone();
-                                let span = newexp.span;
-                                // if model does not have a new() function.
-                                if !*is_constructable {
-                                    checker_ctx.add_diagnostic(errors::model_not_constructable(
-                                        name, span,
-                                    ));
-                                    return EvaluatedType::Unknown;
-                                }
-                                let generic_arguments =
-                                    evaluate_generic_params(generic_params, false);
-                                let parameter_types = convert_param_list_to_type(
-                                    constructor_parameters.as_ref().unwrap_or(&vec![]),
-                                    symbollib,
-                                    &generic_arguments,
-                                    checker_ctx,
-                                );
-                                (generic_arguments, generic_params.clone(), parameter_types)
-                            } else {
-                                unreachable!()
-                            };
-                        zip_arguments(
-                            parameter_types,
-                            checker_ctx,
-                            callexp,
-                            symbollib,
-                            &mut generic_arguments,
-                        );
-                        let result_model_instance = EvaluatedType::ModelInstance {
-                            model,
-                            // ignore irrelevant generic transforms.
-                            generic_arguments: generic_arguments
-                                .into_iter()
-                                .filter(|argument| {
-                                    generic_params.iter().any(|base| *base == argument.0)
-                                })
-                                .collect(),
-                            is_invariant: false,
-                        };
-                        return result_model_instance;
-                    }
-                    _ => {
-                        checker_ctx.add_diagnostic(errors::invalid_new_expression(
-                            checker_ctx.span_of_expr(&callexp.caller, &symbollib),
-                        ));
-                        return EvaluatedType::Unknown;
-                    }
-                }
-            }
-            // Invalid new expressions.
-            _ => {
-                checker_ctx.add_diagnostic(errors::invalid_new_expression(
-                    checker_ctx.span_of_expr(&newexp.value, &symbollib),
-                ));
-                typecheck_expression(&mut newexp.value, checker_ctx, symbollib);
-                return EvaluatedType::Unknown;
-            }
-        }
-    })();
-    newexp.inferred_type.clone()
 }
 
 /// Typechecks an index expression.
