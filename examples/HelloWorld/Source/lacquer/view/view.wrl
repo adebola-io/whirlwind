@@ -1,0 +1,74 @@
+module view;
+
+use core.collections.HashMap;
+use super.style.Style;
+use super.actions.Action;
+
+public enum ViewPreset {
+    Button,
+    Default,
+    Image,
+    Input,
+    Text
+}
+
+public type EventType = String;
+
+public interface Viewable {
+    /// Converts the implementing model to a View.
+    public function toView() -> View;
+}
+
+/// A view is the most basic building block of a user interface in tangent.
+/// It represents a visual component that renders content on the screen, 
+/// whether it be text, inputs or rectangular boxes.
+public model View implements Viewable + Clonable {
+    var preset: ViewPreset;
+    var tag: ?String;
+    var subviews: []View;
+    var actions: HashMap<EventType, []Action>
+
+    new(preset?: ViewPreset) {
+        this.preset = preset.unwrapOr(ViewPreset.Default);
+    }
+    public function toView() -> View {
+        return this;
+    }
+    public function clone() -> This {
+        clone := View(some(this.preset))
+        clone.tag = this.tag.clone();
+        clone.actions = this.actions.clone();
+        clone.subviews = this.subviews.clone();
+        return clone;
+    }
+    /// Sets the styling characteristics of the current View.
+    public function setStyle(style: Style) -> This {
+        todo()
+    }
+    public function append<V implements Viewable>(subview: V) -> This {
+        this.subviews.push(subview.toView());
+        return this;
+    }
+    public function maybeAppend<V implements Viewable>(subview: ?V) -> This {
+        subview.isSomeThen(fn(subview) {
+            this.subviews.push(subview.toView());
+        });
+        return this;
+    }
+    public function vertical() -> This {
+        todo()
+    }
+    public function centered() -> This {
+        todo() 
+    }
+    public function horizontal() -> This {
+        todo()
+    }
+    public function onClick(action: Action) -> This {
+        todo()
+    }
+    public function setInnerText(text: String) -> This {
+        todo()
+    }
+} 
+

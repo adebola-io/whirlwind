@@ -12,7 +12,7 @@ test "Testing types." {
     // generic model methods.
     swap := fn <T, U>(tuple: Tuple<T, U>) tuple.swap();
 
-    tuple := new Tuple(true, "hello");
+    tuple := Tuple(true, "hello");
     swapped := tuple.swap();
     assert(swap(tuple)).equals(tuple.swap());
 
@@ -47,9 +47,9 @@ test "Testing types." {
         }
     }
     type Ball = Football | Tennisball | Basketball;
-    ball: Ball := new Football();
+    ball: Ball := Football();
     ball.bounce();
-    ball = new Basketball();
+    ball = Basketball();
     ball.bounce();
 
     interface Bounceable {
@@ -57,7 +57,7 @@ test "Testing types." {
     }
     function Nested<T implements Bounceable>(newBall: T) {
         type InnerBall = T | Ball;
-        ball: InnerBall := new Football();
+        ball: InnerBall := Football();
         ball.bounce();
         ball = newBall;
         ball.bounce();
@@ -80,7 +80,7 @@ test "Testing types." {
         }
     }
     type Transformable<T> = Box<T> | Sphere<T>;
-    entity := new Box(new Sphere("hello"));
+    entity := Box(Sphere("hello"));
     entity.transform();
 
     // Numeric types.
@@ -120,15 +120,15 @@ test "Testing types." {
             this.age = age.unwrapOrDefault();
         }
         static function [Default.init]() -> This {
-            return new Person("{unknown}");
+            return Person("{unknown}");
         }
     }
     var person: Person; // possible because Person implements Default.
     var { name, age }: Person;
-    var { name as johnsName} = new Person("John Doe");
+    var { name as johnsName} = Person("John Doe");
 
     // Destructuring in loops.
-    people := [new Person("Susan Micheals"), new Person("Aaron Michaels")];
+    people := [Person("Susan Micheals"), Person("Aaron Michaels")];
     for { name} in people {
         // print(name)
     }

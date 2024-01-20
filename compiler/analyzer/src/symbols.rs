@@ -168,6 +168,7 @@ pub enum SemanticSymbolKind {
         is_public: bool,
         generic_params: Vec<SymbolIndex>,
         value: IntermediateType,
+        inferred_type: EvaluatedType,
     },
     UndeclaredValue,
     Import {
@@ -343,6 +344,7 @@ impl SemanticSymbol {
                 is_public: _type.is_public,
                 generic_params: vec![],
                 value: IntermediateType::Placeholder,
+                inferred_type: EvaluatedType::Unknown,
             },
             references: vec![SymbolReferenceList {
                 module_path: path_to_module,

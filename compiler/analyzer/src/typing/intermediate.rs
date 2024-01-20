@@ -190,6 +190,14 @@ impl IntermediateType {
     pub(crate) fn is_ternary(&self) -> bool {
         matches!(self, IntermediateType::TernaryType { .. })
     }
+
+    /// Returns `true` if the intermediate type is [`FunctionType`].
+    ///
+    /// [`FunctionType`]: IntermediateType::FunctionType
+    #[must_use]
+    pub fn is_function_type(&self) -> bool {
+        matches!(self, Self::FunctionType { .. })
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]

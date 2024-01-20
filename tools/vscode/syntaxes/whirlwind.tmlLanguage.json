@@ -152,7 +152,7 @@
             { "include": "#comment" },
             {
                "begin": "(?<=model\\s+)",
-               "contentName": "meta.class class entity.name.class",
+               "contentName": "meta.class class entity.name.class support.type entity.name.type",
                "end": "(?=[^[A-Za-z0-9]])"
             },
             { "include": "#generic_params" },
@@ -190,7 +190,7 @@
             { "include": "#comment" },
             {
                "begin": "(?<=interface\\s+)",
-               "contentName": "meta.class class entity.name.class",
+               "contentName": "meta.class class entity.name.class support.type entity.name.type",
                "end": "(?=[^[A-Za-z0-9]])"
             },
             { "include": "#generic_params" },
@@ -251,7 +251,7 @@
          "patterns": [
             {
                "begin": "(?<=enum\\s+)",
-               "contentName": "meta.class class entity.name.class",
+               "contentName": "meta.class class entity.name.class support.type entity.name.type",
                "end": "(?=[^[A-Za-z0-9]])"
             },
             { "include": "#enum_block" }
@@ -309,7 +309,7 @@
             "2": {
                "patterns": [
                   {
-                     "name": "entity.name.class support.class",
+                     "name": "entity.name.class support.class support.type entity.name.type",
                      "match": "[A-Za-z0-9_$]+(?=\\.)"
                   },
                   { "name": "punctuation", "match": "\\s*\\.\\s*" },
@@ -361,21 +361,18 @@
       },
 
       "inferred_model": {
-         "name": "meta.class class entity.name.class",
-         "match": "\\b((?<=\\bnew\\s+([A-Za-z0-9]+\\s*\\.)*\\s*)[A-Za-z0-9]+\\b)"
+         "name": "meta.class class entity.name.class support.type entity.name.type",
+         "match": "([A-Z][A-Za-z0-9_$]+)(?=\\s*(\\<.*\\>)?\\s*\\()",
+         "captures": {
+            "2": {
+               "patterns": [{ "include": "#generic_args" }]
+            }
+         }
       },
       "inferred_function": {
          "name": "entity.name.function support.function",
-         "match": "([A-Za-z0-9]+)(?=\\s*(\\<.*\\>)?\\s*\\()",
+         "match": "([a-z_$][A-Za-z0-9_$]+)(?=\\s*(\\<.*\\>)?\\s*\\()",
          "captures": {
-            "1": {
-               "patterns": [
-                  {
-                     "name": "meta.definition.variable variable.other.constant",
-                     "match": "\\b(start|end|current|owner)region\\b"
-                  }
-               ]
-            },
             "2": {
                "patterns": [{ "include": "#generic_args" }]
             }

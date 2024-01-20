@@ -1,0 +1,38 @@
+module button;
+
+use super.view.{View, Viewable, ViewPreset};
+use super.style.{Alignment, Layout, StrokeType, Style};
+use text.Text;
+use image.Image;
+
+public model Button implements Viewable {
+    var text: ?Text;
+    var icon: ?Image;
+    new() {}
+    /// Sets the text that should be inside the button.
+    public function withText(text: Text) -> This {
+        this.text = some(text);
+        return this;
+    }
+    /// Sets the icon that should appear beside button text.
+    public function withIcon(icon: Image) -> This {
+        this.icon = some(icon);
+        return this;
+    }
+    /// Renders the button instance as a `View`.
+    public function toView() -> View {
+        View(some(ViewPreset.Button))
+            .setStyle(
+                Style()
+                    .layout(Layout.Horizontal)
+                    .alignment(Alignment.Center)
+                    .size(250, 200)
+                    .corners(15)
+                    .stroke(StrokeType.Solid, 3)
+                    .textColor("white")
+                    .backgroundColor("deepblue")
+            )
+            .maybeAppend(this.text)
+            .maybeAppend(this.icon)
+    }
+}

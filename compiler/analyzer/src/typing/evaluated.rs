@@ -516,9 +516,14 @@ pub fn evaluate(
                 SemanticSymbolKind::TypeName {
                     generic_params,
                     value,
+                    inferred_type,
                     ..
                 } => {
                     let generic_arguments = get_generics(generic_params);
+                    // to prevent excessive evaluations, return the inferred type if it has already been computed.
+                    if !inferred_type.is_unknown() {
+                        return inferred_type.clone();
+                    }
                     let mut value_typ = evaluate(
                         value,
                         symbollib,

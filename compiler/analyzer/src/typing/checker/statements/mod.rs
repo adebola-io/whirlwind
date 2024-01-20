@@ -62,7 +62,7 @@ fn typecheck_type_decl(
     symbollib: &mut SymbolLibrary,
     checker_ctx: &mut TypecheckerContext<'_>,
 ) {
-    if let Some(SemanticSymbolKind::TypeName {
+    let assigned = if let Some(SemanticSymbolKind::TypeName {
         generic_params,
         value,
         ..
@@ -76,12 +76,25 @@ fn typecheck_type_decl(
             &mut checker_ctx.tracker(value.span()),
             0,
         );
-        // Only concrete types (models, enums, generics) are allowed as type declaration
-        // values. (Ternaries already check for concreteness in the evaluate() function.)
-        if !assigned.is_concrete() && !value.is_ternary() {
+        // Only concrete types (models, enums, generics) and function expression types
+        // are allowed as type declaration values.
+        // (Ternaries already check for concreteness in the evaluate() function.)
+        if !assigned.is_concrete() && !value.is_ternary() && !value.is_function_type() {
             let name = symbollib.format_evaluated_type(&assigned);
             checker_ctx.add_diagnostic(errors::expected_implementable(name, value.span()));
+            EvaluatedType::Unknown
+        } else {
+            assigned
         }
+    } else {
+        return;
+    };
+    // Update inferred type.
+    if let Some(SemanticSymbolKind::TypeName { inferred_type, .. }) = symbollib
+        .get_mut(type_decl.name)
+        .map(|symbol| &mut symbol.kind)
+    {
+        *inferred_type = assigned;
     }
 }
 

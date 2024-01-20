@@ -62,7 +62,7 @@ exports.startLanguageServer = async () => {
    const statusBar = getStatusBar();
    const client = getLanguageClient();
    outputChannel.clear();
-   await client.start();
+   // await client.start();
    statusBar.text = "Whirlwind";
    statusBar.tooltip = "Whirlwind Language Server";
    statusBar.show();

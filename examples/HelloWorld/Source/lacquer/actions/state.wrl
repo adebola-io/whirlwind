@@ -1,0 +1,12 @@
+module state;
+
+/// A piece of state is dynamic, reactive value in the application.
+public model Stateful implements Viewable {
+    public var name: String;
+    new(name: String) {
+        this.name = name;
+    }
+    public function toView() -> View {
+        View(ViewPreset.Stateful).inject(this.name)
+    }
+}

@@ -2,7 +2,7 @@ module helloWorld;
 
 /// A function that prints "Hello, world" to the terminal.
 function helloWorld() {
-    print("Hello, world!");
+    print("Hello, world!")
 }
 
 /// Greets a person.
@@ -16,9 +16,9 @@ function print<M implements Display>(message: M) {
 }
 
 /// A function that calculates the factorial of a given number.
-function factorial(n: Number): Number {
-    if n == 1 or n == 0 { return 1; }
-    return n * factorial(n - 1);
+function factorial(n: Number) -> Number {
+    if n == 1 or n == 0 { return 1 }
+    return n * factorial(n - 1)
 }
 
 enum Operation {
@@ -28,7 +28,7 @@ enum Operation {
     Divide
 }
 /// A simple calculator in Whirlwind.
-function calculator(operation: Operation, a: Number, b: Number): Number {
+function calculator(operation: Operation, a: Number, b: Number) -> Number {
     if operation == Operation.Add {
         a + b
     } else if operation == Operation.Subtract {
@@ -42,16 +42,16 @@ function calculator(operation: Operation, a: Number, b: Number): Number {
 }
 
 /// A function that returns true if a string is a palindrome.
-function isPalindrome(str: String): Bool {
-    return str == str.reverse();
+function isPalindrome(str: String) -> Bool {
+    return str == str.reverse()
 }
 
 // var EvenSquares = fn(numbers: []Number) numbers.Iter().Filter(fn(num) num % 2 == 0).Map(fn(num) num ^ 2);
 
 /// Returns the nth Fibonacci number.
-function fibonacci(n: Number): Number {
-    if n == 0 { return 0; } 
-    if n == 1 { return 1; } 
+function fibonacci(n: Number) -> Number {
+    if n == 0 { return 0 } 
+    if n == 1 { return 1 } 
     return fibonacci(n - 1) + fibonacci(n - 2);
 }
 

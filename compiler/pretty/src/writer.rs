@@ -333,6 +333,7 @@ impl<'a> SymbolWriter<'a> {
                 is_public,
                 generic_params,
                 value,
+                ..
             } => {
                 if *is_public {
                     string.push_str("public ");

@@ -1,0 +1,14 @@
+module image;
+
+public use super.view.{View, Viewable, ViewPreset};
+
+
+public model Image implements Viewable {
+    var src: String;
+    new(src: String){
+        this.src = src;
+    }
+    public function toView() -> View {
+        View(some(ViewPreset.Image))
+    }
+}

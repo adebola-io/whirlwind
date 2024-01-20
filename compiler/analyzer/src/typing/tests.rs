@@ -18,6 +18,7 @@ macro_rules! text_produces_errors{
             if !standpoint.diagnostics.iter().any(
                 |prog_diagnostic| matches!(&prog_diagnostic._type, DiagnosticType::Error(Error::Typing(e)) if &e._type == error),
             ) {
+                println!("{:#?}", standpoint.diagnostics);
                 panic!("Error not produced {error:?}")
             }
         }
@@ -48,7 +49,8 @@ macro_rules! check_types {
                 if symbol_name == &symbol.name {
                     let inferred_type = match &symbol.kind {
                         SemanticSymbolKind::Variable { inferred_type, .. }
-                        | SemanticSymbolKind::Constant { inferred_type, .. } => inferred_type,
+                        | SemanticSymbolKind::Constant { inferred_type, .. }
+                        | SemanticSymbolKind::TypeName { inferred_type, .. } => inferred_type,
                         _ => {
                             println!("{symbol:#?}");
                             unreachable!("Symbol for {symbol_name} is not a variable or constant.")
@@ -372,6 +374,30 @@ fn it_typechecks_type_declaration() {
         &[TypeErrorType::ExpectedImplementableGotSomethingElse(
             format!("Iteratable<Bool>")
         )]
+    );
+}
+
+#[test]
+fn it_allows_only_valid_type_declarations() {
+    text_produces_errors!(
+        "module Test;
+        
+        function Random() {}
+
+        type Type = Random;
+        ",
+        &[TypeErrorType::ValueAsType {
+            name: format!("Random")
+        }]
+    );
+
+    check_types!(
+        "module Test;
+        
+        type StringAlias = ?String;
+        type Function = fn() -> Bool;
+        ",
+        &[("StringAlias", "Maybe<String>"), ("Function", "fn -> Bool")]
     );
 }
 

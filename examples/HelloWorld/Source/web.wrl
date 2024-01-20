@@ -1,0 +1,33 @@
+module web;
+
+function appButtonRow -> View {
+    horizontalView()
+        .appendChild(
+            button(text("Add"))
+                .setStyle(style().backgroundColor("blue").textColor("white"))
+                .onClick(increment("@counter.value"))
+        )
+        .appendChild(
+            button(text("Subtract"))
+                .setStyle(style().backgroundColor("green").textColor("white"))
+                .onClick(decrement("@counter.value"))
+        )
+        .addConstraint(
+            constraint("mobile")
+                .layout(Layout.Vertical)
+                .gap(20)
+        )
+}
+
+function appStage -> View {
+    verticalView()
+        .setStyle(style().fillScreen())
+        .onMount(setStageTitle("Home | Tangent"))
+        .appendChild(stateful("@counter.value").asText().bold())
+        .appendChild(appButtonRow())
+}
+
+public function main {
+    store := StateStore().set("@counter.value", 0);
+    var assets = renderStatic(appStage, store);
+}
