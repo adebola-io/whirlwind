@@ -1,0 +1,7 @@
+module state;
+
+use super.view.View;
+
+public function stateful() -> View {
+    todo()
+}

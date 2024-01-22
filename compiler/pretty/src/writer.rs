@@ -378,6 +378,9 @@ impl<'a> SymbolWriter<'a> {
     }
     /// Print a set of parameters into a string.
     fn print_parameters_into_string(&self, string: &mut String, params: &[SymbolIndex]) {
+        if params.len() == 0 {
+            return;
+        }
         string.push('(');
         for (index, parameter) in params.iter().enumerate() {
             string.push_str(&self.print_symbol_with_idx(*parameter));

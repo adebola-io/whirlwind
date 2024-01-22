@@ -147,6 +147,19 @@ fn parsing_functions_with_generic_types() {
 }
 
 #[test]
+fn parsing_functions_without_parameters() {
+    let mut parser = parse_text("function main {}");
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::FunctionDeclaration(FunctionDeclaration {
+            address: [0, 0, 0].into(),
+            body: Block::empty(1, [1, 15, 1, 17].into()),
+            span: [1, 1, 1, 17].into()
+        })
+    )
+}
+
+#[test]
 fn parsing_functional_types() {
     let mut parser = parse_text("function Find(predicate: fn(value: Name): Boolean) {}");
     let statement = parser.next().unwrap().unwrap();

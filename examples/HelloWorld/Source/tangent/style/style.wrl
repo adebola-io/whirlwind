@@ -70,10 +70,15 @@ public model Style {
     public function stroke(strokeType: StrokeType, strokeWidth: NumericStyleVal) -> This {
         todo()
     }
-    public function textColor(color: String) -> This {
+    public function color(color: String) -> This {
         todo()
     }
-    public function backgroundColor(color: String) -> This {
+    public function bgColor(color: String) -> This {
         todo()
     }
+}
+
+/// Creates a new style object.
+public function style -> Style {
+    Style()
 }

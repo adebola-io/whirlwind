@@ -1,7 +1,7 @@
 module tangent;
 
 
-public use basic;
+public use basics.{button, text};
 public use style;
 public use events;
 public use view;

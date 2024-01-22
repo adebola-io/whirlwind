@@ -1020,12 +1020,19 @@ impl<L: Lexer> Parser<L> {
                 None
             }
         };
-        let params = match self.parameters() {
-            Ok(params) => params,
-            Err(error) => {
-                errors.push(error);
-                vec![]
+        let params = if self
+            .token()
+            .is_some_and(|token| token._type == TokenType::Bracket(LParens))
+        {
+            match self.parameters() {
+                Ok(params) => params,
+                Err(error) => {
+                    errors.push(error);
+                    vec![]
+                }
             }
+        } else {
+            vec![]
         };
         let return_type = match self.maybe_return_type() {
             Ok(rettye) => rettye,
@@ -2005,7 +2012,14 @@ impl<L: Lexer> Parser<L> {
         let name = check!(self.identifier());
         let generic_params = check!(self.maybe_generic_params());
         let constraint = check!(self.maybe_type_constraint());
-        let params = check!(self.parameters());
+        let params = if self
+            .token()
+            .is_some_and(|token| token._type == TokenType::Bracket(LParens))
+        {
+            check!(self.parameters())
+        } else {
+            vec![]
+        };
         let return_type = check!(self.maybe_return_type());
         let (body, errors) = self
             .block(ScopeType::ModelMethodOf {
@@ -2080,7 +2094,14 @@ impl<L: Lexer> Parser<L> {
         self.advance(); // Move past ]
         let generic_params = check!(self.maybe_generic_params());
         let constraint = check!(self.maybe_type_constraint());
-        let params = check!(self.parameters());
+        let params = if self
+            .token()
+            .is_some_and(|token| token._type == TokenType::Bracket(LParens))
+        {
+            check!(self.parameters())
+        } else {
+            vec![]
+        };
         let return_type = check!(self.maybe_return_type());
         let (body, mut body_errors) = self
             .block(ScopeType::ModelMethodOf {
@@ -2526,7 +2547,14 @@ impl<L: Lexer> Parser<L> {
         let name = check!(self.identifier());
         let generic_params = check!(self.maybe_generic_params());
         let constraint = check!(self.maybe_type_constraint());
-        let params = check!(self.parameters());
+        let params = if self
+            .token()
+            .is_some_and(|token| token._type == TokenType::Bracket(LParens))
+        {
+            check!(self.parameters())
+        } else {
+            vec![]
+        };
         let return_type = check!(self.maybe_return_type());
         if_ended!(
             errors::expected(TokenType::Operator(SemiColon), self.last_token_end()),

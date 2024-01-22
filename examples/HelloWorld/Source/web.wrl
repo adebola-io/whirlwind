@@ -1,33 +1,37 @@
+
 module web;
+
+use tangent.{
+    actions, button, constraint, horizontalView, renderStatic, stateful, 
+    StateStore, style.{style, Layout}, text, verticalView, View
+};
 
 function appButtonRow -> View {
     horizontalView()
-        .appendChild(
-            button(text("Add"))
-                .setStyle(style().backgroundColor("blue").textColor("white"))
-                .onClick(increment("@counter.value"))
+        .constraint(
+            constraint("mobile").layout(Layout.Vertical).gap(20)
         )
-        .appendChild(
-            button(text("Subtract"))
-                .setStyle(style().backgroundColor("green").textColor("white"))
-                .onClick(decrement("@counter.value"))
+        .append(
+            button(some(text("Add")))
+                .style(style().bgColor("blue").color("white"))
+                .onClick(actions.increment("@counter.value"))
         )
-        .addConstraint(
-            constraint("mobile")
-                .layout(Layout.Vertical)
-                .gap(20)
+        .append(
+            button(some(text("Subtract")))
+                .style(style().bgColor("blue").color("white"))
+                .onClick(actions.decrement("@counter.value"))
         )
 }
 
 function appStage -> View {
     verticalView()
-        .setStyle(style().fillScreen())
-        .onMount(setStageTitle("Home | Tangent"))
-        .appendChild(stateful("@counter.value").asText().bold())
-        .appendChild(appButtonRow())
+        .style(style().fillScreen())
+        .onMount(actions.setTitle("Home | Tangent"))
+        .append(stateful("@counter.value").asText().bold())
+        .append(appButtonRow())
 }
 
 public function main {
     store := StateStore().set("@counter.value", 0);
-    var assets = renderStatic(appStage, store);
+    assets := renderStatic(appStage, store);
 }

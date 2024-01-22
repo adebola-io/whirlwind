@@ -1,4 +1,0 @@
-module basic;
-
-public use button.Button;
-public use text.Text;
