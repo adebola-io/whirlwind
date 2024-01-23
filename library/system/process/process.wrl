@@ -1,9 +1,9 @@
-module process;
+module process
 
 use core.{
     concurrent.CurrentSequence,
     internals.builtin,
-};
+}
 
 
 /// Returns the value of an environment variable.
@@ -19,15 +19,15 @@ public model Error {
 /// Returns a string value corresponding to the path of the current working directory.
 /// ### Usage
 /// ```
-/// currentDir := core.process.cwd();
-/// print("The current directory is " + currentDir);
+/// currentDir := core.process.cwd()
+/// print("The current directory is " + currentDir)
 /// ```
-public function cwd() -> String {
-    return builtin.sequence.cwd();
+public function cwd -> String {
+    return builtin.sequence.cwd()
 }
 
 /// Schedules a function to run after a duration elapses.
 public function waitThen(callback: fn(), timeout: Int32) {
-    CurrentSequence.sleep(timeout);
-    callback();
+    CurrentSequence.sleep(timeout)
+    callback()
 }

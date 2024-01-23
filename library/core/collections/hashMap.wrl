@@ -1,19 +1,19 @@
-module hashMap;
+module hashMap
 
 use core.{
     sentinels.todo,
     interfaces.{Clonable, Default}, 
     iterate.{AsIterator, Iteratable},
     numeric.Int32,
-};
-use ntuple.Tuple;
+}
+use ntuple.Tuple
 
 public interface Hash {}
 
 /// An interface to be implemented by models that can be transformed into
 /// a hashmap of sorts.
 public interface ToMap<K implements Hash, V> {
-    public function toMap() -> HashMap<K, V>;
+    public function toMap -> HashMap<K, V>
 }
 
 public model HashMap<K implements Hash, V> 
@@ -23,13 +23,13 @@ public model HashMap<K implements Hash, V>
 {
     new(){}
 
-    public function [AsIterator.iter]() -> HashMapIteratable<K, V> {
-        return HashMapIteratable(this);
+    public function [AsIterator.iter] -> HashMapIteratable<K, V> {
+        return HashMapIteratable(this)
     }
-    static function [Default.init]() -> This {
-        return HashMap();
+    static function [Default.init] -> This {
+        return HashMap()
     }
-    public function [Clonable.clone]|=(K implements Clonable and V implements Clonable)() -> This {
+    public function [Clonable.clone]|=(K implements Clonable and V implements Clonable) -> This {
         todo()
     }
     /// Inserts a key-value pair into the hashmap.
@@ -56,19 +56,19 @@ public model HashMap<K implements Hash, V>
         todo()
     }
     /// Returns the number of elements in the map.
-    public function length() -> Int32 {
+    public function length -> Int32 {
         todo()
     }
 }
 
 public model HashMapIteratable<K implements Hash, V> implements Iteratable<Tuple<K, V>> {
-    var _map: HashMap<K, V>;
+    var _map: HashMap<K, V>
 
     new(map: HashMap<K, V>) {
-        this._map = map;
+        this._map = map
     }
 
-    public function [Iteratable.next]() -> ?Tuple<K, V> {
+    public function [Iteratable.next] -> ?Tuple<K, V> {
         todo()
     }
 }

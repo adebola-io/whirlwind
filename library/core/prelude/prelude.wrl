@@ -20,9 +20,9 @@
 /// Allowing a global scope within `core` would leads to ominous, disappearing errors, 
 /// because depending on the import resolution path at build time, `core.prelude` might
 /// not yet exist.
-module prelude;
+module prelude
 
-public use core;
+public use core
 public use core.{
     array.Array,
     bool.Bool,
@@ -34,10 +34,10 @@ public use core.{
     },
     iterate.{Iteratable, AsIterator},
     maybe.{none, some, Maybe},
-    numeric.{Number, Int32, Float64},
+    numeric.{Number, Int32, Int64, Float32, Float64},
     outcome.{ok, err, Outcome},
     ops.Range,
     sentinels.{todo, fatal},
     string.{Display, FromStr, String},
     internals.never,
-};
+}

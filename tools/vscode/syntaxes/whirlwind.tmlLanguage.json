@@ -4,16 +4,15 @@
    "patterns": [
       { "include": "#comment" },
       { "include": "#string_literal" },
-      { "include": "#type_declaration" },
       { "include": "#model_header" },
       { "include": "#interface_header" },
       { "include": "#module_declaration" },
-      { "include": "#use_declaration" },
       { "include": "#enum_declaration" },
       { "include": "#enum_variant_hover" },
       { "include": "#interface_implementation" },
       { "include": "#function" },
       { "include": "#boolean_literal" },
+      { "include": "#type_declaration" },
       { "include": "#keyword" },
       { "include": "#number" },
       { "include": "#special_keyword" },
@@ -21,6 +20,7 @@
       { "include": "#inferred_model" },
       { "include": "#inferred_function" },
       { "include": "#type_label" },
+      { "include": "#use_declaration" },
       { "include": "#identifier" }
    ],
    "repository": {
@@ -138,7 +138,7 @@
                "include": "#type_expression"
             }
          ],
-         "end": "(?=;)"
+         "end": "(?=\\s+(public|function|var|const|model|interface))"
       },
 
       "model_header": {
@@ -218,7 +218,7 @@
       },
 
       "use_declaration": {
-         "begin": "(\\buse\\b\\s+)",
+         "begin": "(\\buse\\s+)",
          "beginCaptures": {
             "1": {
                "name": "keyword"
@@ -299,7 +299,7 @@
          "end": "(?=\\s*\\))"
       },
       "interface_implementation": {
-         "match": "\\b(function)\\s*(\\[[^\\]]+\\])\\s*(\\<[^\\>]+\\>)?\\s*(\\|\\=.+)?(?=(\\(|\\|\\=))",
+         "match": "\\b(function)\\s*(\\[[^\\]]+\\])\\s*(\\<[^\\>]+\\>)?\\s*(\\|\\=.+)?(?=(\\(|\\|\\=|\\-\\>|\\:))",
          "captures": {
             "1": {
                "patterns": [
@@ -385,7 +385,7 @@
       "type_label": {
          "begin": "(\\:|\\-\\>)\\s*",
          "patterns": [{ "include": "#type_expression" }],
-         "end": "(,(?=\\s*([A-Za-z0-9_$]|_)+\\s*\\??\\s*(\\:|\\-\\>|\\))))|(?=[^A-Za-z0-9\\&\\?\\_\\.\\<\\>\\,\\s\\(\\)\\[\\]])"
+         "end": "(,(?=\\s*([A-Za-z0-9_$]|_)+\\s*\\??\\s*(\\:|\\-\\>|\\))))|(?=(\\s(var|function))|[^A-Za-z0-9\\&\\?\\_\\.\\<\\>\\,\\(\\)\\[\\]])"
       },
       "discrete_type": {
          "patterns": [

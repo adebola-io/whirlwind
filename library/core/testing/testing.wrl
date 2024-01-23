@@ -1,37 +1,37 @@
-module testing;
+module testing
 
 use core.{
     bool.Bool,
     iterate.{AsIterator, Iteratable},
     sentinels.fatalOnCaller,
     string.{Display, String}
-};
+}
 
 /// Creates an assertion object.
 public function assert<T implements Display>(value: T) -> Assertion<T> {
-    return Assertion(value);
+    return Assertion(value)
 }
 
 /// Tests that a condition is true.
 public function assertThat(proposition: Bool) {
     if !proposition {
-        fatalOnCaller("Assertion failed due to false proposition.");
+        _ := fatalOnCaller("Assertion failed due to false proposition.")
     }
 }
 
 /// Generates a string of an assertion error.
 function assertionMessage<T implements Display>(mainMessage: String, left: T, right: T) -> String {
-    template := String.fmt(mainMessage);
-    template.extend("Contained value: %\nOther: %");
-    return template.add(left).add(right).finish();
+    template := String.fmt(mainMessage)
+    template.extend("Contained value: %\nOther: %")
+    return template.add(left).add(right).finish()
 }
 
 /// This model represents an assertion object, 
 /// which is the base object for testing equality operations.
 public model Assertion<T implements Display> {
-    var value: T;
+    var value: T
     new(value: T) {
-        this.value = value;
+        this.value = value
     }
     /// Checks if the contained value equals another.
     public function equals(other: T) -> This {
@@ -39,10 +39,10 @@ public model Assertion<T implements Display> {
             message := assertionMessage(
                         "Assertion failed on equality.", 
                         this.value, 
-                        other);
-            fatalOnCaller(message);
-        };
-        return this;
+                        other)
+            fatalOnCaller(message)
+        }
+        return this
     }
     /// Checks that the contained value does not equal another.
     public function doesNotEqual(other: T) -> This {
@@ -50,23 +50,22 @@ public model Assertion<T implements Display> {
             message := assertionMessage(
                         "Assertion failed on inequality.", 
                         this.value, 
-                        other);
-            fatalOnCaller(message);
-        };
-        return this;
+                        other)
+            fatalOnCaller(message)
+        }
+        return this
     }
     /// Checks that the value is true.
-    public function isTrue|=(T is Bool)() {
-        core.sentinels.todo();
+    public function isTrue|=(T is Bool) {
+        core.sentinels.todo()
     }
     /// Checks that a collection type is empty
-    public function isEmpty<U, V implements Iteratable<U>>|=(T implements AsIterator<U, V>)() {
-        core.sentinels.todo()
-        // length := this.value.iter().count();
+    public function isEmpty<U, V implements Iteratable<U>>|=(T implements AsIterator<U, V>) {
+        // length := this.value.iter().count()
         // if this.iter().next().isSome() {
-        //     message := fmt("Assertion failed because array is not empty.\n");
-        //     message.extend("Array Length: %").add(length);
-        //     fatalOnCaller(message.finish());
+            message := String.fmt("Assertion failed because array is not empty.\n")
+            // message.extend("Array Length: %").add(length)
+            fatalOnCaller(message.finish())
         // }
     }
 }

@@ -1,4 +1,4 @@
-module guaranteed;
+module guaranteed
 
 /// The Guaranteed interface is a language feature that allows usage of 
 /// the `!` suffix operator on expressions that may have uncertain or 
@@ -13,17 +13,17 @@ module guaranteed;
 /// the `.unwrap()` method.
 /// <!--ignore-->
 /// ```
-/// name: ?String := some("Alice");
-/// greeting := "Hello, " + name!;
-/// assert(greeting).equals("Hello, Alice");
+/// name: ?String := some("Alice")
+/// greeting := "Hello, " + name!
+/// assert(greeting).equals("Hello, Alice")
 /// 
-/// name = none();
-/// name!; // causes an error.
+/// name = none()
+/// name! // causes an error.
 /// 
-/// age: Outcome<Number, Error> := ok(25);
-/// message := "You are " + age! " years old";
-/// age = err(Error("Invalid age."));
-/// age!; // causes an error.
+/// age: Outcome<Number, Error> := ok(25)
+/// message := "You are " + age! " years old"
+/// age = err(Error("Invalid age."))
+/// age! // causes an error.
 /// ```
 /// 
 /// The interface is useful when you are confident that the expression has a valid value,
@@ -32,23 +32,23 @@ module guaranteed;
 /// `guarantee()` method. For example:
 /// ```
 /// model BankAccount implements Guaranteed<Number> {
-///     var balance: Number;
+///     var balance: Number
 ///     new(balance: Number) {
-///         this.balance = balance;
+///         this.balance = balance
 ///     }
-///     function [Guaranteed.guarantee]() -> Number {
+///     function [Guaranteed.guarantee] -> Number {
 ///         if this.balance > 0 {
 ///           fatal("negative balance.")  
 ///         }
 ///     }
 /// }
 /// 
-/// acc := BackAccount(100);
-/// invalidAcc := BankAccount(-100);
+/// acc := BackAccount(100)
+/// invalidAcc := BankAccount(-100)
 /// 
-/// acc!; // 100.
-/// invalidAcc!; // causes an error.
+/// acc! // 100.
+/// invalidAcc! // causes an error.
 /// ```
 public interface Guaranteed<T> {
-    function guarantee() -> T;
+    function guarantee -> T
 }

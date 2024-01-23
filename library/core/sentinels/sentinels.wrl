@@ -3,18 +3,18 @@
 /// This module provides a collection of special functions that handle edge cases,
 /// explain unconventional control flow, handle unexpected conditions and provide 
 /// utility.
-module sentinels;
+module sentinels
 
 use core.{
     string.{Display, String},
     internals.{builtin, never},
     maybe.{none, some},
     numeric.Int32,
-};
+}
 
 /// Unwinds the stack by one frame and crashes with a fatal error.
 public function fatalOnCaller(message: String) -> never  {
-    return builtin.sequence.crashOneStep(message);
+    return builtin.sequence.crashOneStep(message)
 }
 
 /// Indicates that the current piece of code is unfinished.
@@ -27,14 +27,14 @@ public function fatalOnCaller(message: String) -> never  {
 /// ```
 /// function positiveSquare(a: Int32) -> Outcome<Int32, String> {
 ///     if a >= 0 {
-///         return ok(a * a);
+///         return ok(a * a)
 ///     } else {
 ///         todo() // will implement later.
 ///     }
 /// }
 /// ```
 public function todo<M implements Display>(message?: M) -> never {
-    return fatalOnCaller(message.map(fn (message) message.toStr()).unwrapOr("Entered unfinished code."));
+    return fatalOnCaller(message.map(fn (message) message.toStr()).unwrapOr("Entered unfinished code."))
 }
 
 /// Marks a point that should never be reached by normal execution flow.
@@ -45,11 +45,11 @@ public function todo<M implements Display>(message?: M) -> never {
 /// 
 /// ### Usage
 /// ```
-/// use core.sentinels.unreachable;
+/// use core.sentinels.unreachable
 /// 
 /// function validateInput(x: Int32) {
 ///     if x < 0 {
-///         unreachable(); // unsigned integers are always positive.
+///         unreachable() // unsigned integers are always positive.
 ///     }
 ///     // proceed with validation.
 /// }
@@ -57,7 +57,7 @@ public function todo<M implements Display>(message?: M) -> never {
 /// 
 /// The `unreachable` function will always cause an error, signifying an unexpected condition.
 public function unreachable(message?: String) -> never {
-    return fatalOnCaller(message.unwrapOr("Entered unreachable code."));
+    return fatalOnCaller(message.unwrapOr("Entered unreachable code."))
 }
 
 /// Enters an infinite loop, effectively halting the current execution sequence until the program
@@ -66,7 +66,7 @@ public function unreachable(message?: String) -> never {
 /// 
 /// Once called, it never returns, preventing any further code (within the same sequence) from being
 /// executed.
-public function forever() -> never {
+public function forever -> never {
     while true {}
     unreachable()
 }
@@ -83,25 +83,25 @@ public function forever() -> never {
 /// ```
 /// function divide(number: Int32, divisor: Int32) -> Float {
 ///     if divisor == 0 {
-///         fatal("Cannot divide by zero!");
+///         fatal("Cannot divide by zero!")
 ///     } else {
-///         return a / b;
+///         return a / b
 ///     }
 /// }
 /// ```
 public function fatal(message?: String) -> never {
-    return builtin.sequence.crash(message);
+    return builtin.sequence.crash(message)
 }
 
 /// Closes all sequences and exits the program with a given code.
 /// ### Usage
 /// ```
-/// use core.process.exit;
+/// use core.process.exit
 /// 
-/// exit(0);
+/// exit(0)
 /// ```
 public function exit(code?: Int32) -> never {
-    return builtin.exit(code);
+    return builtin.exit(code)
 }
 
 
@@ -113,28 +113,28 @@ public function exit(code?: Int32) -> never {
 /// 
 /// ### Usage
 /// ```
-/// use core.sentinels.memoize;
+/// use core.sentinels.memoize
 /// 
-/// function doStuff() -> Number {
+/// function doStuff -> Number {
 ///     print("Computing value...")
 ///     // Perform computations.
-///     return 42;
+///     return 42
 /// }
 /// 
-/// var memoized = memoize(doStuff);
+/// var memoized = memoize(doStuff)
 /// 
-/// assertThat(memoized() == 42); // prints "Computing value."
-/// assertThat(memoized() == 42); // returns the value withut running the function again.
+/// assertThat(memoized() == 42) // prints "Computing value."
+/// assertThat(memoized() == 42) // returns the value withut running the function again.
 /// 
 /// ```
 public function memoize<T>(func: fn -> T) -> fn -> T {
-    value := none();
-    return fn() {
+    value := none()
+    return fn {
         if value.isNone() {
-            value = some(func());
+            value = some(func())
         }
-        return value.unwrap();
-    };
+        return value.unwrap()
+    }
 }
 
 /// Wraps a function to ensures that it can only called once, and subsequent
@@ -145,21 +145,21 @@ public function memoize<T>(func: fn -> T) -> fn -> T {
 /// 
 /// ### Usage
 /// ```
-/// use core.sentinels.once;
+/// use core.sentinels.once
 /// 
 /// var initializeApp = once(fn {
 ///     // perform initialization tasks.
-/// });
-/// initializeApp(); // Runs the tasks.
-/// initializeApp(); // Does nothing.
+/// })
+/// initializeApp() // Runs the tasks.
+/// initializeApp() // Does nothing.
 /// ```
 public function once(func: fn) -> fn {
-    hasRun := false;
+    hasRun := false
     return fn {
-        if !hasRun { return; };
-        hasRun = true;
+        if !hasRun { return }
+        hasRun = true
         func()
-    };
+    }
 }
 
 /// Performs no operation and returns void. Used as a placeholder or to
@@ -167,14 +167,14 @@ public function once(func: fn) -> fn {
 /// 
 /// ### Usage
 /// ```
-/// use core.sentinels.noop;
+/// use core.sentinels.noop
 /// 
 /// function handleTask<T>(value: T, optionalCallback: fn()) {
 ///     // tasks handling..
 /// }
-/// handleTask("", noop);
+/// handleTask("", noop)
 /// ```
-public function noop() {}
+public function noop {}
 
 /// Returns a function that always returns the same value.
 /// 
@@ -183,17 +183,17 @@ public function noop() {}
 /// 
 /// ### Usage
 /// ```
-/// use core.sentinels.always;
+/// use core.sentinels.always
 /// 
-/// var alwaysTrue = always(true);
-/// var alwaysFalse = always(false);
+/// var alwaysTrue = always(true)
+/// var alwaysFalse = always(false)
 /// 
 /// if (alwaysTrue()) { // condition will always be true.
 ///     // ...
 /// }
 /// ```
 public function always<T>(value: T) -> fn -> T {
-    return fn value;
+    return fn value
 }
 
 /// The identity function simply returns whatever value is passed
@@ -202,11 +202,11 @@ public function always<T>(value: T) -> fn -> T {
 /// 
 /// ### Usage
 /// ```
-/// originalValue := 42;
-/// returnedValue := identity(originalValue);
+/// originalValue := 42
+/// returnedValue := identity(originalValue)
 /// 
-/// assert(originalValue).equals(returnedValue);
+/// assert(originalValue).equals(returnedValue)
 /// ```
 public function identity<T>(value: T) -> T {
-    return value;
+    return value
 }

@@ -1,12 +1,12 @@
-module template;
+module template
 
 use core.{
     collections.HashMap,
     numeric.Int32,
     sentinels.todo
-};
-use display.Display;
-use string.String;
+}
+use display.Display
+use string.String
 
 
 /// The Template model helps in the construction of dynamic strings by 
@@ -14,77 +14,77 @@ use string.String;
 /// works by defining and substituting characters with values retreived from
 /// various sources, ensuring support for basic transformations and type safety.
 public model Template implements Display {
-    var template: String;
-    var arguments: []String;
-    var map: HashMap<String, String>;
-    var transforms: []fn(x: String) -> String;
+    var template: String
+    var arguments: []String
+    var map: HashMap<String, String>
+    var transforms: []fn(x: String) -> String
     
     new(origin: String) {
-        this.map = HashMap();
-        this.template = origin;
-        this.transforms = [];
-        this.arguments = [];
+        this.map = HashMap()
+        this.template = origin
+        this.transforms = []
+        this.arguments = []
     }
-    public function [Display.toStr]() -> String {
-        return this.finish();
+    public function [Display.toStr] -> String {
+        return this.finish()
     }
     /// Sets an argument based on the list of named parameters in the template string.
     /// ### Usage
     /// ```
-    /// weather := "bright";
-    /// emotion := "happy";
+    /// weather := "bright"
+    /// emotion := "happy"
     /// 
     /// template := String.fmt(
     ///            "The day is %{weather}, 
     ///             It's bright and fair,
     ///             Oh %{emotion} day,
-    ///             The day of joy!");
+    ///             The day of joy!")
     /// 
     /// completed := template
     ///                 .set("weather", weather)
     ///                 .set("emotion", emotion)
-    ///                 .finish();
+    ///                 .finish()
     /// 
     /// assert(completed)
     ///    .equals("The day is bright, 
     ///             It's bright and fair,
     ///             Oh happy day,
-    ///             The day of joy!");
+    ///             The day of joy!")
     /// ```
     public function set<A implements Display>(param: String, value: A) -> This {
-        this.map.set(param, value.toStr());
-        return this;
+        this.map.set(param, value.toStr())
+        return this
     }
     /// Adds an argument according to the list of positional parameters
     /// in the template string.
     /// ### Usage
     /// ```
-    /// name := "Sefunmi";
-    /// age := 21;
+    /// name := "Sefunmi"
+    /// age := 21
     /// 
-    /// template := String.fmt("My name is % and I am % years old.");
-    /// completed := template.add(name).add(age).finish();
+    /// template := String.fmt("My name is % and I am % years old.")
+    /// completed := template.add(name).add(age).finish()
     /// 
-    /// assert(completed).equals("My name is Sefunmi and I am 21 years old.");
+    /// assert(completed).equals("My name is Sefunmi and I am 21 years old.")
     /// ```
     public function add<A implements Display>(value: A) -> This {
-        this.arguments.push(value.toStr());
-        return this;
+        this.arguments.push(value.toStr())
+        return this
     }
     /// Appends new template text to the end of the template.
     /// ### Usage
     /// ```
-    /// name := String.fmt("Welcome, %!");
-    /// name.add("Mark");
+    /// name := String.fmt("Welcome, %!")
+    /// name.add("Mark")
     /// 
-    /// name.extend(" Good %.");
-    /// name.add("Morning");
+    /// name.extend(" Good %.")
+    /// name.add("Morning")
     /// 
-    /// assert(name.finish()).equals("Welcome, Mark! Good Morning.");
+    /// assert(name.finish()).equals("Welcome, Mark! Good Morning.")
     /// ```
     public function extend(suffix: String) -> This {
-        this.template += suffix;
-        return this;
+        this.template += suffix
+        return this
     }
     /// Transforms a positional parameter with a function.
     /// The positional arguments are zero-based, meaning 0
@@ -94,19 +94,19 @@ public model Template implements Display {
     /// transformer is ignored until it is.
     /// ### Usage
     /// ```
-    /// template := String.fmt("Hello %!");
+    /// template := String.fmt("Hello %!")
     /// 
-    /// template.transform(0, fn(x) x.capitalCase());
-    /// template.add("john");
+    /// template.transform(0, fn(x) x.capitalCase())
+    /// template.add("john")
     /// 
-    /// assert(template.finish()).equals("Hello, John!");
+    /// assert(template.finish()).equals("Hello, John!")
     /// ```
     public function transform(arg: Int32, transformer: fn(x: String) -> String) -> This {
-        this.transforms.push(transformer);
-        return this;
+        this.transforms.push(transformer)
+        return this
     }
     /// Builds a string from the template with all the inputted values.
-    public function finish() -> String {
+    public function finish -> String {
         todo()
     }
 }
@@ -114,9 +114,9 @@ public model Template implements Display {
 
 
 test "create templates" {
-    use core.testing.assertThat;
+    use core.testing.assertThat
 
-    template := Template("Hello, %!");
-    template.add("world");
-    assertThat(template.finish() == "Hello, world!");
+    template := Template("Hello, %!")
+    template.add("world")
+    assertThat(template.finish() == "Hello, world!")
 }

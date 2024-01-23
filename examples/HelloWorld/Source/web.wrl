@@ -1,10 +1,10 @@
 
-module web;
+module web
 
 use tangent.{
     actions, button, constraint, horizontalView, renderStatic, stateful, 
     StateStore, style.{style, Layout}, text, verticalView, View
-};
+}
 
 function appButtonRow -> View {
     horizontalView()
@@ -23,7 +23,7 @@ function appButtonRow -> View {
         )
 }
 
-function appStage -> View {
+public function appStage -> View {
     verticalView()
         .style(style().fillScreen())
         .onMount(actions.setTitle("Home | Tangent"))
@@ -32,6 +32,6 @@ function appStage -> View {
 }
 
 public function main {
-    store := StateStore().set("@counter.value", 0);
-    assets := renderStatic(appStage, store);
+    store := StateStore().set("@counter.value", 0)
+    assets := renderStatic(appStage, store)
 }

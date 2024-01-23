@@ -1,4 +1,4 @@
-module numeric;
+module numeric
 
 use core.{
     bool.Bool,
@@ -9,7 +9,7 @@ use core.{
         Bitwise
     },
     string.{Display, FromStr},
-};
+}
 
 /// An 32-bit integer.
 public model Int32 
@@ -28,10 +28,10 @@ public model Int32
     /// Returns true if the value is less than 0.
     /// ### Usage
     /// ```
-    /// x := -1;
-    /// assertThat(x.isNegative());
+    /// x := -1
+    /// assertThat(x.isNegative())
     /// ```
-    public function isNegative() -> Bool {
+    public function isNegative -> Bool {
         this < 0
     }
     // Compiler built in.
@@ -53,10 +53,10 @@ public model Int64
     /// Returns true if the value is less than 0.
     /// ### Usage
     /// ```
-    /// x := -1;
-    /// assertThat(x.isNegative());
+    /// x := -1
+    /// assertThat(x.isNegative())
     /// ```
-    public function isNegative() -> Bool {
+    public function isNegative -> Bool {
         this < 0
     }
     // Compiler built-in.
@@ -92,4 +92,4 @@ public model Float64
 }
 
 /// A union data type to represent a number.
-public type Number = Int32 | Float32 | Int64 | Float64;
+public type Number = Int32 | Float32 | Int64 | Float64

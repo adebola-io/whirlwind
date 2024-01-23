@@ -1,4 +1,4 @@
-module builtin;
+module builtin
 
 use core.{
     array.Array, 
@@ -10,26 +10,26 @@ use core.{
     ops.Range, 
     outcome.Outcome, 
     string.String, 
-};
-use injunction.{InjunctionType, Injunction, invoke};
-use never.never;
+}
+use injunction.{InjunctionType, Injunction, invoke}
+use never.never
 
 /// The native injunction in Whirlwind.
 public model BuiltIn implements Injunction {
-    var injunctionType: InjunctionType;
+    var injunctionType: InjunctionType
 
     new(injunctionType: InjunctionType) {
-        this.injunctionType = injunctionType;
+        this.injunctionType = injunctionType
     }
 
-    public function [Injunction.getType]() -> InjunctionType {
-        return this.injunctionType;
+    public function [Injunction.getType] -> InjunctionType {
+        return this.injunctionType
     }
 }
 
 
 function builtin(_type: InjunctionType) -> BuiltIn {
-    return BuiltIn(_type);
+    return BuiltIn(_type)
 }
 
 public model arrays<T> {
@@ -97,7 +97,7 @@ public model eventual<T> {
 }
 
 public model maybe<T> {
-    public static function none() -> ?T {
+    public static function none -> ?T {
         invoke(builtin(InjunctionType.MaybeNone))
     }
 
@@ -129,7 +129,7 @@ public model sequence {
         invoke(builtin(InjunctionType.SequenceCrash), some(message))
     }
 
-    public static function cwd() -> String {
+    public static function cwd -> String {
         invoke(builtin(InjunctionType.SequenceCwd))
     }
 }

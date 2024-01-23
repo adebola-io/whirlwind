@@ -1,11 +1,11 @@
-module sextuple;
+module sextuple
 
-use core.maybe.some;
-use core.interfaces.Clonable;
-use core.string.{Display, String};
-use core.sentinels.todo;
+use core.maybe.some
+use core.interfaces.Clonable
+use core.string.{Display, String}
+use core.sentinels.todo
 
-use ntuple.NTuple;
+use ntuple.NTuple
 
 
 /// A set containing six individual items.
@@ -26,12 +26,12 @@ public model Sextuple<T, U, V, W, X, Y>
             and Y implements Display
         ) + NTuple<T, U, V, W, X, Y>
 {
-    public var a: T;
-    public var b: U;
-    public var c: V;
-    public var d: W;
-    public var e: X;
-    public var f: Y;
+    public var a: T
+    public var b: U
+    public var c: V
+    public var d: W
+    public var e: X
+    public var f: Y
 
     new(
         first: T, 
@@ -41,12 +41,12 @@ public model Sextuple<T, U, V, W, X, Y>
         fifth: X, 
         sixth: Y
     ) {
-        this.a = first;
-        this.b = second;
-        this.c = third;
-        this.d = fourth;
-        this.e = fifth;
-        this.f = sixth;
+        this.a = first
+        this.b = second
+        this.c = third
+        this.d = fourth
+        this.e = fifth
+        this.f = sixth
     }
 
     public function [Clonable.clone]|=(
@@ -56,7 +56,7 @@ public model Sextuple<T, U, V, W, X, Y>
             and W implements Clonable
             and X implements Clonable
             and Y implements Clonable
-        )() -> This 
+        ) -> This 
     {
         todo()
         // return Sextuple(
@@ -66,7 +66,7 @@ public model Sextuple<T, U, V, W, X, Y>
         //     this.d.clone(),
         //     this.e.clone(),
         //     this.f.clone()
-        // );
+        // )
     }
 
     public function [Display.toStr]|=(
@@ -76,7 +76,7 @@ public model Sextuple<T, U, V, W, X, Y>
             and W implements Display
             and X implements Display
             and Y implements Display
-        )() -> String
+        ) -> String
     {
         todo()
         // return String.fmt("Sextuple(%, %, %, %, %, %)")
@@ -86,25 +86,25 @@ public model Sextuple<T, U, V, W, X, Y>
         //     .add(this.d.toStr())
         //     .add(this.e.toStr())
         //     .add(this.f.toStr())
-        //     .finish();
+        //     .finish()
     }
 
-    public function [NTuple.first]() -> ?T {
-        return some(this.a);
+    public function [NTuple.first] -> ?T {
+        return some(this.a)
     }
-    public function [NTuple.second]() -> ?U {
-        return some(this.b);
+    public function [NTuple.second] -> ?U {
+        return some(this.b)
     }
-    public function [NTuple.third]() -> ?V {
-        return some(this.c);
+    public function [NTuple.third] -> ?V {
+        return some(this.c)
     }
-    public function [NTuple.fourth]() -> ?W {
-        return some(this.d);
+    public function [NTuple.fourth] -> ?W {
+        return some(this.d)
     }
-    public function [NTuple.fifth]() -> ?X {
-        return some(this.e);
+    public function [NTuple.fifth] -> ?X {
+        return some(this.e)
     }
-    public function [NTuple.sixth]() -> ?Y {
-        return some(this.f);
+    public function [NTuple.sixth] -> ?Y {
+        return some(this.f)
     }
 }

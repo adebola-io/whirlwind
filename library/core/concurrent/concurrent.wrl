@@ -1,16 +1,16 @@
 /// ## Async Whirlwind.
 /// The `concurrent` module contains all primitive constructs in Whirlwind
 /// for the creation and utilization of asynchronous processes.
-module concurrent;
+module concurrent
 
 use core.{
     internals.builtin,
     numeric.Int32,
     string.String,
     sentinels.todo
-};
-public use eventual.Eventual;
-public use prospect.Prospect;
+}
+public use eventual.Eventual
+public use prospect.Prospect
 
 /// Runs a prospect immediately, blocking the current execution sequence until it is finished.
 ///
@@ -19,17 +19,17 @@ public use prospect.Prospect;
 /// async function asyncSquare(a: Int32) -> Int32 {
 ///     return a * a
 /// }
-/// num := toSync(asyncSquare(2));
+/// num := toSync(asyncSquare(2))
 /// assert(num).equals(4) // 2 * 2.
 /// ```
 /// It is the same as running `.run().await()` on the prospect (Its implementation is quite literally that).
 public function toSync<T>(prospect: Prospect<T>) -> T {
-    return prospect.run().await();
+    return prospect.run().await()
 }
 
 /// The current running sequence for an instruction.
 public model CurrentSequence {
-    var handle: Sequence;
+    var handle: Sequence
     /// Forces the current running sequence to halt for a duration.
     public static function sleep(timeout: Int32) {
         todo()
@@ -40,14 +40,14 @@ public model CurrentSequence {
 public model Sequence {
     /// Returns the id of the sequence.
     /// The id of the main sequence is always 0.
-    public function getId() -> Int32 {
-        return builtin.sequence.sequenceId(this);
+    public function getId -> Int32 {
+        return builtin.sequence.sequenceId(this)
     }
 } 
 
 public model SequenceError {
-    public var errorType: SequenceErrorType;
-    public var message: ?String;
+    public var errorType: SequenceErrorType
+    public var message: ?String
 }
 
 public enum SequenceErrorType {

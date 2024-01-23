@@ -6,17 +6,17 @@
 /// 
 /// It abstracts the underlying details of the data source, allowing
 /// for a consistent interface.
-module io;
+module io
 
-use core.prelude.{Outcome, Int32};
+use core.prelude.{Outcome, Int32}
 
-public use terminal.{print, prompt, printFmt};
+public use terminal.{print, prompt, printFmt}
 
 /// This interface is implemented by any entity that can write
 /// to streams of data.
 public interface Writer {
     /// Writes into a byte stream and returns the number of bytes written.
-    public async function write(bytes: []Int32) -> Outcome<Int32, IoError>;
+    public async function write(bytes: []Int32) -> Outcome<Int32, IoError>
 }
 
 /// This interface is implemented by any entity that is capable of
@@ -24,11 +24,11 @@ public interface Writer {
 /// `.read` method, which reads bytes into a provided byte array.
 public interface Reader {
     /// Reads data from a specified source.
-    public async function read(bytes: []Int32, offset?: Int32, length?: Int32);
+    public async function read(bytes: []Int32, offset?: Int32, length?: Int32)
 }
 
 public model IoError {
-    var errorType: IoErrorType;
+    var errorType: IoErrorType
 }
 enum IoErrorType {}
 

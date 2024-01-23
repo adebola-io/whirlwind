@@ -1,3 +1,3 @@
-module lib;
+module lib
 
-public use core;
+public use core

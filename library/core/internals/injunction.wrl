@@ -5,10 +5,10 @@
 ///   an array, print to the standard output, etc.
 /// - modify program behaviour or execute computations outside Whirlwind's scope, and
 /// - interface with external resources.
-module injunction;
+module injunction
 
-use core.string.String;
-use never.never;
+use core.string.String
+use never.never
  
 /// The `Injunction` interface allows its implementers to directly interact with, or
 /// operate outside the runtime. It can be implemented by any model that maps to a
@@ -18,7 +18,7 @@ use never.never;
 /// 
 public interface Injunction {
     /// Returns the type of the injunction.
-    public function getType() -> InjunctionType;
+    public function getType -> InjunctionType
 }
 
 /// ## Invoke.
@@ -49,7 +49,7 @@ public function invoke
     // The recursion here is bogus, and only exists to satisfy the
     // typechecker. All calls to `invoke` are handled
     // outside the runtime, in the implementation language.
-    return invoke(command, firstValue, secondValue, thirdValue, fourthValue);
+    return invoke(command, firstValue, secondValue, thirdValue, fourthValue)
 }
 
 public enum InjunctionType {

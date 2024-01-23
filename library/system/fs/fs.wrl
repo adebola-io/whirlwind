@@ -1,19 +1,19 @@
-module fs;
+module fs
 
-// use core.prelude.String;
-// use core.prelude.{todo, Bool};
-// use core.prelude.Outcome;
+// use core.prelude.String
+// use core.prelude.{todo, Bool}
+// use core.prelude.Outcome
 
 
 
-// // public type PathLike = String | Buffer | Url;
-// public type FileHandle = Int32;
+// // public type PathLike = String | Buffer | Url
+// public type FileHandle = Int32
 
 // public model File {
-//     public async function open() {
+//     public async function open {
 
 //     }
-//     public async function close() {
+//     public async function close {
         
 //     }
 // }
@@ -24,19 +24,19 @@ module fs;
 
 // /// Opens a file.
 // public async function open(filepath: PathLike) -> Outcome<File, FsError> {
-//     return todo();
+//     return todo()
 // }
 
 
 // /// Closes an open file.
 // public async function close(handle: FileHandle) -> Outcome<Bool, FsError> {
-//     return todo();
+//     return todo()
 // }
 
 // // /// Reads a file, given its filename, and returns its contents.
 // // public async function readFile(filename: PathLike) -> Outcome<Buffer, FsError> {
 // //     todo()
-// //     // return Err("");
+// //     // return Err("")
 // // }
 
 // public async function readToString(filename: PathLike) -> Outcome<String, FsError> {

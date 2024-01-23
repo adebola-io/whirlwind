@@ -1,10 +1,10 @@
-module memory;
+module memory
 
-use core.bool.Bool;
-use core.internals.builtin;
-use core.sentinels.todo;
+use core.bool.Bool
+use core.internals.builtin
+use core.sentinels.todo
 
-public use ref.{WeakRef};
+public use ref.{WeakRef}
 
 
 /// Determines whether two variables point to the same location in memory
@@ -14,14 +14,14 @@ public use ref.{WeakRef};
 /// compares values by matching their bytes.
 /// ### Usage
 /// ```
-/// use core.memory.areSame;
-/// arr1 := [];
-/// arr2 := arr1;
+/// use core.memory.areSame
+/// arr1 := []
+/// arr2 := arr1
 /// 
-/// assertThat(areSame(arr1, arr2));
-/// assertThat(areSame(arr2, arr1));
+/// assertThat(areSame(arr1, arr2))
+/// assertThat(areSame(arr2, arr1))
 /// ```
-public function areSame() -> Bool {
+public function areSame -> Bool {
     todo()
 }
 
@@ -29,14 +29,14 @@ public function areSame() -> Bool {
 /// Swaps the address of two values.
 /// # Usage
 /// ```
-/// use core.memory.wwap;
+/// use core.memory.wwap
 /// 
-/// a := 9;
-/// b := 12;
-/// swap(a, b);
+/// a := 9
+/// b := 12
+/// swap(a, b)
 /// 
-/// assert(a).equals(12);
-/// assert(b).equals(9);
+/// assert(a).equals(12)
+/// assert(b).equals(9)
 /// ```
 public function swap<T>(a: T, b: T) {
     builtin.swap(a, b)

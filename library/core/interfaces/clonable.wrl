@@ -1,4 +1,4 @@
-module clonable;
+module clonable
 
 /// This interface allows model instances to create **independent, full copies**
 /// of themselves. Such copies should (ideally) share no internals references with
@@ -8,26 +8,26 @@ module clonable;
 /// means assignment and function calls do not create copies, they merely take references
 /// to the underlying object.
 /// ```
-/// array1 := [];
-/// array2 := array1;
+/// array1 := []
+/// array2 := array1
 /// 
-/// array2.push(42);
-/// assertThat(array2.length() == 1);
-/// assertThat(array1.length() == 1); 
+/// array2.push(42)
+/// assertThat(array2.length() == 1)
+/// assertThat(array1.length() == 1) 
 /// // array1 is modified because array1 and array2 are the same value. 
 /// ```
 /// Cloning objects rectifies the possibly unintended consequences, while also giving the user
 /// control over when and how new instances can be created.
 /// ```
-/// array3 := [];
-/// array4 := array3.clone();
+/// array3 := []
+/// array4 := array3.clone()
 /// 
-/// array4.push(42);
-/// assertThat(array4.length() == 1);
-/// assertThat(array3.length() == 0); // Unchanged.
+/// array4.push(42)
+/// assertThat(array4.length() == 1)
+/// assertThat(array3.length() == 0) // Unchanged.
 /// ```
 public interface Clonable {
     /// Creates a new instance of the same type as the caller, containing deep copies
     /// of its properties and their nested values.
-    public function clone() -> This;
+    public function clone -> This
 }

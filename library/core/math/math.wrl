@@ -1,4 +1,4 @@
-module math;
+module math
 
 use core.{
     bool.Bool,
@@ -7,7 +7,7 @@ use core.{
     ops.{Orderable, Ordering},
     sentinels.todo,
     string.String
-};
+}
 
 /// Returns the minimum of two values that implement Orderable.
 /// 
@@ -15,18 +15,18 @@ use core.{
 /// 
 /// ### Usage
 /// ```
-/// use core.math.min;
+/// use core.math.min
 /// 
-/// assert(min(1, 5)).equals(1);
+/// assert(min(1, 5)).equals(1)
 /// ```
 public function min<T implements Orderable>(first: T, second: T) -> T {
-    ordering := first.compare(second);
+    ordering := first.compare(second)
     if ordering == Ordering.Less {
-        return first;
+        return first
     } else if ordering == Ordering.Greater {
-        return second;
+        return second
     }
-    return first;
+    return first
 }
 
 /// Returns the maximum of two elements that implement Orderable.
@@ -35,38 +35,38 @@ public function min<T implements Orderable>(first: T, second: T) -> T {
 /// 
 /// ### Usage
 /// ```
-/// use core.math.max;
+/// use core.math.max
 /// 
-/// assert(max(1, 3)).equals(3);
+/// assert(max(1, 3)).equals(3)
 /// ```
 public function max<T implements Orderable>(first: T, second: T) -> T {
-    ordering := first.compare(second);
+    ordering := first.compare(second)
     if ordering == Ordering.Less {
-        return second;
+        return second
     } else if ordering == Ordering.Greater {
-        return first;
+        return first
     }
-    return second;
+    return second
 }
 
 /// The approximate value of PI.
 /// 
 /// @TODO: Define to 64-bits.
-public const PI: Float64 = 3.1415926535897932384626433;
-public const UINTMAX: Int32 = invoke(Injunction.MaxUnsignedInt);
+public const PI: Float64 = 3.1415926535897932384626433
+public const UINTMAX: Int32 = invoke(Injunction.MaxUnsignedInt)
 
 /// Computes the square of a number.
 public function square(a: Number) -> Number {
-    return a * a;
+    return a * a
 }
 
 /// Computes the square root of a number.
 /// ### Usage
 /// ```
-/// use core.math.sqrt;
+/// use core.math.sqrt
 /// 
-/// num := sqrt(4);
-/// assertThat(num == 2);
+/// num := sqrt(4)
+/// assertThat(num == 2)
 /// ```
 public function sqrt(a: Number) -> Number {
     todo()
@@ -74,22 +74,22 @@ public function sqrt(a: Number) -> Number {
 
 /// Returns the smallest integer greater than or equal to x.
 public function ceil(x: Number) -> Int32 {
-    return todo();
+    return todo()
 }
 
 /// Returns the largest integer smaller than or equal to x.
 public function floor(x: Number) -> Int32 {
-    return todo();
+    return todo()
 }
 
 /// Returns the absolute value of a number.
 /// 
 /// ### Usage
 /// ```
-/// use core.math.abs;
+/// use core.math.abs
 /// 
-/// assert(max(-4)).equals(4);
-/// assert(max(10)).equals(10);
+/// assert(max(-4)).equals(4)
+/// assert(max(10)).equals(10)
 /// ```
 public function abs(a: Number) -> Int32 {
     todo()
@@ -103,9 +103,9 @@ public function isPrime(x: Number) -> Bool {
 /// Parses a string into an integer.
 /// ### Usage
 /// ```
-/// use core.math.parseInt;
+/// use core.math.parseInt
 /// 
-/// assert(parseInt("-9")!).equals(-9);
+/// assert(parseInt("-9")!).equals(-9)
 /// 
 /// ```
 public function parseInt(string: String) -> ?Int32 {

@@ -1,11 +1,11 @@
-module time;
+module time
 
 use core.{
     numeric.Int32,
     sentinels.todo
-};
+}
 
-public type Duration = Second | Millisecond;
+public type Duration = Second | Millisecond
 
 public model Second {
 

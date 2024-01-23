@@ -1,6 +1,6 @@
-module prospect;
+module prospect
 
-use concurrent.SequenceError;
+use concurrent.SequenceError
 use core.{
     array.Array,
     bool.Bool,
@@ -8,8 +8,8 @@ use core.{
     maybe.some,
     numeric.Int32,
     sentinels.{fatal, todo},
-};
-use eventual.Eventual;
+}
+use eventual.Eventual
 
 /// Asynchronous functions do not run automatically in Whirlwind. 
 /// 
@@ -23,13 +23,13 @@ use eventual.Eventual;
 /// - interaction with other prospects, etc.
 public model Prospect<T> {
     /// The prospect has been executed.
-    var consumed: Bool;
+    var consumed: Bool
     /// The function to execute when the run method is called.
-    var func: fn() -> T;
+    var func: fn -> T
 
-    new(func: fn() -> T) {
-        this.consumed = false;
-        this.func = func;
+    new(func: fn -> T) {
+        this.consumed = false
+        this.func = func
     }
     /// Chains a callback to be run when the prospect completes.
     /// 
@@ -37,25 +37,25 @@ public model Prospect<T> {
     /// by the callback.
     /// ### Usage
     /// ```
-    /// squared := async fn(a: Int32) a * a;
-    /// doubled := fn(a: Number) a * 2;
+    /// squared := async fn(a: Int32) a * a
+    /// doubled := fn(a: Number) a * 2
     /// 
-    /// num := squared(2).then(doubled).run().await();
-    /// assert(num).equals(12); // (2 * 2) * 3
+    /// num := squared(2).then(doubled).run().await()
+    /// assert(num).equals(12) // (2 * 2) * 3
     /// ```
     /// Callbacks can be joined consecutively, and they will run in the
     /// order in which they are chained.
     /// ```
-    /// prospect := async fn() print("Hello!");
+    /// prospect := async fn() print("Hello!")
     /// prospect
     ///   .then(fn print("Good day!"))
     ///   .then(fn print("How do you do?"))
-    ///   .run();
+    ///   .run()
     /// ```
     public function then<U>(next: fn (prior?: T) -> U) -> Prospect<U> {
         if this.consumed {
             fatal(some("Cannot chain callback to a consumed prospect."))
-        };
+        }
         Prospect(fn next(some(this.func())))
     }
     /// Executes a prospect.
@@ -69,21 +69,21 @@ public model Prospect<T> {
     /// 
     /// ### Usage
     /// ```
-    /// async function aFunc() {
-    ///     Print("Hello from prospect!");
+    /// async function aFunc {
+    ///     Print("Hello from prospect!")
     /// }
-    /// prospect := aFunc(); // Nothing happens yet.
-    /// prospect.run(); // aFunc runs and print "Hello from prospect!".
+    /// prospect := aFunc() // Nothing happens yet.
+    /// prospect.run() // aFunc runs and print "Hello from prospect!".
     /// ```
     /// After the prospect completes, its entire callback chain is invoked, 
     /// in the order in which the callbacks are defined with `.Then()`.
     /// ```
-    /// async function aFunc() {
-    ///     print("Hello 1");
+    /// async function aFunc {
+    ///     print("Hello 1")
     /// }
-    /// prospect := aFunc();
-    /// prospect.then(fn() print("Hello 2"));
-    /// prospect.run(); // Prints "Hello 1", then prints "Hello 2".
+    /// prospect := aFunc()
+    /// prospect.then(fn() print("Hello 2"))
+    /// prospect.run() // Prints "Hello 1", then prints "Hello 2".
     /// ```
     /// **Once a prospect is run, it is effectively _consumed_, meaning it cannot be altered,
     /// re-run or used in interaction with other prospects.**
@@ -91,26 +91,26 @@ public model Prospect<T> {
     /// This means that the following code will cause an error.
     /// <!--ignore-->
     /// ```
-    /// prospect2 := aFunc();
-    /// prospect2.run();
-    /// prospect2.then(fn print("Something else.")); // Will cause an error.
+    /// prospect2 := aFunc()
+    /// prospect2.run()
+    /// prospect2.then(fn print("Something else.")) // Will cause an error.
     /// ```
-    public function run() -> Eventual<T> {
+    public function run -> Eventual<T> {
         if this.consumed {
-            fatal(some("Cannot rerun a consumed Prospect."));
+            fatal(some("Cannot rerun a consumed Prospect."))
         }
-        this.consumed = true;
-        return builtin.eventual.create(this);
+        this.consumed = true
+        return builtin.eventual.create(this)
     }
     /// Sets a timeout on the prospect's eventual execution. If the duration elapses 
     /// before the eventual can be resolved, it is abruptly aborted.
     public function timeout(ms: Int32) -> Prospect<T> {
-        todo();
-        return this;
+        todo()
+        return this
     }
     /// Attaches a callback that should run if the execution of the prospect fails.
     public function recover(callback: fn(error: SequenceError)) {
-        todo();
+        todo()
     }
     /// Races a prospect against another.
     /// 
@@ -120,17 +120,17 @@ public model Prospect<T> {
     /// other eventual will be immediately aborted.
     /// ### Usage
     /// ```
-    /// use core.Time.sleep;
-    /// first := async fn() {
-    ///     sleep(300); 
-    ///     return "Hello!";
-    /// };
-    /// second := async fn() {
-    ///     sleep(500);
-    ///     return "Hola!";
+    /// use core.Time.sleep
+    /// first := async fn {
+    ///     sleep(300) 
+    ///     return "Hello!"
     /// }
-    /// greeting := first.race(second).run().await();
-    /// assert(greeting).equals("Hello");
+    /// second := async fn {
+    ///     sleep(500)
+    ///     return "Hola!"
+    /// }
+    /// greeting := first.race(second).run().await()
+    /// assert(greeting).equals("Hello")
     /// ```
     public function race(other: Prospect<T>) -> Prospect<T> {
         todo()
@@ -140,23 +140,23 @@ public model Prospect<T> {
     /// other eventuals in the list.
     /// ### Usage
     /// ```
-    /// use core.Time.sleep;
-    /// first := async fn() {
-    ///     sleep(100);
-    ///     return 1;
+    /// use core.Time.sleep
+    /// first := async fn {
+    ///     sleep(100)
+    ///     return 1
     /// }
-    /// second := async fn() {
-    ///     sleep(200);
-    ///     return 2;
+    /// second := async fn {
+    ///     sleep(200)
+    ///     return 2
     /// }
-    /// third := async fn() {
-    ///     sleep(300);
-    ///     return 3;
+    /// third := async fn {
+    ///     sleep(300)
+    ///     return 3
     /// }
-    /// num := Prospect.raceAll([first, second, third]).run().await();
-    /// assert(num).equals(1);
+    /// num := Prospect.raceAll([first, second, third]).run().await()
+    /// assert(num).equals(1)
     /// ```
     public static function raceAll<T>(prospects: Array<Prospect<T>>) -> Prospect<T> {
-        return todo();
+        return todo()
     }
 }

@@ -1,37 +1,37 @@
-module default;
+module default
 
 /// This is a language level interface to be implemented by types that can have default values when they are not initialized.
 /// ## Usage
 /// Suppose there is a `Position` model that, if not set, should start at the origin (0, 0). A non implemented approach would be: 
 /// ```
 /// model Position {
-///    public var x: Number;
-///    public var y: Number;
+///    public var x: Number
+///    public var y: Number
 ///    new(x: Number, y: Number) {
-///       this.x = x; 
-///       this.y = y; 
+///       this.x = x 
+///       this.y = y 
 ///    }
-///    public static function origin() -> This {
+///    public static function origin -> This {
 ///        Position(0, 0)
 ///    }
 /// }
-/// var p1 = Position.origin();
+/// var p1 = Position.origin()
 /// ```
 /// Using the Default interface, it would instead be:
 /// ```
 /// model Position implements Default {
-///    public var x: Number;
-///    public var y: Number;
+///    public var x: Number
+///    public var y: Number
 ///    new(x: Number, y: Number) {
-///       this.x = x; 
-///       this.y = y; 
+///       this.x = x 
+///       this.y = y 
 ///    }
-///    static function [Default.init]() -> This {
+///    static function [Default.init] -> This {
 ///       Position(0, 0)
 ///    }
 /// }
-/// var p1: Position; /// Is automatically assigned (0, 0)
+/// var p1: Position /// Is automatically assigned (0, 0)
 public interface Default {
     /// Returns the default instance of the implementing model.
-    static function init() -> This;
+    static function init -> This
 }

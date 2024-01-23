@@ -1,4 +1,4 @@
-module never;
+module never
 
 /// ### The Never Type
 /// `never` is a type representing the set of values that _cannot_ occur.
@@ -6,7 +6,7 @@ module never;
 /// Examples of never types are:
 /// - the return value of a function that exits the program,
 /// - the type of an exception that crashes sequence execution, or
-/// - self referential infinitely recursive types (e.g. `type T = T;`).
+/// - self referential infinitely recursive types (e.g. `type T = T`).
 /// 
 /// The exact definition is that it is the type of a value that cannot be
 /// modelled by the type system. For example, generic values have their 
@@ -16,31 +16,31 @@ module never;
 /// all types, including itself._ This makes it useful for writing unfinished code that
 /// compiles because it satisfies the typechecker.
 /// 
-/// This means that the following are all semantically valid;
+/// This means that the following are all semantically valid
 /// <!--#ignore-->
 /// ```
-/// function blackHole() -> never {
+/// function blackHole -> never {
 ///     core.sentinels.exit(1) // Exits the program and never returns.
 /// }
-/// num: Int32 := blackHole(); // valid.
-/// str: String := blackHole(); // valid.
+/// num: Int32 := blackHole() // valid.
+/// str: String := blackHole() // valid.
 /// 
-/// function produceValue() -> String {
-///     return blackHole(); // valid.
+/// function produceValue -> String {
+///     return blackHole() // valid.
 /// }
 /// ```
 /// However, due to its abstract nature, _no other type is assignable to `never`, except itself._
 /// This means that the following statements will produce errors.
 /// <!--#ignore-->
 /// ```
-/// neverNum: never := 0; // will not compile.
-/// type Recursive = Recursive;
-/// neverBool: Recursive = true; // will not compile.
+/// neverNum: never := 0 // will not compile.
+/// type Recursive = Recursive
+/// neverBool: Recursive = true // will not compile.
 /// 
-/// function outsideReality() -> never {
-///     return "Hello, world"; // will not compile.
+/// function outsideReality -> never {
+///     return "Hello, world" // will not compile.
 /// }
 /// ```
 /// As a matter of fact, `never` types are preemptively disallowed in variable type labels.
 /// They are only allowed in return types for functions.
-public type never = never;
+public type never = never

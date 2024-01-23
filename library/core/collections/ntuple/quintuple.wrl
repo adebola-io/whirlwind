@@ -1,10 +1,10 @@
-module quintuple;
+module quintuple
 
-use core.maybe.some;
-use core.interfaces.Clonable;
-use core.string.{Display, String};
-use core.sentinels.todo;
-use ntuple.NTuple;
+use core.maybe.some
+use core.interfaces.Clonable
+use core.string.{Display, String}
+use core.sentinels.todo
+use ntuple.NTuple
 
 
 /// A set containing five individual items.
@@ -23,18 +23,18 @@ public model Quintuple<T, U, V, W, X>
             and X implements Display
         ) + NTuple<T, U, V, W, X>
 {
-    public var a: T;
-    public var b: U;
-    public var c: V;
-    public var d: W;
-    public var e: X;
+    public var a: T
+    public var b: U
+    public var c: V
+    public var d: W
+    public var e: X
 
     new(first: T, second: U, third: V, fourth: W, fifth: X) {
-        this.a = first;
-        this.b = second;
-        this.c = third;
-        this.d = fourth;
-        this.e = fifth;
+        this.a = first
+        this.b = second
+        this.c = third
+        this.d = fourth
+        this.e = fifth
     }
 
     public function [Clonable.clone]|=(
@@ -43,7 +43,7 @@ public model Quintuple<T, U, V, W, X>
             and V implements Clonable
             and W implements Clonable
             and X implements Clonable
-        )() -> This 
+        ) -> This 
     {
         todo()
         // return Quintuple(
@@ -52,7 +52,7 @@ public model Quintuple<T, U, V, W, X>
         //     this.c.clone(),
         //     this.d.clone(),
         //     this.e.clone()
-        // );
+        // )
     }
 
     public function [Display.toStr]|=(
@@ -61,7 +61,7 @@ public model Quintuple<T, U, V, W, X>
             and V implements Display
             and W implements Display
             and X implements Display
-        )() -> String
+        ) -> String
     {
         todo()
         // return String.fmt("Quintuple(%, %, %, %, %)")
@@ -70,22 +70,22 @@ public model Quintuple<T, U, V, W, X>
         //     .add(this.c.toStr())
         //     .add(this.d.toStr())
         //     .add(this.e.toStr())
-        //     .finish();
+        //     .finish()
     }
 
-    public function [NTuple.first]() -> ?T {
-        return some(this.a);
+    public function [NTuple.first] -> ?T {
+        return some(this.a)
     }
-    public function [NTuple.second]() -> ?U {
-        return some(this.b);
+    public function [NTuple.second] -> ?U {
+        return some(this.b)
     }
-    public function [NTuple.third]() -> ?V {
-        return some(this.c);
+    public function [NTuple.third] -> ?V {
+        return some(this.c)
     }
-    public function [NTuple.fourth]() -> ?W {
-        return some(this.d);
+    public function [NTuple.fourth] -> ?W {
+        return some(this.d)
     }
-    public function [NTuple.fifth]() -> ?X {
-        return some(this.e);
+    public function [NTuple.fifth] -> ?X {
+        return some(this.e)
     }
 }

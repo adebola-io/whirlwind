@@ -1,23 +1,23 @@
-module path;
+module path
 
-use core.io.IoError;
-use core.prelude.{Outcome, Bool, todo, String};
+use super.io.IoError
+use core.prelude.{Outcome, Bool, todo, String}
 
 public model Path {
     new() {
 
     }
     /// Returns true if a path exists.
-    public function exists() -> Bool {
+    public function exists -> Bool {
         todo()
     }
-    public function toAbsolute() -> Outcome<Path, IoError> {
+    public function toAbsolute -> Outcome<Path, IoError> {
         todo()
     }
-    public function extname() -> ?String {
+    public function extname -> ?String {
         todo()
     }
-    public function basename() -> ?String {
+    public function basename -> ?String {
         todo()
     }
 }

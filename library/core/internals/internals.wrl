@@ -8,9 +8,9 @@
 /// _will_ have unintended consequences.
 /// 
 /// If you break anything, it's not my fault.
-module internals;
+module internals
 
 
-public use never.never;
-public use builtin;
-public use injunction.{Injunction, invoke};
+public use never.never
+public use builtin
+public use injunction.{Injunction, invoke}

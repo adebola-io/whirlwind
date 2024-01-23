@@ -1329,10 +1329,9 @@ impl<L: Lexer> Parser<L> {
 
     /// Parses a use path.
     fn use_path(&self) -> Imperfect<UsePath> {
-        if_ended!(
-            expected(TokenType::Operator(SemiColon), self.last_token_span(),),
-            self
-        );
+        if self.token().is_none() {
+            return Partial::from_errors(vec![]);
+        }
 
         let token = self.token().unwrap();
         let mut errors = vec![];
@@ -2573,9 +2572,11 @@ impl<L: Lexer> Parser<L> {
             return_type,
         };
         // If there is no body, it is a function signature.
-        if token._type == TokenType::Operator(SemiColon) {
+        if token._type != TokenType::Bracket(LCurly) {
             let _type = InterfacePropertyType::Signature;
-            self.advance(); // Move past ;
+            if token._type == TokenType::Operator(SemiColon) {
+                self.advance(); // Move past ;
+            }
             return Partial::from_value((signature, _type));
         }
         // Else it is a method.
@@ -2637,10 +2638,15 @@ impl<L: Lexer> Parser<L> {
 
         let mut partial = if self
             .token()
-            .is_some_and(|t| t._type == TokenType::Operator(SemiColon))
+            .is_some_and(|t| t._type == TokenType::Operator(SemiColon) || t._type == TokenType::Bracket(RCurly))
         {
-            let end = self.token().unwrap().span.end;
-            self.advance(); // move past ;
+            let end = if self.token().unwrap()._type == TokenType::Operator(SemiColon) {
+                let end = self.token().unwrap().span.end;
+                self.advance(); // move past ;
+                end
+            } else {
+                ret_end
+            };
             Partial::from_value(Statement::ReturnStatement(ReturnStatement {
                 value: None,
                 span: Span { start, end },

@@ -1,6 +1,6 @@
-module try;
+module try
 
-use core.prelude.Outcome;
+use core.prelude.Outcome
 
 /// The Try interface allows usage of the `?` operator on expressions
 /// that may have uncertain or error-prone values. It propagates the
@@ -15,15 +15,15 @@ use core.prelude.Outcome;
 /// 
 /// #### First Approach:
 /// ```
-/// use core.math.parseInt;
+/// use core.math.parseInt
 /// 
 /// function parseAndDouble1(numberStr: String) -> Maybe<Int32> {
-///     maybeInteger := parseInt(numberStr);
+///     maybeInteger := parseInt(numberStr)
 ///     if maybeInteger.isNone() {
-///         return none();
+///         return none()
 ///     }
-///     integer := maybeInteger.unwrap();
-///     return some(integer * integer);
+///     integer := maybeInteger.unwrap()
+///     return some(integer * integer)
 /// }
 /// ```
 /// #### Second Approach:
@@ -34,10 +34,10 @@ use core.prelude.Outcome;
 ///     // returned from this function. If the parsing is 
 ///     // successful, then the value is passed to the variable
 ///     // "integer".
-///     integer := parseInt()?; 
-///     return some(integer * integer);
+///     integer := parseInt()? 
+///     return some(integer * integer)
 /// }
 /// ```
 public interface Try<T, U> {
-    function try() -> Outcome<T, U>;
+    function try -> Outcome<T, U>
 }

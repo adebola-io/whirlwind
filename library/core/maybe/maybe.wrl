@@ -1,4 +1,4 @@
-module maybe;
+module maybe
 
 use core.{
     bool.Bool,
@@ -7,16 +7,16 @@ use core.{
     outcome.{ok, err, Outcome},
     string.{Display, String},
     sentinels.{fatal, fatalOnCaller},
-};
+}
 
 /// Creates a `Maybe` with no value.
-public function none<T>() -> ?T {
-    return builtin.maybe.none();
+public function none<T> -> ?T {
+    return builtin.maybe.none()
 }
 
 /// Creates a `Maybe` with an internal value.
 public function some<T>(value: T) -> ?T {
-    return builtin.maybe.some(value);
+    return builtin.maybe.some(value)
 }
 
 /// A value that may or may not exist.
@@ -28,7 +28,7 @@ public model Maybe<T>
     + Try<T, ?never> 
 {
     /// A simple flag for marking existence or non-existence.
-    var _exists: Bool;
+    var _exists: Bool
     /// The internal value.
     /// 
     /// This will point to unintialized memory if 
@@ -37,51 +37,51 @@ public model Maybe<T>
     /// It should **never** be accessed outside of the 
     /// internals of the model, or without first checking the
     /// flag.
-    var value: T;
+    var value: T
     /// Implementation of the Default interface.
-    static function [Default.init]() -> This {
-        return none();
+    static function [Default.init] -> This {
+        return none()
     }
     /// Returns a clone of the Maybe.
     /// ### Usage
     /// ```
-    /// maybeInt := some(42);
-    /// maybeInt2 := maybeInt.clone();
+    /// maybeInt := some(42)
+    /// maybeInt2 := maybeInt.clone()
     /// 
-    /// assert(maybeInt2).equals(some(42));
+    /// assert(maybeInt2).equals(some(42))
     /// ```
-    public function [Clonable.clone]|=(T implements Clonable)() -> This {
+    public function [Clonable.clone]|=(T implements Clonable) -> This {
         // if this.isSome() {
-        //     return some(this.value.clone());
+        //     return some(this.value.clone())
         // }
-        return none();
+        return none()
     }
     /// Converts the Maybe to a string.
     /// ### Usage
     /// ```
-    /// maybeInt := some(90);
-    /// assert(maybeInt.toStr()).equals("Maybe.some(90)");
+    /// maybeInt := some(90)
+    /// assert(maybeInt.toStr()).equals("Maybe.some(90)")
     /// 
-    /// maybeInt = none();
-    /// assert(maybeInt.toStr()).equals("Maybe.none");
+    /// maybeInt = none()
+    /// assert(maybeInt.toStr()).equals("Maybe.none")
     /// ```
-    public function [Display.toStr]|=(T implements Display)() -> String {
+    public function [Display.toStr]|=(T implements Display) -> String {
         if this.isNone() {
-            return "Maybe.none";
+            return "Maybe.none"
         }
         core.sentinels.todo()
-        // return String.fmt("Maybe.some(%)").add(this.value).finish();
+        // return String.fmt("Maybe.some(%)").add(this.value).finish()
     }
     /// Implementation of the `Guaranteed` interface.
-    function [Guaranteed.guarantee]() -> T {
-        return this.unwrap();
+    function [Guaranteed.guarantee] -> T {
+        return this.unwrap()
     }
     /// Implementation of the `Try` interface.
-    function [Try.try]() -> Outcome<T, ?never> {
+    function [Try.try] -> Outcome<T, ?never> {
         if this.isSome() {
-            return ok(this.value);
+            return ok(this.value)
         } else {
-            return err(none());
+            return err(none())
         }
     }
     /// Combines two `Maybe` values into one, computing the second from the first,
@@ -99,8 +99,8 @@ public model Maybe<T>
     /// later is the case.
     /// ### Usage
     /// ```
-    /// maybeVal := some("Hello, world!");
-    /// assert(maybeVal.expect("No value in Maybe!!")).equals("Hello, world!");
+    /// maybeVal := some("Hello, world!")
+    /// assert(maybeVal.expect("No value!!")).equals("Hello, world!")
     /// ```
     public function expect(error: String) -> T {
         if this.isNone() { fatal(some(error)) } else { this.value }
@@ -108,41 +108,41 @@ public model Maybe<T>
     /// Returns a Bool indicating if the Maybe contains no value.
     /// ### Usage
     /// ```
-    /// noValue: ?String := none();
-    /// assertThat(noValue.isNone());
+    /// noValue: ?String := none()
+    /// assertThat(noValue.isNone())
     /// 
-    /// stringValue := some("boy");
-    /// assertThat(!stringValue.isNone());
+    /// stringValue := some("boy")
+    /// assertThat(!stringValue.isNone())
     /// ```
-    public function isNone() -> Bool {
+    public function isNone -> Bool {
         this._exists
     }
     /// Returns a Bool indicating whether there is a value contained or not.
     /// ### Usage
     /// ```
-    /// stringValue := some("boy");
-    /// assertThat(stringValue.isSome());
+    /// stringValue := some("boy")
+    /// assertThat(stringValue.isSome())
     /// 
-    /// noValue: ?String := none();
-    /// assertThat(!noValue.isSome());
+    /// noValue: ?String := none()
+    /// assertThat(!noValue.isSome())
     /// ```
-    public function isSome() -> Bool {
+    public function isSome -> Bool {
        !this._exists
     }
     /// Returns a Bool indicating whether there is a value contained, and it
     /// upholds a given predicate.
     /// ### Usage
     /// ```
-    /// predicate := fn(value: Int32) value == 42;
+    /// predicate := fn(value: Int32) value == 42
     /// 
-    /// maybeInt := some(42);
-    /// assertThat(maybeInt.isSomeAnd(predicate));
+    /// maybeInt := some(42)
+    /// assertThat(maybeInt.isSomeAnd(predicate))
     /// 
-    /// maybeInt2 := some(100);
-    /// assertThat(!maybeInt2.isSomeAnd(predicate));
+    /// maybeInt2 := some(100)
+    /// assertThat(!maybeInt2.isSomeAnd(predicate))
     /// 
     /// maybeInt3: ?Int32 := none()
-    /// assertThat(!maybeInt3.isSomeAnd(predicate));
+    /// assertThat(!maybeInt3.isSomeAnd(predicate))
     /// ```
     public function isSomeAnd(predicate: fn(value: T) -> Bool) -> Bool {
         this.isSome() and predicate(this.value)
@@ -150,38 +150,38 @@ public model Maybe<T>
     /// Performs a computation if there is an internal value contained.
     /// ### Usage
     /// ```
-    /// use core.io.fmt;
-    /// maybeValue := some(42);
+    /// use core.io.fmt
+    /// maybeValue := some(42)
     /// 
     /// maybeValue.isSomeThen(fn(value) {
-    ///     message := String.fmt("The value is %").add(value).finish();
-    ///     print(message);
+    ///     message := String.fmt("The value is %").add(value).finish()
+    ///     print(message)
     /// })
     /// ```
     public function isSomeThen(consequent: fn(value: T)) {
         if this.isNone() {
-            return;
-        };
-        consequent(this.value);
+            return
+        }
+        consequent(this.value)
     }
     /// Performs a computation if there is no value contained in the Maybe.
     public function isNoneThen(consequent: fn()) {
-        if this.isNone() { consequent() };
+        if this.isNone() { consequent() }
     }
     /// Returns a Bool indicating whether there is no value, or there is a value and it
     /// upholds a given predicate.
     /// ### Usage
     /// ```
-    /// predicate := fn(value: Int32) value > 5;
+    /// predicate := fn(value: Int32) value > 5
     /// 
-    /// maybeInt := some(10);
-    /// assertThat(maybeInt.isNoneOr(predicate));
+    /// maybeInt := some(10)
+    /// assertThat(maybeInt.isNoneOr(predicate))
     /// 
-    /// maybeInt2: ?Int32 := none();
-    /// assertThat(maybeInt2.isNoneOr(predicate));
+    /// maybeInt2: ?Int32 := none()
+    /// assertThat(maybeInt2.isNoneOr(predicate))
     /// 
-    /// maybeInt3 := some(4);
-    /// assertThat(not maybeInt3.isNoneOr(predicate));
+    /// maybeInt3 := some(4)
+    /// assertThat(not maybeInt3.isNoneOr(predicate))
     /// ```
     public function isNoneOr(predicate: fn(value: T) -> Bool) -> Bool {
         this.isNone() or predicate(this.unwrap())
@@ -198,18 +198,18 @@ public model Maybe<T>
     /// value if there is nothing within.
     /// ### Usage
     /// ```
-    /// use core.math.parseInt;
-    /// parseError := fn Error("Could not parse.");
+    /// use core.math.parseInt
+    /// parseError := fn Error("Could not parse.")
     /// 
-    /// intErr := parseInt("a9s").someOrElse(parseError);
+    /// intErr := parseInt("a9s").someOrElse(parseError)
     /// 
-    /// assert(intErr).equals(err(Error("Could not parse.")));
+    /// assert(intErr).equals(err(Error("Could not parse.")))
     /// ```
-    public function someOrElse<E>(error: fn() -> E) -> Outcome<T, E> {
+    public function someOrElse<E>(error: fn -> E) -> Outcome<T, E> {
         if this.isNone() { err(error()) } else { ok(this.value) }
     }
     /// Combines two intermediate values
-    public function orElse(alternate: fn() -> ?T) -> ?T {
+    public function orElse(alternate: fn -> ?T) -> ?T {
         if this.isSome() { this } else { alternate() }
     }
     /// Ignores the maybe and returns the internal value. 
@@ -217,73 +217,73 @@ public model Maybe<T>
     /// <!--ignore-->
     /// ### Usage
     /// ```
-    /// numValue := some(89);
-    /// assert(numValue.unwrap()).equals(89);
+    /// numValue := some(89)
+    /// assert(numValue.unwrap()).equals(89)
     /// ```
     /// <!--ignore-->
     /// ```
-    /// noValue: ?Number = none();
-    /// noValue.unwrap(); // Will panic with an error.
+    /// noValue: ?Number = none()
+    /// noValue.unwrap() // Will panic with an error.
     /// ```
     /// ### Panics
     /// It panics if called on a `Maybe` with no value.
-    public function unwrap() -> T {
+    public function unwrap -> T {
         if this.isNone() {
             fatalOnCaller("Called Unwrap on a Maybe with no value.")
         }
-        return this.value;
+        return this.value
     }
     /// Returns the internal value, or another given value.
     public function unwrapOr(value: T) -> T {
         if this.isNone() { value } else { this.value }
     }
     /// Returns the internal value, or computes another given value.
-    public function unwrapOrElse(fallback: fn() -> T) -> T {
+    public function unwrapOrElse(fallback: fn -> T) -> T {
         if this.isNone() { fallback() } else { this.value }
     }
     /// Converts a `Maybe<T>` to a `Maybe<E>` by applying a transformation function.
     /// ### Usage
     /// ```
-    /// double := fn(x: Number) x * 2;
+    /// double := fn(x: Number) x * 2
     /// 
-    /// first := some(9).map(double);
-    /// assert(first.unwrap()).equals(18);
+    /// first := some(9).map(double)
+    /// assert(first!).equals(18)
     /// 
-    /// second: ?Number := none().map(double);
-    /// assertThat(double.isNone());
+    /// second: ?Number := none().map(double)
+    /// assertThat(double.isNone())
     /// ```
     public function map<U>(transform: fn(former: T) -> U) -> ?U {
         some(transform(this?))
     } 
     public function xor(other: ?T) -> ?T {
         if this.isSome() and other.isNone() {
-            return this;
+            return this
         }
         if this.isNone() and other.isSome() {
-            return other;
+            return other
         }
-        return none();
+        return none()
     }
     /// Unwraps a Maybe and returns its internal value if it exists.
     /// 
     /// If it does not, it returns the default value of the internal type.
     /// ### Usage
     /// ```
-    /// i := some(50);
-    /// assert(i.unwrapOrDefault()).equals(50);
+    /// i := some(50)
+    /// assert(i.unwrapOrDefault()).equals(50)
     /// 
-    /// j: ?Int32 := none();
-    /// assert(j.unwrapOrDefault()).equals(0); // default value for Int32.
+    /// j: ?Int32 := none()
+    /// assert(j.unwrapOrDefault()).equals(0) // default value for Int32.
     //  ```
-    public function unwrapOrDefault|=(T implements Default)() -> T {
+    public function unwrapOrDefault|=(T implements Default) -> T {
         // if this.isNone() {
-        //     var default: T;
-        //     return default;
+        //     var default: T
+        //     return default
         // } 
-        return this.value;
+        return this.value
     }
     /// Tranforms a `Maybe<Maybe<T>>` to a `Maybe<T>`.
-    public function flatten<U>|=(T is ?U)() -> ?U {
+    public function flatten<U>|=(T is ?U) -> ?U {
         core.sentinels.todo()
         // if this.isNone() { none() } else { this.value }
     }

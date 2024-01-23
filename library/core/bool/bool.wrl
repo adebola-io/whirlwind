@@ -1,12 +1,12 @@
 /// Contains the primitive `Bool` model for representing
 /// boolean values.
-module bool;
+module bool
 
 use core.{
     maybe.{some, none},
     interfaces.{Clonable, Default},
     string.{Display, FromStr, String}
-};
+}
 
 /// A representation of boolean values, `true` or `false`.
 public model Bool 
@@ -15,15 +15,15 @@ public model Bool
     + Clonable
     + FromStr 
 {
-    public function [Clonable.clone]() -> This {
-        return this; // boolean values are copied by default.
+    public function [Clonable.clone] -> This {
+        return this // boolean values are copied by default.
     }
 
-    static function [Default.init]() -> This {
-        return false;
+    static function [Default.init] -> This {
+        return false
     }
 
-    public function [Display.toStr]() -> String {
+    public function [Display.toStr] -> String {
         if this { "true" } else "false"
     }
 
@@ -35,22 +35,15 @@ public model Bool
     /// Creates a `Maybe<T>` based on the value.
     /// ### Usage
     /// ```
-    /// operationSuccessful := true;
-    /// message := fn "Operation successful!";
+    /// operationSuccessful := true
+    /// message := fn "Operation successful!"
     /// 
-    /// optionalMessage := operationSuccessful.ifTrue(message);
+    /// optionalMessage := operationSuccessful.ifTrue(message)
     /// 
-    /// assertThat(optionalMessage.isSome());
+    /// assertThat(optionalMessage.isSome())
     /// ```
-    public function ifTrue<T>(consequent: fn() -> T) -> ?T {
+    public function ifTrue<T>(consequent: fn -> T) -> ?T {
         if this { some(consequent()) } else { none() }
     }
 }
 
-
-
-test "" {
-    function convertToString<T implements FromStr>(value: T) {
-        T.fromStr(value)
-    }
-}

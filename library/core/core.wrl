@@ -4,24 +4,24 @@
 /// 
 /// The Core library is made up of utility functions and methods that streamline common programming tasks,
 /// ranging from string manipulation and arrays to networking and file system handling.
-module core;
+module core
 
-public use array;
-public use bool;
-public use collections;
-public use concurrent;
-public use data;
-public use interfaces;
-public use internals;
-public use iterate;
-public use math;
-public use maybe;
-public use memory;
-public use numeric;
-public use ops;
-public use outcome;
-public use prelude;
-public use sentinels;
-public use string;
-public use testing;
-public use time;
+public use array
+public use bool
+public use collections
+public use concurrent
+public use data
+public use interfaces
+public use internals
+public use iterate
+public use math
+public use maybe
+public use memory
+public use numeric
+public use ops
+public use outcome
+public use prelude
+public use sentinels
+public use string
+public use testing
+public use time
