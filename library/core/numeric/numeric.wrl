@@ -2,7 +2,7 @@ module numeric
 
 use core.{
     bool.Bool,
-    interfaces.{Default, Clonable},
+    interfaces.Default,
     ops.{
         Addition, Sequenced, Subtraction, 
         Multiplication, Division, Orderable,
@@ -23,7 +23,6 @@ public model Int32
         + Default 
         + Orderable 
         + FromStr
-        + Clonable
 {
     /// Returns true if the value is less than 0.
     /// ### Usage
@@ -48,7 +47,6 @@ public model Int64
         + Default 
         + Orderable 
         + FromStr
-        + Clonable
 {
     /// Returns true if the value is less than 0.
     /// ### Usage

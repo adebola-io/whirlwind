@@ -3,7 +3,6 @@ module set
 use core.{
     bool.Bool,
     iterate.{AsIterator, Iteratable},
-    interfaces.Clonable,
     numeric.Int32,
     sentinels.todo,
     string.{Display, String}
@@ -21,7 +20,6 @@ public model SetIterator<T> implements Iteratable<T> {
 /// of unique elements, akin to the mathematical concept of a set.
 public model Set<T implements Hash> 
     implements AsIterator<T, SetIterator<T>> 
-    + Clonable|=(T implements Clonable)
     + Display|=(T implements Display)
     + Hash
 {
@@ -35,9 +33,6 @@ public model Set<T implements Hash>
     }
 
     public function [AsIterator.iter] -> SetIterator<T> {
-        todo()
-    }
-    public function [Clonable.clone]|=(T implements Clonable) -> This {
         todo()
     }
     public function [Display.toStr]|=(T implements Display) -> String {

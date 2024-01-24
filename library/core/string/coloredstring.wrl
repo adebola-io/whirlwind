@@ -8,8 +8,6 @@ use display.Display
 
 /// A string intended for display on a terminal, 
 /// that may have custom colors and styles applied to it.
-/// ### Constructor Arguments.
-/// - @param (text?: String) The string to display.
 public model ColoredString implements Display {
     public var text: String
     var codes: []Int32

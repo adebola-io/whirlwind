@@ -2,7 +2,7 @@ module outcome
 
 use core.{
     bool.Bool,
-    interfaces.{Try, Guaranteed, Clonable},
+    interfaces.{Try, Guaranteed},
     internals.{never, builtin},
     maybe.{none, some},
     sentinels.{fatalOnCaller, todo},
@@ -25,20 +25,13 @@ use core.{
 /// 
 /// It presents a way to handle errors predictably.
 public model Outcome<T, E> 
-    implements Clonable|=(T implements Clonable)
-    + Display|=(T implements Display)
+    implements Display|=(T implements Display)
     + Guaranteed<T> 
     + Try<T, Outcome<never, E>> 
 {
     /// Flag representing the type of outcome.
     var flag: OutcomeType
 
-    public function [Clonable.clone]|=(T implements Clonable) -> This {
-        if this.isOk() {
-            return ok(builtin.outcome.unwrap(this))
-        }
-        return err(builtin.outcome.unwrapError(this))
-    }
     public function [Display.toStr]|=(T implements Display) -> String {
         if this.isOk() {
             value := builtin.outcome.unwrap(this)

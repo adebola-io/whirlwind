@@ -2,7 +2,7 @@ module maybe
 
 use core.{
     bool.Bool,
-    interfaces.{Guaranteed, Try, Default, Clonable},
+    interfaces.{Guaranteed, Try, Default},
     internals.{builtin, never},
     outcome.{ok, err, Outcome},
     string.{Display, String},
@@ -21,8 +21,7 @@ public function some<T>(value: T) -> ?T {
 
 /// A value that may or may not exist.
 public model Maybe<T> 
-    implements Clonable|=(T implements Clonable)
-    + Default
+    implements Default
     + Display|=(T implements Display)
     + Guaranteed<T> 
     + Try<T, ?never> 
@@ -40,20 +39,6 @@ public model Maybe<T>
     var value: T
     /// Implementation of the Default interface.
     static function [Default.init] -> This {
-        return none()
-    }
-    /// Returns a clone of the Maybe.
-    /// ### Usage
-    /// ```
-    /// maybeInt := some(42)
-    /// maybeInt2 := maybeInt.clone()
-    /// 
-    /// assert(maybeInt2).equals(some(42))
-    /// ```
-    public function [Clonable.clone]|=(T implements Clonable) -> This {
-        // if this.isSome() {
-        //     return some(this.value.clone())
-        // }
         return none()
     }
     /// Converts the Maybe to a string.

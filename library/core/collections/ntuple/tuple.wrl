@@ -2,20 +2,14 @@ module tuple
 
 use ntuple.NTuple
 use core.string.{Display, String}
-use core.interfaces.Clonable
 use core.maybe.some
 use core.ops.Addition
 use core.sentinels.todo
 
 /// A simple ordered pair of items. Elements within a tuple can be of any type,
 /// and the order in which they are defined is preserved.
-/// 
-/// ### Constructor Parameters.
-/// - a : The first item in the pair.
-/// - b : The second item in the pair.
 public model Tuple<T, U> 
-    implements Clonable|=(T implements Clonable and U implements Clonable)
-    + Display|=(T implements Display and U implements Display)
+    implements Display|=(T implements Display and U implements Display)
     + NTuple<T, U> 
 {
     public var a: T
@@ -26,15 +20,6 @@ public model Tuple<T, U>
         this.b = second
     }
 
-    public function [Clonable.clone]|=(
-        T implements Clonable and U implements Clonable
-    ) -> This {
-        todo()
-        // return Tuple(
-        //     this.a.clone(),
-        //     this.b.clone()
-        // )
-    }
     /// Converts the tuple to a string, provided that its elements implement
     /// Display.
     /// ### Usage

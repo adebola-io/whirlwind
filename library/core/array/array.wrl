@@ -4,7 +4,7 @@ module array
 
 use core.{
     bool.Bool,
-    interfaces.{Clonable, Default},
+    interfaces.Default,
     iterate.{AsIterator, Iteratable, Reversed},
     // math.{max, min},
     maybe.{none, some},
@@ -17,7 +17,6 @@ use core.{
 /// A contiguous, growable list of items of the same type.
 public model Array<T> 
     implements AsIterator<T, ArrayIter<T>> 
-        + Clonable|=(T implements Clonable)
         + Default 
         + Display|=(T implements Display)
 {
@@ -36,23 +35,6 @@ public model Array<T>
     /// ```
     public function [AsIterator.iter] -> ArrayIter<T> {
         ArrayIter(this)
-    }
-    /// Creates and returns a deep clone of an array.
-    /// ### Usage
-    /// ```
-    /// arr := ["meet", "me", "at", "midnight"]
-    /// cloned := arr.clone()
-    /// 
-    /// assert(cloned).equals(arr)
-    /// ```
-    public function [Clonable.clone]|=(T implements Clonable) -> This {
-        newArray := []
-        i := 0
-        while i < this.len {
-        //     newArray.push(this[i].clone())
-            i += 1
-        }
-        return newArray
     }
     /// Implementation of the default trait.
     /// ### Usage

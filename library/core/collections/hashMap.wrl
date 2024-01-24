@@ -2,7 +2,7 @@ module hashMap
 
 use core.{
     sentinels.todo,
-    interfaces.{Clonable, Default}, 
+    interfaces.Default, 
     iterate.{AsIterator, Iteratable},
     numeric.Int32,
 }
@@ -18,7 +18,6 @@ public interface ToMap<K implements Hash, V> {
 
 public model HashMap<K implements Hash, V> 
     implements AsIterator<Tuple<K, V>, HashMapIteratable<K, V>> 
-    + Clonable|=(K implements Clonable and V implements Clonable)
     + Default
 {
     new(){}
@@ -28,9 +27,6 @@ public model HashMap<K implements Hash, V>
     }
     static function [Default.init] -> This {
         return HashMap()
-    }
-    public function [Clonable.clone]|=(K implements Clonable and V implements Clonable) -> This {
-        todo()
     }
     /// Inserts a key-value pair into the hashmap.
     /// 

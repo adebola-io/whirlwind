@@ -29,8 +29,7 @@ public use core.{
     collections.{Tuple, pair},
     concurrent.{Eventual, Prospect, toSync},
     interfaces.{
-        Default, Clonable,
-        Guaranteed, Try
+        Default, Guaranteed, Try
     },
     iterate.{Iteratable, AsIterator},
     maybe.{none, some, Maybe},
