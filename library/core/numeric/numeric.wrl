@@ -91,5 +91,10 @@ public model Float64
     // Compiler built in.
 }
 
+/// A union type for integers.
+public type Int = Int32 | Int64
+/// A union type for floats.
+public type Float = Float32 | Float64
+
 /// A union data type to represent a number.
-public type Number = Int32 | Float32 | Int64 | Float64
+public type Number = Int | Float

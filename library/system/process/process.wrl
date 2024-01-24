@@ -19,7 +19,7 @@ public model Error {
 /// Returns a string value corresponding to the path of the current working directory.
 /// ### Usage
 /// ```
-/// currentDir := core.process.cwd()
+/// currentDir := system.process.cwd()
 /// print("The current directory is " + currentDir)
 /// ```
 public function cwd -> String {
@@ -31,3 +31,5 @@ public function waitThen(callback: fn(), timeout: Int32) {
     CurrentSequence.sleep(timeout)
     callback()
 }
+
+

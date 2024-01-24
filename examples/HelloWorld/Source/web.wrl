@@ -3,7 +3,7 @@ module web
 
 use tangent.{
     actions, button, constraint, horizontalView, renderStatic, stateful, 
-    StateStore, style.{style, Layout}, text, verticalView, View
+    StateStore, style.{style, Layout}, text, verticalView, view.View
 }
 
 function appButtonRow -> View {

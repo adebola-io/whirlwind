@@ -133,6 +133,12 @@ public interface Iteratable<I> {
     public function map<O>(transformer: fn(value: I) -> O) -> Map<I, O, This> {
         return Map(this, transformer)
     }
+    public function filterMap<O>(predicate: fn(value: I) -> ?O) -> Filter<O, This> {
+        todo()
+    }
+    public function findMap<O>(predicate: fn(value: I) -> ?O) -> ?O {
+        todo()
+    }
     /// Checks if any of the elements produced by the iterator matches a predicate.
     /// 
     /// The method is shortcircuiting, therefore if there are elements left 

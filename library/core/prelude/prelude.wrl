@@ -34,7 +34,9 @@ public use core.{
     },
     iterate.{Iteratable, AsIterator},
     maybe.{none, some, Maybe},
-    numeric.{Number, Int32, Int64, Float32, Float64},
+    numeric.{
+        Number, Int32, Int, Float, Int64, Float32, Float64
+    },
     outcome.{ok, err, Outcome},
     ops.Range,
     sentinels.{todo, fatal},

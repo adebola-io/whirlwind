@@ -212,7 +212,10 @@ pub enum TypeErrorType {
     NonPureGlobal,
     ReturnFromConstructor,
     UsingAttributeBeforeAssign,
-    UnassignedAttribute, // InfiniteType,
+    UnassignedAttribute {
+        name: String,
+    },
+    // InfiniteType,
     UninferrableVariable {
         name: String,
     },
@@ -687,9 +690,9 @@ pub fn using_attribute_before_assign(span: ast::Span) -> TypeError {
     }
 }
 
-pub fn unassigned_attribute(span: ast::Span) -> TypeError {
+pub fn unassigned_attribute(name: String, span: ast::Span) -> TypeError {
     TypeError {
-        _type: TypeErrorType::UnassignedAttribute,
+        _type: TypeErrorType::UnassignedAttribute { name },
         span,
     }
 }

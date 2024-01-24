@@ -21,6 +21,8 @@ pub struct SymbolLibrary {
     // Numeric intrinsic values.
     pub float32: Option<SymbolIndex>,
     pub float64: Option<SymbolIndex>,
+    pub int: Option<SymbolIndex>,
+    pub float: Option<SymbolIndex>,
     pub int32: Option<SymbolIndex>,
     pub int64: Option<SymbolIndex>,
     pub bigint: Option<SymbolIndex>,

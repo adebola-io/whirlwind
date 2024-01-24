@@ -76,6 +76,9 @@ public model Style {
     public function bgColor(color: String) -> This {
         todo()
     }
+    public function fillScreen -> This {
+        todo()
+    }
 }
 
 /// Creates a new style object.

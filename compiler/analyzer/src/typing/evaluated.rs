@@ -422,6 +422,14 @@ impl EvaluatedType {
     pub fn is_function_expression_instance(&self) -> bool {
         matches!(self, Self::FunctionExpressionInstance { .. })
     }
+
+    /// Returns `true` if the evaluated type is [`OpaqueTypeInstance`].
+    ///
+    /// [`OpaqueTypeInstance`]: EvaluatedType::OpaqueTypeInstance
+    #[must_use]
+    pub fn is_opaque_type_instance(&self) -> bool {
+        matches!(self, Self::OpaqueTypeInstance { .. })
+    }
 }
 
 /// Converts an intermediate type into an evaluation.
@@ -521,16 +529,18 @@ pub fn evaluate(
                 } => {
                     let generic_arguments = get_generics(generic_params);
                     // to prevent excessive evaluations, return the inferred type if it has already been computed.
-                    if !inferred_type.is_unknown() {
-                        return inferred_type.clone();
-                    }
-                    let mut value_typ = evaluate(
-                        value,
-                        symbollib,
-                        Some(&generic_arguments),
-                        error_tracker,
-                        recursion_depth,
-                    );
+                    let mut value_typ = if !inferred_type.is_unknown() {
+                        inferred_type.clone()
+                    } else {
+                        evaluate(
+                            value,
+                            symbollib,
+                            Some(&generic_arguments),
+                            error_tracker,
+                            recursion_depth,
+                        )
+                    };
+                    // Persist type aliases.
                     if let EvaluatedType::OpaqueTypeInstance { aliased_as, .. } = &mut value_typ {
                         *aliased_as = Some(idx);
                     };
@@ -716,6 +726,15 @@ pub fn evaluate(
                                                 None,
                                             )
                                             .is_ok()
+                                            && {
+                                                /* The Default interface is not available to opaque types,
+                                                    because an opaque type wont be able to determine which init()
+                                                    function to call.
+                                                */
+                                                symbollib
+                                                    .default
+                                                    .is_some_and(|default| default != *first)
+                                            }
                                     }
                                     _ => false,
                                 }

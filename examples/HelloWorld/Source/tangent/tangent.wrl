@@ -1,9 +1,19 @@
 module tangent;
 
 
-public use basics.{button, text};
+public use basic.{button, text};
 public use style;
 public use events;
 public use view;
 public use actions;
 
+
+public function horizontalView -> view.View {
+    view.View()
+        .style(style.style().layout(style.Layout.Horizontal))
+}
+
+public function verticalView -> view.View {
+    view.View()
+        .style(style.style().layout(style.Layout.Vertical))
+}

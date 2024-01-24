@@ -36,7 +36,7 @@ function calculator(operation: Operation, a: Number, b: Number) -> Number {
     } else if operation == Operation.Minus {
         a * b
     } else {
-        a % b
+        a / b
     };
     todo()
 }
@@ -46,12 +46,26 @@ function isPalindrome(str: String) -> Bool {
     return str == str.reverse()
 }
 
-// var EvenSquares = fn(numbers: []Number) numbers.Iter().Filter(fn(num) num % 2 == 0).Map(fn(num) num ^ 2);
+var evenSquares = 
+    fn(numbers: []Int) 
+        numbers
+            .iter()
+            .filter(fn(num) num % 2 == 0)
+            .map(fn(num) num ^ 2)
+            .collect()
+
 
 /// Returns the nth Fibonacci number.
 function fibonacci(n: Number) -> Number {
     if n == 0 { return 0 } 
     if n == 1 { return 1 } 
-    return fibonacci(n - 1) + fibonacci(n - 2);
+    return fibonacci(n - 1) + fibonacci(n - 2)
 }
+
+/// Extracts the last names from a list.
+function lastNames(names: []String) -> []String {
+   names.iter().filterMap(fn(name) name.split(' ').at(-1)).collect()
+}
+
+
 

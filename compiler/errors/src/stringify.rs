@@ -93,7 +93,7 @@ impl std::fmt::Display for TypeErrorType {
         TypeErrorType::NonPureGlobal => format!("Expression with possible side effects are not allowed in global scope."),
         TypeErrorType::ReturnFromConstructor => format!("Model constructors do not expect a return value."),
         TypeErrorType::UsingAttributeBeforeAssign => format!("Attribute is being used before it is assigned."),
-        TypeErrorType::UnassignedAttribute => format!("Attribute is not assigned a definitive initial value in the constructor."),
+        TypeErrorType::UnassignedAttribute { name } => format!("Attribute must be definitely assigned in the constructor, because the type {name} does not implement Default."),
         TypeErrorType::UninferrableVariable {name} => format!("Cannot fully infer the type of {name}. Consider adding type annotations."),
         TypeErrorType::InvalidSize { error } => error.clone(),
         TypeErrorType::ThisInStaticMethod => format!("The 'this' identifier cannot be used in a static method."),

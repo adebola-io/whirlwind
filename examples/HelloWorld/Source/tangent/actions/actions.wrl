@@ -11,6 +11,7 @@ public interface Actionable {
 public enum ActionKind {
     Increment,
     Decrement,
+    SetTitle
 }
 
 public function actionKindToString(kind: ActionKind) -> String {
@@ -63,4 +64,9 @@ public function increment(name: String, count?: Int32) -> Action {
 /// ```
 public function decrement(name: String, count?: Int32) -> Action {
     Action(ActionKind.Decrement, some(count.unwrapOr(1).toStr()), some(name))
+}
+
+/// Creates a state updata action that changes the title of a container view.
+public function setTitle(title: String) -> Action {
+    Action(ActionKind.SetTitle, none(), some(title))   
 }

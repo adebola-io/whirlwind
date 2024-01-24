@@ -476,22 +476,27 @@ fn typecheck_model_constructor(
                 }
             } else {
                 // If the attribute type implements Default, it can be omitted,
-                // but only if the attribute type is not generic.
+                // but only if the attribute type is neither opaque nor generic.
+                // Opaque types cannot implement Default, by definition, so only generics are checked.
                 let mut failed = true;
+                let mut evaluated_type = EvaluatedType::Unknown;
                 if let SemanticSymbolKind::Attribute { declared_type, .. } = &attribute_symbol.kind
                 {
                     if let Some(default) = symbollib.default {
-                        let eval_type = evaluate(declared_type, symbollib, None, &mut None, 0);
-                        if !eval_type.is_generic()
-                            && get_implementation_of(default, &eval_type, symbollib).is_some()
+                        evaluated_type = evaluate(declared_type, symbollib, None, &mut None, 0);
+                        if !evaluated_type.is_generic()
+                            && get_implementation_of(default, &evaluated_type, symbollib).is_some()
                         {
                             failed = false;
                         }
                     }
                 }
                 if failed {
-                    checker_ctx
-                        .add_diagnostic(errors::unassigned_attribute(attribute_symbol.origin_span));
+                    let name = symbollib.format_evaluated_type(&evaluated_type);
+                    checker_ctx.add_diagnostic(errors::unassigned_attribute(
+                        name,
+                        attribute_symbol.origin_span,
+                    ));
                 }
             }
         }

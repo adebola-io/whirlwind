@@ -65,4 +65,4 @@ A few of the total optimizations slated for codegen in the WASM compiler will al
 -  Only statements with a possible side effect will be run. i.e. literals and single identifier statements will be ignored.
 -  Constants are folded into single expression literals.
 -  RHS expressions and expression statements that evaluate to `never` should cause every subsequent statement in the current block to be ignored.
--  If a statement is a variable declaration with only
+-  If a statement is a variable declaration with only one reference, it is

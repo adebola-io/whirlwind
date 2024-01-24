@@ -75,11 +75,11 @@ public model ArrayStack<T> {
     }
     /// Returns the capacity of the stack.
     public function capacity -> Int32 {
-        this._capacity
+        return this._capacity
     }
     /// Returns the size of the stack.
     public function size -> Int32 {
-        this.items.length()
+        return this.items.length()
     }   
 }
 

@@ -119,8 +119,12 @@ pub fn is_numeric_type(evaluated_type: &EvaluatedType, symbollib: &SymbolLibrary
             symbollib.float32,
         ].iter().filter_map(|sym| *sym).any(|sym| sym == *model)
     ) || matches!(
-        evaluated_type, EvaluatedType::OpaqueTypeInstance {aliased_as, ..}
-        if symbollib.number.as_ref() == aliased_as.as_ref()
+        evaluated_type, EvaluatedType::OpaqueTypeInstance { aliased_as, .. }
+        if [
+            symbollib.number,
+            symbollib.float,
+            symbollib.int
+        ].iter().any(|opaque| opaque.as_ref() == aliased_as.as_ref())
     )
 }
 
