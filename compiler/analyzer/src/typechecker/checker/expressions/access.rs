@@ -1,5 +1,7 @@
 use ast::unwrap_or_continue;
 
+use crate::evaluate_type_clause;
+
 use super::*;
 
 /// Typechecks an access expression.
@@ -417,14 +419,6 @@ pub fn search_for_property(
                 property_span,
             ))
         }
-        // get mutably and resolve.
-        let property_symbol = symbollib.get_mut(property_symbol_idx).unwrap();
-        if let SemanticSymbolKind::Property { resolved, .. } = &mut property_symbol.kind {
-            *resolved = Some(method)
-        }
-        // Add reference on source.
-        let method_symbol = symbollib.get_mut(method).unwrap();
-        method_symbol.add_reference(checker_ctx.path_idx, property_span);
         // Block non-public access.
         if !method_symbol.kind.is_public() && checker_ctx.enclosing_model_or_interface != Some(base)
         {
@@ -432,6 +426,25 @@ pub fn search_for_property(
                 method_symbol.name.clone(),
                 property_span,
             ));
+        }
+        // Block methods with failing constraints.
+        let base_symbol = unwrap_or_continue!(symbollib.get(base));
+        let method_symbol = unwrap_or_continue!(symbollib.get(method));
+        if let SemanticSymbolKind::Method {
+            constraint: Some((clause, _)),
+            ..
+        } = &method_symbol.kind
+        {
+            let clause_is_true =
+                evaluate_type_clause(clause, symbollib, Some(&generic_args), &mut None, 0)
+                    .unwrap_or_default();
+            if !clause_is_true {
+                checker_ctx.add_error(errors::failing_clause(
+                    base_symbol.name.clone(),
+                    method_symbol.name.clone(),
+                    property_span,
+                ));
+            }
         }
         // Block access in constructor.
         if checker_ctx
@@ -442,6 +455,14 @@ pub fn search_for_property(
         {
             checker_ctx.add_error(errors::method_in_constructor(property_span));
         }
+        // get mutably and resolve.
+        let property_symbol = symbollib.get_mut(property_symbol_idx).unwrap();
+        if let SemanticSymbolKind::Property { resolved, .. } = &mut property_symbol.kind {
+            *resolved = Some(method)
+        }
+        // Add reference on source.
+        let method_symbol = symbollib.get_mut(method).unwrap();
+        method_symbol.add_reference(checker_ctx.path_idx, property_span);
         return Some(EvaluatedType::MethodInstance {
             method,
             generic_arguments: generic_args,

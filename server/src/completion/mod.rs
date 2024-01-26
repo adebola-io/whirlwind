@@ -1,9 +1,9 @@
 #![allow(unused)]
 use crate::message_store::MessageStore;
 use analyzer::{
-    evaluate, span_of_typed_expression, span_of_typed_statement, utils::coerce, EvaluatedType,
-    SemanticSymbolKind, Standpoint, SymbolIndex, TypedExpression, TypedInterfacePropertyType,
-    TypedModelPropertyType, TypedModule, TypedStmnt,
+    evaluate, evaluate_type_clause, span_of_typed_expression, span_of_typed_statement,
+    utils::coerce, EvaluatedType, SemanticSymbolKind, Standpoint, SymbolIndex, TypedExpression,
+    TypedInterfacePropertyType, TypedModelPropertyType, TypedModule, TypedStmnt,
 };
 use ast::{maybe, Span};
 use pretty::SymbolWriter;
@@ -78,9 +78,6 @@ impl<'a> CompletionFinder<'a> {
             EvaluatedType::Partial { types } => {
                 return self.complete_from_dot(types.first()?.clone(), completion_type)
             }
-            EvaluatedType::ModelInstance { model, .. } => {
-                self.complete_instance_access(completion_type, model, &writer, &mut completions)?;
-            }
             EvaluatedType::Model(owner) | EvaluatedType::Interface(owner) => {
                 self.complete_model_or_interface_static_access(owner, &writer, &mut completions)?;
             }
@@ -108,9 +105,10 @@ impl<'a> CompletionFinder<'a> {
             EvaluatedType::Module(module) => {
                 self.complete_module_access(module, completion_type, writer, &mut completions)?;
             }
-            EvaluatedType::InterfaceInstance { interface_, .. } => self.complete_instance_access(
+            EvaluatedType::ModelInstance { .. } | EvaluatedType::InterfaceInstance { .. } => self
+                .complete_instance_access(
                 completion_type,
-                interface_,
+                inferred_type,
                 &writer,
                 &mut completions,
             )?,
@@ -181,14 +179,9 @@ impl<'a> CompletionFinder<'a> {
                     })
                 }
                 for implementation in available_interfaces {
-                    self.message_store.borrow_mut().inform("Writing implsss");
-                    let owner = match implementation {
-                        EvaluatedType::InterfaceInstance { interface_, .. } => interface_,
-                        _ => continue,
-                    };
                     self.complete_instance_access(
                         completion_type,
-                        owner,
+                        implementation,
                         &writer,
                         &mut completions,
                     );
@@ -320,14 +313,27 @@ impl<'a> CompletionFinder<'a> {
         )
     }
 
-    /// Complete a model or interfaceface instance, followed by a dot.
+    /// Complete a model or interface instance, followed by a dot.
     fn complete_instance_access(
         &self,
         completion_type: DotCompletionType,
-        owner: SymbolIndex,
+        owner: EvaluatedType,
         writer: &SymbolWriter<'_>,
         completions: &mut Vec<CompletionItem>,
     ) -> Option<()> {
+        let (owner, generic_args) = match owner {
+            EvaluatedType::ModelInstance {
+                model: owner,
+                is_invariant,
+                generic_arguments,
+            }
+            | EvaluatedType::InterfaceInstance {
+                interface_: owner,
+                is_invariant,
+                generic_arguments,
+            } => (owner, generic_arguments),
+            _ => return None,
+        };
         let symbollib = &self.standpoint.symbol_library;
         if matches!(completion_type, DotCompletionType::Half) {
             return None;
@@ -371,6 +377,19 @@ impl<'a> CompletionFinder<'a> {
                     is_invariant: false,
                 }),
             );
+            /// Prevent methods with failing constraints from showing up.
+            if let SemanticSymbolKind::Method {
+                constraint: Some((clause, _)),
+                ..
+            } = &symbol.kind
+            {
+                let clause_is_true =
+                    evaluate_type_clause(clause, symbollib, Some(&generic_args), &mut None, 0)
+                        .unwrap_or_default();
+                if !clause_is_true {
+                    continue;
+                }
+            }
             // Prevent redundant duplicate completions.
             if completions.iter().any(|item| item.label == label) {
                 continue;
@@ -401,11 +420,7 @@ impl<'a> CompletionFinder<'a> {
         .map(|int_type| evaluate(int_type, symbollib, None, &mut None, 0))
         .filter(|eval_typ| eval_typ.is_interface_instance());
         for implementation in implementations {
-            let owner = match implementation {
-                EvaluatedType::InterfaceInstance { interface_, .. } => interface_,
-                _ => continue,
-            };
-            self.complete_instance_access(completion_type, owner, writer, completions);
+            self.complete_instance_access(completion_type, implementation, writer, completions);
         }
         let attributes = match &owner_symbol.kind {
             SemanticSymbolKind::Model { attributes, .. } => attributes,

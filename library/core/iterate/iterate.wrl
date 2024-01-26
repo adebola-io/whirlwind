@@ -338,21 +338,6 @@ public interface Iterable<I> {
     public function skip(n: Int32) -> Skip<I, This> {
         return Skip(this, n)
     }
-    /// Specifies a side-effect that should run once the iterator stops producing elements.
-    /// 
-    /// The side effect is run _if the iterator is called after the last element is yielded_.
-    /// ### Usage
-    /// ```
-    /// fruits := ["blueberry", "mango", "pawpaw"]
-    /// iter := fruits.iter().onEnd(fn {
-    ///     print(String.fmt("There are % fruits").add(fruits.length()))    
-    /// })
-    /// iter.collect() 
-    /// 
-    /// ```
-    public function onEnd(callback: fn()) -> OnEnd<I, This> {
-        return OnEnd(this, callback)
-    }
     /// Joins two iterators together .i.e. It starts producing values from the second iterator
     /// once the first runs out (provided they return values of the same type).
     /// 
@@ -367,9 +352,6 @@ public interface Iterable<I> {
     /// ```
     public function chain<That implements Iterable<I>>(that: That) -> Chain<I, This, That> {
         return Chain(this, that)
-    }
-    public function flatten<U implements Iterable<V>, V>|=(I implements Iterable<U>) -> U {
-        todo()
     }
 }
 
@@ -525,24 +507,6 @@ public model Skip<I, J implements Iterable<I>> implements Iterable<I> {
     }
 }
 
-public model OnEnd<I, J implements Iterable<I>> implements Iterable<I> {
-    var iterator: J
-    var callback: fn()
-    var ended: Bool
-    new(iterator: J, callback: fn()) {
-        this.iterator = iterator
-        this.callback = callback
-        this.ended = false
-    }
-    public function [Iterable.next] -> ?I {
-        nextItem := this.iterator.next()
-        if nextItem.isNone() and !this.ended {
-            this.callback()
-            this.ended = true
-        }
-        return nextItem
-    }
-}
 
 public model Chain
     <I, J implements Iterable<I>, K implements Iterable<I>> 

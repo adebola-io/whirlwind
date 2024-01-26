@@ -28,7 +28,6 @@ function quickSortInner<T implements Orderable>(arr: []T, left: Int32, right: In
         while arr[i] < pivot { i += 1 }
         while arr[j] > pivot { j -= 1 }
         if i <= j {
-            // Swap elements at i and j to partition around pivot.
             temp := arr[j]
             arr[j] = arr[i]
             arr[i] = temp
@@ -43,4 +42,25 @@ function quickSortInner<T implements Orderable>(arr: []T, left: Int32, right: In
 /// Implementation of the MergeSort algorithm in Whirlwind.
 public function mergeSort<T implements Orderable>(array: []T) {
     core.sentinels.todo()
+}
+
+/// Performs an merging sort on a given array. 
+/// ### Usage
+/// ```
+/// use core.collections.quickSort
+/// 
+/// arr := [5, 6, 7, 8, 2]
+/// quickSort(arr)
+/// assert(arr).equals([2, 5, 6, 7, 8])
+/// ```
+function mergeArrays<T implements Orderable>(leftArray: []T, rightArray: []T) -> []T {
+    array := []
+    while leftArray.length() > 0 && rightArray.length() > 0 {
+        if leftArray[0] < rightArray[0] {
+            array.push(leftArray.shift()!)
+        } else {
+            array.push(rightArray.shift()!)
+        }
+    }
+    return array + leftArray + rightArray
 }

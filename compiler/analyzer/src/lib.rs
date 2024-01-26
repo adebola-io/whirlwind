@@ -8,7 +8,7 @@ mod standpoint;
 mod surfacearea;
 mod symbollib;
 mod symbols;
-mod typing;
+mod typechecker;
 mod visitor;
 
 pub use binding::*;
@@ -21,5 +21,5 @@ pub use standpoint::*;
 pub use surfacearea::*;
 pub use symbollib::*;
 pub use symbols::*;
-pub use typing::*;
+pub use typechecker::*;
 pub use visitor::*;

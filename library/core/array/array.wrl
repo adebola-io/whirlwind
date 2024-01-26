@@ -16,7 +16,8 @@ use core.{
 
 /// A contiguous, growable list of items of the same type.
 public model Array<T> 
-    implements AsIterator<T, ArrayIter<T>> 
+    implements Addition
+        + AsIterator<T, ArrayIter<T>> 
         + Default 
         + Display|=(T implements Display)
 {
@@ -32,6 +33,26 @@ public model Array<T>
     /// ```
     public function [AsIterator.iter] -> ArrayIter<T> {
         ArrayIter(this)
+    }
+    /// Adds two arrays together.
+    /// ### Usage
+    /// ```
+    /// arr1 := [1, 2, 3, 4]
+    /// arr2 := [5, 6, 7, 8]
+    /// 
+    /// newArr := arr1 + arr2
+    /// 
+    /// assert(newArr).equals([1, 2, 3, 4, 5, 6, 7, 8])
+    /// ```
+    public function [Addition.add](other: []T) -> This {
+        newArray := [];
+        for element in this {
+            newArray.push(element)
+        }
+        for element in other {
+            newArray.push(element)
+        }
+        return newArray
     }
     /// Implementation of the default trait.
     /// ### Usage
@@ -147,7 +168,7 @@ public model Array<T>
     /// array2 := [""]
     /// ```
     public function sum|=(T implements Addition + Default) -> T {
-        var sum: T = todo()
+        var sum: T
         this.iter().forEach(fn(item) sum += item)
         sum
     }
@@ -415,7 +436,8 @@ public model Array<T>
         }
         todo()
     }
-    /// Adds an element to each element in the array.
+    /// Creates a new array consisting of a scalar value added 
+    /// to each element of the current array.
     /// ### Usage
     /// ```
     /// array := [1, 2, 3, 4, 5]
@@ -427,6 +449,43 @@ public model Array<T>
         newArray := []
         for element in this {
             newArray.push(element + value)
+        }
+        return newArray
+    }
+    /// Performs element-wise addition between this array and another array.
+    /// ### Usage
+    /// ```
+    /// array := [6, 4, 3, 4]
+    /// array2 := [5, 5, 3, 4]
+    /// 
+    /// newArray := array.vectorAdd(array2)
+    /// assert(newArray).equals([10, 9, 6, 8]) // adds the pairs of elements at indices.
+    /// ```
+    /// If both arrays are not the same size, it will copy the remaining elements from
+    /// the bigger array and return an array that is its size.
+    /// ```
+    /// array3 := [1, 2]
+    /// array4 := [4, 5, 6, 8]
+    /// 
+    /// newArray2 := array3.scalarAdd(array4)
+    /// assert(newArray).equals([5, 7, 6, 8]); // copies 6 and 8.
+    /// ```
+    public function vectorAdd|=(T implements Addition)(other: []T) -> []T {
+        newArray := []
+        i := 0
+        while i < other.length() or i < this.length() {
+            a := this.at(i)
+            b := other.at(i)
+            if a.isNone() && b.isNone() {
+                break
+            }
+            if a.isNone() {
+                newArray.push(b!)
+            } else if b.isNone() {
+                newArray.push(a!)
+            } else {
+                newArray.push(a! + b!)
+            }
         }
         return newArray
     }

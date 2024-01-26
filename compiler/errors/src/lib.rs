@@ -181,3 +181,31 @@ pub fn mismatched_method_signature(
         span,
     }
 }
+
+pub fn failing_clause(base: String, method: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::FailedClause { base, method },
+        span,
+    }
+}
+
+pub fn mismatched_constraint(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::MismatchedConstraint,
+        span,
+    }
+}
+
+pub fn missing_constraint(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::MissingConstraint,
+        span,
+    }
+}
+
+pub fn unexpected_constraint(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::UnexpectedConstraint,
+        span,
+    }
+}

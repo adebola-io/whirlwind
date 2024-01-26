@@ -1,7 +1,7 @@
 use super::{expression_is_attribute, is_valid_lhs, typecheck_expression};
 use crate::{
     span_of_typed_expression,
-    typing::checker::{AttributeAssignment, ScopeType},
+    typechecker::checker::{AttributeAssignment, ScopeType},
     unify_types,
     utils::{
         ensure_assignment_validity, get_implementation_of, infer_ahead, is_numeric_type,

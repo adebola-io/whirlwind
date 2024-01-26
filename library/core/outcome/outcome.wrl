@@ -25,21 +25,20 @@ use core.{
 /// 
 /// It presents a way to handle errors predictably.
 public model Outcome<T, E> 
-    implements Display|=(T implements Display)
+    implements Display|=(T implements Display and E implements Display)
     + Guaranteed<T> 
     + Try<T, Outcome<never, E>> 
 {
     /// Flag representing the type of outcome.
     var flag: OutcomeType
 
-    public function [Display.toStr]|=(T implements Display) -> String {
+    public function [Display.toStr]|=(T implements Display and E implements Display) -> String {
         if this.isOk() {
             value := builtin.outcome.unwrap(this)
-            // return String.fmt("Outcome.ok(%)").add(value).finish()
+            return String.fmt("Outcome.ok(%)").add(value).finish()
         }
         errValue := builtin.outcome.unwrapError(this)
-        // return String.fmt("Outcome.err(%)").add(errValue).finish()
-        core.sentinels.todo()
+        return String.fmt("Outcome.err(%)").add(errValue).finish()
     }
     function [Guaranteed.guarantee] -> T {
         this.unwrap()

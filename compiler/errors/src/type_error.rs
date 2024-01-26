@@ -313,6 +313,13 @@ pub enum TypeErrorType {
         first: String,
         second: String,
     },
+    FailedClause {
+        base: String,
+        method: String,
+    },
+    MismatchedConstraint,
+    MissingConstraint,
+    UnexpectedConstraint,
 }
 
 pub fn invalid_binary(left: String, operator: BinOperator, right: String, span: Span) -> TypeError {

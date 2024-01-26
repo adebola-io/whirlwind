@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use super::{expressions::typecheck_block, *};
 use crate::{
     evaluate_and_ignore_constraint, utils::distill_as_function_type, IntermediateType,
-    TypedModelDeclaration, TypedModelPropertyType,
+    IntermediateTypeClause, TypedModelDeclaration, TypedModelPropertyType,
 };
 use ast::{unwrap_or_continue, unwrap_or_return};
 
@@ -62,13 +62,14 @@ pub fn typecheck_model_declaration(
         // The vector keeps track of method names in the model or other interfaces that have already been
         // resolved to mean something, blocking methods from other interfaces that have the same name.
         let mut checked_methods = vec![];
-        for (interface, method) in implementation_methods {
+        for (interface, method, constraint) in implementation_methods {
             let interface_symbol = unwrap_or_continue!(symbollib.get(interface));
             let interface_method_symbol = unwrap_or_continue!(symbollib.get(method));
             if let SemanticSymbolKind::Method {
                 is_public: interface_method_is_public,
                 is_static: interface_method_is_static,
                 is_virtual: interface_method_is_virtual,
+                constraint: interface_method_constraint,
                 generic_params: interface_method_generic_params,
                 ..
             } = &interface_method_symbol.kind
@@ -115,16 +116,21 @@ pub fn typecheck_model_declaration(
                 // public access, static nature, param signatures, return signature and
                 // generic parameters.
                 let model_method_symbol = unwrap_or_continue!(symbollib.get(method_impl.0));
-                let (model_method_generic_params, model_method_is_public, model_method_is_static) =
-                    match &model_method_symbol.kind {
-                        SemanticSymbolKind::Method {
-                            generic_params,
-                            is_static,
-                            is_public,
-                            ..
-                        } => (generic_params, is_public, is_static),
-                        _ => continue,
-                    };
+                let (
+                    model_method_generic_params,
+                    model_method_is_public,
+                    model_method_is_static,
+                    model_constraint,
+                ) = match &model_method_symbol.kind {
+                    SemanticSymbolKind::Method {
+                        generic_params,
+                        is_static,
+                        is_public,
+                        constraint,
+                        ..
+                    } => (generic_params, is_public, is_static, constraint),
+                    _ => continue,
+                };
 
                 let span = model_method_symbol.origin_span;
                 // Compare generic parameters.
@@ -159,6 +165,20 @@ pub fn typecheck_model_declaration(
                         *model_method_is_static,
                         span,
                     ))
+                }
+                // Compare constraints.
+                // The constraints on the interface implementation must appear as well in every method.
+                if let Some(interface_constraint) = constraint {
+                    match model_constraint {
+                        Some((model_constraint, _)) => {
+                            if interface_constraint != model_constraint {
+                                checker_ctx.add_error(errors::mismatched_constraint(span))
+                            }
+                        }
+                        None => checker_ctx.add_error(errors::missing_constraint(span)),
+                    }
+                } else if model_constraint.is_some() {
+                    checker_ctx.add_error(errors::unexpected_constraint(span));
                 }
                 // Compare signatures.
                 // They both have to be converted to function expression instances so
@@ -213,6 +233,7 @@ pub fn typecheck_model_declaration(
                         span,
                     ))
                 }
+                //
             }
         }
     }
@@ -348,13 +369,13 @@ fn typecheck_model_property(
 
 /// Returns a full list of every implementation method from a list of impls.
 fn get_all_implementation_methods<'a>(
-    implementations: &Vec<IntermediateType>,
+    implementations: &'a Vec<IntermediateType>,
     symbollib: &'a SymbolLibrary,
     checker_ctx: &mut TypecheckerContext<'_>,
     generics: &mut Vec<(SymbolIndex, EvaluatedType)>,
     model_evaluated_type: &EvaluatedType,
     model_symbol: &crate::SemanticSymbol,
-) -> Vec<(SymbolIndex, SymbolIndex)> {
+) -> Vec<(SymbolIndex, SymbolIndex, Option<&'a IntermediateTypeClause>)> {
     let mut implementation_names = vec![];
     let implementation_methods = implementations
         .iter()
@@ -372,6 +393,14 @@ fn get_all_implementation_methods<'a>(
                 checker_ctx.add_error(errors::interface_expected(name, span));
                 return None;
             }
+            let constraint = match implementation {
+                IntermediateType::BoundConstraintType {
+                    consequent,
+                    clause,
+                    span,
+                } => clause.as_ref(),
+                _ => return None,
+            };
             if let EvaluatedType::InterfaceInstance {
                 interface_,
                 mut generic_arguments,
@@ -393,7 +422,11 @@ fn get_all_implementation_methods<'a>(
                     implementation_names.push(name);
                 }
                 if let SemanticSymbolKind::Interface { methods, .. } = &interface_symbol.kind {
-                    return Some(methods.iter().map(move |method| (interface_, *method)));
+                    return Some(
+                        methods
+                            .iter()
+                            .map(move |method| (interface_, *method, Some(constraint))),
+                    );
                 }
             }
             return None;

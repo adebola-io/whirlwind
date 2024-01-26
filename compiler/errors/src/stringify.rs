@@ -131,8 +131,12 @@ impl std::fmt::Display for TypeErrorType {
         TypeErrorType::UnsatisfiableConstraint => format!("The type constraint cannot be true."),
         TypeErrorType::MismatchedMethods { base_name, method_name, first_signature, second_signature } => format!("Constraint produces different signatures for {base_name}.{method_name}, '{first_signature}' and '{second_signature}'."),
         TypeErrorType::MismatchedImplementations { name, first, second } => format!("Constraint produces conflicting implementations '{first}' and '{second}' for {name}"),
+        TypeErrorType::FailedClause { base, method } => format!("The method '{method}' exists on {base}, but its constraints are not satisfied."),
+        TypeErrorType::MismatchedConstraint => format!("The constraint given to this method does not match the interface provider."),
+        TypeErrorType::MissingConstraint => format!("This method should have a constraint that matches its interface provider."),
+        TypeErrorType::UnexpectedConstraint => format!("Method should not have a method constraint."),
+        
         };
-
         write!(f, "{message}")
     }
 }
