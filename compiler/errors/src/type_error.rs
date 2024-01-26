@@ -298,6 +298,21 @@ pub enum TypeErrorType {
         right: String,
     },
     IllegalBoundConstraintType,
+    /// A type clause that cannot be assumed as true.
+    UnsatisfiableConstraint,
+    /// A mismatch in methods due to an unsatifiable constraint.
+    MismatchedMethods {
+        base_name: String,
+        method_name: String,
+        first_signature: String,
+        second_signature: String,
+    },
+    // A mismatch in implementations due to an unsatisfiable constraint.
+    MismatchedImplementations {
+        name: String,
+        first: String,
+        second: String,
+    },
 }
 
 pub fn invalid_binary(left: String, operator: BinOperator, right: String, span: Span) -> TypeError {
@@ -780,6 +795,13 @@ pub fn using_this_before_construction(span: ast::Span) -> TypeError {
 pub fn incomparable(left: String, right: String, span: ast::Span) -> TypeError {
     TypeError {
         _type: TypeErrorType::Incomparable { left, right },
+        span,
+    }
+}
+
+pub fn unsatisfiable(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::UnsatisfiableConstraint,
         span,
     }
 }

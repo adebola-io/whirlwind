@@ -111,7 +111,7 @@ impl std::fmt::Display for TypeErrorType {
         TypeErrorType::NonPublicType { base_type, property } => format!("'{property}' exists in {base_type}, but it is not denoted as public."),
         TypeErrorType::IndexingWithIllegalValue { indexer } => format!("Value of type '{indexer}' cannot be used as an index into an array."),
         TypeErrorType::ImplicitLoopReturn { rettype } => format!("For loop blocks do not return a value, but {rettype} is implicitly returned here."),
-        TypeErrorType::Illegalterator { illegal_type } => format!("Iteration invalid because {illegal_type} does not implement Iteratable or AsIterator."),
+        TypeErrorType::Illegalterator { illegal_type } => format!("Iteration invalid because {illegal_type} does not implement Iterable or AsIterator."),
         TypeErrorType::UsingThisBeforeConstructor => format!("Instance cannot be used before it is fully constructed."),
         TypeErrorType::Incomparable { left, right } => format!("Cannot compare {left} to {right}."),
         TypeErrorType::MethodInConstructor => format!("Methods on a model instance cannot be called from inside its constructor."),
@@ -128,7 +128,9 @@ impl std::fmt::Display for TypeErrorType {
         TypeErrorType::MismatchedMethodStatic { method_name, expected, .. } => format!("Mismatched implementation: {method_name}() is {}expected to be static.", if *expected {""} else {"not "}),
         TypeErrorType::MismatchedMethodSignature { method_name, left, right } => format!("Virtual method {method_name}() has signature '{left}', but is implemented as '{right}'."),
         TypeErrorType::IllegalBoundConstraintType => format!("Type constraints are not allowed in this context."),
-        
+        TypeErrorType::UnsatisfiableConstraint => format!("The type constraint cannot be true."),
+        TypeErrorType::MismatchedMethods { base_name, method_name, first_signature, second_signature } => format!("Constraint produces different signatures for {base_name}.{method_name}, '{first_signature}' and '{second_signature}'."),
+        TypeErrorType::MismatchedImplementations { name, first, second } => format!("Constraint produces conflicting implementations '{first}' and '{second}' for {name}"),
         };
 
         write!(f, "{message}")
@@ -292,7 +294,6 @@ impl std::fmt::Display for WarningType {
                 format!("'{name}' is never constructed or accessed statically.")
             }
             WarningType::RedundantConstraint => format!("Redundant type constraint."),
-            
         };
         write!(f, "{message}")
     }

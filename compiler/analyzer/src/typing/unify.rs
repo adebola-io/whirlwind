@@ -591,10 +591,10 @@ fn solve_generic_type(
                     ..
                 }
                 | SemanticSymbolKind::Interface {
-                    implementations, ..
+                    interfaces: implementations, ..
                 }
                 | SemanticSymbolKind::Model {
-                    implementations, ..
+                    interfaces: implementations, ..
                 } => Some(implementations),
                 _ => None,
             },
@@ -646,6 +646,36 @@ fn solve_generic_type(
                     ).is_ok()
                 })
         })
+        // Interface is implemented if free type is a generic, and it has a matching implementation 
+        // from a current type environment.
+        || {
+            match free_type {
+                HardGeneric { base } | Generic { base } => {
+                    symbollib
+                        .type_environments
+                        .iter()
+                        .filter_map(|environment| {
+                            environment
+                                .suppositions
+                                .iter()
+                                .find(|supposition| supposition.base == *base)
+                        })
+                        .map(|supposition| supposition.implementations.iter())
+                        .flatten().any(|evaluated_implementation_type| {
+                            unify_types(
+                                &interface_evaluated, 
+                                evaluated_implementation_type, 
+                                symbollib, 
+                                options, 
+                                map.as_deref_mut()
+                            ).is_ok()
+                        })
+                }
+                _ => false
+            }
+            
+            
+        }
         || match free_type {
             // An interface is implemented by an opaque type if all its collaborator
             // types implement the interface.
@@ -823,14 +853,14 @@ pub fn unify_freely(
 
 /// Two types T and U are convergent if `unify_types(T, U) == unify_types(U, T) == Ok(V)`
 pub fn converge_types(
-    type_a: EvaluatedType,
-    type_b: EvaluatedType,
+    type_a: &EvaluatedType,
+    type_b: &EvaluatedType,
     symbollib: &SymbolLibrary,
 ) -> Option<EvaluatedType> {
-    unify_types(&type_a, &type_b, symbollib, UnifyOptions::None, None)
+    unify_types(type_a, type_b, symbollib, UnifyOptions::None, None)
         .ok()
         .map(|forward| {
-            unify_types(&type_b, &type_a, symbollib, UnifyOptions::None, None)
+            unify_types(type_b, type_a, symbollib, UnifyOptions::None, None)
                 .ok()
                 .and_then(|backward| match forward == backward {
                     true => Some(forward),

@@ -343,7 +343,7 @@ mod bind_utils {
                         is_constructable: false,
                         constructor_parameters: None,
                         generic_params: vec![],
-                        implementations: vec![],
+                        interfaces: vec![],
                         methods: vec![],
                         attributes: vec![],
                         // This one is written in the typechecker phase
@@ -399,7 +399,7 @@ mod bind_utils {
                         // The values after are written later and not now
                         // to prevent interface-implements-itself recursive loops.
                         generic_params: vec![],
-                        implementations: vec![],
+                        interfaces: vec![],
                         methods: vec![],
                     },
                     references: vec![SymbolReferenceList {
@@ -576,7 +576,7 @@ mod bind_utils {
                 },
                 (CurrentModuleType::Never, "never") => &mut symbol_library.never,
                 (CurrentModuleType::Iteration, name) => match name {
-                    "Iteratable" => &mut symbol_library.iteratable,
+                    "Iterable" => &mut symbol_library.iteratable,
                     "AsIterator" => &mut symbol_library.asiter,
                     _ => return index,
                 },
@@ -1096,7 +1096,7 @@ mod statements {
                     kind:
                         SemanticSymbolKind::Model {
                             is_constructable,
-                            implementations,
+                            interfaces: implementations,
                             generic_params,
                             ..
                         },
@@ -1917,7 +1917,7 @@ mod statements {
                 if let Some(SemanticSymbol {
                     kind:
                         SemanticSymbolKind::Interface {
-                            implementations,
+                            interfaces: implementations,
                             generic_params,
                             ..
                         },
@@ -3545,17 +3545,6 @@ mod types {
                         .collect(),
                 }
             }
-            TypeClause::Is { base, other } => IntermediateTypeClause::Is {
-                base: bind_utils::find_or_create(
-                    binder,
-                    symbol_library,
-                    errors,
-                    ambience,
-                    base,
-                    true,
-                ),
-                other: bind_type_expression(other, binder, symbol_library, errors, ambience),
-            },
         }
     }
 

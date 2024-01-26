@@ -174,6 +174,7 @@ impl Standpoint {
                     | DiagnosticType::Warning(_)
             )
         });
+        self.symbol_library.type_environments.clear();
         self.resolve_imports();
         self.check_all_modules();
     }

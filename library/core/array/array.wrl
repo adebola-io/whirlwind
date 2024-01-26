@@ -5,8 +5,8 @@ module array
 use core.{
     bool.Bool,
     interfaces.Default,
-    iterate.{AsIterator, Iteratable, Reversed},
-    // math.{max, min},
+    iterate.{AsIterator, Iterable, Reversed},
+    math.{max, min},
     maybe.{none, some},
     numeric.Int32,
     ops.{Addition, Orderable},
@@ -20,9 +20,6 @@ public model Array<T>
         + Default 
         + Display|=(T implements Display)
 {
-    var len: Int32
-    var capacity: Int32
-    // var buf: Unique<T>
     /// Returns an iterator over elements in this array.
     /// ### Usage
     /// ```
@@ -58,10 +55,11 @@ public model Array<T>
     public function [Display.toStr]|=(T implements Display) -> String {
         string := "["
         i := 0
-        while i < this.len {
-        //     string.append(this[i].toStr())
-            if i + 1 != this.len { 
-                string.append(", ") 
+        while i < this.length() {
+            elementStr := this[i].toStr()
+            string.append(elementStr)
+            if i + 1 != this.length() { 
+                string.append(", ")
             }
             i += 1
         }
@@ -102,9 +100,9 @@ public model Array<T>
     /// ```
     public function reset|=(T implements Default) {
         i := 0
-        while i < this.len {
-            // var default: T 
-            // this[i] = default
+        while i < this.length() {
+            var default: T 
+            this[i] = default
             i += 1
         }
     }
@@ -119,7 +117,7 @@ public model Array<T>
     /// ```
     public function max|=(T implements Orderable) -> ?T {
         maximum := this.first()?
-        // this.iter().forEach(fn(value) maximum = max(maximum, value))
+        this.iter().forEach(fn(value) maximum = max(maximum, value))
         some(maximum)
     }
     /// Returns the smallest value in an array.
@@ -133,7 +131,7 @@ public model Array<T>
     /// ```
     public function min|=(T implements Orderable) -> ?T {
         minimum := this.first()?
-        // this.iter().forEach(fn(value) minimum = min(minimum, value))
+        this.iter().forEach(fn(value) minimum = min(minimum, value))
         some(minimum)
     }
     /// Returns the sum of all the elements in the array.
@@ -150,7 +148,7 @@ public model Array<T>
     /// ```
     public function sum|=(T implements Addition + Default) -> T {
         var sum: T = todo()
-        // this.iter().forEach(fn(item) sum += item)
+        this.iter().forEach(fn(item) sum += item)
         sum
     }
     /// Concatenates the elements in an array into one string and returns it.
@@ -172,13 +170,12 @@ public model Array<T>
         separatorValue := separator.unwrapOr(" ")
         string := ""
         i := 0
-        // for { a as i, b as element } in this.iter().enumerate() 
-        // {
-        // //     string += element.toStr()
-        //     if i + 1 != this.length {
-        //         string += separatorValue
-        //     }
-        // }
+        for { a as i, b as element } in this.iter().enumerate() {
+            string += element.toStr()
+            if i + 1 != this.length() {
+                string += separatorValue
+            }
+        }
         return string
     }
     /// Returns the item at a particular index in the array, if it exists.
@@ -197,11 +194,11 @@ public model Array<T>
     /// assert(arr.at(-1) == some(55))
     /// ```
     public function at(index: Int32) -> ?T {
-        if index >= 0 && index < this.len {
+        if index >= 0 && index < this.length() {
             return some(this[index])
         }
-        index = this.len - index
-        if index < this.len {
+        index = this.length() - index
+        if index < this.length() {
             return some(this[index])
         }
         return none()
@@ -258,7 +255,7 @@ public model Array<T>
     /// assertThat(!mainArray.includes(anotherSubArray))
     /// ```
     public function includes(subarray: []T) -> Bool {
-        if subarray.len == 0 {
+        if subarray.length() == 0 {
             return true
         }
         for element in this {
@@ -277,11 +274,11 @@ public model Array<T>
     /// str3 := "This is the future!"
     /// 
     /// arr := [str1, str2, str3]
-    /// assert(arr.IndexOf(str2) == some(1)).
+    /// assert(arr.indexOf(str2) == some(1)).
     /// ```
     public function indexOf(value: T) -> ?Int32 {
         i := 0
-        while i < this.len {
+        while i < this.length() {
             if this[i] == value {
                 return some(i)
             }
@@ -319,7 +316,7 @@ public model Array<T>
     /// assertThat(arr.penultimate() == some(7))
     /// ```
     public function penultimate -> ?T {
-        if this.len < 2 { none() } else { some(this[this.len - 2]) }
+        if this.length() < 2 { none() } else { some(this[this.length() - 2]) }
     }
     /// Divides the array into two new arrays: one containing elements that pass
     /// a test function, and another with elements that don't.
@@ -336,7 +333,7 @@ public model Array<T>
         trueItems := []
         falseItems := []
         i := 0
-        while i < this.len {
+        while i < this.length() {
             item := this[i]
             if check(item) {
                 trueItems.push(item)
@@ -354,7 +351,7 @@ public model Array<T>
     /// assert(arr.length()).equals(4)
     /// ```
     public function length -> Int32 {
-        return this.len
+        todo()
     }
     /// Adds an item to the end of the array.
     /// 
@@ -382,9 +379,7 @@ public model Array<T>
     /// assert(array).equals([1])
     /// ```
     public function pop -> ?T {
-        item := this.last()?
-        this.len -= 1
-        return some(item)
+        return todo()
     }
     /// Returns an iterator that produces elements from the end of the array
     /// to the start.
@@ -415,10 +410,25 @@ public model Array<T>
     /// twoItems := arr.sample(2)
     /// ```
     public function sample(n: Int32) -> []T {
-        if n > this.len {
+        if n > this.length() {
             return this.shuffled()
         }
         todo()
+    }
+    /// Adds an element to each element in the array.
+    /// ### Usage
+    /// ```
+    /// array := [1, 2, 3, 4, 5]
+    /// newArray := array.scalarAdd(5)
+    /// 
+    /// assert(newArray).equals([6, 7, 8, 9, 10])
+    /// ```
+    public function scalarAdd|=(T implements Addition)(value: T) -> []T{
+        newArray := []
+        for element in this {
+            newArray.push(element + value)
+        }
+        return newArray
     }
     /// Removes the first item in the array
     /// and shifts all the other items backward
@@ -444,7 +454,7 @@ public model Array<T>
     /// assert(firstItem).equals(none())
     /// ```
     public function shift -> ?T {
-        if this.len == 0 {
+        if this.length() == 0 {
             return none()
         } else {
             todo()
@@ -469,7 +479,7 @@ public model Array<T>
 
 
 /// An iterator built from the elements of an array.
-public model ArrayIter<T> implements Iteratable<T> {
+public model ArrayIter<T> implements Iterable<T> {
     var array: Array<T>
     var idx: Int32
     
@@ -478,7 +488,7 @@ public model ArrayIter<T> implements Iteratable<T> {
         this.idx = 0
     }
 
-    public function [Iteratable.next] -> ?T {
+    public function [Iterable.next] -> ?T {
         length := this.array.length()
         if length == this.idx {
             return none()

@@ -27,7 +27,7 @@ pub fn typecheck_model_declaration(
     // Check that the method names inherited from interfaces do not clash with other.
     let model_symbol = symbollib.get(model.name).unwrap();
     if let SemanticSymbolKind::Model {
-        implementations,
+        interfaces: implementations,
         generic_params,
         methods,
         ..
@@ -83,7 +83,7 @@ pub fn typecheck_model_declaration(
                     .iter()
                     .find(|(_, method_name)| method_name == &interface_method_name)
                 {
-                    checker_ctx.add_diagnostic(errors::conflicting_implementations(
+                    checker_ctx.add_error(errors::conflicting_implementations(
                         *previous,
                         duet,
                         model_symbol.ident_span(),
@@ -100,7 +100,7 @@ pub fn typecheck_model_declaration(
                         if *interface_method_is_virtual {
                             // For numeric types, the interface implementations are built in.
                             if !is_numeric_type(&model_evaluated_type, symbollib) {
-                                checker_ctx.add_diagnostic(errors::missing_implementation(
+                                checker_ctx.add_error(errors::missing_implementation(
                                     &interface_symbol.name,
                                     interface_method_name,
                                     model_symbol.ident_span(),
@@ -132,7 +132,7 @@ pub fn typecheck_model_declaration(
                 let interface_method_generic_param_len = interface_method_generic_params.len();
                 if model_method_generic_param_len != interface_method_generic_param_len {
                     let method_name = interface_method_name.to_owned();
-                    checker_ctx.add_diagnostic(errors::mismatched_generic_params(
+                    checker_ctx.add_error(errors::mismatched_generic_params(
                         method_name,
                         interface_method_generic_param_len,
                         model_method_generic_param_len,
@@ -143,7 +143,7 @@ pub fn typecheck_model_declaration(
                 if model_method_is_public != interface_method_is_public {
                     let method_name =
                         format!("{}.{}", interface_symbol.name, interface_method_symbol.name);
-                    checker_ctx.add_diagnostic(errors::mismatched_method_access(
+                    checker_ctx.add_error(errors::mismatched_method_access(
                         method_name,
                         *model_method_is_public,
                         *interface_method_is_public,
@@ -153,7 +153,7 @@ pub fn typecheck_model_declaration(
                 if model_method_is_static != interface_method_is_static {
                     let method_name =
                         format!("{}.{}", interface_symbol.name, interface_method_symbol.name);
-                    checker_ctx.add_diagnostic(errors::mismatched_method_static(
+                    checker_ctx.add_error(errors::mismatched_method_static(
                         method_name,
                         *interface_method_is_static,
                         *model_method_is_static,
@@ -206,7 +206,7 @@ pub fn typecheck_model_declaration(
                         format!("{}.{}", interface_symbol.name, interface_method_symbol.name);
                     let left = symbollib.format_evaluated_type(&expected_method_type);
                     let right = symbollib.format_evaluated_type(&given_method_type);
-                    checker_ctx.add_diagnostic(errors::mismatched_method_signature(
+                    checker_ctx.add_error(errors::mismatched_method_signature(
                         method_name,
                         left,
                         right,
@@ -296,7 +296,7 @@ fn typecheck_model_property(
                 evaluated_param_types,
                 false,
             );
-            typecheck_function_body(
+            function::typecheck_function_body(
                 property.name,
                 checker_ctx,
                 return_type,
@@ -304,6 +304,8 @@ fn typecheck_model_property(
                 symbollib,
                 return_type_span,
             );
+            // If you ask me, I can't tell you.
+            symbollib.pop_type_environment_stack(body.scopeid);
             checker_ctx.current_function_is_static = former_is_static;
         }
     }
@@ -328,14 +330,14 @@ fn typecheck_model_property(
                     }
                     let base_type = interface_symbol.name.clone();
                     let property_name = property_symbol.name.clone();
-                    checker_ctx.add_diagnostic(errors::unknown_property(
+                    checker_ctx.add_error(errors::unknown_property(
                         base_type,
                         property_name,
                         property.span,
                     ));
                 }
             } else {
-                checker_ctx.add_diagnostic(errors::interface_expected(
+                checker_ctx.add_error(errors::interface_expected(
                     interface_symbol.name.clone(),
                     span,
                 ));
@@ -367,7 +369,7 @@ fn get_all_implementation_methods<'a>(
             );
             if !evaluated.is_interface_instance() {
                 let name = symbollib.format_evaluated_type(&evaluated);
-                checker_ctx.add_diagnostic(errors::interface_expected(name, span));
+                checker_ctx.add_error(errors::interface_expected(name, span));
                 return None;
             }
             if let EvaluatedType::InterfaceInstance {
@@ -382,7 +384,7 @@ fn get_all_implementation_methods<'a>(
                 let name = interface_symbol.name.as_str();
                 // Block multiple implementations of the same interface.
                 if implementation_names.contains(&name) {
-                    checker_ctx.add_diagnostic(errors::duplicate_implementation(
+                    checker_ctx.add_error(errors::duplicate_implementation(
                         name.to_owned(),
                         model_symbol.ident_span(),
                     ));
@@ -447,7 +449,7 @@ fn typecheck_model_constructor(
                 .last()
                 .map(|statement| checker_ctx.span_of_stmnt(statement, symbollib))
                 .unwrap_or_else(|| constructor.span);
-            checker_ctx.add_diagnostic(errors::return_from_constructor(span));
+            checker_ctx.add_error(errors::return_from_constructor(span));
         }
         checker_ctx.current_function_context.pop();
         let constructor_context = checker_ctx.current_constructor_context.pop().unwrap();
@@ -470,7 +472,7 @@ fn typecheck_model_constructor(
                     let reference_span = Span::on_line(start, attribute_symbol.name.len() as u32);
                     if reference_span.is_before(assignment_span) {
                         checker_ctx
-                            .add_diagnostic(errors::using_attribute_before_assign(reference_span));
+                            .add_error(errors::using_attribute_before_assign(reference_span));
                         break;
                     }
                 }
@@ -493,7 +495,7 @@ fn typecheck_model_constructor(
                 }
                 if failed {
                     let name = symbollib.format_evaluated_type(&evaluated_type);
-                    checker_ctx.add_diagnostic(errors::unassigned_attribute(
+                    checker_ctx.add_error(errors::unassigned_attribute(
                         name,
                         attribute_symbol.origin_span,
                     ));

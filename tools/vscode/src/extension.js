@@ -17,6 +17,7 @@ let core_lib_entry_path;
 let timeout;
 let outputChannel = vscode.window.createOutputChannel("Whirlwind LS");
 let showErrorMessage = vscode.window.showErrorMessage;
+let showWarningMessage = vscode.window.showWarningMessage;
 
 function getStatusBar() {
    if (this.statusBar === undefined) {
@@ -82,7 +83,7 @@ exports.stopLanguageServer = async () => {
    const client = getLanguageClient();
    statusBar.text = "Stopping server";
    if (!client.isRunning()) {
-      showErrorMessage("Whirlwind LS Server is not running.");
+      showWarningMessage("Whirlwind LS Server is not running.");
    } else {
       await client.stop();
    }

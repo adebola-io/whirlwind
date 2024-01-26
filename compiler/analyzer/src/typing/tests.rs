@@ -134,6 +134,76 @@ fn conditional_interface_impl() {
 }
 
 #[test]
+fn unsatisfiable_constraint_for_generic() {
+    text_produces_errors!(
+        "
+        module Test;
+
+        interface SomeStuff {
+            public function doA -> Bool
+        }
+        interface SomeOtherStuff {
+            public function doA
+        }
+        model A<T> {
+            public function asj|=(T implements SomeOtherStuff + SomeStuff) {
+                
+            }
+        }   
+        ",
+        &[
+            TypeErrorType::UnsatisfiableConstraint,
+            TypeErrorType::MismatchedMethods {
+                base_name: format!("T"),
+                method_name: format!("doA"),
+                second_signature: format!("fn -> Bool"),
+                first_signature: format!("fn"),
+            }
+        ]
+    );
+}
+
+#[test]
+fn unsatisfiable_constraint_for_discrete_type() {
+    text_produces_errors!(
+        "
+        module Test;
+
+        interface SomeStuff {
+            public function doA -> Bool
+        }
+        interface SomeOtherStuff {
+            public function doA
+        }
+        model A<T> {
+            public function asj|=(String implements SomeOtherStuff) {
+                
+            }
+        }   
+        ",
+        &[TypeErrorType::UnsatisfiableConstraint,]
+    );
+}
+
+#[test]
+fn it_creates_type_environments() {
+    check_types!(
+        "
+        module Test;
+
+        model A<T> {
+            var value: T
+            public function asj|=(T implements Try<Bool, Maybe<never>>) -> ?never {
+                a := this.value?
+                some(todo())
+            }
+        }
+        ",
+        &[("a", "Bool")]
+    );
+}
+
+#[test]
 fn it_solves_assignment() {}
 
 #[test]
@@ -365,14 +435,14 @@ fn it_typechecks_type_declaration() {
     text_produces_errors!(
         "module Test;
 
-        type BoolIterator = Iteratable<Bool>;
+        type BoolIterator = Iterable<Bool>;
 
         function main() {
             
         }
         ",
         &[TypeErrorType::ExpectedImplementableGotSomethingElse(
-            format!("Iteratable<Bool>")
+            format!("Iterable<Bool>")
         )]
     );
 }

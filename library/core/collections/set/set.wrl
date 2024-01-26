@@ -2,7 +2,7 @@ module set
 
 use core.{
     bool.Bool,
-    iterate.{AsIterator, Iteratable},
+    iterate.{AsIterator, Iterable},
     numeric.Int32,
     sentinels.todo,
     string.{Display, String}
@@ -10,8 +10,8 @@ use core.{
 use super.{Hash, HashMap}
 
 
-public model SetIterator<T> implements Iteratable<T> {
-    public function [Iteratable.next] -> ?T {
+public model SetIterator<T> implements Iterable<T> {
+    public function [Iterable.next] -> ?T {
         todo()
     }
 }
@@ -39,7 +39,7 @@ public model Set<T implements Hash>
         str := "Set { "
         for { a as idx, b as tuple } in this.items.iter().enumerate() {
             var { a as item } = tuple
-            // str += item.toStr()
+            str += item.toStr()
             if idx + 1 != this.items.length() {
                 str += ", "
             }

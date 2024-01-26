@@ -64,10 +64,6 @@ pub enum IntermediateTypeClause {
         operator: LogicOperator,
         right: Box<IntermediateTypeClause>,
     },
-    Is {
-        base: SymbolIndex,
-        other: IntermediateType,
-    },
     Implements {
         base: SymbolIndex,
         interfaces: Vec<IntermediateType>,

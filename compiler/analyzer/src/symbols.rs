@@ -90,7 +90,7 @@ pub enum SemanticSymbolKind {
     },
     Interface {
         is_public: bool,
-        implementations: Vec<IntermediateType>,
+        interfaces: Vec<IntermediateType>,
         generic_params: Vec<SymbolIndex>,
         methods: Vec<SymbolIndex>,
     },
@@ -99,7 +99,7 @@ pub enum SemanticSymbolKind {
         is_constructable: bool,
         generic_params: Vec<SymbolIndex>,
         constructor_parameters: Option<Vec<SymbolIndex>>,
-        implementations: Vec<IntermediateType>,
+        interfaces: Vec<IntermediateType>,
         methods: Vec<SymbolIndex>,
         attributes: Vec<SymbolIndex>,
         cyclic: ModelCyclicState,
@@ -215,6 +215,14 @@ impl SemanticSymbolKind {
 
     pub(crate) fn is_interface(&self) -> bool {
         matches!(self, SemanticSymbolKind::Interface { .. })
+    }
+
+    /// Returns `true` if the semantic symbol kind is [`GenericParameter`].
+    ///
+    /// [`GenericParameter`]: SemanticSymbolKind::GenericParameter
+    #[must_use]
+    pub fn is_generic_parameter(&self) -> bool {
+        matches!(self, Self::GenericParameter { .. })
     }
 }
 

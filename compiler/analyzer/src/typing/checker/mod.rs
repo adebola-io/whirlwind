@@ -85,7 +85,7 @@ impl AttributeAssignment {
 
 impl<'a> TypecheckerContext<'a> {
     /// Adds a type error to the owner standpoint's list of diagnostics.
-    pub fn add_diagnostic(&mut self, error: TypeError) {
+    pub fn add_error(&mut self, error: TypeError) {
         self.diagnostics.push(ProgramDiagnostic {
             offending_file: self.path_idx,
             _type: DiagnosticType::Error(crate::Error::Typing(error)),
@@ -145,7 +145,7 @@ pub fn typecheck(
         | SemanticSymbolKind::LoopVariable { inferred_type, .. } = &symbol.kind
         {
             if inferred_type.contains_child_for_which(&is_not_definite) {
-                checker_ctx.add_diagnostic(errors::uninferrable_variable(
+                checker_ctx.add_error(errors::uninferrable_variable(
                     symbol.name.to_owned(),
                     symbol.ident_span(),
                 ));

@@ -423,7 +423,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
         let (generic_params, impls, params) = match &model_symbol.kind {
             SemanticSymbolKind::Model {
                 generic_params,
-                implementations,
+                interfaces: implementations,
                 constructor_parameters,
                 ..
             } => (generic_params, implementations, constructor_parameters),
@@ -527,7 +527,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
         let (generic_params, impls) = match &model_symbol.kind {
             SemanticSymbolKind::Interface {
                 generic_params,
-                implementations,
+                interfaces: implementations,
                 ..
             } => (generic_params, implementations),
             _ => return None,
@@ -783,25 +783,6 @@ impl HoverFinder<'_> {
             IntermediateTypeClause::Binary { left, right, .. } => {
                 maybe!(self.type_clause(left));
                 self.type_clause(right)
-            }
-            IntermediateTypeClause::Is { base, other } => {
-                let symbol = self.standpoint.symbol_library.get(*base)?;
-                // Hovering over type name.
-                let references = symbol
-                    .references
-                    .iter()
-                    .find(|reflist| reflist.module_path == self.module.path_idx)?;
-                for span_start in references.starts.iter() {
-                    let span = Span::on_line(*span_start, symbol.name.len() as u32);
-                    if span.contains(self.pos) {
-                        self.message_store
-                            .borrow_mut()
-                            .inform("Hovering over a type.");
-                        return Some(HoverInfo::from((self.standpoint, *base)));
-                    }
-                }
-                // Hovering over rhs.
-                self.type_hover(other)
             }
             IntermediateTypeClause::Implements { base, interfaces } => {
                 let symbol = self.standpoint.symbol_library.get(*base)?;

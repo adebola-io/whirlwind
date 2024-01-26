@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use crate::{
     evaluate,
     utils::{get_numeric_type, symbol_to_type},
-    EvaluatedType, Literal, LiteralMap, PathIndex, SemanticSymbol, SemanticSymbolKind, SymbolIndex,
-    TypedExpression,
+    EvaluatedType, Literal, LiteralMap, PathIndex, ScopeId, SemanticSymbol, SemanticSymbolKind,
+    SymbolIndex, TypeEnvironment, TypedExpression,
 };
 
 #[derive(Debug, Default)]
@@ -18,6 +18,7 @@ pub enum SymbolEntry {
 #[derive(Debug, Default)]
 pub struct SymbolLibrary {
     tables: HashMap<PathIndex, SymbolTable>,
+    pub type_environments: Vec<TypeEnvironment>,
     // Numeric intrinsic values.
     pub float32: Option<SymbolIndex>,
     pub float64: Option<SymbolIndex>,
@@ -240,7 +241,6 @@ impl SymbolLibrary {
             .map(|(_, table)| table.symbols.len())
             .fold(0, |acc, x| acc + x)
     }
-
     /// Prints a list of generic types.
     fn format_generics_into<'a>(
         &self,
@@ -259,7 +259,6 @@ impl SymbolLibrary {
             string.push('>');
         }
     }
-
     /// Prints an evaluated type using the symbol table.
     pub fn format_evaluated_type(&self, eval_type: &EvaluatedType) -> String {
         let mut string = String::new();
@@ -436,7 +435,6 @@ impl SymbolLibrary {
         }
         string
     }
-
     /// Prints out a functional evaluated type.
     fn format_function_details(
         &self,
@@ -505,6 +503,14 @@ impl SymbolLibrary {
                 string.push_str(&self.format_evaluated_type(&evaluated));
             }
         }
+    }
+    /// Creates a new scope for a type environment.
+    pub fn push_type_environment_stack(&mut self, environment: TypeEnvironment) {
+        self.type_environments.push(environment);
+    }
+    /// Removes the last added type environment.
+    pub fn pop_type_environment_stack(&mut self, id: ScopeId) {
+        self.type_environments.retain(|env| env.id != id)
     }
 }
 

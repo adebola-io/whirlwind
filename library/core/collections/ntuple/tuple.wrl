@@ -3,7 +3,6 @@ module tuple
 use ntuple.NTuple
 use core.string.{Display, String}
 use core.maybe.some
-use core.ops.Addition
 use core.sentinels.todo
 
 /// A simple ordered pair of items. Elements within a tuple can be of any type,
@@ -57,18 +56,6 @@ public model Tuple<T, U>
     /// ```
     public function swap -> Tuple<U, T> {
         Tuple(this.b, this.a)
-    }
-    /// Concatenates the elements of the pair into one.
-    /// ### Usage
-    /// ```
-    /// tuple := pair("John ", "Doe")
-    /// joined := tuple.join()
-    /// 
-    /// assert(joined).equals("John Doe")
-    /// ```
-    public function join|=(T is U and T implements Addition) -> T {
-        todo()
-        // this.a + this.b
     }
 }
 

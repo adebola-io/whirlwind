@@ -689,14 +689,8 @@ pub fn evaluate(
                             |(collab_method_name, collab_method_type, collab_method_is_public)| {
                                 collab_method_name == method_name
                                     && is_public == collab_method_is_public
-                                    && unify_types(
-                                        method_type,
-                                        collab_method_type,
-                                        symbollib,
-                                        UnifyOptions::None,
-                                        None,
-                                    )
-                                    .is_ok()
+                                    && converge_types(method_type, collab_method_type, symbollib)
+                                        .is_some()
                             },
                         )
                     });
@@ -815,6 +809,14 @@ pub fn evaluate(
             alternate,
         ),
     }
+}
+
+/// Shorthand for the evaluate() function so I don't have to write &mut None and None and 0 everytime.
+pub fn evaluate_bare(
+    intermediate_type: &IntermediateType,
+    symbollib: &SymbolLibrary,
+) -> EvaluatedType {
+    evaluate(intermediate_type, symbollib, None, &mut None, 0)
 }
 
 /// Computes a ternary type into a single evaluation.
@@ -1009,28 +1011,6 @@ pub fn evaluate_type_clause(
             error_tracker,
             recursion_depth,
         ),
-        IntermediateTypeClause::Is { base, other } => {
-            let lhs = IntermediateType::SimpleType {
-                value: *base,
-                generic_args: vec![],
-                span: Span::default(),
-            };
-            let lhs = evaluate(
-                &lhs,
-                symbollib,
-                solved_generics,
-                error_tracker,
-                recursion_depth,
-            );
-            let rhs = evaluate(
-                other,
-                symbollib,
-                solved_generics,
-                error_tracker,
-                recursion_depth,
-            );
-            return converge_types(lhs, rhs, symbollib).map(|_| true);
-        }
         IntermediateTypeClause::Implements { base, interfaces } => {
             // The actual base type being checked.
             let lhs = IntermediateType::SimpleType {
@@ -1056,7 +1036,7 @@ pub fn evaluate_type_clause(
                 );
                 if let EvaluatedType::InterfaceInstance { interface_, .. } = &evaled_interface {
                     let actual_impl_type = get_implementation_of(*interface_, &lhs, symbollib)?;
-                    converge_types(evaled_interface, actual_impl_type, symbollib)?;
+                    converge_types(&evaled_interface, &actual_impl_type, symbollib)?;
                 } else {
                     let asstr = symbollib.format_evaluated_type(&evaled_interface);
                     add_error_if_possible(

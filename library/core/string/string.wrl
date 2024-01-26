@@ -5,7 +5,7 @@ use core.{
     collections.Hash,
     interfaces.Default,
     internals.builtin,
-    iterate.{AsIterator, Iteratable}, 
+    iterate.{AsIterator, Iterable}, 
     numeric.Int32,
     ops.{Addition, Range},
     sentinels.todo,
@@ -399,7 +399,7 @@ public model String
 
 
 /// A simple iterator over the characters in a string.
-public model Chars implements Iteratable<String> {
+public model Chars implements Iterable<String> {
     var idx: Int32
     var string: String
     new(string: String) {
@@ -407,7 +407,7 @@ public model Chars implements Iteratable<String> {
         this.string = string
     }
     /// Returns the next character.
-    public function [Iteratable.next] -> ?String {
+    public function [Iterable.next] -> ?String {
         // nextChar := this.string.at(this.idx)?
         // this.idx += 1
         // return some(nextChar)

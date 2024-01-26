@@ -27,7 +27,7 @@ pub fn typecheck_expression(
             match typecheck_identifier(i, symbollib) {
                 Ok(evaluated_type) => evaluated_type,
                 Err(error_type) => {
-                    checker_ctx.add_diagnostic(TypeError {
+                    checker_ctx.add_error(TypeError {
                         _type: error_type,
                         span: checker_ctx.span_of_expr(expression, &symbollib),
                     });
@@ -102,10 +102,8 @@ fn typecheck_update_expression(
                                     .find(|generic| generic.0 == guaranteed_generic);
                                 if generic_solution.is_none() {
                                     let name = symbollib.format_evaluated_type(&operand_type);
-                                    checker_ctx.add_diagnostic(errors::illegal_guarantee(
-                                        name,
-                                        updateexp.span,
-                                    ));
+                                    checker_ctx
+                                        .add_error(errors::illegal_guarantee(name, updateexp.span));
                                     return EvaluatedType::Unknown;
                                 }
                                 let evaluated_type = generic_solution.unwrap().1;
@@ -124,11 +122,11 @@ fn typecheck_update_expression(
                         }
                     } else {
                         let name = symbollib.format_evaluated_type(&operand_type);
-                        checker_ctx.add_diagnostic(errors::illegal_guarantee(name, updateexp.span));
+                        checker_ctx.add_error(errors::illegal_guarantee(name, updateexp.span));
                         EvaluatedType::Unknown
                     }
                 } else {
-                    checker_ctx.add_diagnostic(errors::missing_intrinsic(
+                    checker_ctx.add_error(errors::missing_intrinsic(
                         String::from("Guaranteed"),
                         updateexp.span,
                     ));
@@ -152,7 +150,7 @@ fn typecheck_update_expression(
                     let implementation = get_implementation_of(try_idx, operand_type, &symbollib);
                     if implementation.is_none() {
                         let name = symbollib.format_evaluated_type(&operand_type);
-                        checker_ctx.add_diagnostic(errors::illegal_try(name, updateexp.span));
+                        checker_ctx.add_error(errors::illegal_try(name, updateexp.span));
                         return EvaluatedType::Unknown;
                     }
                     let implementation = implementation.unwrap();
@@ -169,7 +167,7 @@ fn typecheck_update_expression(
                             .find(|generic| generic.0 == second_generic);
                         if first_generic_solution.is_none() || second_generic_solution.is_none() {
                             let name = symbollib.format_evaluated_type(&operand_type);
-                            checker_ctx.add_diagnostic(errors::illegal_try(name, updateexp.span));
+                            checker_ctx.add_error(errors::illegal_try(name, updateexp.span));
                             return EvaluatedType::Unknown;
                         }
                         let evaluated_type = first_generic_solution.unwrap().1;
@@ -198,7 +196,7 @@ fn typecheck_update_expression(
                                 coerce_all_generics(&returned_type, EvaluatedType::Never)
                         }
                         if function_ctx.is_none() {
-                            checker_ctx.add_diagnostic(TypeError {
+                            checker_ctx.add_error(TypeError {
                                 _type: TypeErrorType::MismatchedReturnType {
                                     expected: symbollib.format_evaluated_type(&EvaluatedType::Void),
                                     found: symbollib.format_evaluated_type(&returned_type),
@@ -225,7 +223,7 @@ fn typecheck_update_expression(
                                     .return_type = result;
                             }
                             Err(errors) => {
-                                checker_ctx.add_diagnostic(TypeError {
+                                checker_ctx.add_error(TypeError {
                                     _type: TypeErrorType::MismatchedReturnType {
                                         expected: symbollib
                                             .format_evaluated_type(&function_ctx.return_type),
@@ -234,7 +232,7 @@ fn typecheck_update_expression(
                                     span: updateexp.span,
                                 });
                                 for _type in errors {
-                                    checker_ctx.add_diagnostic(TypeError {
+                                    checker_ctx.add_error(TypeError {
                                         _type,
                                         span: updateexp.span,
                                     })
@@ -246,7 +244,7 @@ fn typecheck_update_expression(
                         return EvaluatedType::Unknown;
                     }
                 } else {
-                    checker_ctx.add_diagnostic(errors::missing_intrinsic(
+                    checker_ctx.add_error(errors::missing_intrinsic(
                         String::from("Try"),
                         updateexp.span,
                     ));
@@ -270,7 +268,7 @@ fn typecheck_unary_expression(
             UnaryOperator::Negation | UnaryOperator::NegationLiteral => {
                 if !is_boolean(&operand_type, symbollib) {
                     let name = symbollib.format_evaluated_type(&operand_type);
-                    checker_ctx.add_diagnostic(TypeError {
+                    checker_ctx.add_error(TypeError {
                         _type: TypeErrorType::NonBooleanLogic { name },
                         span: unaryexp.span,
                     })
@@ -289,8 +287,7 @@ fn typecheck_unary_expression(
                     return operand_type;
                 } else {
                     let typ = symbollib.format_evaluated_type(&operand_type);
-                    checker_ctx
-                        .add_diagnostic(errors::numeric_exclusive_operation(typ, unaryexp.span));
+                    checker_ctx.add_error(errors::numeric_exclusive_operation(typ, unaryexp.span));
                     return EvaluatedType::Unknown;
                 }
             }
@@ -308,7 +305,7 @@ fn typecheck_if_expression(
     ifexp.inferred_type = {
         let condition_type = typecheck_expression(&mut ifexp.condition, checker_ctx, symbollib);
         if !is_boolean(&condition_type, symbollib) && !condition_type.is_unknown() {
-            checker_ctx.add_diagnostic(errors::non_boolean_logic(
+            checker_ctx.add_error(errors::non_boolean_logic(
                 symbollib.format_evaluated_type(&condition_type),
                 checker_ctx.span_of_expr(&ifexp.condition, symbollib),
             ));
@@ -340,13 +337,13 @@ fn typecheck_if_expression(
             ) {
                 Ok(result) => result,
                 Err(errors) => {
-                    checker_ctx.add_diagnostic(errors::separate_if_types(
+                    checker_ctx.add_error(errors::separate_if_types(
                         ifexp.span,
                         symbollib.format_evaluated_type(&block_type),
                         symbollib.format_evaluated_type(&else_type),
                     ));
                     for error in errors {
-                        checker_ctx.add_diagnostic(TypeError {
+                        checker_ctx.add_error(TypeError {
                             _type: error,
                             span: ifexp.span,
                         })
@@ -421,13 +418,13 @@ fn typecheck_logic_expression(
         let right = typecheck_expression(&mut logexp.right, checker_ctx, symbollib);
 
         if !is_boolean(&left, symbollib) && !left.is_unknown() {
-            checker_ctx.add_diagnostic(errors::non_boolean_logic(
+            checker_ctx.add_error(errors::non_boolean_logic(
                 symbollib.format_evaluated_type(&left),
                 checker_ctx.span_of_expr(&logexp.right, symbollib),
             ));
         }
         if !is_boolean(&right, symbollib) && !right.is_unknown() {
-            checker_ctx.add_diagnostic(errors::non_boolean_logic(
+            checker_ctx.add_error(errors::non_boolean_logic(
                 symbollib.format_evaluated_type(&right),
                 checker_ctx.span_of_expr(&logexp.right, symbollib),
             ));
@@ -439,7 +436,7 @@ fn typecheck_logic_expression(
                 is_invariant: false,
             };
         } else {
-            checker_ctx.add_diagnostic(errors::missing_intrinsic(format!("Bool"), logexp.span));
+            checker_ctx.add_error(errors::missing_intrinsic(format!("Bool"), logexp.span));
             return EvaluatedType::Unknown;
         }
     })();
@@ -463,7 +460,7 @@ fn typecheck_this_expression(
         {
             let start = [this.start_line, this.start_character];
             let span = Span::on_line(start, 4);
-            checker_ctx.add_diagnostic(errors::this_in_static_method(span));
+            checker_ctx.add_error(errors::this_in_static_method(span));
             return EvaluatedType::Unknown;
         }
         // Block the use of `this` as a standalone value in the constructor.
@@ -472,7 +469,7 @@ fn typecheck_this_expression(
         {
             let start = [this.start_line, this.start_character];
             let span = Span::on_line(start, 4);
-            checker_ctx.add_diagnostic(errors::using_this_before_construction(span));
+            checker_ctx.add_error(errors::using_this_before_construction(span));
         }
         let symbol = symbollib.get_forwarded(model_or_interface).unwrap();
         match &symbol.kind {
@@ -507,7 +504,7 @@ fn typecheck_index_expression(
         let ptr = type_of_indexed;
         if !is_array(&ptr, &symbollib) {
             if !is_array(&ptr, symbollib) {
-                checker_ctx.add_diagnostic(errors::invalid_index_subject(
+                checker_ctx.add_error(errors::invalid_index_subject(
                     symbollib.format_evaluated_type(&ptr),
                     indexexp.span,
                 ));
@@ -535,16 +532,16 @@ fn typecheck_index_expression(
                 None,
             ) {
                 let span = checker_ctx.span_of_expr(&indexexp.index, symbollib);
-                checker_ctx.add_diagnostic(errors::indexing_with_illegal_value(
+                checker_ctx.add_error(errors::indexing_with_illegal_value(
                     symbollib.format_evaluated_type(&type_of_indexer),
                     span,
                 ));
                 for error in errors {
-                    checker_ctx.add_diagnostic(TypeError { _type: error, span })
+                    checker_ctx.add_error(TypeError { _type: error, span })
                 }
             }
         } else {
-            checker_ctx.add_diagnostic(errors::missing_intrinsic(
+            checker_ctx.add_error(errors::missing_intrinsic(
                 format!("UnsignedInt"),
                 checker_ctx.span_of_expr(&indexexp.index, symbollib),
             ));
@@ -562,7 +559,7 @@ fn typecheck_index_expression(
                 }
             }
             _ => {
-                checker_ctx.add_diagnostic(errors::invalid_index_subject(
+                checker_ctx.add_error(errors::invalid_index_subject(
                     symbollib.format_evaluated_type(&ptr),
                     indexexp.span,
                 ));
@@ -581,7 +578,7 @@ fn typecheck_array_expression(
 ) -> EvaluatedType {
     array.inferred_type = (|| {
         if symbollib.array.is_none() {
-            checker_ctx.add_diagnostic(missing_intrinsic(format!("Array"), array.span));
+            checker_ctx.add_error(missing_intrinsic(format!("Array"), array.span));
         }
         if array.elements.len() == 0 {
             if symbollib.array.is_some() {
@@ -649,13 +646,13 @@ fn typecheck_array_expression(
             i += 1;
         }
         if errors_gotten.len() > 0 {
-            checker_ctx.add_diagnostic(TypeError {
+            checker_ctx.add_error(TypeError {
                 _type: TypeErrorType::HeterogeneousArray,
                 span: array.span,
             });
             for (idx, errortype) in errors_gotten {
                 for error in errortype {
-                    checker_ctx.add_diagnostic(TypeError {
+                    checker_ctx.add_error(TypeError {
                         _type: error,
                         span: array
                             .elements
@@ -823,7 +820,7 @@ fn typecheck_function_expression(
             // Interfaces cannot be used as parameter types.
             if let EvaluatedType::InterfaceInstance { interface_, .. } = &inferred_type {
                 let symbol = symbollib.get(*interface_);
-                checker_ctx.add_diagnostic(errors::interface_as_type(
+                checker_ctx.add_error(errors::interface_as_type(
                     symbol
                         .map(|symbol| symbol.name.clone())
                         .unwrap_or(String::from("{Interface}")),
@@ -852,7 +849,7 @@ fn typecheck_function_expression(
         // Interfaces cannot be used as return types.
         if let Some((EvaluatedType::InterfaceInstance { interface_, .. }, _)) = &return_type {
             let symbol = symbollib.get(*interface_);
-            checker_ctx.add_diagnostic(errors::interface_as_type(
+            checker_ctx.add_error(errors::interface_as_type(
                 symbol
                     .map(|symbol| symbol.name.clone())
                     .unwrap_or(String::from("{Interface}")),
@@ -910,9 +907,9 @@ fn typecheck_function_expression(
                 }
                 Err(errors) => {
                     for _type in errors {
-                        checker_ctx.add_diagnostic(TypeError { _type, span })
+                        checker_ctx.add_error(TypeError { _type, span })
                     }
-                    checker_ctx.add_diagnostic(TypeError {
+                    checker_ctx.add_error(TypeError {
                         _type: TypeErrorType::MismatchedReturnType {
                             expected: symbollib.format_evaluated_type(&return_type),
                             found: symbollib.format_evaluated_type(&inferred_return_type),

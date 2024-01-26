@@ -1,3 +1,5 @@
+use ast::unwrap_or_continue;
+
 use super::*;
 
 /// Typechecks an access expression.
@@ -93,7 +95,7 @@ pub fn extract_property_of(
                         };
                         if symbol.name == property_symbol.name {
                             if !symbol.kind.is_public() {
-                                checker_ctx.add_diagnostic(TypeError {
+                                checker_ctx.add_error(TypeError {
                                     _type: TypeErrorType::PrivateSymbolLeak {
                                         modulename: module.name.clone(),
                                         property: property_symbol.name.clone(),
@@ -120,7 +122,7 @@ pub fn extract_property_of(
                         }
                     }
                     // No such symbol found.
-                    checker_ctx.add_diagnostic(TypeError {
+                    checker_ctx.add_error(TypeError {
                         _type: TypeErrorType::NoSuchSymbol {
                             modulename: module.name.clone(),
                             property: property_symbol.name.clone(),
@@ -261,7 +263,7 @@ pub fn extract_property_of(
             base_type: symbollib.format_evaluated_type(&object_type),
             property,
         };
-        checker_ctx.add_diagnostic(TypeError {
+        checker_ctx.add_error(TypeError {
             _type: error,
             span: checker_ctx.span_of_expr(&access.property, &symbollib),
         });
@@ -284,34 +286,50 @@ pub fn search_for_property(
     // The base type of the model, generic or interface.
     let base_symbol = symbollib.get_forwarded(base)?;
     let property_symbol = symbollib.get(property_symbol_idx)?;
-    let impls = match &base_symbol.kind {
-        SemanticSymbolKind::Model {
-            implementations, ..
-        }
-        | SemanticSymbolKind::GenericParameter {
-            interfaces: implementations,
-            ..
-        }
-        | SemanticSymbolKind::Interface {
-            implementations, ..
-        } => implementations,
+    // The interfaces available to the base type.
+    let intermediate_interfaces = match &base_symbol.kind {
+        SemanticSymbolKind::Model { interfaces, .. }
+        | SemanticSymbolKind::GenericParameter { interfaces, .. }
+        | SemanticSymbolKind::Interface { interfaces, .. } => interfaces,
         _ => return None,
     };
     let empty = vec![];
-    let model_props = match &base_symbol.kind {
-        SemanticSymbolKind::Model {
-            methods,
-            attributes,
-            ..
-        } => Some((methods, attributes)),
-        SemanticSymbolKind::Interface { methods, .. } => Some((methods, &empty)),
-        _ => None,
-    };
-    // Gather methods from all the implementations.
-    let implementation_methods = impls
+    // Methods provided by environments.
+    let environment_methods = symbollib
+        .type_environments
         .iter()
-        .filter_map(|int_typ| {
-            let implementation = evaluate(int_typ, symbollib, Some(&generic_args), &mut None, 0);
+        .filter_map(|environment| {
+            environment
+                .suppositions
+                .iter()
+                .find(|supposition| supposition.base == base)
+        })
+        .map(|supposition| supposition.methods.iter().map(|method| *method))
+        .flatten();
+    // Interfaces from the environment.
+    let environment_implementations = symbollib
+        .type_environments
+        .iter()
+        .filter_map(|environment| {
+            environment
+                .suppositions
+                .iter()
+                .find(|supposition| supposition.base == base)
+        })
+        .map(|supposition| supposition.implementations.iter())
+        .flatten()
+        .map(|implementation| implementation.clone());
+
+    // Gather methods from all the implementations.
+    let all_interfaces: Vec<_> = intermediate_interfaces
+        .iter()
+        .map(|int_typ| evaluate(int_typ, symbollib, Some(&generic_args), &mut None, 0))
+        .chain(environment_implementations)
+        .collect();
+
+    let all_interface_methods = all_interfaces
+        .into_iter()
+        .filter_map(|implementation| {
             match implementation {
                 EvaluatedType::InterfaceInstance {
                     interface_,
@@ -349,108 +367,125 @@ pub fn search_for_property(
                 _ => return None,
             }
         })
-        .map(|methods| methods.iter())
+        .map(|methods| methods.iter().map(|method| *method))
         .flatten();
+
+    let model_props = match &base_symbol.kind {
+        SemanticSymbolKind::Model {
+            methods,
+            attributes,
+            ..
+        } => Some((methods, attributes)),
+        SemanticSymbolKind::Interface { methods, .. } => Some((methods, &empty)),
+        _ => None,
+    };
     // Collecting into a new vector here because I have not found a feasible way
     // to use different iterator types in the same context, without duplicating a
     // lot of code.
     let complete_method_list: Vec<_> = match &model_props {
-        Some((methods, _)) => methods.iter().chain(implementation_methods).collect(),
-        None => implementation_methods.collect(),
+        Some((methods, _)) => methods
+            .iter()
+            .map(|method| *method)
+            .chain(all_interface_methods)
+            .collect(),
+        // Environments methods will only be available for generics, so there is no
+        // need to chain the iterator for models.
+        None => environment_methods.chain(all_interface_methods).collect(),
     };
     // Is property a method?
     // Search through the compound list of methods for appriopriate property.
     for method in complete_method_list.iter() {
-        let method = **method;
-        let method_symbol = symbollib.get_forwarded(method).unwrap();
-        if method_symbol.name == property_symbol.name {
-            let method_is_static = match &method_symbol.kind {
-                SemanticSymbolKind::Method { is_static, .. } => *is_static,
-                _ => false,
-            };
-            if method_is_static && object_is_instance {
-                checker_ctx.add_diagnostic(errors::instance_static_method_access(
-                    base_symbol.name.clone(),
-                    method_symbol.name.clone(),
-                    property_span,
-                ))
-            } else if !method_is_static && !object_is_instance {
-                checker_ctx.add_diagnostic(errors::contructor_non_static_method_access(
-                    base_symbol.name.clone(),
-                    method_symbol.name.clone(),
-                    property_span,
-                ))
-            }
-            // get mutably and resolve.
-            let property_symbol = symbollib.get_mut(property_symbol_idx).unwrap();
-            if let SemanticSymbolKind::Property { resolved, .. } = &mut property_symbol.kind {
-                *resolved = Some(method)
-            }
-            // Add reference on source.
-            let method_symbol = symbollib.get_mut(method).unwrap();
-            method_symbol.add_reference(checker_ctx.path_idx, property_span);
-            // Block non-public access.
-            if !method_symbol.kind.is_public()
-                && checker_ctx.enclosing_model_or_interface != Some(base)
-            {
-                checker_ctx.add_diagnostic(errors::private_property_leak(
-                    method_symbol.name.clone(),
-                    property_span,
-                ));
-            }
-            // Block access in constructor.
-            if checker_ctx
-                .current_constructor_context
-                .last()
-                .is_some_and(|constructor_ctx| constructor_ctx.model == base)
-                && !method_is_static
-            {
-                checker_ctx.add_diagnostic(errors::method_in_constructor(property_span));
-            }
-            return Some(EvaluatedType::MethodInstance {
-                method,
-                generic_arguments: generic_args,
-                is_invariant,
-            });
+        let method = *method;
+        let method_symbol = unwrap_or_continue!(symbollib.get_forwarded(method));
+        if method_symbol.name != property_symbol.name {
+            continue;
         }
+        let method_is_static = match &method_symbol.kind {
+            SemanticSymbolKind::Method { is_static, .. } => *is_static,
+            _ => false,
+        };
+        if method_is_static && object_is_instance {
+            checker_ctx.add_error(errors::instance_static_method_access(
+                base_symbol.name.clone(),
+                method_symbol.name.clone(),
+                property_span,
+            ))
+        } else if !method_is_static && !object_is_instance {
+            checker_ctx.add_error(errors::contructor_non_static_method_access(
+                base_symbol.name.clone(),
+                method_symbol.name.clone(),
+                property_span,
+            ))
+        }
+        // get mutably and resolve.
+        let property_symbol = symbollib.get_mut(property_symbol_idx).unwrap();
+        if let SemanticSymbolKind::Property { resolved, .. } = &mut property_symbol.kind {
+            *resolved = Some(method)
+        }
+        // Add reference on source.
+        let method_symbol = symbollib.get_mut(method).unwrap();
+        method_symbol.add_reference(checker_ctx.path_idx, property_span);
+        // Block non-public access.
+        if !method_symbol.kind.is_public() && checker_ctx.enclosing_model_or_interface != Some(base)
+        {
+            checker_ctx.add_error(errors::private_property_leak(
+                method_symbol.name.clone(),
+                property_span,
+            ));
+        }
+        // Block access in constructor.
+        if checker_ctx
+            .current_constructor_context
+            .last()
+            .is_some_and(|constructor_ctx| constructor_ctx.model == base)
+            && !method_is_static
+        {
+            checker_ctx.add_error(errors::method_in_constructor(property_span));
+        }
+        return Some(EvaluatedType::MethodInstance {
+            method,
+            generic_arguments: generic_args,
+            is_invariant,
+        });
     }
     // Is property an attribute?
     if let Some((_, attributes)) = model_props {
         for attribute in attributes.iter() {
             let attribute = *attribute;
-            let attribute_symbol = symbollib.get_forwarded(attribute).unwrap();
-            if attribute_symbol.name == property_symbol.name {
-                let result_type = match &attribute_symbol.kind {
-                    SemanticSymbolKind::Attribute { declared_type, .. } => {
-                        let span = attribute_symbol.ident_span();
-                        evaluate(
-                            &declared_type,
-                            symbollib,
-                            Some(&generic_args),
-                            &mut checker_ctx.tracker(span),
-                            0,
-                        )
-                    }
-                    _ => return Some(EvaluatedType::Unknown),
-                };
-                // get mutably.
-                let property_symbol = symbollib.get_mut(property_symbol_idx).unwrap();
-                if let SemanticSymbolKind::Property { resolved, .. } = &mut property_symbol.kind {
-                    *resolved = Some(attribute)
-                }
-                // Add reference on source.
-                let attribute_symbol = symbollib.get_mut(attribute).unwrap();
-                attribute_symbol.add_reference(checker_ctx.path_idx, property_span);
-                if !attribute_symbol.kind.is_public()
-                    && checker_ctx.enclosing_model_or_interface != Some(base)
-                {
-                    checker_ctx.add_diagnostic(errors::private_property_leak(
-                        attribute_symbol.name.clone(),
-                        property_span,
-                    ));
-                }
-                return Some(result_type);
+            let attribute_symbol = unwrap_or_continue!(symbollib.get_forwarded(attribute));
+            if attribute_symbol.name != property_symbol.name {
+                continue;
             }
+            let result_type = match &attribute_symbol.kind {
+                SemanticSymbolKind::Attribute { declared_type, .. } => {
+                    let span = attribute_symbol.ident_span();
+                    evaluate(
+                        &declared_type,
+                        symbollib,
+                        Some(&generic_args),
+                        &mut checker_ctx.tracker(span),
+                        0,
+                    )
+                }
+                _ => return Some(EvaluatedType::Unknown),
+            };
+            // get mutably.
+            let property_symbol = symbollib.get_mut(property_symbol_idx).unwrap();
+            if let SemanticSymbolKind::Property { resolved, .. } = &mut property_symbol.kind {
+                *resolved = Some(attribute)
+            }
+            // Add reference on source.
+            let attribute_symbol = symbollib.get_mut(attribute).unwrap();
+            attribute_symbol.add_reference(checker_ctx.path_idx, property_span);
+            if !attribute_symbol.kind.is_public()
+                && checker_ctx.enclosing_model_or_interface != Some(base)
+            {
+                checker_ctx.add_error(errors::private_property_leak(
+                    attribute_symbol.name.clone(),
+                    property_span,
+                ));
+            }
+            return Some(result_type);
         }
         // Property has ultimately not been found in the model.
         // Search through the attribute list for possible suggestions.
@@ -458,7 +493,7 @@ pub fn search_for_property(
             let attribute = *attributes;
             let attribute_symbol = symbollib.get_forwarded(attribute).unwrap();
             if attribute_symbol.name.to_lowercase() == property_symbol.name.to_lowercase() {
-                checker_ctx.add_diagnostic(errors::mispelled_name(
+                checker_ctx.add_error(errors::mispelled_name(
                     attribute_symbol.name.clone(),
                     property_span,
                 ));
@@ -469,10 +504,9 @@ pub fn search_for_property(
     // Property has not been found anywhere.
     // Search through complete method list for suggestions.
     for method in complete_method_list {
-        let method = *method;
         let method_symbol = symbollib.get_forwarded(method).unwrap();
         if method_symbol.name.to_lowercase() == property_symbol.name.to_lowercase() {
-            checker_ctx.add_diagnostic(errors::mispelled_name(
+            checker_ctx.add_error(errors::mispelled_name(
                 method_symbol.name.clone(),
                 property_span,
             ));

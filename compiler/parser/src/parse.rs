@@ -2636,10 +2636,9 @@ impl<L: Lexer> Parser<L> {
         self.advance(); // move past return
         let mut errors = vec![];
 
-        let mut partial = if self
-            .token()
-            .is_some_and(|t| t._type == TokenType::Operator(SemiColon) || t._type == TokenType::Bracket(RCurly))
-        {
+        let mut partial = if self.token().is_some_and(|t| {
+            t._type == TokenType::Operator(SemiColon) || t._type == TokenType::Bracket(RCurly)
+        }) {
             let end = if self.token().unwrap()._type == TokenType::Operator(SemiColon) {
                 let end = self.token().unwrap().span.end;
                 self.advance(); // move past ;
@@ -3427,11 +3426,6 @@ impl<L: Lexer> Parser<L> {
             TokenType::Keyword(Implements) => {
                 let interfaces = self.maybe_interface_implementations()?;
                 TypeClause::Implementations { base, interfaces }
-            }
-            TokenType::Keyword(Is) => {
-                self.advance(); // Move past is.
-                let other = self.type_expression()?;
-                TypeClause::Is { base, other }
             }
             _ => return Err(errors::expected(TokenType::Keyword(Implements), token.span)),
         };

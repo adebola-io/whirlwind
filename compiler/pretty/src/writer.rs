@@ -582,13 +582,6 @@ impl<'a> SymbolWriter<'a> {
                 string.push_str(operator_str);
                 self.print_type_clause_into(&right, string)
             }
-            analyzer::IntermediateTypeClause::Is { base, other } => {
-                let symboltable = &self.standpoint.symbol_library;
-                let symbol = ast::unwrap_or_return!(symboltable.get(*base));
-                string.push_str(&symbol.name);
-                string.push_str(" is ");
-                string.push_str(&self.print_intermediate_type(other));
-            }
             analyzer::IntermediateTypeClause::Implements { base, interfaces } => {
                 let symboltable = &self.standpoint.symbol_library;
                 let symbol = ast::unwrap_or_return!(symboltable.get(*base));

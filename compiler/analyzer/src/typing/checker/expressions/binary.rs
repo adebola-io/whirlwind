@@ -30,10 +30,8 @@ pub fn typecheck_binary_expression(
                 match symbollib.bool {
                     Some(bool) => boolean_instance(bool),
                     None => {
-                        checker_ctx.add_diagnostic(errors::missing_intrinsic(
-                            format!("Bool"),
-                            binexp.span,
-                        ));
+                        checker_ctx
+                            .add_error(errors::missing_intrinsic(format!("Bool"), binexp.span));
                         EvaluatedType::Unknown
                     }
                 }
@@ -48,17 +46,15 @@ pub fn typecheck_binary_expression(
                 let result_type =
                     converge_binary_types(symbollib, left, right, binexp, checker_ctx);
                 if symbollib.orderable.is_none() {
-                    checker_ctx.add_diagnostic(errors::missing_intrinsic(
-                        format!("Orderable"),
-                        binexp.span,
-                    ));
+                    checker_ctx
+                        .add_error(errors::missing_intrinsic(format!("Orderable"), binexp.span));
                     return EvaluatedType::Unknown;
                 }
                 let implementation =
                     get_implementation_of(symbollib.orderable.unwrap(), &result_type, symbollib);
                 if implementation.is_none() && !result_type.is_unknown() {
                     let result_type = symbollib.format_evaluated_type(&result_type);
-                    checker_ctx.add_diagnostic(errors::not_orderable(
+                    checker_ctx.add_error(errors::not_orderable(
                         binexp.operator,
                         result_type,
                         binexp.span,
@@ -68,10 +64,8 @@ pub fn typecheck_binary_expression(
                     match symbollib.bool {
                         Some(bool) => boolean_instance(bool),
                         None => {
-                            checker_ctx.add_diagnostic(errors::missing_intrinsic(
-                                format!("Bool"),
-                                binexp.span,
-                            ));
+                            checker_ctx
+                                .add_error(errors::missing_intrinsic(format!("Bool"), binexp.span));
                             EvaluatedType::Unknown
                         }
                     }
@@ -83,24 +77,21 @@ pub fn typecheck_binary_expression(
                 let result_type =
                     converge_binary_types(symbollib, left, right, binexp, checker_ctx);
                 if symbollib.sequenced.is_none() {
-                    checker_ctx.add_diagnostic(errors::missing_intrinsic(
-                        format!("Sequenced"),
-                        binexp.span,
-                    ));
+                    checker_ctx
+                        .add_error(errors::missing_intrinsic(format!("Sequenced"), binexp.span));
                     return EvaluatedType::Unknown;
                 }
                 let implementation =
                     get_implementation_of(symbollib.sequenced.unwrap(), &result_type, symbollib);
                 if implementation.is_none() && !result_type.is_unknown() {
                     let result_type = symbollib.format_evaluated_type(&result_type);
-                    checker_ctx.add_diagnostic(errors::not_sequenced(result_type, binexp.span));
+                    checker_ctx.add_error(errors::not_sequenced(result_type, binexp.span));
                     EvaluatedType::Unknown
                 } else {
                     if symbollib.range.is_some() {
                         return rangify(result_type, &symbollib);
                     }
-                    checker_ctx
-                        .add_diagnostic(errors::missing_intrinsic(format!("Range"), binexp.span));
+                    checker_ctx.add_error(errors::missing_intrinsic(format!("Range"), binexp.span));
                     EvaluatedType::Unknown
                 }
             }
@@ -112,7 +103,7 @@ pub fn typecheck_binary_expression(
                     converge_binary_types(symbollib, left, right, binexp, checker_ctx);
                 if !is_numeric_type(&result_type, symbollib) {
                     let result_type = symbollib.format_evaluated_type(&result_type);
-                    checker_ctx.add_diagnostic(errors::numeric_exclusive_operation(
+                    checker_ctx.add_error(errors::numeric_exclusive_operation(
                         result_type,
                         binexp.span,
                     ));
@@ -143,7 +134,7 @@ pub fn typecheck_binary_expression(
                     _ => symbollib.bitwise,
                 };
                 if interface_.is_none() {
-                    checker_ctx.add_diagnostic(errors::missing_intrinsic(
+                    checker_ctx.add_error(errors::missing_intrinsic(
                         format!(
                             "{}",
                             match binexp.operator {
@@ -169,7 +160,7 @@ pub fn typecheck_binary_expression(
                             is_invariant: false,
                             generic_arguments: vec![],
                         });
-                    checker_ctx.add_diagnostic(errors::unimplemented_interface(
+                    checker_ctx.add_error(errors::unimplemented_interface(
                         result_type,
                         interface,
                         binexp.span,
@@ -236,9 +227,9 @@ fn converge_binary_types(
                     _type: error_type,
                     span: binexp.span,
                 };
-                checker_ctx.add_diagnostic(error);
+                checker_ctx.add_error(error);
             }
-            checker_ctx.add_diagnostic(errors::incomparable(left, right, binexp.span));
+            checker_ctx.add_error(errors::incomparable(left, right, binexp.span));
             EvaluatedType::Unknown
         }
     }

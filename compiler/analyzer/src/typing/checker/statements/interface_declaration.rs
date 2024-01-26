@@ -5,7 +5,9 @@ use crate::{
     SemanticSymbolKind, SymbolLibrary, TypecheckerContext,
 };
 
-use super::{typecheck_function_body, typecheck_generic_params, validate_return_type_and_params};
+use super::{
+    function::typecheck_function_body, typecheck_generic_params, validate_return_type_and_params,
+};
 
 pub fn typecheck_interface(
     interface: &mut crate::TypedInterfaceDeclaration,
@@ -113,6 +115,7 @@ fn typecheck_interface_property(
                 symbollib,
                 return_type_span,
             );
+            symbollib.pop_type_environment_stack(body.scopeid);
             checker_ctx.current_function_is_static = former_is_static;
         }
     }

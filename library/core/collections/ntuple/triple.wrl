@@ -2,7 +2,7 @@ module triple
 
 use core.maybe.some
 use core.string.{Display, String}
-use core.sentinels.todo
+use core.interfaces.Default
 
 use ntuple.NTuple
 
@@ -13,7 +13,10 @@ public model Triple<T, U, V>
             T implements Display
             and U implements Display 
             and V implements Display
-        ) + NTuple<T, U, V>
+        ) + Default|=(T implements Default
+            and U implements Default
+            and V implements Default) 
+        + NTuple<T, U, V>
 {
     public var a: T
     public var b: U
@@ -26,17 +29,26 @@ public model Triple<T, U, V>
     }
 
     public function [Display.toStr]|=(
-            T implements Display 
+        T implements Display 
             and U implements Display
             and V implements Display
         ) -> String
     {
-        todo()
-        // return String.fmt("Triple(%, %, %)")
-        //     .add(this.a.toStr())
-        //     .add(this.b.toStr())
-        //     .add(this.c.toStr())
-        //     .finish()
+        return String.fmt("Triple(%, %, %)")
+            .add(this.a)
+            .add(this.b)
+            .add(this.c)
+            .finish()
+    }
+
+    static function [Default.init]|=(
+        T implements Default
+            and U implements Default
+            and V implements Default) -> This {
+        var a: T;
+        var b: U;
+        var c: V;
+        return Triple(a, b, c)
     }
 
     public function [NTuple.first] -> ?T {

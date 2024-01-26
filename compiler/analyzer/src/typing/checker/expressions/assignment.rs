@@ -24,7 +24,7 @@ pub fn typecheck_assignment_expression(
     assexp.inferred_type = (|| {
         let left_type = typecheck_expression(&mut assexp.left, checker_ctx, symbollib);
         let right_type = if !is_valid_lhs(&assexp.left) {
-            checker_ctx.add_diagnostic(errors::invalid_assignment_target(assexp.span));
+            checker_ctx.add_error(errors::invalid_assignment_target(assexp.span));
             typecheck_expression(&mut assexp.right, checker_ctx, symbollib); // For continuity.
             return EvaluatedType::Unknown;
         } else {
@@ -65,7 +65,7 @@ pub fn typecheck_assignment_expression(
                     Ok(result_type) => result_type,
                     Err(errortypes) => {
                         for _type in errortypes {
-                            checker_ctx.add_diagnostic(TypeError {
+                            checker_ctx.add_error(TypeError {
                                 _type,
                                 span: checker_ctx.span_of_expr(&assexp.right, symbollib),
                             })
@@ -88,11 +88,11 @@ pub fn typecheck_assignment_expression(
                         .clone(),
                     _ => String::from("[Model]"),
                 };
-                checker_ctx.add_diagnostic(errors::mutating_method(owner, name, assexp.span));
+                checker_ctx.add_error(errors::mutating_method(owner, name, assexp.span));
                 return EvaluatedType::Unknown;
             }
             _ => {
-                checker_ctx.add_diagnostic(errors::invalid_assignment_target(assexp.span));
+                checker_ctx.add_error(errors::invalid_assignment_target(assexp.span));
                 return EvaluatedType::Unknown;
             }
         };
@@ -110,7 +110,7 @@ pub fn typecheck_assignment_expression(
                     .clone(),
                 _ => String::from("[Model]"),
             };
-            checker_ctx.add_diagnostic(errors::mutating_method(owner, name, assexp.span));
+            checker_ctx.add_error(errors::mutating_method(owner, name, assexp.span));
             return EvaluatedType::Unknown;
         }
         // For other assignment types.
@@ -121,7 +121,7 @@ pub fn typecheck_assignment_expression(
                 _ => unreachable!(),
             };
             if interface_.is_none() {
-                checker_ctx.add_diagnostic(errors::missing_intrinsic(
+                checker_ctx.add_error(errors::missing_intrinsic(
                     format!(
                         "{}",
                         match assexp.operator {
@@ -143,7 +143,7 @@ pub fn typecheck_assignment_expression(
                         is_invariant: false,
                         generic_arguments: vec![],
                     });
-                checker_ctx.add_diagnostic(errors::unimplemented_interface(
+                checker_ctx.add_error(errors::unimplemented_interface(
                     result_type,
                     interface,
                     assexp.span,
@@ -195,7 +195,7 @@ pub fn typecheck_assignment_expression(
                 .iter()
                 .any(|start| span_of_rhs.contains(*start))
             {
-                checker_ctx.add_diagnostic(errors::using_attribute_before_assign(span_of_rhs));
+                checker_ctx.add_error(errors::using_attribute_before_assign(span_of_rhs));
                 break 'check_for_attribute_assignment;
             }
             let assignment_type = match current_scope_type {

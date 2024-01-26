@@ -124,7 +124,7 @@ fn instantiate_model(
             let span = callexp.span;
             // if model does not have a new() function.
             if !*is_constructable {
-                checker_ctx.add_diagnostic(errors::model_not_constructable(name, span));
+                checker_ctx.add_error(errors::model_not_constructable(name, span));
                 return EvaluatedType::Unknown;
             }
             let generic_arguments = evaluate_generic_params(generic_params, false);
@@ -168,7 +168,7 @@ pub fn zip_arguments(
 ) {
     // mismatched arguments. It checks if the parameter list is longer, so it can account for optional parameters.
     if parameter_types.len() < callexp.arguments.len() {
-        checker_ctx.add_diagnostic(errors::mismatched_function_args(
+        checker_ctx.add_error(errors::mismatched_function_args(
             callexp.span,
             parameter_types.len(),
             callexp.arguments.len(),
@@ -208,7 +208,7 @@ pub fn zip_arguments(
             Some(evaled_typ) => evaled_typ,
             None => {
                 if !is_optional {
-                    checker_ctx.add_diagnostic(errors::mismatched_function_args(
+                    checker_ctx.add_error(errors::mismatched_function_args(
                         callexp.span,
                         parameter_types.len(),
                         callexp.arguments.len(),
@@ -246,7 +246,7 @@ pub fn zip_arguments(
         );
         if let Err(errortype) = unification {
             for errortype in errortype {
-                checker_ctx.add_diagnostic(TypeError {
+                checker_ctx.add_error(TypeError {
                     _type: errortype,
                     span: checker_ctx.span_of_expr(&callexp.arguments[i], &symbollib),
                 })
@@ -413,7 +413,7 @@ fn extract_call_of(
         | EvaluatedType::Void
         | EvaluatedType::Never
         | EvaluatedType::OpaqueTypeInstance { .. } => {
-            checker_ctx.add_diagnostic(errors::not_callable(
+            checker_ctx.add_error(errors::not_callable(
                 symbollib.format_evaluated_type(&caller),
                 caller_span,
             ));

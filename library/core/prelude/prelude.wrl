@@ -31,7 +31,7 @@ public use core.{
     interfaces.{
         Default, Guaranteed, Try
     },
-    iterate.{Iteratable, AsIterator},
+    iterate.{Iterable, AsIterator},
     maybe.{none, some, Maybe},
     numeric.{
         Number, Int32, Int, Float, Int64, Float32, Float64

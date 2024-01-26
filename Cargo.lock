@@ -260,6 +260,9 @@ dependencies = [
 [[package]]
 name = "interpreter"
 version = "0.1.0"
+dependencies = [
+ "analyzer",
+]
 
 [[package]]
 name = "itoa"

@@ -1,8 +1,12 @@
-# External Functions
+# External Functions.
 
-> STATUS: <b>DRAFT</b>
+> STATUS: <b>0% Implemented.</b>
 
-This file details the introduction of a mechanism to define foreign functions within the language scope. External functions will either be resolved at compile time, or directly compiled to WebAssembly import statements.
+This file details the introduction of a mechanism to define foreign functions within the language scope. External functions will either be resolved:
+
+-  statically at compile time,
+-  dynamically at runtime for the interpreter.
+-  or dynamically at runtime as WebAssembly import statements.
 
 It would enable seamless integration with external functionality from other WebAssembly modules or the host environment. It also allows the definition of a boundary between the core and system libraries, and lower level functionality.
 
@@ -12,8 +16,9 @@ This feature will introduce:
 
 -  a `from` keyword to the list of tokens,
 -  `ScopeEntry:ExternalFunction` to the module ambience,
--  `Statement:ExternDeclaration` to the syntax AST, and
--  `TypedStmnt:TypedExternDeclaration` to the bound module AST.
+-  `Statement:ExternDeclaration` and `ExternFunctionDeclaration` to the syntax AST
+-  `TypedStmnt:TypedExternDeclaration` and `TypedExternFunctionDeclaration` to the bound module AST
+-  `InterpreterStmnt::Builtin(usize)` to the interpreter statement list.
 
 External functions are declared as function signatures, basically functional declarations without a body.
 
@@ -35,7 +40,9 @@ from("resource") {
 from("resource") function print(message: String);
 ```
 
-**These declarations will only be allowed in the global scope, to prevent stories that touch.**
+## Semantics
+
+-  **These declarations will only be allowed in the global scope to prevent stories that touch**.
 
 ## Resource Types
 
@@ -46,6 +53,7 @@ A valid `resource` string must have the form `type:resource`, where `type` could
    -  a path from the root of the installation directory, which is represented by an `@` symbol. e.g. `file:@/ext/math.wasm`.
 -  `http`: This should allow requesting functions from network resources. (It will require a compiler flag to enable.) e.g. `http://web.com/exports`.
 -  `wasi`, to import an item from the WASI runtime. (This should only be valid in system-permitted projects).
+-  `builtin`: For the interpreter, this will resolve to a Rust function.
 
 ## Semantics:
 

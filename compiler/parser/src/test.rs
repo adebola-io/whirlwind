@@ -280,7 +280,7 @@ fn parsing_union_types() {
 
 #[test]
 fn parsing_conditional_types() {
-    let mut parser = parse_text("type A = if A is A<B> B<C> else B<A>;");
+    let mut parser = parse_text("type A = if A implements A<B> B<C> else B<A>;");
     assert_eq!(
         parser.next().unwrap().unwrap(),
         Statement::TypeDeclaration(TypeDeclaration {
@@ -533,7 +533,7 @@ fn parse_constrained_type() {
     );
 
     // with brackets.
-    let mut parser = parse_text("type A = B|=(C implements D|=A is B);");
+    let mut parser = parse_text("type A = B|=(C implements D|=A implements B);");
     let statement = parser.next().unwrap().unwrap();
     let module_ambience = parser.module_ambience();
 
@@ -555,8 +555,9 @@ fn parse_constrained_type() {
     );
 
     // binary clause.
-    let mut parser =
-        parse_text("type A = B|=(C implements D|=A is B and C is D<G> and E implements F);");
+    let mut parser = parse_text(
+        "type A = B|=(C implements D|=A implements B and C implements D<G> and E implements F);",
+    );
     let statement = parser.next().unwrap().unwrap();
     let module_ambience = parser.module_ambience();
 

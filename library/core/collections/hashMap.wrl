@@ -3,7 +3,7 @@ module hashMap
 use core.{
     sentinels.todo,
     interfaces.Default, 
-    iterate.{AsIterator, Iteratable},
+    iterate.{AsIterator, Iterable},
     numeric.Int32,
 }
 use ntuple.Tuple
@@ -17,13 +17,13 @@ public interface ToMap<K implements Hash, V> {
 }
 
 public model HashMap<K implements Hash, V> 
-    implements AsIterator<Tuple<K, V>, HashMapIteratable<K, V>> 
+    implements AsIterator<Tuple<K, V>, HashMapIterable<K, V>> 
     + Default
 {
     new(){}
 
-    public function [AsIterator.iter] -> HashMapIteratable<K, V> {
-        return HashMapIteratable(this)
+    public function [AsIterator.iter] -> HashMapIterable<K, V> {
+        return HashMapIterable(this)
     }
     static function [Default.init] -> This {
         return HashMap()
@@ -57,14 +57,14 @@ public model HashMap<K implements Hash, V>
     }
 }
 
-public model HashMapIteratable<K implements Hash, V> implements Iteratable<Tuple<K, V>> {
+public model HashMapIterable<K implements Hash, V> implements Iterable<Tuple<K, V>> {
     var _map: HashMap<K, V>
 
     new(map: HashMap<K, V>) {
         this._map = map
     }
 
-    public function [Iteratable.next] -> ?Tuple<K, V> {
+    public function [Iterable.next] -> ?Tuple<K, V> {
         todo()
     }
 }

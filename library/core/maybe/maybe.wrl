@@ -54,8 +54,7 @@ public model Maybe<T>
         if this.isNone() {
             return "Maybe.none"
         }
-        core.sentinels.todo()
-        // return String.fmt("Maybe.some(%)").add(this.value).finish()
+        return String.fmt("Maybe.some(%)").add(this.value).finish()
     }
     /// Implementation of the `Guaranteed` interface.
     function [Guaranteed.guarantee] -> T {
@@ -261,15 +260,10 @@ public model Maybe<T>
     /// assert(j.unwrapOrDefault()).equals(0) // default value for Int32.
     //  ```
     public function unwrapOrDefault|=(T implements Default) -> T {
-        // if this.isNone() {
-        //     var default: T
-        //     return default
-        // } 
+        if this.isNone() {
+            var default: T
+            return default
+        } 
         return this.value
-    }
-    /// Tranforms a `Maybe<Maybe<T>>` to a `Maybe<T>`.
-    public function flatten<U>|=(T is ?U) -> ?U {
-        core.sentinels.todo()
-        // if this.isNone() { none() } else { this.value }
     }
 }

@@ -211,7 +211,7 @@ impl<'a> CompletionFinder<'a> {
         let static_methods = match &symbol.kind {
             SemanticSymbolKind::Model {
                 methods,
-                implementations,
+                interfaces: implementations,
                 ..
             } => {
                 // Get completions from implementations and methods.
@@ -388,10 +388,12 @@ impl<'a> CompletionFinder<'a> {
         // Implementations from other interfacefaces.
         let implementations = match &owner_symbol.kind {
             SemanticSymbolKind::Model {
-                implementations, ..
+                interfaces: implementations,
+                ..
             }
             | SemanticSymbolKind::Interface {
-                implementations, ..
+                interfaces: implementations,
+                ..
             } => implementations,
             _ => return Some(()),
         }
@@ -450,7 +452,7 @@ impl<'a> CompletionFinder<'a> {
         })
     }
 
-    /// Generate a complete function completion with parameters.
+    /// Generate a complete function/model completion with parameters.
     fn generate_function_completion(&self, name: &str, params: &[analyzer::SymbolIndex]) -> String {
         let mut string = String::from(name);
         string.push_str("(");
@@ -533,9 +535,11 @@ impl<'a> CompletionFinder<'a> {
             documentation,
             insert_text: if complete_function_params {
                 match &symbol.kind {
-                    SemanticSymbolKind::Function { params, .. } => {
-                        Some(self.generate_function_completion(&symbol.name, params))
-                    }
+                    SemanticSymbolKind::Function { params, .. }
+                    | SemanticSymbolKind::Model {
+                        constructor_parameters: Some(params),
+                        ..
+                    } => Some(self.generate_function_completion(&symbol.name, params)),
                     _ => None,
                 }
             } else {

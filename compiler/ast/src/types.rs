@@ -130,10 +130,6 @@ pub enum TypeClause {
         base: Identifier,
         interfaces: Vec<TypeExpression>,
     },
-    Is {
-        base: Identifier,
-        other: TypeExpression,
-    },
 }
 
 impl TypeClause {

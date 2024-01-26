@@ -2,7 +2,7 @@ module testing
 
 use core.{
     bool.Bool,
-    iterate.{AsIterator, Iteratable},
+    iterate.{AsIterator, Iterable},
     sentinels.fatalOnCaller,
     string.{Display, String}
 }
@@ -55,17 +55,13 @@ public model Assertion<T implements Display> {
         }
         return this
     }
-    /// Checks that the value is true.
-    public function isTrue|=(T is Bool) {
-        core.sentinels.todo()
-    }
     /// Checks that a collection type is empty
-    public function isEmpty<U, V implements Iteratable<U>>|=(T implements AsIterator<U, V>) {
-        // length := this.value.iter().count()
-        // if this.iter().next().isSome() {
+    public function isEmpty<U, V implements Iterable<U>>|=(T implements AsIterator<U, V>) {
+        length := this.value.iter().count()
+        if length > 0 {
             message := String.fmt("Assertion failed because array is not empty.\n")
-            // message.extend("Array Length: %").add(length)
-            fatalOnCaller(message.finish())
-        // }
+            message.extend("Array Length: %").add(length)
+            _ := fatalOnCaller(message.finish())
+        }
     }
 }

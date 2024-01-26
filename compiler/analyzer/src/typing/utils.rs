@@ -1,9 +1,10 @@
 use crate::{
-    evaluate, evaluate_type_clause, unify_generic_arguments, unify_types, DiagnosticType,
-    EvaluatedType, IntermediateType, IntermediateTypeClause, LiteralMap, ParameterType, PathIndex,
-    ProgramDiagnostic, SemanticSymbolKind, SymbolIndex, SymbolLibrary, TypeEnvironment,
-    TypecheckerContext, TypedExpression, UnifyOptions,
+    evaluate, evaluate_bare, evaluate_type_clause, unify_generic_arguments, unify_types,
+    DiagnosticType, EvaluatedType, IntermediateType, IntermediateTypeClause, LiteralMap,
+    ParameterType, PathIndex, ProgramDiagnostic, ScopeId, SemanticSymbolKind, Supposition,
+    SymbolIndex, SymbolLibrary, TypeEnvironment, TypecheckerContext, TypedExpression, UnifyOptions,
 };
+use ast::LogicOperator;
 use errors::{TypeError, TypeErrorType, Warning, WarningType};
 /// Returns an intrinsic symbol from the symbol table or returns an unknown type.
 macro_rules! get_intrinsic {
@@ -475,6 +476,30 @@ pub fn get_method_types_from_symbol<'a>(
                     method_types.append(&mut methods_from_interface);
                 }
             }
+            // Get methods from type environments.
+            symbollib
+                .type_environments
+                .iter()
+                .filter_map(|environment| {
+                    environment
+                        .suppositions
+                        .iter()
+                        .find(|supposition| supposition.base == symbol_idx)
+                })
+                .map(|supposition| supposition.implementations.iter())
+                .flatten()
+                .for_each(|interface| {
+                    if let EvaluatedType::InterfaceInstance {
+                        interface_,
+                        generic_arguments,
+                        ..
+                    } = interface
+                    {
+                        let mut methods_from_interface =
+                            get_method_types_from_symbol(*interface_, symbollib, generic_arguments);
+                        method_types.append(&mut methods_from_interface);
+                    }
+                })
         }
         _ => {}
     }
@@ -494,13 +519,9 @@ pub fn get_interface_types_from_symbol(
     }
     let symbol = symbol.unwrap();
     match &symbol.kind {
-        SemanticSymbolKind::Model {
-            implementations, ..
-        }
-        | SemanticSymbolKind::Interface {
-            implementations, ..
-        } => {
-            for implementation in implementations {
+        SemanticSymbolKind::Model { interfaces, .. }
+        | SemanticSymbolKind::Interface { interfaces, .. } => {
+            for implementation in interfaces {
                 let initial_type = evaluate(
                     implementation,
                     symbollib,
@@ -530,6 +551,19 @@ pub fn get_interface_types_from_symbol(
                     interface_types.append(&mut interfaces_from_interface);
                 }
             }
+            // Get implementations from type environment.
+            symbollib
+                .type_environments
+                .iter()
+                .filter_map(|environment| {
+                    environment
+                        .suppositions
+                        .iter()
+                        .find(|supposition| supposition.base == symbol_idx)
+                })
+                .map(|supposition| supposition.implementations.iter())
+                .flatten()
+                .for_each(|interface| interface_types.push(interface.clone()))
         }
         _ => {}
     }
@@ -586,13 +620,16 @@ fn extract_impl(
     eval_type: &EvaluatedType,
     target_interface: SymbolIndex,
 ) -> Option<EvaluatedType> {
-    let base_symbol = symbollib.get_forwarded(*base)?;
+    let base = symbollib.forward(*base);
+    let base_symbol = symbollib.get(base)?;
     let implementation_list = match &base_symbol.kind {
         SemanticSymbolKind::Model {
-            implementations, ..
+            interfaces: implementations,
+            ..
         }
         | SemanticSymbolKind::Interface {
-            implementations, ..
+            interfaces: implementations,
+            ..
         }
         | SemanticSymbolKind::GenericParameter {
             interfaces: implementations,
@@ -630,6 +667,25 @@ fn extract_impl(
         if let EvaluatedType::InterfaceInstance { interface_, .. } = &evaluated {
             if *interface_ == target_interface {
                 return Some(evaluated);
+            }
+        }
+    }
+    // Check in type environments.
+    let implementation_list_from_env = symbollib
+        .type_environments
+        .iter()
+        .filter_map(|environment| {
+            environment
+                .suppositions
+                .iter()
+                .find(|supposition| supposition.base == base)
+        })
+        .map(|supposition| supposition.implementations.iter())
+        .flatten();
+    for evaluated in implementation_list_from_env {
+        if let EvaluatedType::InterfaceInstance { interface_, .. } = &evaluated {
+            if *interface_ == target_interface {
+                return Some(evaluated.clone());
             }
         }
     }
@@ -878,21 +934,23 @@ pub fn ensure_assignment_validity(
     span: ast::Span,
 ) {
     if inference_result.is_void() {
-        checker_ctx.add_diagnostic(errors::void_assignment(span));
+        checker_ctx.add_error(errors::void_assignment(span));
     } else if inference_result.is_partial() {
-        checker_ctx.add_diagnostic(errors::partial_type_assignment(span));
+        checker_ctx.add_error(errors::partial_type_assignment(span));
     }
 }
-/// Takes a bounded type clause and creates an environment that supposes
-/// it is true. It takes the checker_ctx so it can:
-/// error for unsatisfiable constraints. e.g.`String is Number`,
-/// produce warnings for redundant constraints e.g. `T is T`
-pub fn assume_verity(
+
+/// Takes a bounded type clause and creates an environment that supposes it is true.
+///
+/// It takes the checker context so it can:
+/// - error for unsatisfiable constraints. e.g.`String implements Number`,
+/// - produce warnings for redundant constraints e.g. `T is T`
+pub fn assume_clause_verity(
     clause: &IntermediateTypeClause,
     checker_ctx: &mut TypecheckerContext,
     symbollib: &SymbolLibrary,
-
     span: ast::Span,
+    id: ScopeId,
 ) -> Option<TypeEnvironment> {
     // Before creating an environment, we check if the clause is currently true.
     // If it is, this implies that it has always been true and it will always remain true
@@ -907,7 +965,122 @@ pub fn assume_verity(
         });
         return None;
     }
-    return None;
+    let mut suppositions: Vec<Supposition> = vec![];
+    match typecheck_clause(clause, &mut suppositions, symbollib, checker_ctx, span) {
+        Ok(supposition) => {
+            if let Some(last) = supposition {
+                suppositions.push(last);
+            }
+        }
+        Err(errors) => {
+            for _type in errors {
+                checker_ctx.add_error(TypeError { _type, span })
+            }
+        }
+    }
+    Some(TypeEnvironment { id, suppositions })
+}
+
+/// Confirms that a clause can be made true, given previous type environments and suppositions.
+/// The reason why it returns Option<Option<Supposition>> is because there are situations
+/// where the check fails (meaning it returns None), situations where the check passes but without
+/// a new supposition value (Some(None)), and situations where new suppositions are produced (Some(Some(s))).
+fn typecheck_clause(
+    clause: &IntermediateTypeClause,
+    suppositions: &mut Vec<Supposition>,
+    symbollib: &SymbolLibrary,
+    checker_ctx: &mut TypecheckerContext,
+    span: ast::Span,
+) -> Result<Option<Supposition>, Vec<TypeErrorType>> {
+    // Unsatisfiable constraints include:
+    // - Any clause with a non-generic base that is not true. e.g. String implements Try.
+    // - Any clause that contradicts a previously established truth, such as:
+    //      - Divergent implementations of the same interface e.g. T implements U<W> and T implements U<V>.
+    //      - An implementation of an interface that is not convergent with the implementation of that same interface on the base.
+    //      - Implementation of two interfaces with conflicting methods.
+    match clause {
+        IntermediateTypeClause::Binary {
+            left,
+            operator,
+            right,
+        } => {
+            let left = typecheck_clause(&left, suppositions, symbollib, checker_ctx, span)?;
+            let right = typecheck_clause(&right, suppositions, symbollib, checker_ctx, span)?;
+            match operator {
+                LogicOperator::And | LogicOperator::AndLiteral => {
+                    match (left, right) {
+                        (Some(left), Some(right)) if left.base == right.base => {
+                            return left.and(right, symbollib).map(|s| Some(s));
+                        }
+                        (left, right) => {
+                            // If the bases are not the same, there is nothing to do.
+                            left.map(|s| suppositions.push(s));
+                            right.map(|s| suppositions.push(s));
+                            return Ok(None);
+                        }
+                    }
+                }
+                LogicOperator::Or | LogicOperator::OrLiteral => {
+                    match (left, right) {
+                        (Some(left), Some(right)) if left.base == right.base => {
+                            return left.or(right, symbollib).map(|s| Some(s));
+                        }
+                        (left, right) => {
+                            // If the bases are not the same, there is nothing to do.
+                            left.map(|s| suppositions.push(s));
+                            right.map(|s| suppositions.push(s));
+                            return Ok(None);
+                        }
+                    }
+                }
+            }
+        }
+        IntermediateTypeClause::Implements { base, interfaces } => {
+            let base = *base;
+            // if the base is not generic, the clause can be evaluated directly.
+            if !symbollib
+                .get(base)
+                .is_some_and(|symbol| symbol.kind.is_generic_parameter())
+            {
+                if !evaluate_type_clause(clause, symbollib, None, &mut None, 0).unwrap_or_default()
+                {
+                    return Err(vec![TypeErrorType::UnsatisfiableConstraint]);
+                }
+                return Ok(None);
+            }
+            // the code for Supposition.and has already been written, so I can take
+            // "T implements E + F + G" to equal "T implements E and T implements F and T implements G"
+            let interfaces = interfaces
+                .iter()
+                .map(|intermediate_interface| evaluate_bare(intermediate_interface, symbollib))
+                .collect::<Vec<_>>();
+            // We start by removing the previous supposition for T (if it exists).
+            let mut main_supposition = suppositions
+                .iter()
+                .enumerate()
+                .find(|(_, s)| s.base == base)
+                .map(|(idx, _)| idx)
+                .map(|idx| suppositions.remove(idx))
+                .unwrap_or_else(|| Supposition::new(base));
+            for interface in interfaces {
+                main_supposition = Supposition::from_implementation(base, interface, symbollib)
+                    .and_then(move |next_supposition| {
+                        main_supposition.and(next_supposition, symbollib)
+                    })
+                    .unwrap_or_else(|errors| {
+                        checker_ctx.add_error(TypeError {
+                            _type: TypeErrorType::UnsatisfiableConstraint,
+                            span,
+                        });
+                        for _type in errors {
+                            checker_ctx.add_error(TypeError { _type, span })
+                        }
+                        Supposition::new(base)
+                    });
+            }
+            return Ok(Some(main_supposition));
+        }
+    }
 }
 
 /// Mutates the type of previous expression based on the solved generics.

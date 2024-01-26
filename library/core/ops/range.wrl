@@ -1,17 +1,16 @@
 module range
 
 use core.{
-    iterate.Iteratable,
+    iterate.Iterable,
     maybe.{none, some},
     ops.Sequenced,
 }
 
-public model Range<T implements Sequenced> implements Iteratable<T> {
+public model Range<T implements Sequenced> implements Iterable<T> {
     public var start: T
     public var end: T
 
-    public function [Iteratable.next] -> ?T {
-        // this.start = this.start.NextItem().Unwrap()
+    public function [Iterable.next] -> ?T {
         if this.start == this.end {
             none()
         } else {

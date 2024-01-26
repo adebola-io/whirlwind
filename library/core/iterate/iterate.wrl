@@ -1,7 +1,7 @@
 /// This module provides a collection of powerful functions, models and interfaces for looping over
 /// sequences, manipulating elements and performing other various operations.
 /// 
-/// Its key feature is the `Iteratable` interface, an intrinsic interface implemented by all models
+/// Its key feature is the `Iterable` interface, an intrinsic interface implemented by all models
 /// that work with structured sequences.
 /// 
 /// The module also contains useful models that iterate with a certain behaviorial modifier, allowing for
@@ -16,24 +16,24 @@ use core.{
     sentinels.todo
 }
 
-/// ## The Iteratable interface
-/// The Iteratable interface is a common abstraction that allows different types of collections to be traversed in a uniform way. 
+/// ## The Iterable interface
+/// The Iterable interface is a common abstraction that allows different types of collections to be traversed in a uniform way. 
 /// It defines a set of methods that can be used to access and manipulate the elements of a collection, such as arrays, lists, sets, maps, etc.
 ///
 /// It is specified with an associated type. 
 /// The `next()` method is the core method that moves the iterator forward, returns the next element, 
 /// or `none` if there are no more elements.
 /// 
-/// The Iteratable interface also provides many other methods that are implemented based on the `next` method. 
+/// The Iterable interface also provides many other methods that are implemented based on the `next` method. 
 /// These methods can perform various operations on the elements of the iterator, 
 /// such as filtering, mapping, folding, counting, etc.
 ///  
 /// Some of these methods consume the iterator and return a single value, 
 /// while others return another iterator that can be chained with further methods.
-/// The Iteratable interface can be implemented for any type that represents a sequence of values. 
+/// The Iterable interface can be implemented for any type that represents a sequence of values. 
 /// 
 /// Optionally, one can also override some of the default methods to provide more efficient or customized behavior.
-public interface Iteratable<I> {
+public interface Iterable<I> {
     /// Returns the next item in the iteration.
     public function next -> ?I
     /// Gathers all the items left in the iterator into an array.
@@ -91,7 +91,7 @@ public interface Iteratable<I> {
             callback(next.unwrap())
         }
     }
-    /// Reduces an iteratable to a single value by applying a function against an
+    /// Reduces an Iterable to a single value by applying a function against an
     /// accumulator and each element in the sequence. It allows combinatory or aggregative 
     /// operations to be depicted in a concise and functional way.
     /// 
@@ -130,14 +130,31 @@ public interface Iteratable<I> {
     /// 
     /// assert(listTransformed).equals([3, 6, 9, 12])
     /// ```
-    public function map<O>(transformer: fn(value: I) -> O) -> Map<I, O, This> {
+    public function map<J>(transformer: fn(value: I) -> J) -> Map<I, J, This> {
         return Map(this, transformer)
     }
-    public function filterMap<O>(predicate: fn(value: I) -> ?O) -> Filter<O, This> {
-        todo()
+    /// Filters and maps elements in the iterable, creating a new iterator containing only the mapped
+    /// values that meets a certain condition.
+    /// ### Usage
+    /// ```
+    /// names := ["Mary Jane", "Johnny", "Susan Ade", "Habeeb Michaels"]
+    /// lastNames := names.iter().filterMap(fn(value) value.split(' ').at(-1)).collect()
+    /// 
+    /// assert(lastNames).equals(["Jane", "Ade", "Michaels"])
+    /// ```
+    public function filterMap<J>(predicate: fn(value: I) -> ?J) -> FilterMap<I, J, This> {
+        return FilterMap(this, predicate)
     }
-    public function findMap<O>(predicate: fn(value: I) -> ?O) -> ?O {
-        todo()
+    /// Returns the first `Maybe.some` element in the iteration.
+    public function findMap<J>(predicate: fn(value: I) -> ?J) -> ?J {
+        while true {
+            nextElement := this.next()?
+            maybeValue := predicate(nextElement)
+            if maybeValue.isSome() {
+                return maybeValue
+            }
+        }
+        core.sentinels.unreachable()
     }
     /// Checks if any of the elements produced by the iterator matches a predicate.
     /// 
@@ -291,7 +308,7 @@ public interface Iteratable<I> {
     /// assertThat(numbersAndWords.next() == some(pair(1, "one")))
     /// assertThat(numbersAndWords.next() == some(pair(2, "two")))
     /// ```
-    public function zip<J, Other implements Iteratable<J>>(that: Other) -> Zip<I, This, J, Other> {
+    public function zip<J, K implements Iterable<J>>(that: K) -> Zip<I, This, J, K> {
         return Zip(this, that)
     }
     /// An iterative adapter that adds a fallback value in between the items produced from the iteration.
@@ -348,22 +365,22 @@ public interface Iteratable<I> {
     /// 
     /// assert(chained.collect()).equals([1, 2, 3, 4, 5, 6])
     /// ```
-    public function chain<That implements Iteratable<I>>(that: That) -> Chain<I, This, That> {
+    public function chain<That implements Iterable<I>>(that: That) -> Chain<I, This, That> {
         return Chain(this, that)
     }
-    public function flatten<U implements Iteratable<V>, V>|=(I implements Iteratable<U>) -> U {
+    public function flatten<U implements Iterable<V>, V>|=(I implements Iterable<U>) -> U {
         todo()
     }
 }
 
-public model Enumerate<I, J implements Iteratable<I>> implements Iteratable<Tuple<Int32, I>>> {
+public model Enumerate<I, J implements Iterable<I>> implements Iterable<Tuple<Int32, I>>> {
     var iterator: J
     var indexer: Int32
     new(iterator: J) {
         this.indexer = 0
         this.iterator = iterator
     }
-    public function [Iteratable.next] -> ?Tuple<Int32, I> {
+    public function [Iterable.next] -> ?Tuple<Int32, I> {
         value := this.iterator.next()?
         this.indexer += 1
         return some(Tuple(this.indexer, value))
@@ -371,14 +388,14 @@ public model Enumerate<I, J implements Iteratable<I>> implements Iteratable<Tupl
 }
 
 
-public model Filter<I, J implements Iteratable<I>> implements Iteratable<I> {
+public model Filter<I, J implements Iterable<I>> implements Iterable<I> {
     var iterator: J
     var predicate: fn(value: I) -> Bool
     new(iterator: J, predicate: fn(value: I) -> Bool){
         this.iterator = iterator
         this.predicate = predicate
     }
-    public function [Iteratable.next] -> ?I {
+    public function [Iterable.next] -> ?I {
         value := this.iterator.next()?
         while !this.predicate(value) {
             value = this.iterator.next()?
@@ -386,7 +403,24 @@ public model Filter<I, J implements Iteratable<I>> implements Iteratable<I> {
         return some(value)
     }
 }
-public model Until<I, J implements Iteratable<I>> implements Iteratable<I> {
+
+public model FilterMap<I, J, K implements Iterable<I>> implements Iterable<J> {
+    var iterator: K
+    var predicate: fn(value: I) -> ?J
+    new(iterator: K, predicate: fn(value: I) -> ?J) {
+        this.iterator = iterator
+        this.predicate = predicate
+    }
+    public function [Iterable.next] -> ?J {
+        mapped := this.predicate(this.iterator.next()?)
+        while mapped.isNone() {
+            mapped = this.predicate(this.iterator.next()?)
+        }
+        return mapped
+    }
+}
+
+public model Until<I, J implements Iterable<I>> implements Iterable<I> {
     var iterator: J
     var condition: fn(value: I) -> Bool
     var catch: ?fn(value: I)
@@ -397,44 +431,44 @@ public model Until<I, J implements Iteratable<I>> implements Iteratable<I> {
         this.catch = catch
         this.ended = false
     }
-    public function [Iteratable.next] -> ?I {
+    public function [Iterable.next] -> ?I {
        todo()
     }
 }
 
-public model Map<I, O, J implements Iteratable<I>> implements Iteratable<O> {
+public model Map<I, O, J implements Iterable<I>> implements Iterable<O> {
     var iterator: J
     var transformer: fn(input: I) -> O
     new(iterator: J, transformer: fn(input: I) -> O) {
         this.iterator = iterator
         this.transformer = transformer
     }
-    public function [Iteratable.next] -> ?O {
+    public function [Iterable.next] -> ?O {
         return some(this.transformer(this.iterator.next()?))
     }
 }
 
-public model Unique<I, J implements Iteratable<I>> implements Iteratable<I> {
-    public function [Iteratable.next] -> ?I {
+public model Unique<I, J implements Iterable<I>> implements Iterable<I> {
+    public function [Iterable.next] -> ?I {
         todo()
     }
 }
 
-public model Zip<I, I1 implements Iteratable<I>, J, I2 implements Iteratable<J>> implements Iteratable<Tuple<I, J>>> {
+public model Zip<I, I1 implements Iterable<I>, J, I2 implements Iterable<J>> implements Iterable<Tuple<I, J>>> {
     var first: I1
     var second: I2
     new(first: I1, second: I2) {
         this.first = first
         this.second = second
     }
-    public function [Iteratable.next] -> ?Tuple<I, J> {
+    public function [Iterable.next] -> ?Tuple<I, J> {
         firstItem := this.first.next()?
         secondItem := this.second.next()?
         return some(Tuple(firstItem, secondItem))
     }
 }
 
-public model Interleave<I, J implements Iteratable<I>> implements Iteratable<I> {
+public model Interleave<I, J implements Iterable<I>> implements Iterable<I> {
     var delimeter: I
     var iterator: J
     var flag: Bool
@@ -443,7 +477,7 @@ public model Interleave<I, J implements Iteratable<I>> implements Iteratable<I> 
         this.delimeter = delimeter
         this.flag = false
     }
-    public function [Iteratable.next] -> ?I {
+    public function [Iterable.next] -> ?I {
         if this.flag {
             return some(this.delimeter)
         } else {
@@ -454,14 +488,14 @@ public model Interleave<I, J implements Iteratable<I>> implements Iteratable<I> 
     }
 }
 
-public model Reversed<I> implements Iteratable<I> {
+public model Reversed<I> implements Iterable<I> {
     var array: []I
     var idx: Int32
     new(array: []I) {
         this.array = array
         this.idx = array.length()
     }
-    public function [Iteratable.next] -> ?I {
+    public function [Iterable.next] -> ?I {
         if this.idx == 0 {
             none()
         } else {
@@ -471,14 +505,14 @@ public model Reversed<I> implements Iteratable<I> {
     }
 }
 
-public model Skip<I, J implements Iteratable<I>> implements Iteratable<I> {
+public model Skip<I, J implements Iterable<I>> implements Iterable<I> {
     var iterator: J
     var skipCount: Int32
     new(iterator: J, n: Int32) {
         this.iterator = iterator
         this.skipCount = n
     }
-    public function [Iteratable.next] -> ?I {
+    public function [Iterable.next] -> ?I {
         if this.skipCount == 0 {
             return this.iterator.next()
         } else {
@@ -491,7 +525,7 @@ public model Skip<I, J implements Iteratable<I>> implements Iteratable<I> {
     }
 }
 
-public model OnEnd<I, J implements Iteratable<I>> implements Iteratable<I> {
+public model OnEnd<I, J implements Iterable<I>> implements Iterable<I> {
     var iterator: J
     var callback: fn()
     var ended: Bool
@@ -500,7 +534,7 @@ public model OnEnd<I, J implements Iteratable<I>> implements Iteratable<I> {
         this.callback = callback
         this.ended = false
     }
-    public function [Iteratable.next] -> ?I {
+    public function [Iterable.next] -> ?I {
         nextItem := this.iterator.next()
         if nextItem.isNone() and !this.ended {
             this.callback()
@@ -511,8 +545,8 @@ public model OnEnd<I, J implements Iteratable<I>> implements Iteratable<I> {
 }
 
 public model Chain
-    <I, J implements Iteratable<I>, K implements Iteratable<I>> 
-    implements Iteratable<I> 
+    <I, J implements Iterable<I>, K implements Iterable<I>> 
+    implements Iterable<I> 
 {
     var first: J
     var second: K
@@ -522,7 +556,7 @@ public model Chain
         this.second = second
         this.firstEnded = false
     }
-    public function [Iteratable.next] -> ?I {
+    public function [Iterable.next] -> ?I {
         if this.firstEnded {
             return this.second.next()
         } else {
@@ -538,7 +572,7 @@ public model Chain
 }
 
 /// This interface specifies that a model can be made into an iterator.
-public interface AsIterator<I, T implements Iteratable<I>> {
+public interface AsIterator<I, T implements Iterable<I>> {
     /// Turn a model into an iterator.
     public function iter -> T
 }

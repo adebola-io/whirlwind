@@ -1,11 +1,13 @@
 use ast::{unwrap_or_continue, unwrap_or_return};
 
-use crate::utils::assume_verity;
+use crate::utils::assume_clause_verity;
 
 use super::{expressions::typecheck_block, *};
 
+mod function;
 mod interface_declaration;
 mod model_declaration;
+
 pub use interface_declaration::typecheck_interface;
 pub use model_declaration::typecheck_model_declaration;
 
@@ -33,7 +35,7 @@ pub fn typecheck_statement(
         // TypedStmnt::ModelDeclaration(_) => todo!(),
         // TypedStmnt::ModuleDeclaration(_) => todo!(),
         TypedStmnt::FunctionDeclaration(function) => {
-            typecheck_function(function, checker_ctx, symbollib)
+            function::typecheck_function(function, checker_ctx, symbollib)
         }
         TypedStmnt::InterfaceDeclaration(interface) => {
             typecheck_interface(interface, checker_ctx, symbollib)
@@ -81,7 +83,7 @@ fn typecheck_type_decl(
         // (Ternaries already check for concreteness in the evaluate() function.)
         if !assigned.is_concrete() && !value.is_ternary() && !value.is_function_type() {
             let name = symbollib.format_evaluated_type(&assigned);
-            checker_ctx.add_diagnostic(errors::expected_implementable(name, value.span()));
+            checker_ctx.add_error(errors::expected_implementable(name, value.span()));
             EvaluatedType::Unknown
         } else {
             assigned
@@ -108,7 +110,7 @@ fn typecheck_for_loop(
         expressions::typecheck_expression(&mut forloop.iterator, checker_ctx, symbollib);
     if symbollib.iteratable.is_none() || symbollib.asiter.is_none() {
         let span = checker_ctx.span_of_expr(&forloop.iterator, symbollib);
-        checker_ctx.add_diagnostic(errors::missing_intrinsic("Iteration".to_owned(), span));
+        checker_ctx.add_error(errors::missing_intrinsic("Iteration".to_owned(), span));
         typecheck_for_loop_body(&mut forloop.body, checker_ctx, symbollib);
         return;
     }
@@ -118,7 +120,7 @@ fn typecheck_for_loop(
         let body = &mut forloop.body;
         typecheck_for_loop_body(body, checker_ctx, symbollib);
     }
-    // if the instance implements both AsIterator and Iteratable, AsIterator will be preferred.
+    // if the instance implements both AsIterator and Iterable, AsIterator will be preferred.
     let asiter = symbollib.asiter.unwrap();
     let iteratable = symbollib.iteratable.unwrap();
     let asiter_generic = symbollib
@@ -142,7 +144,7 @@ fn typecheck_for_loop(
     if implementation.is_none() {
         let illegal_type = symbollib.format_evaluated_type(&iterator_type);
         let span = checker_ctx.span_of_expr(&forloop.iterator, symbollib);
-        checker_ctx.add_diagnostic(errors::illegal_iterator(illegal_type, span));
+        checker_ctx.add_error(errors::illegal_iterator(illegal_type, span));
         typecheck_for_loop_body(&mut forloop.body, checker_ctx, symbollib);
         return;
     }
@@ -158,7 +160,7 @@ fn typecheck_for_loop(
             if generic_solution.is_none() {
                 let name = symbollib.format_evaluated_type(&iterator_type);
                 let span = checker_ctx.span_of_expr(&forloop.iterator, symbollib);
-                checker_ctx.add_diagnostic(errors::illegal_iterator(name, span));
+                checker_ctx.add_error(errors::illegal_iterator(name, span));
                 EvaluatedType::Unknown
             } else {
                 let evaluated_type = generic_solution.unwrap().1;
@@ -226,7 +228,7 @@ fn typecheck_for_loop(
                         if property_type.is_none() {
                             let property_name = get_property_name();
                             let model_name = get_model_name();
-                            checker_ctx.add_diagnostic(errors::unknown_property(
+                            checker_ctx.add_error(errors::unknown_property(
                                 model_name,
                                 property_name,
                                 property_span,
@@ -236,7 +238,7 @@ fn typecheck_for_loop(
                             if pattern_result.is_method_instance() {
                                 let property_name = get_property_name();
                                 let model_name = get_model_name();
-                                checker_ctx.add_diagnostic(errors::destructuring_method(
+                                checker_ctx.add_error(errors::destructuring_method(
                                     model_name,
                                     property_name,
                                     property_span,
@@ -245,7 +247,7 @@ fn typecheck_for_loop(
                         }
                     }
                     _ => {
-                        checker_ctx.add_diagnostic(errors::illegal_model_destructure(
+                        checker_ctx.add_error(errors::illegal_model_destructure(
                             symbollib.format_evaluated_type(&final_type),
                             forloop.span,
                         ));
@@ -262,7 +264,7 @@ fn typecheck_for_loop(
                     pattern_result = generic_arguments.first().unwrap().1.clone()
                 }
                 _ => {
-                    checker_ctx.add_diagnostic(errors::illegal_array_destructure(
+                    checker_ctx.add_error(errors::illegal_array_destructure(
                         symbollib.format_evaluated_type(&final_type),
                         forloop.span,
                     ));
@@ -307,104 +309,8 @@ fn typecheck_for_loop_body(
             .map(|stmnt| checker_ctx.span_of_stmnt(stmnt, symbollib))
             .unwrap_or(body.span);
         let type_as_string = symbollib.format_evaluated_type(&block_type);
-        checker_ctx.add_diagnostic(errors::implicit_loop_return(type_as_string, err_span));
+        checker_ctx.add_error(errors::implicit_loop_return(type_as_string, err_span));
     }
-}
-
-/// Typechecks a function or method body.
-fn typecheck_function_body(
-    method_or_function_symbol_idx: SymbolIndex,
-    checker_ctx: &mut TypecheckerContext<'_>,
-    return_type: EvaluatedType,
-    body: &mut TypedBlock,
-    symbollib: &mut SymbolLibrary,
-    return_type_span: Option<Span>,
-) {
-    // If the function is a method, its type constraints must be assumed to be true for the
-    // duration of its typechecking. This is done by selecting the generics in the type
-    // clause and adding scoped type environments to symbollib (not the checker_ctx). This ensures that
-    // the assumptions do not clash with already established properties, and
-    // I do not have to rewrite the unification and evaluation functions to pass around the
-    // checker_ctx as an argument.
-    let symbol = unwrap_or_return!(symbollib.get_forwarded(method_or_function_symbol_idx));
-    let mut environment = None;
-    if let SemanticSymbolKind::Method {
-        constraint: Some((constraint, span)),
-        ..
-    } = &symbol.kind
-    {
-        environment = assume_verity(constraint, checker_ctx, symbollib, *span);
-    };
-    if let Some(_environment) = environment {
-        // symbollib.apply_type_environment(environment);
-    }
-    // The function context keeps track of the return type (for checking deeply nested return statements)
-    // and whether or not the function is named (for function expressions).
-    checker_ctx
-        .current_function_context
-        .push(CurrentFunctionContext {
-            is_named: true,
-            return_type: return_type.clone(),
-        });
-    // todo: be more explicit that the `scopetype` used here is for tracking attribute assignment.
-    push_scopetype(checker_ctx, ScopeType::Other);
-    let mut block_return_type = expressions::typecheck_block(body, true, checker_ctx, symbollib);
-    pop_scopetype(checker_ctx);
-    // Ignore unreachable nested generics.
-    // if last statement was a return, there is no need to check type again, since it will still show the apprioprate errors.
-    if !block_return_type.is_generic()
-        && !block_return_type
-            .contains_child_for_which(&|child| matches!(child, EvaluatedType::HardGeneric { .. }))
-    {
-        block_return_type = coerce_all_generics(&block_return_type, EvaluatedType::Never);
-    }
-    if body
-        .statements
-        .last()
-        .is_some_and(|statement| matches!(statement, TypedStmnt::ReturnStatement(_)))
-    {
-        return;
-    }
-    match unify_types(
-        &return_type,
-        &block_return_type,
-        &symbollib,
-        UnifyOptions::Return,
-        None,
-    ) {
-        Ok(final_type) => {
-            if let Some(TypedStmnt::FreeExpression(expression)) = body.statements.last_mut() {
-                let empty = vec![];
-                let generic_arguments = get_type_generics(&final_type, &empty);
-                update_expression_type(
-                    expression,
-                    symbollib,
-                    checker_ctx.literals,
-                    &generic_arguments,
-                    Some(&final_type),
-                );
-            }
-        }
-        Err(typeerrortype) => {
-            let span = body
-                .statements
-                .last()
-                .map(|s| checker_ctx.span_of_stmnt(s, symbollib))
-                .or(return_type_span)
-                .unwrap_or_else(|| body.span);
-            let main_error = TypeErrorType::MismatchedReturnType {
-                found: symbollib.format_evaluated_type(&block_return_type),
-                expected: symbollib.format_evaluated_type(&return_type),
-            };
-            checker_ctx.add_diagnostic(errors::composite_type_error(
-                main_error,
-                typeerrortype,
-                span,
-            ));
-        }
-    }
-    checker_ctx.current_function_context.pop();
-    // symbollib.remove_last_type_environment();
 }
 
 fn show_interface_as_type_error(
@@ -414,7 +320,7 @@ fn show_interface_as_type_error(
     span: Span,
 ) {
     let symbol = symbollib.get(interface_);
-    checker_ctx.add_diagnostic(errors::interface_as_type(
+    checker_ctx.add_error(errors::interface_as_type(
         symbol
             .map(|symbol| symbol.name.clone())
             .unwrap_or(String::from("{Interface}")),
@@ -486,7 +392,7 @@ fn typecheck_variable_declaration(
         // Interfaces are not allowed in type contexts.
         if let EvaluatedType::InterfaceInstance { interface_, .. } = &declared {
             let symbol = symbollib.get(*interface_);
-            checker_ctx.add_diagnostic(errors::interface_as_type(
+            checker_ctx.add_error(errors::interface_as_type(
                 symbol
                     .map(|symbol| symbol.name.clone())
                     .unwrap_or(String::from("{Interface}")),
@@ -496,14 +402,14 @@ fn typecheck_variable_declaration(
         }
         // Never types are not allowed in type contexts.
         if declared.contains(&EvaluatedType::Never) {
-            checker_ctx.add_diagnostic(errors::never_as_declared(variable.span));
+            checker_ctx.add_error(errors::never_as_declared(variable.span));
         }
         let type_of_value = inferred_result.as_ref().unwrap();
         match unify_freely(declared, &type_of_value, symbollib, None) {
             Ok(unified_type) => inferred_result = Some(unified_type),
             Err(errortypes) => {
                 for error in errortypes {
-                    checker_ctx.add_diagnostic(TypeError {
+                    checker_ctx.add_error(TypeError {
                         _type: error,
                         span: variable.span,
                     });
@@ -518,7 +424,7 @@ fn typecheck_variable_declaration(
             let default_is_implemented =
                 get_implementation_of(default, declared, symbollib).is_some();
             if !default_is_implemented {
-                checker_ctx.add_diagnostic(errors::no_default(
+                checker_ctx.add_error(errors::no_default(
                     symbollib.format_evaluated_type(declared),
                     variable.span,
                 ));
@@ -527,7 +433,7 @@ fn typecheck_variable_declaration(
     }
     // if neither is available, nothing can be done.
     if declared_type.is_none() && variable.value.is_none() {
-        checker_ctx.add_diagnostic(errors::missing_annotations(variable.span));
+        checker_ctx.add_error(errors::missing_annotations(variable.span));
         return;
     }
     let final_type = inferred_result.unwrap_or_else(|| declared_type.unwrap());
@@ -541,7 +447,7 @@ fn typecheck_variable_declaration(
             let expression = variable.value.as_ref().unwrap();
             if !is_pure(expression) {
                 let span = checker_ctx.span_of_expr(expression, symbollib);
-                checker_ctx.add_diagnostic(errors::non_pure_global(span));
+                checker_ctx.add_error(errors::non_pure_global(span));
                 return;
             }
         }
@@ -591,7 +497,7 @@ fn typecheck_variable_declaration(
                         if property_type.is_none() {
                             let property_name = get_property_name();
                             let model_name = get_model_name();
-                            checker_ctx.add_diagnostic(errors::unknown_property(
+                            checker_ctx.add_error(errors::unknown_property(
                                 model_name,
                                 property_name,
                                 span,
@@ -601,7 +507,7 @@ fn typecheck_variable_declaration(
                             if pattern_result.is_method_instance() {
                                 let property_name = get_property_name();
                                 let model_name = get_model_name();
-                                checker_ctx.add_diagnostic(errors::destructuring_method(
+                                checker_ctx.add_error(errors::destructuring_method(
                                     model_name,
                                     property_name,
                                     span,
@@ -610,7 +516,7 @@ fn typecheck_variable_declaration(
                         }
                     }
                     _ => {
-                        checker_ctx.add_diagnostic(errors::illegal_model_destructure(
+                        checker_ctx.add_error(errors::illegal_model_destructure(
                             symbollib.format_evaluated_type(&final_type),
                             variable.span,
                         ));
@@ -626,7 +532,7 @@ fn typecheck_variable_declaration(
                     pattern_result = generic_arguments.first().unwrap().1.clone()
                 }
                 _ => {
-                    checker_ctx.add_diagnostic(errors::illegal_array_destructure(
+                    checker_ctx.add_error(errors::illegal_array_destructure(
                         symbollib.format_evaluated_type(&final_type),
                         variable.span,
                     ));
@@ -665,7 +571,7 @@ fn typecheck_while_statement(
     let condition_type =
         expressions::typecheck_expression(&mut whil.condition, checker_ctx, symbollib);
     if !is_boolean(&condition_type, symbollib) && !condition_type.is_unknown() {
-        checker_ctx.add_diagnostic(errors::non_boolean_logic(
+        checker_ctx.add_error(errors::non_boolean_logic(
             symbollib.format_evaluated_type(&condition_type),
             checker_ctx.span_of_expr(&whil.condition, symbollib),
         ))
@@ -711,7 +617,7 @@ pub fn typecheck_shorthand_variable_declaration(
     let inference_result = if let Some(declared) = declared_type {
         if let EvaluatedType::InterfaceInstance { interface_, .. } = &declared {
             let symbol = symbollib.get(*interface_);
-            checker_ctx.add_diagnostic(errors::interface_as_type(
+            checker_ctx.add_error(errors::interface_as_type(
                 symbol
                     .map(|symbol| symbol.name.clone())
                     .unwrap_or(String::from("{Interface}")),
@@ -720,13 +626,13 @@ pub fn typecheck_shorthand_variable_declaration(
             return;
         }
         if declared.contains(&EvaluatedType::Never) {
-            checker_ctx.add_diagnostic(errors::never_as_declared(shorthand_variable.span))
+            checker_ctx.add_error(errors::never_as_declared(shorthand_variable.span))
         }
         match unify_freely(&declared, &type_of_value, symbollib, None) {
             Ok(eval_type) => eval_type,
             Err(errortypes) => {
                 for error in errortypes {
-                    checker_ctx.add_diagnostic(TypeError {
+                    checker_ctx.add_error(TypeError {
                         _type: error,
                         span: shorthand_variable.span,
                     });
@@ -778,7 +684,7 @@ pub fn typecheck_return_statement(
                 .is_some_and(|ctx| ctx.is_named && ctx.return_type.is_void())
         {
             // returns with a value, but no value was requested.
-            checker_ctx.add_diagnostic(TypeError {
+            checker_ctx.add_error(TypeError {
                 _type: TypeErrorType::MismatchedReturnType {
                     expected: symbollib.format_evaluated_type(&EvaluatedType::Void),
                     found: symbollib.format_evaluated_type(eval_type),
@@ -830,12 +736,12 @@ pub fn typecheck_return_statement(
             // Unification failed.
             Err(errortype) => {
                 for errortype in errortype {
-                    checker_ctx.add_diagnostic(TypeError {
+                    checker_ctx.add_error(TypeError {
                         _type: errortype,
                         span: retstat.span,
                     });
                 }
-                checker_ctx.add_diagnostic(TypeError {
+                checker_ctx.add_error(TypeError {
                     _type: TypeErrorType::MismatchedReturnType {
                         expected: symbollib.format_evaluated_type(&ctx_return_type),
                         found: symbollib.format_evaluated_type(eval_type),
@@ -853,7 +759,7 @@ pub fn typecheck_return_statement(
                     *return_type = EvaluatedType::Void;
                     return;
                 }
-                checker_ctx.add_diagnostic(TypeError {
+                checker_ctx.add_error(TypeError {
                     _type: TypeErrorType::MismatchedReturnType {
                         expected: symbollib.format_evaluated_type(return_type),
                         found: symbollib.format_evaluated_type(&EvaluatedType::Void),
@@ -863,81 +769,6 @@ pub fn typecheck_return_statement(
             }
         }
     }
-}
-
-/// Typechecks a function.
-pub fn typecheck_function(
-    function: &mut TypedFunctionDeclaration,
-    checker_ctx: &mut TypecheckerContext,
-    symbollib: &mut SymbolLibrary,
-) {
-    let symbol = symbollib.get_forwarded(function.name).unwrap();
-    let (evaluated_param_types, return_type, return_type_span) =
-        if let SemanticSymbolKind::Function {
-            params,
-            generic_params,
-            return_type,
-            ..
-        } = &symbol.kind
-        {
-            typecheck_generic_params(generic_params, symbollib, checker_ctx);
-            let generic_arguments = evaluate_generic_params(generic_params, true);
-            let mut evaluated_param_types = vec![];
-            for param in params {
-                let parameter_symbol = symbollib.get(*param).unwrap();
-                let inferred_type = match &parameter_symbol.kind {
-                    SemanticSymbolKind::Parameter { param_type, .. } => {
-                        if let Some(declared_type) = param_type {
-                            evaluate(
-                                declared_type,
-                                symbollib,
-                                Some(&generic_arguments),
-                                &mut checker_ctx.tracker(declared_type.span()),
-                                0,
-                            )
-                        } else {
-                            EvaluatedType::Unknown
-                        }
-                    }
-                    _ => EvaluatedType::Unknown,
-                };
-                evaluated_param_types.push((*param, inferred_type));
-            }
-            let return_type = return_type.as_ref();
-            (
-                evaluated_param_types,
-                return_type
-                    .map(|typ| {
-                        evaluate(
-                            typ,
-                            &symbollib,
-                            None,
-                            &mut checker_ctx.tracker(typ.span()),
-                            0,
-                        )
-                    })
-                    .unwrap_or_else(|| EvaluatedType::Void),
-                return_type.map(|typ| typ.span()),
-            )
-        } else {
-            (vec![], EvaluatedType::Void, None)
-        };
-    validate_return_type_and_params(
-        &return_type,
-        symbollib,
-        checker_ctx,
-        return_type_span,
-        evaluated_param_types,
-        false,
-    );
-    typecheck_function_body(
-        function.name,
-        checker_ctx,
-        return_type,
-        &mut function.body,
-        symbollib,
-        return_type_span,
-    );
 }
 
 /// Confirms that a list of generic params do not have impls that are not interface instances.
@@ -963,7 +794,7 @@ pub fn typecheck_generic_params(
                 );
                 if !interface_type.is_interface_instance() {
                     let name = symbollib.format_evaluated_type(&interface_type);
-                    checker_ctx.add_diagnostic(errors::interface_expected(name, interface.span()))
+                    checker_ctx.add_error(errors::interface_expected(name, interface.span()))
                 }
             }
             if let Some(default_value) = default_value.as_ref() {
@@ -977,7 +808,7 @@ pub fn typecheck_generic_params(
                 if !&default_value_evaled.is_concrete() {
                     let name = symbollib.format_evaluated_type(&default_value_evaled);
                     checker_ctx
-                        .add_diagnostic(errors::expected_implementable(name, default_value.span()))
+                        .add_error(errors::expected_implementable(name, default_value.span()))
                 } else if !default_value_evaled.is_never() {
                     // Assert that the default value is assignable based on the constraints given.
                     let main_generic_evaled = EvaluatedType::Generic { base: *param };
@@ -993,7 +824,7 @@ pub fn typecheck_generic_params(
                             name,
                             generic: symbol.name.to_owned(),
                         };
-                        checker_ctx.add_diagnostic(errors::composite_type_error(
+                        checker_ctx.add_error(errors::composite_type_error(
                             main_error,
                             errors,
                             default_value.span(),

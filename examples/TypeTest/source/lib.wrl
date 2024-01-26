@@ -10,7 +10,7 @@ test "Testing types." {
     }
 
     // generic model methods.
-    swap := fn <T, U>(tuple: Tuple<T, U>) tuple.swap()
+    var swap = fn <T, U>(tuple: Tuple<T, U>) tuple.swap()
 
     tuple := Tuple(true, "hello")
     swapped := tuple.swap()
@@ -29,21 +29,21 @@ test "Testing types." {
         new(){}
         /// Bounce for a football.
         public function bounce -> String {
-            return "Football is bouncing..."
+            "Football is bouncing..."
         }
     }
     model Tennisball {
         new(){}
         /// Bounce for a tennisball.
         public function bounce -> String {
-            return "Tennisball is bouncing..."
+            "Tennisball is bouncing..."
         }
     }
     model Basketball {
         new(){}
         /// Bounce for a basketball.
         public function bounce -> String {
-            return "Basketball is bouncing..."
+            "Basketball is bouncing..."
         }
     }
     type Ball = Football | Tennisball | Basketball
@@ -144,7 +144,14 @@ test "Testing types." {
         return factory(value)
     }
 
-    function ad<a>(value: a) -> a {
-        todo()
+    // Type constraints
+    interface SomeStuff {
+        public function doA -> Bool
     }
+    model A<T> {
+        var value: T
+        public function asj|=(T implements Display) {
+            
+        }
+    }   
 }

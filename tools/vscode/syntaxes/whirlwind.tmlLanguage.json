@@ -138,7 +138,7 @@
                "include": "#type_expression"
             }
          ],
-         "end": "(?=\\s+(public|function|var|const|model|interface))"
+         "end": "(?=\\s+(public|function|var|const|model|interface))|(?=(\\s*\\w+\\s*\\:))"
       },
 
       "model_header": {
@@ -385,7 +385,7 @@
       "type_label": {
          "begin": "(\\:|\\-\\>)\\s*",
          "patterns": [{ "include": "#type_expression" }],
-         "end": "(,(?=\\s*([A-Za-z0-9_$]|_)+\\s*\\??\\s*(\\:|\\-\\>|\\))))|(?=(\\s(var|function))|[^A-Za-z0-9\\&\\?\\_\\.\\<\\>\\,\\(\\)\\[\\]])"
+         "end": "(,(?=\\s*([A-Za-z0-9_$]|_)+\\s*\\??\\s*(\\:|\\-\\>|\\))))|(?=(\\s(var|function))|[^A-Za-z0-9\\&\\?\\s\\|\\_\\.\\<\\>\\,\\(\\)\\[\\]])"
       },
       "discrete_type": {
          "patterns": [
