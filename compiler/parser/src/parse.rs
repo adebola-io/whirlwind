@@ -3373,6 +3373,9 @@ impl<L: Lexer> Parser<L> {
         };
 
         // Parse constraint.
+        if self.is_lower_or_equal_precedence(ExpressionPrecedence::Access) {
+            return Ok(TypeExpression::Discrete(consequent));
+        }
         let expression = if let Some((clause, clause_span)) = self.maybe_type_constraint()? {
             TypeExpression::Constraint(BoundConstraintType {
                 consequent,
@@ -3537,7 +3540,7 @@ impl<L: Lexer> Parser<L> {
                 return Err(errors::generic_args_in_namespace(d.span));
             }
         }
-        // Only discrete types and other member types cant serve as namespaces.
+        // Only discrete types and other member types can serve as namespaces.
         if !matches!(
             namespace,
             TypeExpression::Discrete(_) | TypeExpression::Member(_)

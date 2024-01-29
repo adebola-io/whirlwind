@@ -1,0 +1,14 @@
+module uInt8Array
+
+use core.numeric.Int32
+use core.interfaces.Default
+
+public model UInt8Array implements Default {
+    var offset: Int32
+    var length: Int32
+    var capacity: Int32
+
+    static function init() -> This {
+        core.sentinels.todo()
+    }
+}

@@ -69,10 +69,5 @@ public function lastNames(names: []String) -> []String {
 
 
 model DbError {}
-public model User {
-    var id: String
-    public function getName -> Outcome<String, DbError> {
-        var name = "String"
-        return ok(name)
-    }
-}
+
+

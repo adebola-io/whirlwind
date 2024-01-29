@@ -50,10 +50,10 @@ from("resource") function print(message: String);
 A valid `resource` string must have the form `type:resource`, where `type` could be:
 
 -  `file`: The path to the resource could either be:
-   -  a relative path from the module requesting the resource e.g. `file:../pre.wasm`, or
-   -  a path from the root of the installation directory, which is represented by an `@` symbol. e.g. `file:@/ext/math.wasm`.
+   -  a relative path from the module requesting the resource e.g. `file:../pre.wat`, or
+   -  a path from the root of the installation directory, which is represented by an `@` symbol. e.g. `file:@/ext/math.wat`.
 -  `http`: This should allow requesting functions from network resources. (It will require a compiler flag to enable.) e.g. `http://web.com/exports`.
--  `wasi`, to import an item from the WASI runtime. (This should only be valid in system-permitted projects).
+-  `env`, to import an item from the host runtime.
 -  `builtin`: For the interpreter, this will resolve to a Rust function.
 
 ## Semantics:

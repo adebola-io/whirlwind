@@ -13,8 +13,7 @@ use core.{
     sentinels.{todo},
     string.{Display, String}
 }
-
-model Unique<T> {}
+public use uInt8Array.UInt8Array
 
 /// A contiguous, growable list of items of the same type.
 public model Array<T> 
@@ -23,9 +22,14 @@ public model Array<T>
         + Default 
         + Display|=(T implements Display)
 {
+    /// The number of items in the array.
     var len: Int32
+    /// The current maximum amount of elements that can be in the array.
     var capacity: Int32
-    var buf: Unique<T>
+    /// The start of the array in the memory buffer.
+    var offset: Int32
+    /// The size of each element in the array.
+    var elementSize: Int32
     /// Returns an iterator over elements in this array.
     /// ### Usage
     /// ```

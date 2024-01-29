@@ -1,0 +1,6 @@
+module pop
+
+from("io") {
+    /// Logs a value to the console.
+    function log(value: String);
+}

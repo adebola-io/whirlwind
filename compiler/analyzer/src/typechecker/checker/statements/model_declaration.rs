@@ -394,12 +394,8 @@ fn get_all_implementation_methods<'a>(
                 return None;
             }
             let constraint = match implementation {
-                IntermediateType::BoundConstraintType {
-                    consequent,
-                    clause,
-                    span,
-                } => clause.as_ref(),
-                _ => return None,
+                IntermediateType::BoundConstraintType { clause, .. } => Some(clause.as_ref()),
+                _ => None,
             };
             if let EvaluatedType::InterfaceInstance {
                 interface_,
@@ -425,7 +421,7 @@ fn get_all_implementation_methods<'a>(
                     return Some(
                         methods
                             .iter()
-                            .map(move |method| (interface_, *method, Some(constraint))),
+                            .map(move |method| (interface_, *method, constraint)),
                     );
                 }
             }
