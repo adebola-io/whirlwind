@@ -285,7 +285,7 @@ fn parsing_conditional_types() {
         parser.next().unwrap().unwrap(),
         Statement::TypeDeclaration(TypeDeclaration {
             address: ScopeAddress::from([0, 0, 0]),
-            span: Span::from([1, 1, 1, 38])
+            span: Span::from([1, 1, 1, 46])
         })
     );
 }
@@ -550,7 +550,7 @@ fn parse_constrained_type() {
         statement,
         Statement::TypeDeclaration(TypeDeclaration {
             address: ScopeAddress::from([0, 0, 0]),
-            span: Span::from([1, 1, 1, 38])
+            span: Span::from([1, 1, 1, 46])
         })
     );
 
@@ -574,7 +574,7 @@ fn parse_constrained_type() {
         statement,
         Statement::TypeDeclaration(TypeDeclaration {
             address: ScopeAddress::from([0, 0, 0]),
-            span: Span::from([1, 1, 1, 71])
+            span: Span::from([1, 1, 1, 87])
         })
     );
 }
