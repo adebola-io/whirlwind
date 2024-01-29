@@ -239,7 +239,7 @@ public interface Iterable<I> {
                 return some(item)
             }
         }
-        return none()
+        core.sentinels.unreachable()
     }
     /// collects the next _n_ elements from the iterator into an array.
     /// 

@@ -43,6 +43,7 @@ from("resource") function print(message: String);
 ## Semantics
 
 -  **These declarations will only be allowed in the global scope to prevent stories that touch**.
+-  **External functions cannot have generic parameters, since they do not belong in the scope of Whirlwind.**
 
 ## Resource Types
 
@@ -71,9 +72,9 @@ If a function is loaded twice into the same program, it should cause a warning o
 
 ## Loaders
 
-The definition about what a resource actually is is intentionally vague to allow flexibility in its implementation. It could be a `.wasm` file, a network url
+The definition about what a resource actually is is intentionally vague to allow flexibility in its implementation. It could be a `.wasm` file, a network url, a builtin library or somthing else.
 
-Loaders should basically be plugins that transform anything to Whirlwind's Middleend Intermediate Representation (WMIR) or directly to webassembly text or bytecode. The details are still hazy.
+Loaders should basically be plugins that transform anything to Whirlwind's intermediate representation or directly to webassembly text or bytecode. The details are still hazy.
 
 ### Example:
 

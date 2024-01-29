@@ -14,6 +14,8 @@ use core.{
     string.{Display, String}
 }
 
+model Unique<T> {}
+
 /// A contiguous, growable list of items of the same type.
 public model Array<T> 
     implements Addition
@@ -21,6 +23,9 @@ public model Array<T>
         + Default 
         + Display|=(T implements Display)
 {
+    var len: Int32
+    var capacity: Int32
+    var buf: Unique<T>
     /// Returns an iterator over elements in this array.
     /// ### Usage
     /// ```
@@ -76,10 +81,10 @@ public model Array<T>
     public function [Display.toStr]|=(T implements Display) -> String {
         string := "["
         i := 0
-        while i < this.length() {
+        while i < this.len {
             elementStr := this[i].toStr()
             string.append(elementStr)
-            if i + 1 != this.length() { 
+            if i + 1 != this.len { 
                 string.append(", ")
             }
             i += 1
@@ -121,7 +126,7 @@ public model Array<T>
     /// ```
     public function reset|=(T implements Default) {
         i := 0
-        while i < this.length() {
+        while i < this.len {
             var default: T 
             this[i] = default
             i += 1
@@ -193,7 +198,7 @@ public model Array<T>
         i := 0
         for { a as i, b as element } in this.iter().enumerate() {
             string += element.toStr()
-            if i + 1 != this.length() {
+            if i + 1 != this.len {
                 string += separatorValue
             }
         }
@@ -215,11 +220,11 @@ public model Array<T>
     /// assert(arr.at(-1) == some(55))
     /// ```
     public function at(index: Int32) -> ?T {
-        if index >= 0 && index < this.length() {
+        if index >= 0 && index < this.len {
             return some(this[index])
         }
-        index = this.length() - index
-        if index < this.length() {
+        index = this.len - index
+        if index < this.len {
             return some(this[index])
         }
         return none()
@@ -258,7 +263,7 @@ public model Array<T>
     /// assertThat(empty.first() == none())
     /// ```
     public function first -> ?T {
-        if this.length() == 0 { none() } 
+        if this.len == 0 { none() } 
         else some(this[0])
     }
     /// Determines whether a given sub-array is contained within
@@ -276,7 +281,7 @@ public model Array<T>
     /// assertThat(!mainArray.includes(anotherSubArray))
     /// ```
     public function includes(subarray: []T) -> Bool {
-        if subarray.length() == 0 {
+        if subarray.len == 0 {
             return true
         }
         for element in this {
@@ -299,7 +304,7 @@ public model Array<T>
     /// ```
     public function indexOf(value: T) -> ?Int32 {
         i := 0
-        while i < this.length() {
+        while i < this.len {
             if this[i] == value {
                 return some(i)
             }
@@ -337,7 +342,7 @@ public model Array<T>
     /// assertThat(arr.penultimate() == some(7))
     /// ```
     public function penultimate -> ?T {
-        if this.length() < 2 { none() } else { some(this[this.length() - 2]) }
+        if this.len < 2 { none() } else { some(this[this.len - 2]) }
     }
     /// Divides the array into two new arrays: one containing elements that pass
     /// a test function, and another with elements that don't.
@@ -354,7 +359,7 @@ public model Array<T>
         trueItems := []
         falseItems := []
         i := 0
-        while i < this.length() {
+        while i < this.len {
             item := this[i]
             if check(item) {
                 trueItems.push(item)
@@ -372,7 +377,7 @@ public model Array<T>
     /// assert(arr.length()).equals(4)
     /// ```
     public function length -> Int32 {
-        todo()
+        return this.len
     }
     /// Adds an item to the end of the array.
     /// 
@@ -386,7 +391,9 @@ public model Array<T>
     /// assert(array.length()).equals(5)
     /// ```
     public function push(value: T) {
-        todo()
+        if this.len == this.capacity {
+            
+        }
     }
     /// Removes an item from the end of the array.
     /// ### Usage
@@ -400,7 +407,12 @@ public model Array<T>
     /// assert(array).equals([1])
     /// ```
     public function pop -> ?T {
-        return todo()
+        if this.len == 0 {
+            return none()
+        }
+        last := this[this.len - 1]
+        this.len -= 1
+        return some(last)
     }
     /// Returns an iterator that produces elements from the end of the array
     /// to the start.
@@ -431,7 +443,7 @@ public model Array<T>
     /// twoItems := arr.sample(2)
     /// ```
     public function sample(n: Int32) -> []T {
-        if n > this.length() {
+        if n > this.len {
             return this.shuffled()
         }
         todo()
@@ -473,7 +485,7 @@ public model Array<T>
     public function vectorAdd|=(T implements Addition)(other: []T) -> []T {
         newArray := []
         i := 0
-        while i < other.length() or i < this.length() {
+        while i < other.length() or i < this.len {
             a := this.at(i)
             b := other.at(i)
             if a.isNone() && b.isNone() {
@@ -513,7 +525,7 @@ public model Array<T>
     /// assert(firstItem).equals(none())
     /// ```
     public function shift -> ?T {
-        if this.length() == 0 {
+        if this.len == 0 {
             return none()
         } else {
             todo()
@@ -531,8 +543,8 @@ public model Array<T>
     }
     /// Returns a reference to the last item in the array.
     public function last -> ?T {
-        if this.length() == 0 { none() } 
-        else some(this[this.length() - 1])
+        if this.len == 0 { none() } 
+        else some(this[this.len - 1])
     }
 }
 
