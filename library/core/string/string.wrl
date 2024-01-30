@@ -1,6 +1,7 @@
 module string
 
 use core.{ 
+    array.UInt8Array,
     bool.Bool,
     collections.Hash,
     interfaces.Default,
@@ -22,6 +23,7 @@ public model String
     + Display
     + Hash
 {
+    var vec: UInt8Array
     /// Implementation of the Display trait.
     public function [Display.toStr] -> String {
        return "\"" + this + "\"" // todo: escape inner double quotes.
@@ -37,7 +39,9 @@ public model String
     /// assert(str).equals("Hello, world!")
     /// ```
     public function [Addition.add](other: This) -> This {
-        builtin.strings.concat(this, other)
+        newString := this
+        newString.vec.append(this.vec)
+        return newString
     }
     /// Creates an iterator from the contents of a string.
     /// ## Usage
@@ -61,7 +65,14 @@ public model String
     /// assert(str).equals("Hello, world!")
     /// ```
     public function append(suffix: String) {
-        todo()
+        this.vec.append(suffix.vec)
+    }
+    /// Converts the string to an array of bytes.
+    /// ### Usage
+    /// ```
+    /// ```
+    public function bytes -> UInt8Array {
+        return this.vec
     }
     /// Changes the first character of every word in the string to upper case.
     /// ## Usage
@@ -97,7 +108,7 @@ public model String
     /// assert(str.length()).equals(0)
     /// ```
     public function clear {
-        this = ""
+        this.vec = UInt8Array(this.vec.capacity)
     }
     /// Returns true if a substring is contained within the string.
     /// ## Usage
@@ -142,7 +153,7 @@ public model String
     /// assertThat(!str.isEmpty())
     /// ```
     public function isEmpty -> Bool {
-        return this.length() == 0
+        return this.vec.length == 0
     }
     /// Returns the number of characters in the string.
     /// ## Usage
@@ -152,7 +163,7 @@ public model String
     /// assert(str.length()).equals(5)
     /// ```
     public function length -> Int32 {
-        todo()
+        return this.vec.length
     }
     /// Changes the case of all letters in the string to lower case.
     /// ## Usage
@@ -218,7 +229,9 @@ public model String
     /// assert(str).equals("Hello, world!")
     /// ```
     public function prepend(prefix: String) {
-        todo()
+        newString := prefix
+        newString += this
+        this = newString
     }
     /// Returns a String value that is made from a number of copies of the original string.
     /// If count is 0, the empty string is returned.
@@ -372,6 +385,20 @@ public model String
     public function startsWith(pat: String) -> Bool {
         todo()
     }
+    /// Creates a string with at least the specified capacity.
+    /// ### Usage
+    /// ```
+    /// ```
+    public static function withCapacity(capacity: Int32) -> This {
+        return String.fromUtf8(UInt8Array(capacity))
+    }
+    /// Creates a string from an array of bytes.
+    /// ### Usage
+    /// ```
+    /// ```
+    public static function fromUtf8(array: UInt8Array) -> This {
+        todo()
+    }
     /// Creates a string from a value that implements Display.
     /// ### Usage
     /// ```
@@ -383,7 +410,6 @@ public model String
     public static function from<T implements Display>(value: T) -> This {
         value.toStr()
     }
-
     /// Creates a new formattable string template.
     /// ### Usage
     /// ```
@@ -419,9 +445,4 @@ public model Chars implements Iterable<String> {
 public interface FromStr {
     /// Parses a provided string and returns an instance of the implementing type.
     public static function fromStr(string: String) -> ?This
-}
-
-/// Calculates the edit distance between two strings using the [Levenshtein's Algorithm](http://example.com).
-public function LevenshteinEditRatio(str1: String, str2: String) -> Int32 {
-    todo()
 }

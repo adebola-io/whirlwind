@@ -816,7 +816,6 @@ impl HoverFinder<'_> {
         constraints: Option<&IntermediateTypeClause>,
         body: Option<&analyzer::TypedBlock>,
     ) -> Option<HoverInfo> {
-        let body = body?;
         // GENERICS.
         // Hovering over a generic parameter.
         for generic_param in generic_params {
@@ -834,6 +833,7 @@ impl HoverFinder<'_> {
         maybe!(return_type
             .as_ref()
             .and_then(|return_type| self.type_hover(return_type)));
+        let body = body?;
         // BODY.
         // Hovering over something in the function's body.
         return self.block(body);

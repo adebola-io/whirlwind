@@ -208,6 +208,23 @@ public model Array<T>
         }
         return string
     }
+    /// Appends the contents of one array to the end of the current array.
+    /// ### Usage
+    /// ```
+    /// array1 := [1, 2, 3, 4]
+    /// array2 := [5, 6, 7]
+    /// 
+    /// array1.append(array2)
+    /// 
+    /// assert(array1).equals([1, 2, 3, 4, 5, 6, 7])
+    /// ```
+    public function append(other: []T) {
+        i := 0
+        while i < other.len {
+            this.push(other[i])
+            i += 1
+        }
+    }
     /// Returns the item at a particular index in the array, if it exists.
     /// Indexes are zero-based, meaning that the first item is at index 0.
     /// ### Usage
@@ -336,7 +353,9 @@ public model Array<T>
     /// assert(arr == [1, 2, 3, 4, 5, 6, 7, 8])
     /// ```
     public function prepend(prefix: []T) {
-        todo()
+        newArray := prefix
+        newArray.append(this)
+
     }
     /// Returns the element before the last element in this array,
     /// if it exists.
@@ -396,7 +415,7 @@ public model Array<T>
     /// ```
     public function push(value: T) {
         if this.len == this.capacity {
-            
+            // todo.
         }
     }
     /// Removes an item from the end of the array.

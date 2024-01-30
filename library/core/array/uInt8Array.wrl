@@ -1,14 +1,20 @@
 module uInt8Array
 
 use core.numeric.Int32
-use core.interfaces.Default
 
-public model UInt8Array implements Default {
-    var offset: Int32
-    var length: Int32
-    var capacity: Int32
+public model UInt8Array {
+    public var offset: Int32
+    public var length: Int32
+    public var capacity: Int32
 
-    static function init() -> This {
-        core.sentinels.todo()
+    new(capacity: Int32) {
+        // Capacity must be set first so the offset can be determined.
+        this.capacity = capacity
+        this.length = 0
+        this.offset = core.sentinels.todo()
     }
-}
+
+    public function append(other: UInt8Array) {
+        
+    }
+} 

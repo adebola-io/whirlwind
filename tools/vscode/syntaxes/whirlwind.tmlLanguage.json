@@ -30,7 +30,7 @@
       },
       "special_keyword": {
          "name": "meta.special_keyword keyword.storage.special_keyword",
-         "match": "\\b(use|module|enum|public|static|test|var|new|const|model|async|record|interface|type|implements|not|and|or|is|super|core|packages)\\b"
+         "match": "\\b(use|module|enum|public|static|test|var|new|const|model|async|record|interface|type|implements|not|and|or|is|super|core|packages|import)\\b"
       },
       "comment": {
          "patterns": [

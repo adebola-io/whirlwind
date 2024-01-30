@@ -1,5 +1,9 @@
 module helloWorld;
 
+function print<M implements Display>(message: M) {
+    todo()
+}
+
 /// A function that prints "Hello, world" to the terminal.
 function helloWorld {
     print("Hello, world!")
@@ -8,11 +12,6 @@ function helloWorld {
 /// Greets a person.
 function greeting(name: String) {
     print(String.fmt("Good day, %!").add(name))
-}
-
-/// Stub for print, since system.io is not ready.
-function print<M implements Display>(message: M) {
-    todo()
 }
 
 /// A function that calculates the factorial of a given number.
@@ -46,20 +45,20 @@ function isPalindrome(str: String) -> Bool {
     return str == str.reverse()
 }
 
-var evenSquares = 
-    fn(numbers: []Int) 
-        numbers
-            .iter()
-            .filter(fn(num) num % 2 == 0)
-            .map(fn(num) num ^ 2)
-            .collect()
+// var evenSquares = 
+//     fn(numbers: []Int) 
+//         numbers
+//             .iter()
+//             .filter(fn(num) num % 2 == 0)
+//             .map(fn(num) num ^ 2)
+//             .collect()
 
 
 /// Returns the nth Fibonacci number.
-function fibonacci(n: Number) -> Number {
-    if n == 0 { return 0 } 
-    if n == 1 { return 1 } 
-    return fibonacci(n - 1) + fibonacci(n - 2)
+function fibonacci(n: Int32) -> Int32 {
+    if n == 0 { 0 } 
+    else if n == 1 { 1 } 
+    else fibonacci(n - 1) + fibonacci(n - 2)
 }
 
 /// Extracts the last names from a list.
@@ -68,6 +67,5 @@ public function lastNames(names: []String) -> []String {
 }
 
 
-model DbError {}
 
 
