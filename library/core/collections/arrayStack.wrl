@@ -1,6 +1,6 @@
 module arrayStack
 
-use core.math.UINTMAX
+
 use core.{
     array.Array,
     bool.Bool,
@@ -18,7 +18,7 @@ public model ArrayStack<T> {
    
     new(capacity?: Int32) {
         this.items = []
-        this._capacity = capacity.unwrapOr(UINTMAX)
+        // this._capacity = capacity.unwrapOr(UINTMAX)
     }
     /// Dynamically change the number of items in the stack.
     ///

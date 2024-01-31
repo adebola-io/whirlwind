@@ -11,7 +11,7 @@ function helloWorld {
 }
 
 /// Greets a person.
-function greeting(name: String) {
+function greeting(name: String) {   
     print(String.fmt("Good day, %!").add(name))
 }
 
@@ -63,7 +63,10 @@ function fibonacci(n: Int32) -> Int32 {
 
 /// Extracts the last names from a list.
 public function lastNames(names: []String) -> []String {
-   names.iter().filterMap(fn(name) name.split(' ').at(-1)).collect()
+    names
+        .iter()
+        .filterMap(fn(name) name.split(' ').at(-1))
+        .collect()
 }
 
 test "It does some stuff" {
@@ -74,10 +77,10 @@ test "It does some stuff" {
             this.name = name
         } 
 
-        public function firstChild() -> ?Person {
+        public function firstChild -> ?Person {
             return this.children.first()
         }
-        public function lastChild() -> ?Person {
+        public function lastChild -> ?Person {
             return this.children.last()
         }
     }

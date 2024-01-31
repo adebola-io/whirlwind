@@ -81,7 +81,9 @@ fn it_blocks_self_referential_declarations() {
         "
     module Test
 
-    var title = title 
+    test \"\" {
+        var title = title 
+    }
     
         ",
         &[TypeErrorType::SelfReference {
