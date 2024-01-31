@@ -17,7 +17,7 @@ pub enum Statement {
     FunctionDeclaration(FunctionDeclaration),
     InterfaceDeclaration(InterfaceDeclaration),
     EnumDeclaration(EnumDeclaration),
-    TypeDeclaration(TypeDeclaration),
+    TypeEquation(TypeEquation),
     // Control Statements.
     WhileStatement(WhileStatement),
     ReturnStatement(ReturnStatement),
@@ -241,7 +241,7 @@ pub struct Block {
 /// A node for a type declaration.
 /// As wih functions, most of its info is in the module ambience.
 #[derive(Debug, PartialEq)]
-pub struct TypeDeclaration {
+pub struct TypeEquation {
     pub address: ScopeAddress,
     pub span: Span,
 }
@@ -437,7 +437,7 @@ impl Spannable for Statement {
             Statement::RecordDeclaration => todo!(),
             Statement::InterfaceDeclaration(t) => t.span,
             Statement::EnumDeclaration(e) => e.span,
-            Statement::TypeDeclaration(t) => t.span,
+            Statement::TypeEquation(t) => t.span,
             Statement::WhileStatement(w) => w.span,
             Statement::ForStatement(f) => f.span,
             Statement::ExpressionStatement(e) | Statement::FreeExpression(e) => e.span(),
@@ -459,7 +459,7 @@ impl Spannable for Statement {
             Statement::RecordDeclaration => todo!(),
             Statement::InterfaceDeclaration(t) => t.span.start = start,
             Statement::EnumDeclaration(e) => e.span.start = start,
-            Statement::TypeDeclaration(t) => t.span.start = start,
+            Statement::TypeEquation(t) => t.span.start = start,
             Statement::WhileStatement(w) => w.span.start = start,
             Statement::ForStatement(f) => f.span.start = start,
             Statement::ExpressionStatement(e) | Statement::FreeExpression(e) => e.set_start(start),

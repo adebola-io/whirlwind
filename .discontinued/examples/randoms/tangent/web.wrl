@@ -4,7 +4,7 @@ use tangent.{
     Button, State, StateStore, Root, Span, View
 };
 
-model ClientState implements StateStore {
+type ClientState implements StateStore {
     public var count: State<Number>
     new() {
         this.count = new State(0);
@@ -32,7 +32,7 @@ function createRoot(state: ClientState) -> Root {
 }
 
 
-model styles {
+type styles {
     public static function Root() -> Style {
         css()
             .display("flex")

@@ -3,7 +3,7 @@ use crate::{
     EnumDeclaration, Expression, ForStatement, FunctionDeclaration, FunctionExpr, Identifier,
     IfExpression, IndexExpr, InterfaceDeclaration, LogicExpr, ModelDeclaration, ModuleDeclaration,
     Parameter, ReturnStatement, ShorthandVariableDeclaration, Statement, TestDeclaration, ThisExpr,
-    TypeDeclaration, UnaryExpr, UpdateExpr, UseDeclaration, VariableDeclaration, WhileStatement,
+    TypeEquation, UnaryExpr, UpdateExpr, UseDeclaration, VariableDeclaration, WhileStatement,
     WhirlBoolean, WhirlNumber, WhirlString,
 };
 
@@ -14,7 +14,7 @@ pub trait ASTVisitor<Arguments = (), Output: Default = ()> {
     fn statement(&self, statement: &Statement, args: &Arguments) -> Output {
         match statement {
             Statement::FunctionDeclaration(f) => self.function(f, args),
-            Statement::TypeDeclaration(t) => self.type_decl(t, args),
+            Statement::TypeEquation(t) => self.type_eq(t, args),
             Statement::EnumDeclaration(e) => self.enum_decl(e, args),
             Statement::ModelDeclaration(m) => self.model_decl(m, args),
             Statement::ShorthandVariableDeclaration(v) => self.shorthand_var_decl(v, args),
@@ -121,7 +121,7 @@ pub trait ASTVisitor<Arguments = (), Output: Default = ()> {
         }
         Output::default()
     }
-    fn type_decl(&self, type_decl: &TypeDeclaration, args: &Arguments) -> Output {
+    fn type_eq(&self, type_decl: &TypeEquation, args: &Arguments) -> Output {
         Output::default()
     }
     fn string(&self, string: &WhirlString, args: &Arguments) -> Output {
@@ -175,7 +175,7 @@ pub trait ASTVisitorNoArgs<Output: Default = ()> {
     fn statement(&self, statement: &Statement) -> Output {
         match statement {
             Statement::FunctionDeclaration(f) => self.function(f),
-            Statement::TypeDeclaration(t) => self.type_decl(t),
+            Statement::TypeEquation(t) => self.type_decl(t),
             Statement::EnumDeclaration(e) => self.enum_decl(e),
             Statement::ModelDeclaration(m) => self.model_decl(m),
             Statement::ShorthandVariableDeclaration(v) => self.shorthand_var_decl(v),
@@ -292,7 +292,7 @@ pub trait ASTVisitorNoArgs<Output: Default = ()> {
         }
         Output::default()
     }
-    fn type_decl(&self, type_decl: &TypeDeclaration) -> Output {
+    fn type_decl(&self, type_decl: &TypeEquation) -> Output {
         Output::default()
     }
     fn string(&self, string: &WhirlString) -> Output {
@@ -351,7 +351,7 @@ pub trait MutASTVisitor<Output: Default = ()> {
             Statement::ShorthandVariableDeclaration(v) => self.shorthand_variable_declaration(v),
             Statement::FunctionDeclaration(f) => self.function_declaration(f),
             Statement::EnumDeclaration(e) => self.enum_declaration(e),
-            Statement::TypeDeclaration(t) => self.type_declaration(t),
+            Statement::TypeEquation(t) => self.type_declaration(t),
             // Statement::InterfaceDeclaration(t) => self.interface_declaration(t),
             Statement::ExpressionStatement(e) => {
                 self.expr_statement(e);
@@ -395,7 +395,7 @@ pub trait MutASTVisitor<Output: Default = ()> {
 
     fn use_declaration(&mut self, use_decl: &mut UseDeclaration) {}
 
-    fn type_declaration(&mut self, type_decl: &mut TypeDeclaration) {}
+    fn type_declaration(&mut self, type_decl: &mut TypeEquation) {}
 
     fn shorthand_variable_declaration(&mut self, variable_decl: &mut ShorthandVariableDeclaration) {
     }
@@ -448,7 +448,7 @@ pub trait ASTVisitorExprOutputNoArgs<Output: Default = ()> {
             Statement::ShorthandVariableDeclaration(v) => self.shorthand_var_decl(v),
             Statement::FunctionDeclaration(f) => self.function_declaration(f),
             Statement::EnumDeclaration(e) => self.enum_declaration(e),
-            Statement::TypeDeclaration(t) => self.type_declaration(t),
+            Statement::TypeEquation(t) => self.type_declaration(t),
             Statement::InterfaceDeclaration(t) => self.interface_declaration(t),
             Statement::ExpressionStatement(e) => self.expr_statement(e),
             Statement::FreeExpression(e) => self.free_expr(e),
@@ -493,7 +493,7 @@ pub trait ASTVisitorExprOutputNoArgs<Output: Default = ()> {
 
     fn use_declaration(&self, use_decl: &UseDeclaration) {}
 
-    fn type_declaration(&self, type_decl: &TypeDeclaration) {}
+    fn type_declaration(&self, type_decl: &TypeEquation) {}
 
     fn shorthand_var_decl(&self, variable_decl: &ShorthandVariableDeclaration) {}
 

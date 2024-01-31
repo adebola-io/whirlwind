@@ -320,6 +320,10 @@ pub enum TypeErrorType {
     MismatchedConstraint,
     MissingConstraint,
     UnexpectedConstraint,
+    /// Using a variable in its own declaration.
+    SelfReference {
+        valuename: String,
+    },
 }
 
 pub fn invalid_binary(left: String, operator: BinOperator, right: String, span: Span) -> TypeError {

@@ -2,7 +2,7 @@ module tangent;
 
 use core.collections.HashMap;
 
-model Style {
+type Style {
     var properties: HashMap<String, String>;
 
     public function display(value: String) -> This {
@@ -34,13 +34,13 @@ model Style {
     }
 }
 
-public model View {
+public type View {
     new(root: RootElement) {
         this.root = root;
     }
 }
 
-model Attributes {
+type Attributes {
     public function set(key: String, value: String) {
         todo();
     }
@@ -74,7 +74,7 @@ public interface Component {
     }
 }
 
-model Div implements Component {
+type Div implements Component {
     public function [Component.base]() -> Element {
         return this;
     }

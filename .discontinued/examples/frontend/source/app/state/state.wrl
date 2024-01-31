@@ -3,14 +3,14 @@ module state;
 // use tangent.{StateStore, State};
 
 interface StateStore {}
-model State<T> {
+type State<T> {
     var value: T;
     new(value: T) {
         this.value = value;
     }
 }
 
-public model ClientState implements StateStore {
+public type ClientState implements StateStore {
     public var navMobile: State<Bool>;
 
     new() {

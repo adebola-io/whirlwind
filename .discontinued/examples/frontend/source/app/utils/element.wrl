@@ -1,4 +1,4 @@
 module element;
 
 
-public model Component;
+public type Component;

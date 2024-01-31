@@ -27,7 +27,7 @@ impl<'a> ShortcircuitTypedVisitorNoArgs<'a, &'a TypedFunctionDeclaration>
                 self.shorthand_var_decl(shorthand)
             }
             TypedStmnt::ConstantDeclaration(constant) => self.constant(constant),
-            TypedStmnt::ModelDeclaration(model) => self.model_decl(model),
+            TypedStmnt::ModelDeclaration(type) => self.model_decl(type),
             TypedStmnt::FunctionDeclaration(function) => {
                 let symbol = symbollib.get(function.name)?;
                 if std::ptr::eq(symbol, self.symbol) {

@@ -1,7 +1,7 @@
 use crate::message_store::MessageStore;
 use analyzer::{
     IntermediateType, IntermediateTypeClause, SemanticSymbol, SemanticSymbolKind, Standpoint,
-    SymbolIndex, TypedCallExpr, TypedIdent, TypedModule, TypedThisExpr, TypedTypeDeclaration,
+    SymbolIndex, TypedCallExpr, TypedIdent, TypedModule, TypedThisExpr, TypedTypeEquation,
     TypedVisitorNoArgs,
 };
 use ast::{maybe, within, Span};
@@ -155,7 +155,7 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
     }
 
     /// Hovering over a type declaration.:
-    fn type_decl(&self, type_decl: &TypedTypeDeclaration) -> Option<HoverInfo> {
+    fn type_decl(&self, type_decl: &TypedTypeEquation) -> Option<HoverInfo> {
         within!(type_decl.span, self);
         let symbol = self.standpoint.symbol_library.get(type_decl.name)?;
         // Hovering over the type name.

@@ -7,7 +7,7 @@ use ast::{
     ForStatement, FunctionDeclaration, FunctionExpr, Identifier, IfExpression, IndexExpr,
     InterfaceBody, InterfaceDeclaration, InterfaceProperty, LogicExpr, ModelBody, ModelDeclaration,
     ModelProperty, ModelPropertyType, ModuleDeclaration, Parameter, ReturnStatement, ScopeAddress,
-    ScopeEntry, Span, Statement, TestDeclaration, ThisExpr, TypeDeclaration, TypeExpression,
+    ScopeEntry, Span, Statement, TestDeclaration, ThisExpr, TypeEquation, TypeExpression,
     UnaryExpr, UpdateExpr, UpdateOperator, UseDeclaration, UsePath, UseTarget, VariableDeclaration,
     WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
 };
@@ -283,7 +283,7 @@ fn parsing_conditional_types() {
     let mut parser = parse_text("type A = if A implements A<B> B<C> else B<A>;");
     assert_eq!(
         parser.next().unwrap().unwrap(),
-        Statement::TypeDeclaration(TypeDeclaration {
+        Statement::TypeEquation(TypeEquation {
             address: ScopeAddress::from([0, 0, 0]),
             span: Span::from([1, 1, 1, 46])
         })
@@ -427,7 +427,7 @@ fn parsing_type_declarations() {
 
     assert_eq!(
         statement,
-        Statement::TypeDeclaration(TypeDeclaration {
+        Statement::TypeEquation(TypeEquation {
             address: ScopeAddress::from([0, 0, 0]),
             span: Span::from([1, 1, 1, 54])
         })
@@ -502,7 +502,7 @@ fn parsing_this_type() {
 
     assert_eq!(
         statement,
-        Statement::TypeDeclaration(TypeDeclaration {
+        Statement::TypeEquation(TypeEquation {
             address: ScopeAddress::from([0, 0, 0]),
             span: Span::from([1, 1, 1, 18])
         })
@@ -526,7 +526,7 @@ fn parse_constrained_type() {
 
     assert_eq!(
         statement,
-        Statement::TypeDeclaration(TypeDeclaration {
+        Statement::TypeEquation(TypeEquation {
             address: ScopeAddress::from([0, 0, 0]),
             span: Span::from([1, 1, 1, 28])
         })
@@ -548,7 +548,7 @@ fn parse_constrained_type() {
 
     assert_eq!(
         statement,
-        Statement::TypeDeclaration(TypeDeclaration {
+        Statement::TypeEquation(TypeEquation {
             address: ScopeAddress::from([0, 0, 0]),
             span: Span::from([1, 1, 1, 46])
         })
@@ -572,7 +572,7 @@ fn parse_constrained_type() {
 
     assert_eq!(
         statement,
-        Statement::TypeDeclaration(TypeDeclaration {
+        Statement::TypeEquation(TypeEquation {
             address: ScopeAddress::from([0, 0, 0]),
             span: Span::from([1, 1, 1, 87])
         })
@@ -596,7 +596,7 @@ fn parse_array_type() {
 
     assert_eq!(
         statement,
-        Statement::TypeDeclaration(TypeDeclaration {
+        Statement::TypeEquation(TypeEquation {
             address: ScopeAddress::from([0, 0, 0]),
             span: Span::from([1, 1, 1, 22])
         })
@@ -620,7 +620,7 @@ fn parse_grouped_type() {
 
     assert_eq!(
         statement,
-        Statement::TypeDeclaration(TypeDeclaration {
+        Statement::TypeEquation(TypeEquation {
             address: ScopeAddress::from([0, 0, 0]),
             span: Span::from([1, 1, 1, 33])
         })

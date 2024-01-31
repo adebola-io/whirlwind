@@ -344,7 +344,7 @@ pub enum Opcode {
     ///
     /// Format: `[LoadAddrAToFrame] [dest: [a, b, c, d]]`
     StoreValueAToFrame,
-    /// Creates a new instance of a model on the heap, and stores a pointer to it in
+    /// Creates a new instance of a type on the heap, and stores a pointer to it in
     /// the _valb_ register.
     /// The next eight bytes correspond to the index of the layout to allocate in the table.
     ///

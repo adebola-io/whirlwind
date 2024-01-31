@@ -81,8 +81,8 @@ impl std::fmt::Display for TypeErrorType {
         TypeErrorType::InvalidOpaqueTypeAssignment { left, right } => format!("Assignment failed because '{right}' is not a possible form for opaque type '{left}'."),
         TypeErrorType::MissingOpaqueComponent { left, right } => format!("Assignment failed because '{left}' and '{right}' have different component types."),
         TypeErrorType::InvalidDereference { name } => format!("Value of type {name} cannot be dereferenced."),
-        TypeErrorType::IllegalGuarantee { name } => format!("! cannot be used here because type {name} does not implement Guaranteed."),
-        TypeErrorType::IllegalTry { name } => format!("? cannot be used here because type {name} does not implement Try."),
+        TypeErrorType::IllegalGuarantee { name } => format!("! cannot be used here because type {name} does not implement the Guaranteed interface."),
+        TypeErrorType::IllegalTry { name } => format!("? cannot be used here because type {name} does not implement the Try interface."),
         TypeErrorType::NumericConversionError { error } => format!("Numeric conversion error: {error}."),
         TypeErrorType::NumericCastingError { left, right } => format!("Numeric type {left} cannot be assigned a value of type {right}."),
         TypeErrorType::MissingAnnotationsOrValue => format!("Cannot infer types without type labels or initial values."),
@@ -93,7 +93,7 @@ impl std::fmt::Display for TypeErrorType {
         TypeErrorType::NonPureGlobal => format!("Expression with possible side effects are not allowed in global scope."),
         TypeErrorType::ReturnFromConstructor => format!("Model constructors do not expect a return value."),
         TypeErrorType::UsingAttributeBeforeAssign => format!("Attribute is being used before it is assigned."),
-        TypeErrorType::UnassignedAttribute { name } => format!("Attribute must be definitely assigned in the constructor, because the type {name} does not implement Default."),
+        TypeErrorType::UnassignedAttribute { name } => format!("Attribute must be assigned in the new constructor, either because {name} is generic, or because it does not implement Default."),
         TypeErrorType::UninferrableVariable {name} => format!("Cannot fully infer the type of {name}. Consider adding type annotations."),
         TypeErrorType::InvalidSize { error } => error.clone(),
         TypeErrorType::ThisInStaticMethod => format!("The 'this' identifier cannot be used in a static method."),
@@ -117,7 +117,7 @@ impl std::fmt::Display for TypeErrorType {
         TypeErrorType::MethodInConstructor => format!("Methods on a model instance cannot be called from inside its constructor."),
         TypeErrorType::NotOrderable { name, operator } => format!("Illegal operator {operator:?}. Values of type {name} do not implement Orderable."),
         TypeErrorType::NotSequenced { name} => format!("Range cannot be created because values of type {name} do not implement Sequenced."),
-        TypeErrorType::NumericExclusiveOperation { typ } => format!("{typ} is not a numeric type."),
+        TypeErrorType::NumericExclusiveOperation { typ } => format!("{typ} is not a numeric type,, so it cannot be used in this operation."),
         TypeErrorType::ExpectedInterface { got } => format!("Expected an interface here, got type '{got}'."),
         TypeErrorType::InvalidDefaultType { name, generic } => format!("{name} cannot be used as a default value for the generic type {generic}."),
         TypeErrorType::DuplicateImplementationOf { name } => format!("Duplicate implementation of interface {name}."),
@@ -134,8 +134,8 @@ impl std::fmt::Display for TypeErrorType {
         TypeErrorType::FailedClause { base, method } => format!("The method '{method}' exists on {base}, but its constraints are not satisfied."),
         TypeErrorType::MismatchedConstraint => format!("The constraint given to this method does not match the interface provider."),
         TypeErrorType::MissingConstraint => format!("This method should have a constraint that matches its interface provider."),
-        TypeErrorType::UnexpectedConstraint => format!("Method should not have a method constraint."),
-        
+        TypeErrorType::UnexpectedConstraint => format!("Method does not expect a constraint."),
+        TypeErrorType::SelfReference { valuename } => format!("{valuename} cannot be referenced in its own declaration."),
         };
         write!(f, "{message}")
     }

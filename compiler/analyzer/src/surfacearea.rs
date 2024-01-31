@@ -72,7 +72,7 @@ impl<'a> TypedVisitorNoArgs for SurfaceAreaCalculator<'a> {
     fn statement(&self, statement: &crate::TypedStmnt) {
         match statement {
             crate::TypedStmnt::FunctionDeclaration(f) => self.function(f),
-            crate::TypedStmnt::TypeDeclaration(t) => self.type_decl(t),
+            crate::TypedStmnt::TypedTypeEquation(t) => self.type_decl(t),
             crate::TypedStmnt::EnumDeclaration(e) => self.enum_decl(e),
             crate::TypedStmnt::ModelDeclaration(m) => self.model_decl(m),
             crate::TypedStmnt::ShorthandVariableDeclaration(v) => self.shorthand_var_decl(v),
@@ -243,7 +243,7 @@ impl<'a> TypedVisitorNoArgs for SurfaceAreaCalculator<'a> {
         }
     }
 
-    fn type_decl(&self, type_decl: &crate::TypedTypeDeclaration) {
+    fn type_decl(&self, type_decl: &crate::TypedTypeEquation) {
         let surface_area = self.surface_area();
         surface_area.declared_in_module.push(type_decl.name);
         let symbol = unwrap_or_return!(self.symbollib.get(type_decl.name));

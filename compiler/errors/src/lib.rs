@@ -209,3 +209,10 @@ pub fn unexpected_constraint(span: ast::Span) -> TypeError {
         span,
     }
 }
+
+pub fn self_reference(valuename: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::SelfReference { valuename },
+        span,
+    }
+}

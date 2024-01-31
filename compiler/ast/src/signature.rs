@@ -186,7 +186,7 @@ pub struct InterfaceSignature {
 
 /// Entry to mark a type.
 #[derive(Debug, Signature, Hash)]
-pub struct TypeSignature {
+pub struct TypeEquationSignature {
     /// Type name.
     pub name: Identifier,
     /// Doc comments annotating the type, if any.

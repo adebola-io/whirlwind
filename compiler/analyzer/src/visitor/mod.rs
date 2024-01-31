@@ -7,7 +7,7 @@ use crate::{
     TypedFunctionDeclaration, TypedIdent, TypedIfExpr, TypedIndexExpr, TypedInterfaceDeclaration,
     TypedInterfacePropertyType, TypedLogicExpr, TypedModelDeclaration, TypedModelPropertyType,
     TypedModuleDeclaration, TypedReturnStatement, TypedShorthandVariableDeclaration, TypedStmnt,
-    TypedTestDeclaration, TypedThisExpr, TypedTypeDeclaration, TypedUnaryExpr, TypedUpdateExpr,
+    TypedTestDeclaration, TypedThisExpr, TypedTypeEquation, TypedUnaryExpr, TypedUpdateExpr,
     TypedUseDeclaration, TypedVariableDeclaration, TypedWhileStatement,
 };
 
@@ -18,7 +18,7 @@ pub trait TypedTreeVisitor<Arguments = (), Output: Default = ()> {
     fn statement(&self, statement: &TypedStmnt, args: &Arguments) -> Output {
         match statement {
             TypedStmnt::FunctionDeclaration(f) => self.function(f, args),
-            TypedStmnt::TypeDeclaration(t) => self.type_decl(t, args),
+            TypedStmnt::TypedTypeEquation(t) => self.type_decl(t, args),
             TypedStmnt::EnumDeclaration(e) => self.enum_decl(e, args),
             TypedStmnt::ModelDeclaration(m) => self.model_decl(m, args),
             TypedStmnt::ShorthandVariableDeclaration(v) => self.shorthand_var_decl(v, args),
@@ -124,7 +124,7 @@ pub trait TypedTreeVisitor<Arguments = (), Output: Default = ()> {
         }
         Output::default()
     }
-    fn type_decl(&self, type_decl: &TypedTypeDeclaration, args: &Arguments) -> Output {
+    fn type_decl(&self, type_decl: &TypedTypeEquation, args: &Arguments) -> Output {
         Output::default()
     }
     fn literal(&self, literal: &LiteralIndex, args: &Arguments) -> Output {
@@ -168,7 +168,7 @@ pub trait TypedVisitorNoArgs<Output: Default = ()> {
     fn statement(&self, statement: &TypedStmnt) -> Output {
         match statement {
             TypedStmnt::FunctionDeclaration(f) => self.function(f),
-            TypedStmnt::TypeDeclaration(t) => self.type_decl(t),
+            TypedStmnt::TypedTypeEquation(t) => self.type_decl(t),
             TypedStmnt::EnumDeclaration(e) => self.enum_decl(e),
             TypedStmnt::ModelDeclaration(m) => self.model_decl(m),
             TypedStmnt::ShorthandVariableDeclaration(v) => self.shorthand_var_decl(v),
@@ -289,7 +289,7 @@ pub trait TypedVisitorNoArgs<Output: Default = ()> {
         }
         Output::default()
     }
-    fn type_decl(&self, type_decl: &TypedTypeDeclaration) -> Output {
+    fn type_decl(&self, type_decl: &TypedTypeEquation) -> Output {
         Output::default()
     }
     fn this_expr(&self, this: &TypedThisExpr) -> Output {
@@ -374,7 +374,7 @@ pub trait ShortcircuitTypedVisitorNoArgs<'a, Output = ()> {
     fn statement(&self, statement: &'a TypedStmnt) -> Option<Output> {
         match statement {
             TypedStmnt::FunctionDeclaration(f) => self.function(f),
-            TypedStmnt::TypeDeclaration(t) => self.type_decl(t),
+            TypedStmnt::TypedTypeEquation(t) => self.type_decl(t),
             TypedStmnt::EnumDeclaration(e) => self.enum_decl(e),
             TypedStmnt::ModelDeclaration(m) => self.model_decl(m),
             TypedStmnt::ShorthandVariableDeclaration(v) => self.shorthand_var_decl(v),
@@ -501,7 +501,7 @@ pub trait ShortcircuitTypedVisitorNoArgs<'a, Output = ()> {
         }
         return None;
     }
-    fn type_decl(&self, type_decl: &'a TypedTypeDeclaration) -> Option<Output> {
+    fn type_decl(&self, type_decl: &'a TypedTypeEquation) -> Option<Output> {
         return None;
     }
     fn this_expr(&self, this: &'a TypedThisExpr) -> Option<Output> {
@@ -592,7 +592,7 @@ pub trait MutASTVisitor<Output: Default = ()> {
             TypedStmnt::ShorthandVariableDeclaration(v) => self.shorthand_variable_declaration(v),
             TypedStmnt::FunctionDeclaration(f) => self.function_declaration(f),
             TypedStmnt::EnumDeclaration(e) => self.enum_declaration(e),
-            TypedStmnt::TypeDeclaration(t) => self.type_declaration(t),
+            TypedStmnt::TypedTypeEquation(t) => self.type_declaration(t),
             // TypedStmnt::InterfaceDeclaration(t) => self.interface_declaration(t),
             TypedStmnt::ExpressionStatement(e) => {
                 self.expr_statement(e);
@@ -639,7 +639,7 @@ pub trait MutASTVisitor<Output: Default = ()> {
 
     fn use_declaration(&mut self, use_decl: &mut TypedUseDeclaration) {}
 
-    fn type_declaration(&mut self, type_decl: &mut TypedTypeDeclaration) {}
+    fn type_declaration(&mut self, type_decl: &mut TypedTypeEquation) {}
 
     fn shorthand_variable_declaration(
         &mut self,
@@ -680,7 +680,7 @@ pub trait ASTVisitorExprOutputNoArgs<Output: Default = ()> {
             TypedStmnt::ShorthandVariableDeclaration(v) => self.shorthand_var_decl(v),
             TypedStmnt::FunctionDeclaration(f) => self.function_declaration(f),
             TypedStmnt::EnumDeclaration(e) => self.enum_declaration(e),
-            TypedStmnt::TypeDeclaration(t) => self.type_declaration(t),
+            TypedStmnt::TypedTypeEquation(t) => self.type_declaration(t),
             TypedStmnt::InterfaceDeclaration(t) => self.interface_declaration(t),
             TypedStmnt::ExpressionStatement(e) => self.expr_statement(e),
             TypedStmnt::FreeExpression(e) => self.free_expr(e),
@@ -725,7 +725,7 @@ pub trait ASTVisitorExprOutputNoArgs<Output: Default = ()> {
 
     fn use_declaration(&self, use_decl: &TypedUseDeclaration) {}
 
-    fn type_declaration(&self, type_decl: &TypedTypeDeclaration) {}
+    fn type_declaration(&self, type_decl: &TypedTypeEquation) {}
 
     fn shorthand_var_decl(&self, variable_decl: &TypedShorthandVariableDeclaration) {}
 

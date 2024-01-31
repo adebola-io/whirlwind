@@ -7,7 +7,7 @@ This file details the introduction of a mechanism to define foreign functions wi
 -  statically at compile time,
 -  or dynamically at runtime as WebAssembly import statements.
 
-It would enable seamless integration with external functionality from other WebAssembly modules or the host environment. It also allows the definition of a boundary between the core and system libraries, and lower level functionality.
+It would enable seamless integration with external functionality from the host environment. It also allows the definition of a boundary between the core and host libraries, and lower level functionality.
 
 ## Syntax:
 
@@ -41,6 +41,14 @@ import "resource" {
 -  **These declarations will only be allowed in the global scope to prevent stories that touch**.
 -  **External functions cannot have generic parameters, since they do not belong in the scope of Whirlwind.**
 
+Having this feature would fit seamlessly with scope management and typechecking, since only the signature is needed for the compiler frontend.
+
+However, generic external functions should result in type errors. Have not decided whether monomorphization will happen, but if it does, we cannot create two or more variants of a foreign function.
+
+## Code Generation:
+
+### Example:
+
 ```ts
 import "console" {
     "log" as function log(offset: Int32, length: Int32)
@@ -51,33 +59,6 @@ would compile to:
 
 ```wasm
 (import "console" "log" (func $_log (param i32 i32)))
-```
-
-## Semantics:
-
-Having this feature would fit seamlessly with scope management and typechecking, since only the signature is needed for the compiler frontend.
-
-However, generic external functions should result in type errors. Have not decided whether monomorphization will happen, but if it does, we cannot create two or more variants of a foreign function.
-
-## Code Generation:
-
-During code generation, external functions will be resolved by the defined compiler loaders, if they exist.
-
-Here the resource name and type will be validated, and invalid resources will halt compilation.
-
-If a function is loaded twice into the same program, it should cause a warning or an error.
-
-### Example:
-
-```js
-import "console" {
-    "log" as function log(s: String)
-}
-
-function main {
-    var c = multiply(2, 3)
-    log(c.toStr())
-}
 ```
 
 ## Additional Considerations:

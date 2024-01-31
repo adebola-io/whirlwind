@@ -12,14 +12,14 @@ test "Testing types." {
     // generic model methods.
     var swap = fn <T, U>(tuple: Tuple<T, U>) tuple.swap()
 
-    tuple := Tuple(true, "hello")
-    swapped := tuple.swap()
+    var tuple = Tuple(true, "hello")
+    var swapped = tuple.swap()
     assert(swap(tuple)).equals(tuple.swap())
 
  
     // Coercion.
-    stringItself := identity("String") // Should have type String.
-    result := err(true)
+    var stringItself = identity("String") // Should have type String.
+    var result = err(true)
     result = ok(none())
     result = ok(some("hello, world"))
     // result should coerce to type Outcome<Maybe<String>, Bool>
@@ -47,7 +47,7 @@ test "Testing types." {
         }
     }
     type Ball = Football | Tennisball | Basketball
-    ball: Ball := Football()
+    var ball: Ball = Football()
     ball.bounce()
     ball = Basketball()
     ball.bounce()
@@ -57,10 +57,10 @@ test "Testing types." {
     }
     function Nested<T implements Bounceable>(newBall: T) {
         type InnerBall = T | Ball
-        ball: InnerBall := Football()
+        var ball: InnerBall = Football()
         ball.bounce()
         ball = newBall
-        _ := ball.bounce()
+        var {} = ball.bounce()
     }
 
     // Opaque types with interfaces.
@@ -127,9 +127,11 @@ test "Testing types." {
     var { name, age }: Person
     var { name as johnsName} = Person("John Doe")
 
+    
+
     // Destructuring in loops.
     people := [Person("Susan Micheals"), Person("Aaron Michaels")]
-    for { name} in people {
+    for { name } in people {
         // print(name)
     }
 
@@ -148,10 +150,13 @@ test "Testing types." {
     interface SomeStuff {
         public function doA -> Bool
     }
-    model A<T> {
+    model A<T> implements Display|=(T implements Display) {
         var value: T
-        public function asj|=(T implements Display) {
-            
+        new(value: T) {
+            this.value = value
         }
-    }   
+        public function [Display.toStr]|=(T implements Display) -> String {
+            todo()
+        }
+    }
 }

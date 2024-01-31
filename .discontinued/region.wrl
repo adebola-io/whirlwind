@@ -35,7 +35,7 @@ public enum RegionOperationError {
 /// 
 /// A region handle is usually denoted ending with a dollar sign ($) to distinguish it
 /// from other variable types.
-public model RegionHandle {
+public type RegionHandle {
     /// Tries to allocates a internal memory block with the specified size 
     /// inside of the memory region's arena. If the operation is successful, it returns 
     /// the offset of the block's start.

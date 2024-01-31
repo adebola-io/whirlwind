@@ -1,14 +1,44 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
+pub struct Callable {
+    name: String,
+    statements: Vec<MiddleStatement>,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+pub struct Symbols {}
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+pub enum MiddleStatement {
+    Expression(MiddleExpression),
+    WhileLoop(MiddleWhileLoop),
+    VariableDeclaration(MiddleVariableDecl),
+    ConstantDeclaration(MiddleConstantDecl),
+    Break(MiddleBreak),
+    Continue(MiddleContinue),
+    Return(MiddleReturn),
+}
+
+pub struct MiddleConstantDecl {}
+
+pub struct MiddleContinue {}
+
+pub struct MiddleReturn {}
+
+pub struct MiddleBreak {}
+
+pub struct MiddleWhileLoop {
+    condition: MiddleExpression,
+    body: MiddleBlock,
+}
+
+pub struct MiddleVariableDecl {}
+
+pub enum MiddleExpression {
+    NumericOp(Box<NumericOp>),
+    Block(MiddleBlock),
+}
+
+pub struct MiddleBlock {}
+
+pub struct NumericOp {}
+
+pub struct Intermediary {
+    pub callables: Vec<Callable>,
 }

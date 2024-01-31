@@ -26,7 +26,7 @@ pub struct BytecodeObject {
     pub instructions: Vec<u8>,
 }
 
-/// A blueprint of how an instance of a model is layed out in (virtual) memory.
+/// A blueprint of how an instance of a type is layed out in (virtual) memory.
 #[derive(Debug)]
 pub struct Layout {
     pub property_offsets: Vec<u32>,

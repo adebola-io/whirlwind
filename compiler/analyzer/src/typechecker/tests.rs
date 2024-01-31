@@ -76,6 +76,21 @@ fn it_solves_generics() {}
 fn it_solves_interface_impls_for_generics() {}
 
 #[test]
+fn it_blocks_self_referential_declarations() {
+    text_produces_errors!(
+        "
+    module Test
+
+    var title = title 
+    
+        ",
+        &[TypeErrorType::SelfReference {
+            valuename: format!("title")
+        }]
+    );
+}
+
+#[test]
 fn coerces_this_type() {
     check_types!(
         "

@@ -24,7 +24,7 @@ module prelude
 
 public use core
 public use core.{
-    array.Array,
+    array.{Array, UInt8Array},
     bool.Bool,
     collections.{Tuple, pair},
     concurrent.{Eventual, Prospect, toSync},

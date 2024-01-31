@@ -3,7 +3,7 @@ module page;
 use tangent.{Style, Div, Element, Component};
 
 
-model Page implements Component {
+type Page implements Component {
     var base: Div;
 
     public function [Component.base]() -> Element {
@@ -16,7 +16,7 @@ model Page implements Component {
     }
 }
 
-model css {
+type css {
     public static function Page() -> Style {
         (@Style)
             .height("400px")

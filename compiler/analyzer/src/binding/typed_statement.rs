@@ -15,7 +15,7 @@ pub enum TypedStmnt {
     VariableDeclaration(TypedVariableDeclaration),
     ShorthandVariableDeclaration(TypedShorthandVariableDeclaration),
     ConstantDeclaration(TypedConstantDeclaration),
-    TypeDeclaration(TypedTypeDeclaration),
+    TypedTypeEquation(TypedTypeEquation),
     ModelDeclaration(TypedModelDeclaration),
     ModuleDeclaration(TypedModuleDeclaration),
     FunctionDeclaration(TypedFunctionDeclaration),
@@ -86,7 +86,7 @@ pub struct TypedTestDeclaration {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct TypedTypeDeclaration {
+pub struct TypedTypeEquation {
     pub name: SymbolIndex,
     pub span: Span,
 }
@@ -236,7 +236,7 @@ pub fn span_of_typed_statement(
         TypedStmnt::RecordDeclaration => todo!(),
         TypedStmnt::InterfaceDeclaration(t) => t.span,
         TypedStmnt::EnumDeclaration(e) => e.span,
-        TypedStmnt::TypeDeclaration(t) => t.span,
+        TypedStmnt::TypedTypeEquation(t) => t.span,
         TypedStmnt::WhileStatement(w) => w.span,
         TypedStmnt::ForStatement(f) => f.span,
         TypedStmnt::ExpressionStatement(e) | TypedStmnt::FreeExpression(e) => {

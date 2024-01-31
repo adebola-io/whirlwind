@@ -1,10 +1,10 @@
 ## Blocking Cyclic Types?
 
-To simplify reference count in memory management, Whirlwind does not allow cyclic or recursive model types.
+To simplify reference count in memory management, Whirlwind does not allow cyclic or recursive type types.
 This means that:
 
 ```wrl
-    model Node {
+    type Node {
         var parent: Node;
     }
 ```
@@ -32,11 +32,11 @@ the lhs will take the value in the determined register.
 
 ## Creating an Instance.
 
--  To create an instance of a model:
+-  To create an instance of a type:
 -  Load the arguments, in consecutive order, onto the stack, inside the current frame.
 -  Create a new call frame, then offset its start index in the stack by the number of arguments, so that the arguments are now values inside the new frame.
 -  For optional values that have not been initialized, load them as empty Maybe values into the frame.
--  Create an instance of the model being created.
+-  Create an instance of the type being created.
 -  Run the function and store the instance pointer in the ret register.
 -  Return from the constructor function.
 

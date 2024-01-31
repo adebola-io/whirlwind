@@ -216,7 +216,7 @@
 // fn create_instance_on_heap() {
 //     let mut vm = VM::new();
 //     vm.define_main_function(CallablePtr::main());
-//     // model Person {
+//     // type Person {
 //     //   var id: UInt8;
 //     //   new() {
 //     //     this.id = 0;

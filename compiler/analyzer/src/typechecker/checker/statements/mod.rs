@@ -1,6 +1,6 @@
 use ast::{unwrap_or_continue, unwrap_or_return};
 
-use crate::utils::assume_clause_verity;
+use crate::{utils::assume_clause_verity, VariablePatternForm};
 
 use super::{expressions::typecheck_block, *};
 
@@ -52,7 +52,7 @@ pub fn typecheck_statement(
         TypedStmnt::ModelDeclaration(model) => {
             typecheck_model_declaration(model, checker_ctx, symbollib)
         }
-        TypedStmnt::TypeDeclaration(type_decl) => {
+        TypedStmnt::TypedTypeEquation(type_decl) => {
             typecheck_type_decl(type_decl, symbollib, checker_ctx)
         }
         _ => {}
@@ -60,7 +60,7 @@ pub fn typecheck_statement(
 }
 
 fn typecheck_type_decl(
-    type_decl: &mut crate::TypedTypeDeclaration,
+    type_decl: &mut crate::TypedTypeEquation,
     symbollib: &mut SymbolLibrary,
     checker_ctx: &mut TypecheckerContext<'_>,
 ) {
@@ -199,7 +199,7 @@ fn typecheck_for_loop(
         };
         let mut pattern_result = EvaluatedType::Unknown;
         match pattern_type {
-            crate::VariablePatternForm::DestructuredFromObject {
+            VariablePatternForm::DestructuredFromObject {
                 from_property: property_symbol_idx,
             } => {
                 match &final_type {
@@ -257,7 +257,7 @@ fn typecheck_for_loop(
                     }
                 }
             }
-            crate::VariablePatternForm::DestructuredFromArray => match &final_type {
+            VariablePatternForm::DestructuredFromArray => match &final_type {
                 EvaluatedType::ModelInstance {
                     generic_arguments, ..
                 } if is_array(&final_type, symbollib) => {
@@ -441,16 +441,43 @@ fn typecheck_variable_declaration(
     ensure_assignment_validity(&final_type, checker_ctx, span);
     // Pattern resolutions.
     for name in names {
-        let symbol = symbollib.get_mut(*name).unwrap();
-        // Only pure, immutable and literal types should be allowed as global variables.
-        if variable.value.is_some() && symbol.origin_scope_id.is_some_and(|id| id.0 == 0) {
+        if variable.value.is_some() {
+            let symbol = symbollib.get(*name).unwrap();
             let expression = variable.value.as_ref().unwrap();
-            if !is_pure(expression) {
-                let span = checker_ctx.span_of_expr(expression, symbollib);
-                checker_ctx.add_error(errors::non_pure_global(span));
-                return;
+            let expression_span = checker_ctx.span_of_expr(expression, symbollib);
+            // Only pure, immutable and literal types should be allowed as global variables.
+            if symbol.origin_scope_id.is_some_and(|id| id.0 == 0) {
+                if !is_pure(expression) {
+                    checker_ctx.add_error(errors::non_pure_global(expression_span));
+                    return;
+                }
             }
+            // Variables should not be self referential in their declarations.
+            // We can check this using the span range of the expression and
+            // checking that it does not contain a reference to the variable being declared.
+            symbol
+                .references
+                .iter()
+                .filter(|list| list.module_path == checker_ctx.path_idx)
+                .map(|referencelist| {
+                    referencelist
+                        .starts
+                        .iter()
+                        .map(|start| Span::on_line(*start, symbol.name.len() as u32))
+                })
+                .flatten()
+                .for_each(|span| {
+                    if expression_span.encloses(span) {
+                        checker_ctx.diagnostics.push(ProgramDiagnostic {
+                            offending_file: checker_ctx.path_idx,
+                            _type: DiagnosticType::Error(crate::Error::Typing(
+                                errors::self_reference(symbol.name.clone(), span),
+                            )),
+                        })
+                    }
+                });
         }
+        let symbol = symbollib.get_mut(*name).unwrap();
         let pattern_type = if let SemanticSymbolKind::Variable {
             pattern_type,
             inferred_type,
@@ -468,7 +495,7 @@ fn typecheck_variable_declaration(
         };
         let mut pattern_result = EvaluatedType::Unknown;
         match pattern_type {
-            crate::VariablePatternForm::DestructuredFromObject {
+            VariablePatternForm::DestructuredFromObject {
                 from_property: property_symbol_idx,
             } => {
                 match &final_type {
@@ -525,7 +552,7 @@ fn typecheck_variable_declaration(
                     }
                 }
             }
-            crate::VariablePatternForm::DestructuredFromArray => match &final_type {
+            VariablePatternForm::DestructuredFromArray => match &final_type {
                 EvaluatedType::ModelInstance {
                     generic_arguments, ..
                 } if is_array(&final_type, symbollib) => {
@@ -610,6 +637,34 @@ pub fn typecheck_shorthand_variable_declaration(
     }
     let type_of_value =
         expressions::typecheck_expression(&mut shorthand_variable.value, checker_ctx, symbollib);
+
+    // Variables should not be self referential in their declarations.
+    // We can check this using the span range of the expression and
+    // checking that it does not contain a reference to the variable being declared.
+    let symbol = unwrap_or_return!(symbollib.get(shorthand_variable.name));
+    let expression_span = checker_ctx.span_of_expr(&shorthand_variable.value, symbollib);
+    symbol
+        .references
+        .iter()
+        .filter(|list| list.module_path == checker_ctx.path_idx)
+        .map(|referencelist| {
+            referencelist
+                .starts
+                .iter()
+                .map(|start| Span::on_line(*start, symbol.name.len() as u32))
+        })
+        .flatten()
+        .for_each(|span| {
+            if expression_span.encloses(span) {
+                checker_ctx.diagnostics.push(ProgramDiagnostic {
+                    offending_file: checker_ctx.path_idx,
+                    _type: DiagnosticType::Error(crate::Error::Typing(errors::self_reference(
+                        symbol.name.clone(),
+                        span,
+                    ))),
+                })
+            }
+        });
 
     // if no declared type, just assign to variable.
     // else attempt unification.

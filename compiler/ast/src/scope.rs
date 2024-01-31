@@ -2,7 +2,7 @@ use std::hash::Hash;
 
 use crate::{
     ConstantSignature, EnumSignature, FunctionSignature, InterfaceSignature, LoopLabel,
-    LoopVariable, ModelSignature, Parameter, ShorthandVariableSignature, TypeSignature,
+    LoopVariable, ModelSignature, Parameter, ShorthandVariableSignature, TypeEquationSignature,
     UseTargetSignature, VariablePattern, VariableSignature,
 };
 
@@ -14,7 +14,7 @@ pub struct ScopeId(pub u32);
 #[derive(Debug, Hash)]
 pub enum ScopeEntry {
     Function(FunctionSignature),
-    Type(TypeSignature),
+    Type(TypeEquationSignature),
     Model(ModelSignature),
     Enum(EnumSignature),
     ShorthandVariable(ShorthandVariableSignature),
@@ -107,7 +107,7 @@ impl ScopeEntry {
     pub fn name(&self) -> &str {
         match self {
             ScopeEntry::Function(FunctionSignature { name, .. })
-            | ScopeEntry::Type(TypeSignature { name, .. })
+            | ScopeEntry::Type(TypeEquationSignature { name, .. })
             | ScopeEntry::Model(ModelSignature { name, .. })
             | ScopeEntry::Enum(EnumSignature { name, .. })
             | ScopeEntry::ShorthandVariable(ShorthandVariableSignature { name, .. })
@@ -162,7 +162,7 @@ impl ScopeEntry {
     pub fn ident(&self) -> Option<&crate::Identifier> {
         match self {
             ScopeEntry::Function(FunctionSignature { name, .. })
-            | ScopeEntry::Type(TypeSignature { name, .. })
+            | ScopeEntry::Type(TypeEquationSignature { name, .. })
             | ScopeEntry::Model(ModelSignature { name, .. })
             | ScopeEntry::Enum(EnumSignature { name, .. })
             | ScopeEntry::ShorthandVariable(ShorthandVariableSignature { name, .. })
@@ -270,14 +270,14 @@ impl ScopeEntry {
         }
     }
     /// Returns an entry as a type signature. Panics if the entry is not a type variant.
-    pub fn type_(&self) -> &TypeSignature {
+    pub fn type_(&self) -> &TypeEquationSignature {
         match self {
             ScopeEntry::Type(t) => t,
             _ => panic!("{} is not a type!", self.name()),
         }
     }
     /// Returns an entry as a mutable type signature. Panics if the entry is not a type variant.
-    pub fn type_mut(&mut self) -> &mut TypeSignature {
+    pub fn type_mut(&mut self) -> &mut TypeEquationSignature {
         match self {
             ScopeEntry::Type(t) => t,
             _ => panic!("{} is not a type!", self.name()),
@@ -461,7 +461,7 @@ impl Scope {
             .flatten()
     }
     /// Get a type entry by its index.
-    pub fn get_type(&self, entry_no: usize) -> Option<&TypeSignature> {
+    pub fn get_type(&self, entry_no: usize) -> Option<&TypeEquationSignature> {
         self.entries
             .get(entry_no)
             .map(|entry| match entry {

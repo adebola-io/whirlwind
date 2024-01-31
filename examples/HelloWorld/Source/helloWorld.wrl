@@ -45,14 +45,13 @@ function isPalindrome(str: String) -> Bool {
     return str == str.reverse()
 }
 
-// var evenSquares = 
-//     fn(numbers: []Int) 
-//         numbers
-//             .iter()
-//             .filter(fn(num) num % 2 == 0)
-//             .map(fn(num) num ^ 2)
-//             .collect()
-
+var evenSquares = 
+    fn(numbers: []Int) 
+        numbers
+            .iter()
+            .filter(fn(num) num % 2 == 0)
+            .map(fn(num) num ^ 2)
+            .collect()
 
 /// Returns the nth Fibonacci number.
 function fibonacci(n: Int32) -> Int32 {
@@ -66,6 +65,6 @@ public function lastNames(names: []String) -> []String {
    names.iter().filterMap(fn(name) name.split(' ').at(-1)).collect()
 }
 
-
-
-
+test "It does some stuff" {
+    
+}

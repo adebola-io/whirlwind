@@ -22,7 +22,7 @@ pub enum CallerNature {
         owner_opaque_value: StackAddress,
         method_id: VTableId,
     },
-    /// A method on an interface or model.
+    /// A method on an interface or type.
     Method(SymbolIndex),
 }
 /// An entity that can be called in the bytecode.

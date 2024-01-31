@@ -10,7 +10,7 @@ use ast::{
     ModuleAmbience, ModuleDeclaration, Operator::*, Parameter, ReturnStatement, ScopeAddress,
     ScopeEntry, ScopeType, ShorthandVariableDeclaration, ShorthandVariableSignature, Span,
     Spannable, Statement, TernaryType, TestDeclaration, ThisExpr, Token, TokenType, TypeClause,
-    TypeDeclaration, TypeExpression, TypeSignature, UnaryExpr, UnionType, UpdateExpr,
+    TypeEquation, TypeEquationSignature, TypeExpression, UnaryExpr, UnionType, UpdateExpr,
     UseDeclaration, UsePath, UseTarget, UseTargetSignature, VariableDeclaration, VariablePattern,
     VariableSignature, WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
 };
@@ -921,7 +921,7 @@ impl<L: Lexer> Parser<L> {
             // type...
             TokenType::Keyword(ast::Keyword::Type) => self
                 .type_declaration(false)
-                .map(|t| Statement::TypeDeclaration(t)),
+                .map(|t| Statement::TypeEquation(t)),
             // // test...
             TokenType::Keyword(Test) => self
                 .test_declaration()
@@ -1130,7 +1130,7 @@ impl<L: Lexer> Parser<L> {
                 .map(|f| Statement::FunctionDeclaration(f)),
             TokenType::Keyword(ast::Keyword::Type) => self
                 .type_declaration(true)
-                .map(|t| Statement::TypeDeclaration(t)),
+                .map(|t| Statement::TypeEquation(t)),
             TokenType::Keyword(Enum) => self
                 .enum_declaration(true)
                 .map(|e| Statement::EnumDeclaration(e)),
@@ -1175,7 +1175,7 @@ impl<L: Lexer> Parser<L> {
     }
 
     /// Parses a type declaration. Assumes that `type` is the current token.
-    fn type_declaration(&self, is_public: bool) -> Imperfect<TypeDeclaration> {
+    fn type_declaration(&self, is_public: bool) -> Imperfect<TypeEquation> {
         expect_or_return!(TokenType::Keyword(Type), self);
         let start = self.token().unwrap().span.start;
         let info = self.get_doc_comment();
@@ -1209,7 +1209,7 @@ impl<L: Lexer> Parser<L> {
         //     ))
         // }
         let span = Span::from([start, end]);
-        let signature = TypeSignature {
+        let signature = TypeEquationSignature {
             name,
             info,
             is_public,
@@ -1217,7 +1217,7 @@ impl<L: Lexer> Parser<L> {
             value,
         };
         let entry_no = self.module_ambience().register(ScopeEntry::Type(signature));
-        let type_ = TypeDeclaration {
+        let type_ = TypeEquation {
             address: ScopeAddress {
                 module_id: self.module_ambience().id(),
                 scope_id: self.module_ambience().current_scope(),

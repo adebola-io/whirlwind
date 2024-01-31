@@ -550,11 +550,9 @@ impl<'a> CompletionFinder<'a> {
             documentation,
             insert_text: if complete_function_params {
                 match &symbol.kind {
-                    SemanticSymbolKind::Function { params, .. }
-                    | SemanticSymbolKind::Model {
-                        constructor_parameters: Some(params),
-                        ..
-                    } => Some(self.generate_function_completion(&symbol.name, params)),
+                    SemanticSymbolKind::Function { params, .. } => {
+                        Some(self.generate_function_completion(&symbol.name, params))
+                    }
                     _ => None,
                 }
             } else {
@@ -639,7 +637,7 @@ impl<'a> CompletionFinder<'a> {
         {
             return match statement {
                 TypedStmnt::FunctionDeclaration(f) => self.function(f),
-                TypedStmnt::TypeDeclaration(t) => self.type_decl(t),
+                TypedStmnt::TypedTypeEquation(t) => self.type_decl(t),
                 TypedStmnt::ModelDeclaration(m) => self.model_decl(m),
                 TypedStmnt::ShorthandVariableDeclaration(v) => self.shorthand_var_decl(v),
                 TypedStmnt::ExpressionStatement(e) => self.expr_statement(e),
@@ -825,10 +823,7 @@ impl<'a> CompletionFinder<'a> {
         None
     }
 
-    fn type_decl(
-        &self,
-        type_decl: &'a analyzer::TypedTypeDeclaration,
-    ) -> Option<CompletionResponse> {
+    fn type_decl(&self, type_decl: &'a analyzer::TypedTypeEquation) -> Option<CompletionResponse> {
         <Option<CompletionResponse>>::default()
     }
 

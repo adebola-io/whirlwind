@@ -16,13 +16,13 @@ pub struct BytecodeMemoryManager {
     frame_stack: Vec<BytecodeCallFrame>,
     /// The attributor stores property offsets in linear form before they can be moved to
     /// the Addr registers.
-    /// For example, for a model:
+    /// For example, for a type:
     /// ```wrl
-    /// model Data {
+    /// type Data {
     ///     var age: UInt8;
     ///     var name: String;
     /// }
-    /// model Person {
+    /// type Person {
     ///     var data: Data;
     /// }
     /// ```
@@ -88,17 +88,17 @@ impl RegisterGroup {
     pub fn of(inferred_type: &EvaluatedType, symbollib: &SymbolLibrary) -> RegisterGroup {
         match inferred_type {
             EvaluatedType::ModelInstance {
-                model,
+                type,
                 is_invariant,
                 generic_arguments,
-            } => match model {
-                // _ if model == &symbollib.uint8.unwrap() => RegisterGroup::Int8,
-                // _ if model == &symbollib.uint16.unwrap() => RegisterGroup::Int16,
-                // _ if model == &symbollib.uint32.unwrap() => RegisterGroup::F32,
-                // _ if model == &symbollib.uint64.unwrap() => RegisterGroup::F64,
-                // _ if model == &symbollib.float32.unwrap() => RegisterGroup::F32,
-                // _ if model == &symbollib.float64.unwrap() => RegisterGroup::F64,
-                _ if model == &symbollib.bool.unwrap() => RegisterGroup::Bool,
+            } => match type {
+                // _ if type == &symbollib.uint8.unwrap() => RegisterGroup::Int8,
+                // _ if type == &symbollib.uint16.unwrap() => RegisterGroup::Int16,
+                // _ if type == &symbollib.uint32.unwrap() => RegisterGroup::F32,
+                // _ if type == &symbollib.uint64.unwrap() => RegisterGroup::F64,
+                // _ if type == &symbollib.float32.unwrap() => RegisterGroup::F32,
+                // _ if type == &symbollib.float64.unwrap() => RegisterGroup::F64,
+                _ if type == &symbollib.bool.unwrap() => RegisterGroup::Bool,
                 _ => todo!(),
             },
             EvaluatedType::OpaqueTypeInstance {

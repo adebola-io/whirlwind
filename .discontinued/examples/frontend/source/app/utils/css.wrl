@@ -4,7 +4,7 @@ use core.collections.HashMap;
 
 /// Encapsulates CSS styles for an element, providing methods for
 /// manipulation and application.
-public model CSSStyle {
+public type CSSStyle {
     var properties: HashMap<String, String>
     new() {
         this.properties = new HashMap();

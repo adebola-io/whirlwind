@@ -1,5 +1,5 @@
 mod function;
-mod model;
+mod type;
 
 use analyzer::{Standpoint, SymbolIndex};
 pub use function::FunctionRetriever;

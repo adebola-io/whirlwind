@@ -1,7 +1,7 @@
 use crate::{EvaluatedType, IntermediateType, IntermediateTypeClause, PathIndex};
 use ast::{
-    ConstantSignature, EnumSignature, ShorthandVariableSignature, Span, TypeSignature, WhirlNumber,
-    WhirlString,
+    ConstantSignature, EnumSignature, ShorthandVariableSignature, Span, TypeEquationSignature,
+    WhirlNumber, WhirlString,
 };
 use std::{path::Path, vec};
 
@@ -341,7 +341,7 @@ impl SemanticSymbol {
     }
     /// Create a new symbol from a type.
     pub fn from_type(
-        _type: &TypeSignature,
+        _type: &TypeEquationSignature,
         path_to_module: PathIndex,
         origin_span: Span,
         origin_scope_id: Option<ScopeId>,

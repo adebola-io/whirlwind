@@ -15,7 +15,7 @@ function main() {
 //     Button, State, StateStore, Root, Span, View
 // };
 
-// model ClientState implements StateStore {
+// type ClientState implements StateStore {
 //     public var count: State<Number>
 //     new() {
 //         this.count = new State(0);

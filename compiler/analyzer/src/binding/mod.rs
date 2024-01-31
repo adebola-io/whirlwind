@@ -11,8 +11,8 @@ use ast::{
     Block, ConstantDeclaration, EnumDeclaration, EnumVariant, Expression, FunctionExpr,
     GenericParameter, Identifier, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType,
     ModuleAmbience, Parameter, ReturnStatement, ScopeAddress, ScopeEntry, ScopeType,
-    ShorthandVariableDeclaration, Span, Statement, TestDeclaration, TypeDeclaration,
-    TypeExpression, UseDeclaration, UseTarget, WhileStatement, WhirlString,
+    ShorthandVariableDeclaration, Span, Statement, TestDeclaration, TypeEquation, TypeExpression,
+    UseDeclaration, UseTarget, WhileStatement, WhirlString,
 };
 use errors::ContextError;
 use std::{cell::RefCell, collections::HashMap, mem::take, vec};
@@ -841,7 +841,7 @@ mod statements {
                 errors,
                 &ambience,
             )),
-            Statement::TypeDeclaration(typedecl) => TypedStmnt::TypeDeclaration(
+            Statement::TypeEquation(typedecl) => TypedStmnt::TypedTypeEquation(
                 bind_type_declaration(typedecl, binder, symbol_library, errors, ambience),
             ),
             Statement::WhileStatement(while_statement) => {
@@ -2299,12 +2299,12 @@ mod statements {
 
     /// Binds a type declaration.
     pub fn bind_type_declaration(
-        type_decl: TypeDeclaration,
+        type_decl: TypeEquation,
         binder: &mut Binder,
         symbol_library: &mut SymbolLibrary,
         errors: &mut Vec<ProgramDiagnostic>,
         ambience: &ModuleAmbience,
-    ) -> TypedTypeDeclaration {
+    ) -> TypedTypeEquation {
         let binding_result = handle_scope_entry(
             binder,
             symbol_library,
@@ -2349,7 +2349,7 @@ mod statements {
             }
             Err(idx) => idx,
         };
-        TypedTypeDeclaration {
+        TypedTypeEquation {
             name: symbol_idx,
             span: type_decl.span,
         }
