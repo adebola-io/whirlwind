@@ -1,5 +1,6 @@
 module helloWorld;
 
+
 function print<M implements Display>(message: M) {
     todo()
 }
@@ -15,8 +16,8 @@ function greeting(name: String) {
 }
 
 /// A function that calculates the factorial of a given number.
-function factorial(n: Number) -> Number {
-    if n == 1 or n == 0 { return 1 }
+function factorial(n: Int32) -> Int32 {
+    if n == 1 or n == 0 { 1 }
     else n * factorial(n - 1)
 }
 
@@ -66,5 +67,20 @@ public function lastNames(names: []String) -> []String {
 }
 
 test "It does some stuff" {
-    
+    model Person {
+        public var name: String
+        var children: Array<Person>
+        new(name: String){
+            this.name = name
+        } 
+
+        public function firstChild() -> ?Person {
+            return this.children.first()
+        }
+        public function lastChild() -> ?Person {
+            return this.children.last()
+        }
+    }
+
+    person := Person("Johnny")
 }

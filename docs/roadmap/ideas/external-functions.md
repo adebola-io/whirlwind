@@ -1,6 +1,6 @@
 # External Functions.
 
-> STATUS: <b>0% Implemented.</b>
+> STATUS: <b>50% Implemented.</b>
 
 This file details the introduction of a mechanism to define foreign functions within the language scope. External functions will either be resolved:
 
@@ -14,10 +14,8 @@ It would enable seamless integration with external functionality from the host e
 This feature will introduce:
 
 -  a `import` keyword to the list of tokens,
--  `ScopeEntry:ExternalFunction` to the module ambience,
--  `Statement:ExternDeclaration` and `ExternFunctionDeclaration` to the syntax AST
--  `TypedStmnt:TypedExternDeclaration` and `TypedExternFunctionDeclaration` to the bound module AST
--  `InterpreterStmnt::Builtin(usize)` to the interpreter statement list.
+-  `Statement:ImportDeclaration` and `ImportedFunctionDeclaration` to the syntax AST
+-  `TypedStmnt:TypedImportDeclaration` and `TypedImportedFunctionDeclaration` to the bound module AST
 
 External functions are declared as function signatures, basically functional declarations without a body.
 
@@ -46,6 +44,10 @@ Having this feature would fit seamlessly with scope management and typechecking,
 However, generic external functions should result in type errors. Have not decided whether monomorphization will happen, but if it does, we cannot create two or more variants of a foreign function.
 
 ## Code Generation:
+
+The resource string determines when the function should be resolved. Strings that are prefixed with `internal:` will have the functions replaced with WASM-native functions at compile time.
+
+Others will resolve to WASM import statements.
 
 ### Example:
 

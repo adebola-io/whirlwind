@@ -8,7 +8,16 @@ use core.{
         Multiplication, Division, Orderable,
         Bitwise
     },
-    string.{Display, FromStr},
+    string.{String, Display, FromStr},
+}
+
+/// Interface for rendering 
+public interface FixedPoint {
+    /// Returns a string representing a number in fixed-point notation.
+    /// ### Usage
+    /// ```
+    /// ```
+    public function toFixed(digits?: Int32) -> String
 }
 
 /// An 32-bit integer.
@@ -70,6 +79,7 @@ public model Float32
     + Default 
     + Orderable 
     + FromStr
+    + FixedPoint
 {
     // Compiler built in.
 }
@@ -85,6 +95,7 @@ public model Float64
     + Default 
     + Orderable 
     + FromStr
+    + FixedPoint
 {
     // Compiler built in.
 }

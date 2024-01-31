@@ -127,6 +127,26 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
         }
         None
     }
+    fn import_decl(&self, import: &analyzer::TypedImportDeclaration) -> Option<HoverInfo> {
+        within!(import.span, self);
+        for (_, idx) in &import.imports {
+            let symbol = self.standpoint.symbol_library.get(*idx)?;
+            // Hovering over imported function name.
+            if symbol.ident_span().contains(self.pos) {
+                return Some(HoverInfo::from((self.standpoint, *idx)));
+            };
+            if let SemanticSymbolKind::Function {
+                params,
+                generic_params,
+                return_type,
+                ..
+            } = &symbol.kind
+            {
+                maybe!(self.fn_parts_hover(generic_params, params, return_type, None, None))
+            }
+        }
+        return None;
+    }
     /// Hovering over a variable declaration.
     fn var_decl(&self, var_decl: &analyzer::TypedVariableDeclaration) -> Option<HoverInfo> {
         within!(var_decl.span, self);
@@ -135,9 +155,6 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
             let symbol = self.standpoint.symbol_library.get(*name)?;
             // Hovering over variable name.
             if symbol.ident_span().contains(self.pos) {
-                self.message_store
-                    .borrow_mut()
-                    .inform("Hovering over variable name...");
                 return Some(HoverInfo::from((self.standpoint, *name)));
             };
             if !type_already_checked {

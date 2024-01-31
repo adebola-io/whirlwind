@@ -41,6 +41,7 @@ pub enum ParserErrorType {
     BreakOutsideLoop,
     NumericValueInArray,
     TypeConditionExpected,
+    ExternImportInNonGlobalScope,
 }
 
 pub fn public_shorthand_var(span: Span) -> ParseError {

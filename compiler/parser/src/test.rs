@@ -4,12 +4,12 @@ use crate::parse_text;
 use ast::{
     AccessExpr, ArrayExpr, AssignmentExpr, BinaryExpr, Block, BreakStatement, CallExpr,
     ConstantDeclaration, ContinueStatement, DiscreteType, Else, EnumDeclaration, Expression,
-    ForStatement, FunctionDeclaration, FunctionExpr, Identifier, IfExpression, IndexExpr,
-    InterfaceBody, InterfaceDeclaration, InterfaceProperty, LogicExpr, ModelBody, ModelDeclaration,
-    ModelProperty, ModelPropertyType, ModuleDeclaration, Parameter, ReturnStatement, ScopeAddress,
-    ScopeEntry, Span, Statement, TestDeclaration, ThisExpr, TypeEquation, TypeExpression,
-    UnaryExpr, UpdateExpr, UpdateOperator, UseDeclaration, UsePath, UseTarget, VariableDeclaration,
-    WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
+    ForStatement, FunctionDeclaration, FunctionExpr, Identifier, IfExpression, ImportDeclaration,
+    IndexExpr, InterfaceBody, InterfaceDeclaration, InterfaceProperty, LogicExpr, ModelBody,
+    ModelDeclaration, ModelProperty, ModelPropertyType, ModuleDeclaration, Parameter,
+    ReturnStatement, ScopeAddress, ScopeEntry, Span, Statement, TestDeclaration, ThisExpr,
+    TypeEquation, TypeExpression, UnaryExpr, UpdateExpr, UpdateOperator, UseDeclaration, UsePath,
+    UseTarget, VariableDeclaration, WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
 };
 
 #[test]
@@ -2372,6 +2372,75 @@ fn parse_break_statement() {
                 span: [1, 7, 1, 16].into()
             }),
             span: [1, 1, 1, 17].into()
+        })
+    );
+}
+
+#[test]
+fn parse_imported_functions() {
+    // Single function.
+    let mut parser = parse_text(
+        "
+    import 'console' {
+        /// Logs a piece of data to the console or terminal.
+        'log' as function log(data: String)
+    }
+    ",
+    );
+
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::ImportDeclaration(ImportDeclaration {
+            source: WhirlString {
+                value: format!("console"),
+                span: [2, 12, 2, 21].into()
+            },
+            imports: vec![(
+                WhirlString {
+                    value: format!("log"),
+                    span: [4, 9, 4, 14].into()
+                },
+                [0, 0, 0].into()
+            )],
+            span: [2, 5, 5, 6].into()
+        })
+    );
+
+    // Multiple functions
+    let mut parser = parse_text(
+        "
+    import 'Math' {
+        /// Returns a random floating point number from 0.0 to 1.
+        'random' as function random() -> Float64
+        'abs' as function abs(n: Number) -> Number
+    }
+    ",
+    );
+
+    assert_eq!(
+        parser.next().unwrap().unwrap(),
+        Statement::ImportDeclaration(ImportDeclaration {
+            source: WhirlString {
+                value: format!("Math"),
+                span: [2, 12, 2, 18].into()
+            },
+            imports: vec![
+                (
+                    WhirlString {
+                        value: format!("random"),
+                        span: [4, 9, 4, 17].into()
+                    },
+                    [0, 0, 0].into()
+                ),
+                (
+                    WhirlString {
+                        value: format!("abs"),
+                        span: [5, 9, 5, 14].into()
+                    },
+                    [0, 0, 1].into()
+                )
+            ],
+            span: [2, 5, 6, 6].into()
         })
     );
 }

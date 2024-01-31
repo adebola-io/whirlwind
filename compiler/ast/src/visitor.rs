@@ -1,10 +1,10 @@
 use crate::{
     AccessExpr, ArrayExpr, AssignmentExpr, BinaryExpr, Block, CallExpr, ConstantDeclaration,
     EnumDeclaration, Expression, ForStatement, FunctionDeclaration, FunctionExpr, Identifier,
-    IfExpression, IndexExpr, InterfaceDeclaration, LogicExpr, ModelDeclaration, ModuleDeclaration,
-    Parameter, ReturnStatement, ShorthandVariableDeclaration, Statement, TestDeclaration, ThisExpr,
-    TypeEquation, UnaryExpr, UpdateExpr, UseDeclaration, VariableDeclaration, WhileStatement,
-    WhirlBoolean, WhirlNumber, WhirlString,
+    IfExpression, ImportDeclaration, IndexExpr, InterfaceDeclaration, LogicExpr, ModelDeclaration,
+    ModuleDeclaration, Parameter, ReturnStatement, ShorthandVariableDeclaration, Statement,
+    TestDeclaration, ThisExpr, TypeEquation, UnaryExpr, UpdateExpr, UseDeclaration,
+    VariableDeclaration, WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
 };
 
 #[allow(unused_variables)]
@@ -370,9 +370,11 @@ pub trait MutASTVisitor<Output: Default = ()> {
             Statement::ForStatement(f) => self.for_statement(f),
             Statement::ContinueStatement(c) => self.continue_statement(c),
             Statement::BreakStatement(b) => self.break_statement(b),
-            // _ => {}
+            Statement::ImportDeclaration(i) => self.import_declaration(i), // _ => {}
         }
     }
+
+    fn import_declaration(&mut self, i: &mut ImportDeclaration) {}
 
     fn for_statement(&mut self, f: &mut ForStatement) {}
 
@@ -462,8 +464,11 @@ pub trait ASTVisitorExprOutputNoArgs<Output: Default = ()> {
             Statement::ForStatement(f) => self.for_statement(f),
             Statement::ContinueStatement(c) => self.continue_statement(c),
             Statement::BreakStatement(b) => self.break_statement(b),
+            Statement::ImportDeclaration(i) => self.import_decl(i),
         }
     }
+
+    fn import_decl(&self, import: &ImportDeclaration) {}
 
     fn for_statement(&self, f: &ForStatement) {}
 

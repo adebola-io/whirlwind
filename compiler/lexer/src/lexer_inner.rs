@@ -493,6 +493,7 @@ pub trait LexerInner {
             "in" => token!(Keyword::In, self),
             "is" => token!(Keyword::Is, self),
             "implements" => token!(Keyword::Implements, self),
+            "import" => token!(Keyword::Import, self),
             "new" => token!(Keyword::New, self),
             "not" => token!(Operator::Not, self).unwrap(),
             "or" => token!(Operator::Or, self).unwrap(),

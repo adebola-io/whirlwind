@@ -1,0 +1,16 @@
+module md
+
+/// Options used by `marked`, the library parsing markdown.
+record MarkedOptions {
+    var gfm = true
+    var tabled = true
+    var breaks = true
+    var pedantic = true
+    var sanitize = true
+    var smartList = true
+    var smartyPants = false
+    var headerPrefix = false
+    var mangle = false
+}
+
+

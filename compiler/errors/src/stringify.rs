@@ -197,7 +197,9 @@ impl std::fmt::Display for ParserErrorType {
             ParserErrorType::ContinueOutsideLoop => format!("continue statements can only be used from within a loop."),
             ParserErrorType::BreakOutsideLoop => format!("break statements can only be used from within a loop."),
             ParserErrorType::NumericValueInArray => format!("Numeric constraints are not supported in array types."),
-            ParserErrorType::TypeConditionExpected => format!("Ternary condition expected."), 
+            ParserErrorType::TypeConditionExpected => format!("Ternary condition expected."),
+            ParserErrorType::ExternImportInNonGlobalScope => format!("Importing an external namespace is only allowed from the global scope.") 
+            
         };
         return write!(f, "{message}");
     }

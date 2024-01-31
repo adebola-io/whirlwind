@@ -216,3 +216,10 @@ pub fn self_reference(valuename: String, span: ast::Span) -> TypeError {
         span,
     }
 }
+
+pub fn import_in_non_global_scope(span: ast::Span) -> ParseError {
+    ParseError {
+        _type: ParserErrorType::ExternImportInNonGlobalScope,
+        span,
+    }
+}

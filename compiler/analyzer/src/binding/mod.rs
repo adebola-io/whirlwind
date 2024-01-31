@@ -921,6 +921,9 @@ mod statements {
                     ambience,
                 ))
             }
+            Statement::ImportDeclaration(import) => TypedStmnt::ImportDeclaration(
+                bind_import_declaration(import, binder, symbol_library, errors, literals, ambience),
+            ),
         }
     }
 
@@ -2497,6 +2500,7 @@ mod statements {
             span: variable.span,
         };
     }
+
     /// Binds a for statement.
     pub fn for_statement(
         fors: ast::ForStatement,
@@ -2638,6 +2642,91 @@ mod statements {
             body,
             span: fors.span,
         }
+    }
+
+    /// Binds an import statement.
+    fn bind_import_declaration(
+        import_decl: ast::ImportDeclaration,
+        binder: &mut Binder,
+        symbol_library: &mut SymbolLibrary,
+        errors: &mut Vec<ProgramDiagnostic>,
+        literals: &mut LiteralMap,
+        ambience: &mut ModuleAmbience,
+    ) -> TypedImportDeclaration {
+        let mut imports = vec![];
+        for (name, address) in import_decl.imports {
+            if let Ok(symbol_idx) = handle_scope_entry(
+                binder,
+                symbol_library,
+                errors,
+                ambience,
+                address,
+                import_decl.span,
+                false,
+            ) {
+                // Bind other parts.
+                let name = bind_string(name, binder.path, literals);
+                let signature = match ambience.get_entry_unguarded_mut(address) {
+                    ScopeEntry::Function(f) => f,
+                    _ => continue,
+                };
+                binder.push_generic_pool();
+                let signature_generic_params = signature.generic_params.take();
+                let signature_params = take(&mut signature.params);
+                let return_type = signature.return_type.take();
+                let generic_params_solved = bind_generic_parameters(
+                    signature_generic_params.as_ref(),
+                    binder,
+                    symbol_library,
+                    errors,
+                    &ambience,
+                );
+                let (_, parameters) = bind_function_block(
+                    // Fake block to uphold the function.
+                    {
+                        ambience.enter(ScopeType::Local);
+                        let scope_id = ambience.current_scope();
+                        ambience.leave_scope();
+                        Block {
+                            scope_id,
+                            statements: vec![],
+                            span: Span::default(),
+                        }
+                    },
+                    signature_params,
+                    binder,
+                    symbol_library,
+                    errors,
+                    literals,
+                    ambience,
+                );
+                let return_type_solved = return_type.map(|typ| {
+                    bind_type_expression(&typ, binder, symbol_library, errors, ambience)
+                });
+                if let Some(SemanticSymbolKind::Function {
+                    params,
+                    generic_params,
+                    return_type,
+                    ..
+                }) = symbol_library
+                    .get_mut(symbol_idx)
+                    .map(|symbol| &mut symbol.kind)
+                {
+                    *generic_params = generic_params_solved;
+                    *params = parameters;
+                    *return_type = return_type_solved
+                }
+                binder.pop_generic_pool();
+                imports.push((name, symbol_idx));
+            };
+        }
+        // Bind generic params, params and return types.
+        let typed_import_decl = TypedImportDeclaration {
+            name: bind_string(import_decl.source, binder.path, literals),
+            imports: imports.clone(),
+            span: import_decl.span,
+        };
+        return typed_import_decl;
     }
 }
 

@@ -217,6 +217,7 @@ pub enum Keyword {
     In,
     Is,
     Implements,
+    Import,
     Model,
     Module,
     New,
@@ -241,9 +242,9 @@ pub fn is_keyword_or_operator(text: &str) -> bool {
     match text {
         "as" | "and" | "async" | "break" | "case" | "const" | "model" | "continue" | "else"
         | "enum" | "false" | "for" | "fn" | "function" | "if" | "in" | "interface" | "is"
-        | "implements" | "new" | "not" | "or" | "public" | "record" | "return" | "static"
-        | "switch" | "test" | "This" | "this" | "true" | "type" | "use" | "var" | "while"
-        | "module" => true,
+        | "implements" | "import" | "new" | "not" | "or" | "public" | "record" | "return"
+        | "static" | "switch" | "test" | "This" | "this" | "true" | "type" | "use" | "var"
+        | "while" | "module" => true,
         _ => false,
     }
 }

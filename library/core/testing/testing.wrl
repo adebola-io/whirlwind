@@ -2,6 +2,7 @@ module testing
 
 use core.{
     bool.Bool,
+    ops.{Orderable},
     sentinels.fatalOnCaller,
     string.{Display, String}
 }
@@ -26,7 +27,7 @@ function assertionMessage<T implements Display>(mainMessage: String, left: T, ri
 }
 
 /// This model represents an assertion object, 
-/// which is the base object for testing equality operations.
+/// which is the base object for many testing operations.
 public model Assertion<T implements Display> {
     var value: T
     new(value: T) {
@@ -48,6 +49,28 @@ public model Assertion<T implements Display> {
         if other == this.value {
             message := assertionMessage(
                         "Assertion failed on inequality.", 
+                        this.value, 
+                        other)
+            fatalOnCaller(message)
+        }
+        return this
+    }
+    /// Checks that the contained value is less than another.
+    public function isLessThan|=(T implements Orderable)(other: T) -> This {
+        if other <= this.value {
+            message := assertionMessage(
+                        "Assertion failed for less than.", 
+                        this.value, 
+                        other)
+            fatalOnCaller(message)
+        }
+        return this
+    }
+    /// Checks that the contained value is greater than another.
+    public function isGreaterThan|=(T implements Orderable)(other: T) -> This {
+        if other >= this.value {
+            message := assertionMessage(
+                        "Assertion failed for greater than.", 
                         this.value, 
                         other)
             fatalOnCaller(message)

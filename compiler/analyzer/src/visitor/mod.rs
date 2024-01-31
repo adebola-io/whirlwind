@@ -4,11 +4,12 @@ use crate::{
     LiteralIndex, TypedAccessExpr, TypedArrayExpr, TypedAssignmentExpr, TypedBinExpr, TypedBlock,
     TypedBreakStatement, TypedCallExpr, TypedConstantDeclaration, TypedContinueStatement,
     TypedEnumDeclaration, TypedExpression, TypedFnExpr, TypedForStatement,
-    TypedFunctionDeclaration, TypedIdent, TypedIfExpr, TypedIndexExpr, TypedInterfaceDeclaration,
-    TypedInterfacePropertyType, TypedLogicExpr, TypedModelDeclaration, TypedModelPropertyType,
-    TypedModuleDeclaration, TypedReturnStatement, TypedShorthandVariableDeclaration, TypedStmnt,
-    TypedTestDeclaration, TypedThisExpr, TypedTypeEquation, TypedUnaryExpr, TypedUpdateExpr,
-    TypedUseDeclaration, TypedVariableDeclaration, TypedWhileStatement,
+    TypedFunctionDeclaration, TypedIdent, TypedIfExpr, TypedImportDeclaration, TypedIndexExpr,
+    TypedInterfaceDeclaration, TypedInterfacePropertyType, TypedLogicExpr, TypedModelDeclaration,
+    TypedModelPropertyType, TypedModuleDeclaration, TypedReturnStatement,
+    TypedShorthandVariableDeclaration, TypedStmnt, TypedTestDeclaration, TypedThisExpr,
+    TypedTypeEquation, TypedUnaryExpr, TypedUpdateExpr, TypedUseDeclaration,
+    TypedVariableDeclaration, TypedWhileStatement,
 };
 
 #[allow(unused_variables)]
@@ -186,9 +187,13 @@ pub trait TypedVisitorNoArgs<Output: Default = ()> {
             TypedStmnt::ContinueStatement(continue_) => self.continue_statement(continue_),
             TypedStmnt::VariableDeclaration(variable) => self.var_decl(variable),
             TypedStmnt::RecordDeclaration => todo!(),
+            TypedStmnt::ImportDeclaration(import) => self.import_decl(import),
         }
     }
     fn use_declaration(&self, use_decl: &TypedUseDeclaration) -> Output {
+        Output::default()
+    }
+    fn import_decl(&self, import: &TypedImportDeclaration) -> Output {
         Output::default()
     }
     fn module_declaration(&self, module: &TypedModuleDeclaration) -> Output {
@@ -392,9 +397,13 @@ pub trait ShortcircuitTypedVisitorNoArgs<'a, Output = ()> {
             TypedStmnt::ContinueStatement(continue_) => self.continue_statement(continue_),
             TypedStmnt::VariableDeclaration(variable) => self.var_decl(variable),
             TypedStmnt::RecordDeclaration => todo!(),
+            TypedStmnt::ImportDeclaration(import) => self.import_declaration(import),
         }
     }
     fn use_declaration(&self, use_decl: &'a TypedUseDeclaration) -> Option<Output> {
+        return None;
+    }
+    fn import_declaration(&self, import_decl: &'a TypedImportDeclaration) -> Option<Output> {
         return None;
     }
     fn module_declaration(&self, module: &TypedModuleDeclaration) -> Option<Output> {
@@ -582,94 +591,6 @@ pub trait ShortcircuitTypedVisitorNoArgs<'a, Output = ()> {
     }
 }
 
-/// Mutable implementation of [`ASTVisitor`].
-#[allow(unused)]
-pub trait MutASTVisitor<Output: Default = ()> {
-    fn statement(&mut self, statement: &mut TypedStmnt) {
-        match statement {
-            TypedStmnt::TestDeclaration(t) => self.test_declaration(t),
-            TypedStmnt::UseDeclaration(u) => self.use_declaration(u),
-            TypedStmnt::ShorthandVariableDeclaration(v) => self.shorthand_variable_declaration(v),
-            TypedStmnt::FunctionDeclaration(f) => self.function_declaration(f),
-            TypedStmnt::EnumDeclaration(e) => self.enum_declaration(e),
-            TypedStmnt::TypedTypeEquation(t) => self.type_declaration(t),
-            // TypedStmnt::InterfaceDeclaration(t) => self.interface_declaration(t),
-            TypedStmnt::ExpressionStatement(e) => {
-                self.expr_statement(e);
-            }
-            TypedStmnt::FreeExpression(e) => {
-                self.free_expr(e);
-            }
-            // TypedStmnt::VariableDeclaration(v) => self.variable_declaration(v),
-            TypedStmnt::ConstantDeclaration(c) => self.constant(c),
-            TypedStmnt::ModelDeclaration(_) => todo!(),
-            TypedStmnt::ModuleDeclaration(_) => todo!(),
-            // TypedStmnt::RecordDeclaration => todo!(),
-            // TypedStmnt::InterfaceDeclaration(_) => todo!(),
-            TypedStmnt::WhileStatement(w) => self.while_statement(w),
-            TypedStmnt::ReturnStatement(_) => todo!(),
-            TypedStmnt::ForStatement(f) => self.for_statement(f),
-            TypedStmnt::ContinueStatement(c) => self.continue_statement(c),
-            TypedStmnt::BreakStatement(b) => self.break_statement(b),
-            TypedStmnt::RecordDeclaration => todo!(),
-            TypedStmnt::VariableDeclaration(_) => todo!(),
-            TypedStmnt::InterfaceDeclaration(_) => todo!(),
-            // _ => {}
-        }
-    }
-
-    fn for_statement(&mut self, f: &mut TypedForStatement) {}
-
-    fn break_statement(&mut self, b: &mut crate::TypedBreakStatement) {}
-
-    fn continue_statement(&mut self, c: &mut crate::TypedContinueStatement) {}
-
-    fn expr_statement(&mut self, exp: &mut TypedExpression) {
-        self.expression(exp);
-    }
-    fn free_expr(&mut self, exp: &mut TypedExpression) {
-        self.expression(exp);
-    }
-
-    fn constant(&mut self, constant: &mut TypedConstantDeclaration) {}
-
-    fn while_statement(&mut self, while_stat: &mut TypedWhileStatement) {}
-
-    fn test_declaration(&mut self, test_decl: &mut TypedTestDeclaration) {}
-
-    fn use_declaration(&mut self, use_decl: &mut TypedUseDeclaration) {}
-
-    fn type_declaration(&mut self, type_decl: &mut TypedTypeEquation) {}
-
-    fn shorthand_variable_declaration(
-        &mut self,
-        variable_decl: &mut TypedShorthandVariableDeclaration,
-    ) {
-    }
-
-    fn variable_declaration(&mut self, variable_decl: &mut TypedVariableDeclaration) {}
-
-    fn function_declaration(&mut self, function: &mut TypedFunctionDeclaration) {}
-
-    fn enum_declaration(&mut self, enum_decl: &mut TypedEnumDeclaration) {}
-
-    fn expression(&mut self, exp: &mut TypedExpression) -> Output {
-        match exp {
-            TypedExpression::Identifier(i) => self.identifier(i),
-            TypedExpression::BinaryExpr(b) => self.binary_expr(b),
-            _ => Output::default(),
-        }
-    }
-
-    fn identifier(&mut self, ident: &mut TypedIdent) -> Output {
-        Output::default()
-    }
-
-    fn binary_expr(&mut self, bin_exp: &mut TypedBinExpr) -> Output {
-        Output::default()
-    }
-}
-
 ///  [`ASTVisitor`] with no arguments.
 #[allow(unused)]
 pub trait ASTVisitorExprOutputNoArgs<Output: Default = ()> {
@@ -694,6 +615,7 @@ pub trait ASTVisitorExprOutputNoArgs<Output: Default = ()> {
             TypedStmnt::ForStatement(f) => self.for_statement(f),
             TypedStmnt::ContinueStatement(c) => self.continue_statement(c),
             TypedStmnt::BreakStatement(b) => self.break_statement(b),
+            TypedStmnt::ImportDeclaration(import) => self.import_declaration(import),
         }
     }
 
@@ -718,6 +640,8 @@ pub trait ASTVisitorExprOutputNoArgs<Output: Default = ()> {
     fn model_declaration(&self, model_decl: &TypedModelDeclaration) {}
 
     fn module_declaration(&self, module_decl: &TypedModuleDeclaration) {}
+
+    fn import_declaration(&self, import_decl: &TypedImportDeclaration) {}
 
     fn interface_declaration(&self, interface_decl: &TypedInterfaceDeclaration) {}
 

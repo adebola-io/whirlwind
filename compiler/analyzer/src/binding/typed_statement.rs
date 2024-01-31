@@ -20,6 +20,7 @@ pub enum TypedStmnt {
     ModuleDeclaration(TypedModuleDeclaration),
     FunctionDeclaration(TypedFunctionDeclaration),
     InterfaceDeclaration(TypedInterfaceDeclaration),
+    ImportDeclaration(TypedImportDeclaration),
     // Expression statements.
     ExpressionStatement(TypedExpression),
     FreeExpression(TypedExpression),
@@ -143,6 +144,13 @@ pub enum TypedInterfacePropertyType {
 }
 
 #[derive(Debug, PartialEq)]
+pub struct TypedImportDeclaration {
+    pub name: LiteralIndex,
+    pub imports: Vec<(LiteralIndex, SymbolIndex)>,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
 pub struct TypedConstantDeclaration {
     pub name: SymbolIndex,
     pub value: TypedExpression,
@@ -247,5 +255,6 @@ pub fn span_of_typed_statement(
         TypedStmnt::ReturnStatement(r) => r.span,
         TypedStmnt::ContinueStatement(c) => c.span,
         TypedStmnt::BreakStatement(b) => b.span,
+        TypedStmnt::ImportDeclaration(i) => i.span,
     }
 }

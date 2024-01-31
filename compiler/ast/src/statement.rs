@@ -1,6 +1,6 @@
 use crate::{
     DiscreteType, Expression, Identifier, Positioning, ScopeAddress, Span, Spannable,
-    TypeExpression,
+    TypeExpression, WhirlString,
 };
 
 #[derive(Debug, PartialEq)]
@@ -18,6 +18,7 @@ pub enum Statement {
     InterfaceDeclaration(InterfaceDeclaration),
     EnumDeclaration(EnumDeclaration),
     TypeEquation(TypeEquation),
+    ImportDeclaration(ImportDeclaration),
     // Control Statements.
     WhileStatement(WhileStatement),
     ReturnStatement(ReturnStatement),
@@ -33,6 +34,13 @@ pub enum Statement {
 #[derive(Debug, PartialEq)]
 /// A node for a module declaration.
 pub struct ModuleDeclaration {
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct ImportDeclaration {
+    pub source: WhirlString,
+    pub imports: Vec<(WhirlString, ScopeAddress)>,
     pub span: Span,
 }
 
@@ -446,6 +454,7 @@ impl Spannable for Statement {
             Statement::ReturnStatement(r) => r.span,
             Statement::ContinueStatement(c) => c.span,
             Statement::BreakStatement(b) => b.span,
+            Statement::ImportDeclaration(i) => i.span,
         }
     }
     fn set_start(&mut self, start: [u32; 2]) {
@@ -468,6 +477,7 @@ impl Spannable for Statement {
             Statement::ReturnStatement(r) => r.span.start = start,
             Statement::ContinueStatement(c) => c.span.start = start,
             Statement::BreakStatement(b) => b.span.start = start,
+            Statement::ImportDeclaration(i) => i.span.start = start,
         }
     }
     fn captured_scopes(&self) -> Vec<usize> {

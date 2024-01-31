@@ -3,16 +3,17 @@ use ast::{
     BoundConstraintType, Bracket::*, BreakStatement, CallExpr, Comment, ConstantDeclaration,
     ConstantSignature, ContinueStatement, DiscreteType, EnumDeclaration, EnumSignature,
     EnumVariant, Expression, ExpressionPrecedence, ForStatement, FunctionDeclaration, FunctionExpr,
-    FunctionSignature, FunctionalType, GenericParameter, Identifier, IfExpression, IndexExpr,
-    InterfaceBody, InterfaceDeclaration, InterfaceProperty, InterfacePropertyType,
-    InterfaceSignature, Keyword::*, LogicExpr, LoopLabel, LoopVariable, MaybeType, MemberType,
-    MethodSignature, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType, ModelSignature,
-    ModuleAmbience, ModuleDeclaration, Operator::*, Parameter, ReturnStatement, ScopeAddress,
-    ScopeEntry, ScopeType, ShorthandVariableDeclaration, ShorthandVariableSignature, Span,
-    Spannable, Statement, TernaryType, TestDeclaration, ThisExpr, Token, TokenType, TypeClause,
-    TypeEquation, TypeEquationSignature, TypeExpression, UnaryExpr, UnionType, UpdateExpr,
-    UseDeclaration, UsePath, UseTarget, UseTargetSignature, VariableDeclaration, VariablePattern,
-    VariableSignature, WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
+    FunctionSignature, FunctionalType, GenericParameter, Identifier, IfExpression,
+    ImportDeclaration, IndexExpr, InterfaceBody, InterfaceDeclaration, InterfaceProperty,
+    InterfacePropertyType, InterfaceSignature, Keyword::*, LogicExpr, LoopLabel, LoopVariable,
+    MaybeType, MemberType, MethodSignature, ModelBody, ModelDeclaration, ModelProperty,
+    ModelPropertyType, ModelSignature, ModuleAmbience, ModuleDeclaration, Operator::*, Parameter,
+    ReturnStatement, ScopeAddress, ScopeEntry, ScopeType, ShorthandVariableDeclaration,
+    ShorthandVariableSignature, Span, Spannable, Statement, TernaryType, TestDeclaration, ThisExpr,
+    Token, TokenType, TypeClause, TypeEquation, TypeEquationSignature, TypeExpression, UnaryExpr,
+    UnionType, UpdateExpr, UseDeclaration, UsePath, UseTarget, UseTargetSignature,
+    VariableDeclaration, VariablePattern, VariableSignature, WhileStatement, WhirlBoolean,
+    WhirlNumber, WhirlString,
 };
 use errors::{self as errors, expected, ParseError};
 use lexer::Lexer;
@@ -954,6 +955,10 @@ impl<L: Lexer> Parser<L> {
             TokenType::Keyword(Const) => self
                 .constant_declaration(false)
                 .map(|c| Statement::ConstantDeclaration(c)),
+            // // import..
+            TokenType::Keyword(Import) => self
+                .import_declaration()
+                .map(|m| Statement::ImportDeclaration(m)),
             TokenType::Keyword(While) => self.while_statement(),
             TokenType::Keyword(Return) => self.return_statement(),
             TokenType::Keyword(For) => self.for_statement(),
@@ -3257,6 +3262,167 @@ impl<L: Lexer> Parser<L> {
         };
 
         partial
+    }
+
+    /// Parse an import declaration.
+    fn import_declaration(&self) -> Imperfect<ImportDeclaration> {
+        expect_or_return!(TokenType::Keyword(Import), self);
+        let start = self.token().unwrap().span.start;
+        self.advance(); // Move past import.
+        if_ended!(errors::string_expected(self.last_token_end()), self);
+        let token = self.token().unwrap();
+        let source = match &mut token._type {
+            TokenType::String(s) => std::mem::take(s),
+            _ => return Partial::from_error(errors::string_expected(token.span)),
+        };
+        let source = WhirlString {
+            value: source,
+            span: token.span,
+        };
+        self.advance(); // Move past source.
+        let (opt, mut errors) = self.imports().to_tuple();
+        if opt.is_none() {
+            return Partial::from_errors(errors);
+        }
+        let (imports, end) = opt.unwrap();
+        let span = Span { start, end };
+        if !self.module_ambience().is_in_global_scope() {
+            errors.push(errors::import_in_non_global_scope(span))
+        }
+        return Partial {
+            value: Some(ImportDeclaration {
+                source,
+                imports,
+                span,
+            }),
+            errors,
+        };
+    }
+
+    /// Parses a block of imports in an import declaration.
+    fn imports(&self) -> Imperfect<(Vec<(WhirlString, ScopeAddress)>, [u32; 2])> {
+        expect_or_return!(TokenType::Bracket(LCurly), self);
+        self.advance(); // Move past {
+        let mut importlist = vec![];
+        let mut errors = vec![];
+        loop {
+            if self
+                .token()
+                .is_some_and(|token| token._type == TokenType::Bracket(RCurly))
+            {
+                break;
+            }
+            let (imported_function, mut function_errors) = self.imported_function().to_tuple();
+            if let Some(imported) = imported_function {
+                importlist.push(imported)
+            }
+            errors.append(&mut function_errors);
+            if self
+                .token()
+                .is_some_and(|t| matches!(t._type, TokenType::String(_)))
+            {
+                continue;
+            }
+            break;
+        }
+        expect_or_return!(TokenType::Bracket(RCurly), self);
+        let end = self.token().unwrap().span.end;
+        self.advance(); // Move past }
+        return Partial::from_tuple((Some((importlist, end)), errors));
+    }
+
+    /// Parses the identifier string and signature of an imported function.
+    fn imported_function(&self) -> Imperfect<(WhirlString, ScopeAddress)> {
+        let function_denoter = match self.token() {
+            Some(Token {
+                _type: TokenType::String(string),
+                span,
+            }) => WhirlString {
+                value: std::mem::take(string),
+                span: *span,
+            },
+            _ => return Partial::from_error(errors::string_expected(self.last_token_end())),
+        };
+        self.advance(); // Move past function name.
+        expect_or_return!(TokenType::Keyword(As), self);
+        self.advance(); // Move past as.
+        let is_public = if self
+            .token()
+            .is_some_and(|token| token._type == TokenType::Keyword(Public))
+        {
+            self.advance(); // Move past public
+            true
+        } else {
+            false
+        };
+        let is_async = if self
+            .token()
+            .is_some_and(|token| token._type == TokenType::Keyword(Async))
+        {
+            self.advance(); // Move past public
+            true
+        } else {
+            false
+        };
+
+        expect_or_return!(TokenType::Keyword(Function), self);
+        let info = self.get_doc_comment();
+        self.advance(); // Move past function.
+
+        let mut errors = vec![];
+
+        let name = check!(self.identifier());
+        let generic_params = match self.maybe_generic_params() {
+            Ok(param) => param,
+            Err(error) => {
+                errors.push(error);
+                None
+            }
+        };
+        let params = if self
+            .token()
+            .is_some_and(|token| token._type == TokenType::Bracket(LParens))
+        {
+            match self.parameters() {
+                Ok(params) => params,
+                Err(error) => {
+                    errors.push(error);
+                    vec![]
+                }
+            }
+        } else {
+            vec![]
+        };
+        let return_type = match self.maybe_return_type() {
+            Ok(rettye) => rettye,
+            Err(error) => {
+                errors.push(error);
+                None
+            }
+        };
+        if self
+            .token()
+            .is_some_and(|token| token._type == TokenType::Operator(SemiColon))
+        {
+            self.advance(); // Move past ;
+        }
+        let ambience = self.module_ambience();
+        let address = ambience.register(ScopeEntry::Function(FunctionSignature {
+            name,
+            info,
+            is_async,
+            is_public,
+            generic_params,
+            params,
+            return_type,
+        }));
+        let address = ScopeAddress {
+            module_id: ambience.module_id,
+            scope_id: ambience.current_scope(),
+            entry_no: address,
+        };
+        let return_value = (function_denoter, address);
+        return Partial::from_tuple((Some(return_value), errors));
     }
 }
 

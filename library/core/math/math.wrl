@@ -1,12 +1,111 @@
+/// The math modile provides access to a wide range of commonly used
+/// mathematical functions, from logarithms and trigonometry, to 
+/// rounding functions such as `floor()` and `ceil()`.
 module math
 
 use core.{
     bool.Bool,
-    internals.{Injunction, invoke},
-    numeric.{Float64, Number, Int32},
-    ops.{Orderable, Ordering},
-    sentinels.todo,
-    string.String
+    numeric.{Float64, Number, Int32, Int},
+    ops.{Orderable, Ordering, Range},
+}
+
+import "internal:math" {
+    // ---PUBLIC IMPORTS---
+    /// Computes the square of a number.
+    /// ### Usage
+    /// ```
+    /// use core.math.square
+    /// 
+    /// assert(square(2)).equals(4)
+    /// ```
+    "square" as public function square(a: Number) -> Number    
+    /// Computes the square root of a number.
+    /// ### Usage
+    /// ```
+    /// use core.math.sqrt
+    /// 
+    /// num := sqrt(4)
+    /// assertThat(num == 2)
+    /// ```
+    "sqrt" as public function sqrt(a: Number) -> Number
+    /// Returns the smallest integer greater than or equal to 
+    /// the number passed in.
+    /// ### Usage
+    /// ```
+    /// use core.math.ceil
+    /// 
+    /// assert(ceil(8.5)).equals(9)
+    /// assert(ceil(10.23)).equals(11)
+    /// ```
+    "ceil" as public function ceil(x: Number) -> Int32
+    /// Returns the largest integer smaller than or equal to
+    /// the number passed in.
+    /// ### Usage
+    /// ```
+    /// use core.math.floor
+    /// 
+    /// assert(floor(9.3)).equals(9)
+    /// assert(floor(100.99)).equals(100)
+    /// ```
+    "floor" as public function floor(x: Number) -> Int32
+    /// Returns the absolute value of a number.
+    /// 
+    /// ### Usage
+    /// ```
+    /// use core.math.abs
+    /// 
+    /// assert(max(-4)).equals(4)
+    /// assert(max(10)).equals(10)
+    /// ```
+    "abs" as public function abs(a: Number) -> Int32
+    /// Determines if a number is prime.
+    /// ### Usage
+    /// ```
+    /// 
+    /// ```
+    "isPrime" as public function isPrime(x: Number) -> Bool
+    /// Calculates the greatest common divisor of two numbers.
+    /// The GCD is the largest positive integer that divides both input 
+    /// integers without a remainder.
+    /// ### Usage
+    /// ```
+    /// use core.math.gcd
+    /// 
+    /// assert(gcd(12, 18)).equals(6)
+    /// assert(gcd(0, 24)).equals(0)
+    /// ```
+    "gcd" as public function gcd(a: Number, b: Number) -> Int
+    /// Returns the approximate value of the PI constant as a double-precision
+    /// 64-bit floating-point number.
+    /// ### Usage
+    /// ```
+    /// pi := core.math.pi() // 3.1415926536...
+    /// ```
+    "pi" as public function pi() -> Float64
+
+    // ---PRIVATE IMPORTS.---
+
+    /// Returns a random floating number in a specified range.
+    "randInRange" as function randInRange(start: Int32, end: Int32) -> Float64
+}
+
+
+/// Generates a single pseudo-random floating-point number within a range.
+/// 
+/// ### Usage
+/// ```
+/// use core.math.psRandom
+/// randNo := psRandom(some(0..10))
+/// assert(randNo).isLessThan(11)
+/// ```
+/// If no range is provided, it uses the range 0 to 1 (inclusive).
+/// ```
+/// randNo2 := psRandom()
+/// assert(randNo2).isLessThan(2)
+/// ```
+public function psrandom(range?: Range<Int32>) -> Float64 {
+    var { start, end }: Range<Int32> = range.unwrapOr(0..1);
+    return randInRange(start, end)
 }
 
 /// Returns the minimum of two values that implement Orderable.
@@ -47,73 +146,4 @@ public function max<T implements Orderable>(first: T, second: T) -> T {
         return first
     }
     return second
-}
-
-/// The approximate value of PI.
-/// 
-/// @TODO: Define to 64-bits.
-public const PI: Float64 = 3.1415926535897932384626433
-public const UINTMAX: Int32 = invoke(Injunction.MaxUnsignedInt)
-
-/// Computes the square of a number.
-public function square(a: Number) -> Number {
-    return a * a
-}
-
-/// Computes the square root of a number.
-/// ### Usage
-/// ```
-/// use core.math.sqrt
-/// 
-/// num := sqrt(4)
-/// assertThat(num == 2)
-/// ```
-public function sqrt(a: Number) -> Number {
-    todo()
-}
-
-/// Returns the smallest integer greater than or equal to x.
-public function ceil(x: Number) -> Int32 {
-    return todo()
-}
-
-/// Returns the largest integer smaller than or equal to x.
-public function floor(x: Number) -> Int32 {
-    return todo()
-}
-
-/// Returns the absolute value of a number.
-/// 
-/// ### Usage
-/// ```
-/// use core.math.abs
-/// 
-/// assert(max(-4)).equals(4)
-/// assert(max(10)).equals(10)
-/// ```
-public function abs(a: Number) -> Int32 {
-    todo()
-}
-
-/// Determines if a number is prime.
-public function isPrime(x: Number) -> Bool {
-    todo()
-}
-
-/// Parses a string into an integer.
-/// ### Usage
-/// ```
-/// use core.math.parseInt
-/// 
-/// assert(parseInt("-9")!).equals(-9)
-/// 
-/// ```
-public function parseInt(string: String) -> ?Int32 {
-    todo()
-}
-
-/// Euclidean algorithm for calculating the greatest common divisor of
-/// two numbers.
-public function gcd(a: Number, b: Number) -> Number {
-    todo()
 }
