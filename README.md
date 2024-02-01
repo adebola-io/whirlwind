@@ -1,44 +1,25 @@
-> **THIS PROJECT IS 55% INCOMPLETE. LOOK AWAY.**
+<p align=center>
+    <img width=120 src="./assets/wrl-lightbulb.svg" alt="💡"></img>
+</p>
 
-<h1 align=center>
-   <img width="120" src="./assets/wrl_color_2.svg" alt="Whirlwind Icon"/>
-   <p><i>Whirlwind.</i></p>
-</h1>
+<h1 align=center>Ideas for Whirlwind.</h1>
 
-Whirlwind is an open-source, statically-typed programming language for quickly and easily writing maintenable software. It is designed to be practical, easy to read and efficient.
+This branch is for new ideas for the Whirlwind language, be it syntactic, semantic or structural. It is dedicated to the design of new concepts to add to Whirlwind.
 
-## Documentation 📑
+## How to Contribute.
 
-The [Whirlwind website](http://whirlwind-lang.vercel.app) is still pending. For more information relating to the source code, refer to the [docs](https://github.com/adebola-io/whirlwind/tree/master/docs) folder.
+If you want to add to the Whirlwind language:
 
-## Features ✨
+-  Create a new file in the `proposals` folder with a specification explaining the new feature you want. For example, if you want Whirlwind to have list comprehensions like Python, you create a file called `list-comprehensions.md`.
+-  Create an accompanying issue with the tags `whiteboard` and `proposal`.
+-  Within the file, explain in detail the way in which this feature would improve the language and how it would work.
+-  _Be as detailed as possible_. Include code snippets, examples, possible constraints or drawbacks, etc.
+-  Ensure that the feature is not already being considered. Duplicate features will be ignored.
 
--  First Class Functions.
--  Static, Nominal Typing System.
--  Support for Generic Programming.
--  Support for Union Types.
--  Inbuilt Testing capabilities. (todo)
--  Modular organization.
+Each feature will move up from the `proposals` folder to:
 
-## Syntax 📐
+-  the `current` folder when it is being considered,
+-  the `approved` folder once it has been understood and approved, and then
+-  the `final` folder when it is finally implemented in the language.
 
-Whirlwind is inspired heavily by the syntax of already existing languages. An example of Whirlwind code is:
-
-```rs
-use system.io.print
-
-/// Function to add two numbers.
-function add(a: Int, b: Int) -> Int {
-   return a + b
-}
-
-/// Entry to the program.
-function main {
-   c := add(2, 3)
-   print(c)
-}
-```
-
-## Roadmap and Implementation Status 🛠️
-
-To view the planned and implemented features in the development of Whirlwind, please refer to the [roadmap](./docs/roadmap).
+Feel free to let us know your most interesting ideas! ✨

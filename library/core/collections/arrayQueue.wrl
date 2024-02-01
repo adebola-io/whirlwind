@@ -1,6 +1,0 @@
-module arrayQueue
-
-/// An implementation of a queue data structure using an array.
-public model ArrayQueue<T> {
-
-}

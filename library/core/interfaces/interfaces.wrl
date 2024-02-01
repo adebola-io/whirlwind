@@ -1,7 +1,0 @@
-/// This module defines intrinsic interfaces
-module interfaces
-
-
-public use default.Default
-public use guaranteed.Guaranteed
-public use try.Try

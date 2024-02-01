@@ -1,4 +1,0 @@
-module image;
-
-public use super.view.{View, ViewPreset};
-
