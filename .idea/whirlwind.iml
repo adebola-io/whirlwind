@@ -13,6 +13,9 @@
       <sourceFolder url="file://$MODULE_DIR$/compiler/utils/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/repl/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/server/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/compiler/middleend/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/compiler/wasm/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/interpreter/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />

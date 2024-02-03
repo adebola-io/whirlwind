@@ -42,7 +42,7 @@ pub struct SymbolLibrary {
     pub try_s: Option<SymbolIndex>,
     pub guaranteed: Option<SymbolIndex>,
     pub default: Option<SymbolIndex>,
-    pub iteratable: Option<SymbolIndex>,
+    pub iterable: Option<SymbolIndex>,
     pub bitwise: Option<SymbolIndex>,
     pub subtract: Option<SymbolIndex>,
     pub orderable: Option<SymbolIndex>,

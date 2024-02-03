@@ -2,8 +2,9 @@ module testing
 
 use core.{
     bool.Bool,
+    maybe.some,
     ops.{Orderable},
-    sentinels.fatalOnCaller,
+    sentinels.fatal,
     string.{Display, String}
 }
 
@@ -15,7 +16,7 @@ public function assert<T implements Display>(value: T) -> Assertion<T> {
 /// Tests that a condition is true.
 public function assertThat(proposition: Bool) {
     if !proposition {
-        _ := fatalOnCaller("Assertion failed due to false proposition.")
+        _ := fatal(some("Assertion failed due to false proposition."))
     }
 }
 
@@ -40,7 +41,7 @@ public model Assertion<T implements Display> {
                         "Assertion failed on equality.", 
                         this.value, 
                         other)
-            fatalOnCaller(message)
+            fatal(some(message))
         }
         return this
     }
@@ -51,7 +52,7 @@ public model Assertion<T implements Display> {
                         "Assertion failed on inequality.", 
                         this.value, 
                         other)
-            fatalOnCaller(message)
+            fatal(some(message))
         }
         return this
     }
@@ -62,7 +63,7 @@ public model Assertion<T implements Display> {
                         "Assertion failed for less than.", 
                         this.value, 
                         other)
-            fatalOnCaller(message)
+            fatal(some(message))
         }
         return this
     }
@@ -73,7 +74,7 @@ public model Assertion<T implements Display> {
                         "Assertion failed for greater than.", 
                         this.value, 
                         other)
-            fatalOnCaller(message)
+            fatal(some(message))
         }
         return this
     }

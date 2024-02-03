@@ -9,12 +9,8 @@ use core.{
     string.{Display, String},
     internals.{builtin, never},
     maybe.{none, some},
+    memory.getOffset,
     numeric.Int32,
-}
-
-/// Unwinds the stack by one frame and crashes with a fatal error.
-public function fatalOnCaller(message: String) -> never  {
-    return builtin.sequence.crashOneStep(message)
 }
 
 /// Indicates that the current piece of code is unfinished.
@@ -22,7 +18,7 @@ public function fatalOnCaller(message: String) -> never  {
 /// Developers can use this function as a temporary marker for incomplete work.
 /// It is also useful for satisfying the type system when implementing other functionality.
 /// 
-/// This function will *always* cause the sequence to crash.
+/// Calling this function will *always* cause a sequence to crash.
 /// ### Usage
 /// ```
 /// function positiveSquare(a: Int32) -> Outcome<Int32, String> {
@@ -34,7 +30,8 @@ public function fatalOnCaller(message: String) -> never  {
 /// }
 /// ```
 public function todo<M implements Display>(message?: M) -> never {
-    return fatalOnCaller(message.map(fn (message) message.toStr()).unwrapOr("Entered unfinished code."))
+    messageStr := message.map(fn (message) message.toStr())
+    return fatal(messageStr.orElse(fn some("Entered unfinished code.")))
 }
 
 /// Marks a point that should never be reached by normal execution flow.
@@ -48,6 +45,9 @@ public function todo<M implements Display>(message?: M) -> never {
 /// use core.sentinels.unreachable
 /// 
 /// function validateInput(x: Int32) {
+///     if x != 0 {
+///         return
+///     }
 ///     if x < 0 {
 ///         unreachable() // unsigned integers are always positive.
 ///     }
@@ -57,7 +57,7 @@ public function todo<M implements Display>(message?: M) -> never {
 /// 
 /// The `unreachable` function will always cause an error, signifying an unexpected condition.
 public function unreachable(message?: String) -> never {
-    return fatalOnCaller(message.unwrapOr("Entered unreachable code."))
+    return fatal(message.orElse(fn some("Entered unreachable code.")))
 }
 
 /// Enters an infinite loop, effectively halting the current execution sequence until the program
@@ -69,6 +69,19 @@ public function unreachable(message?: String) -> never {
 public function forever -> never {
     while true {}
     unreachable()
+}
+
+import "internals:control" {
+    /// Immediately halts the execution of the sequence with a given ID.
+    "stop" as function stop(id: Int32, messageOffset: Int32, messageLength: Int32) -> never
+
+    /// Closes all sequences and exits the program with a given code.
+    /// ### Usage
+    /// ```
+    /// use core.sentinels.exit
+    /// exit(0)
+    /// ```
+    "exit" as public function exit(code?: Int32) -> never 
 }
 
 /// Called when an execution sequence encounters an unrecoverable or
@@ -83,27 +96,20 @@ public function forever -> never {
 /// ```
 /// function divide(number: Int32, divisor: Int32) -> Float {
 ///     if divisor == 0 {
-///         fatal("Cannot divide by zero!")
+///         fatal(some("Cannot divide by zero!"))
 ///     } else {
 ///         return a / b
 ///     }
 /// }
 /// ```
 public function fatal(message?: String) -> never {
-    return builtin.sequence.crash(message)
+    errorMessage := message.unwrapOr("Fatal Sequence error.")
+    // generate stack trace.
+    messageOffset := getOffset(errorMessage)
+    messageLength := errorMessage.length()
+    id := builtin.sequence.sequenceId()
+    stop(id, messageOffset, messageLength)
 }
-
-/// Closes all sequences and exits the program with a given code.
-/// ### Usage
-/// ```
-/// use core.process.exit
-/// 
-/// exit(0)
-/// ```
-public function exit(code?: Int32) -> never {
-    return builtin.exit(code)
-}
-
 
 /// Caches the return value of a function based on its arguments. Subsequent
 /// calls return the cached value instead of reexecuting the function.

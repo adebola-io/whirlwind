@@ -69,7 +69,6 @@ pub fn typecheck_model_declaration(
                 is_public: interface_method_is_public,
                 is_static: interface_method_is_static,
                 is_virtual: interface_method_is_virtual,
-                constraint: interface_method_constraint,
                 generic_params: interface_method_generic_params,
                 ..
             } = &interface_method_symbol.kind

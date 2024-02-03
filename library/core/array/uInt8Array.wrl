@@ -1,6 +1,9 @@
 module uInt8Array
 
+use core.array.Array
+use core.maybe.some
 use core.numeric.Int32
+use core.sentinels.todo
 
 public model UInt8Array {
     public var offset: Int32
@@ -12,6 +15,23 @@ public model UInt8Array {
         this.capacity = capacity
         this.length = 0
         this.offset = core.sentinels.todo()
+    }
+
+    public function setValue(value: Int32, offset: Int32) {
+        if offset > this.length {
+            core.sentinels.fatal(some("Offset is greater than the length of the array."))
+        }
+        todo()
+    }
+
+    /// Converts the UInt8Array to an array of 32-bit integers so that it can be
+    /// indexed into and iterated over.
+    /// # Usage
+    /// ```
+    /// 
+    /// ```
+    public function asInt32Array -> Array<Int32> {
+        todo()
     }
 
     public function append(other: UInt8Array) {

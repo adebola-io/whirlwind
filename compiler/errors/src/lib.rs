@@ -223,3 +223,17 @@ pub fn import_in_non_global_scope(span: ast::Span) -> ParseError {
         span,
     }
 }
+
+pub fn duplicate_import_name(name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::DuplicateImportName { name },
+        span,
+    }
+}
+
+pub fn generic_function_import(span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::GenericFunctionImport,
+        span,
+    }
+}

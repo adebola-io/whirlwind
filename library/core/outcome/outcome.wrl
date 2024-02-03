@@ -5,7 +5,7 @@ use core.{
     interfaces.{Try, Guaranteed},
     internals.{never, builtin},
     maybe.{none, some},
-    sentinels.{fatalOnCaller, todo},
+    sentinels.{fatal, todo},
     string.{Display, String}
 }
 
@@ -64,7 +64,7 @@ public model Outcome<T, E>
     /// ```
     public function unwrap -> T {
         if this.isErr() {
-            fatalOnCaller("Called Unwrap on an Err value.")
+            fatal(some("Called Unwrap on an Err value."))
         }
         return builtin.outcome.unwrap(this)
     }
@@ -77,7 +77,7 @@ public model Outcome<T, E>
     /// ```
     public function asErr -> E {
         if this.isOk() {
-            fatalOnCaller("Called AsErr on an Ok value.")
+            fatal(some("Called AsErr on an Ok value."))
         }
         return builtin.outcome.unwrapError(this)
     }

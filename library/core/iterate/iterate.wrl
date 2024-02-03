@@ -6,7 +6,7 @@
 /// 
 /// The module also contains useful models that iterate with a certain behaviorial modifier, allowing for
 /// a more finegrained control over iteration.
-module iterate
+module iterate 
 
 use core.{
     bool.Bool,
@@ -64,9 +64,9 @@ public interface Iterable<I> {
     /// ### Usage
     /// ```
     /// arr := [1, 2, 3, 4, 5]
-    /// arrItem := arr.iter()
+    /// arrIter := arr.iter()
     /// 
-    /// assertThat(arrItem.count() == 5)
+    /// assertThat(arrIter.count() == 5)
     /// ```
     public function count -> Int32 {
         count := 0
@@ -103,7 +103,11 @@ public interface Iterable<I> {
     /// assert(arrReduced).equals("this is the pathway")
     /// ```
     public function reduce(reducer: fn(acc: I, current: I) -> I, initial: I) -> I {
-        todo()
+        accumulated := initial
+        for item in this {
+            accumulated = reducer(accumulated, item)
+        }
+        return accumulated
     }
     /// Returns an iterator that only yields items that match a predicate.
     /// The predicate returns a boolean value indicating whether the item
@@ -270,29 +274,30 @@ public interface Iterable<I> {
         }
         return taken
     }
-    /// Iterative adapter that advances as long as a condition is false.
+    /// Advances the iterator as long as a condition is false.
     /// 
-    /// The iteration will stop right before the first true item is returned.
+    /// The iteration will stop after checking the first true item.
     /// 
     /// This means if the iteration has _n_ items that are false, then the condition 
     /// will be checked (and the underlying iterator will have to advance) _n+1_ times.
-    /// 
-    /// A second function called the catch can be specified to run on the first element that is true.
     /// 
     /// ### Usage
     /// ```
     /// numbers := [10, 12, 14, 16, 18, 20]
     /// iter := numbers.iter()
     /// 
-    /// iter.until(fn(x) x > 15, some(fn(y) print(y)))
+    /// iter.until(fn(x) x > 15) // Stops at 16.
     /// 
-    /// assertThat(iter.next() == some(10))
-    /// assertThat(iter.next() == some(12))
-    /// assertThat(iter.next() == some(14))
-    /// assertThat(iter.next() == none()) // 16 is printed.
+    /// assertThat(iter.next() == some(18))
+    /// assertThat(iter.next() == some(20))
     /// ```
-    public function until(condition: fn(value: I) -> Bool, catch?: fn(value: I)) -> Until<I, This> {
-        todo()
+    public function until(condition: fn(value: I) -> Bool) {
+        while true {
+            next := this.next()
+            if next.isNone() or condition(next!) {
+                break
+            }
+        }
     }
     /// Returns an iterator that produces elements from both iterators as a tuple.
     /// 
@@ -402,22 +407,6 @@ public model FilterMap<I, J, K implements Iterable<I>> implements Iterable<J> {
     }
 }
 
-public model Until<I, J implements Iterable<I>> implements Iterable<I> {
-    var iterator: J
-    var condition: fn(value: I) -> Bool
-    var catch: ?fn(value: I)
-    var ended: Bool
-    new(iterator: J, condition: fn(value: I) -> Bool, catch?: fn(value: I)) {
-        this.iterator = iterator
-        this.condition = condition
-        this.catch = catch
-        this.ended = false
-    }
-    public function [Iterable.next] -> ?I {
-       todo()
-    }
-}
-
 public model Map<I, O, J implements Iterable<I>> implements Iterable<O> {
     var iterator: J
     var transformer: fn(input: I) -> O
@@ -431,6 +420,7 @@ public model Map<I, O, J implements Iterable<I>> implements Iterable<O> {
 }
 
 public model Unique<I, J implements Iterable<I>> implements Iterable<I> {
+    var seen: []I
     public function [Iterable.next] -> ?I {
         todo()
     }

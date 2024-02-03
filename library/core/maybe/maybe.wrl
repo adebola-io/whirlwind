@@ -6,7 +6,7 @@ use core.{
     internals.{builtin, never},
     outcome.{ok, err, Outcome},
     string.{Display, String},
-    sentinels.{fatal, fatalOnCaller},
+    sentinels.{fatal},
 }
 
 /// Creates a `Maybe` with no value.
@@ -30,7 +30,7 @@ public model Maybe<T>
     var _exists: Bool
     /// The internal value.
     /// 
-    /// This will point to unintialized memory if 
+    /// This will point to the void value if 
     /// if it is retrieved from an empty `Maybe`. 
     /// 
     /// It should **never** be accessed outside of the 
@@ -134,7 +134,6 @@ public model Maybe<T>
     /// Performs a computation if there is an internal value contained.
     /// ### Usage
     /// ```
-    /// use core.io.fmt
     /// maybeValue := some(42)
     /// 
     /// maybeValue.isSomeThen(fn(value) {
@@ -213,11 +212,19 @@ public model Maybe<T>
     /// It panics if called on a `Maybe` with no value.
     public function unwrap -> T {
         if this.isNone() {
-            fatalOnCaller("Called Unwrap on a Maybe with no value.")
+            fatal(some("Called Unwrap on a Maybe with no value."))
         }
         return this.value
     }
     /// Returns the internal value, or another given value.
+    /// ### Usage
+    /// ```
+    /// maybeVal := some(45)
+    /// assert(maybeVal.unwrapOr(0)).equals(45)
+    /// 
+    /// maybeVal = none()
+    /// assert(maybeVal.unwrapOr(69)).equals(69)
+    /// ```
     public function unwrapOr(value: T) -> T {
         if this.isNone() { value } else { this.value }
     }

@@ -202,8 +202,8 @@ public model Array<T>
         separatorValue := separator.unwrapOr(" ")
         string := ""
         i := 0
-        for { a as i, b as element } in this.iter().enumerate() {
-            string += element.toStr()
+        while i < this.len {
+            string += this[i].toStr()
             if i + 1 != this.len {
                 string += separatorValue
             }

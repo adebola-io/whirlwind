@@ -83,8 +83,6 @@ import "internal:math" {
     /// ```
     "pi" as public function pi() -> Float64
 
-    // ---PRIVATE IMPORTS.---
-
     /// Returns a random floating number in a specified range.
     "randInRange" as function randInRange(start: Int32, end: Int32) -> Float64
 }

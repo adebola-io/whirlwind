@@ -588,6 +588,10 @@ pub fn get_implementation_of(
         }
         | EvaluatedType::Generic { base }
         | EvaluatedType::HardGeneric { base, .. } => {
+            // Every interface is an implementation of itself.
+            if eval_type.is_interface_instance() && *base == target_interface {
+                return Some(eval_type.clone());
+            }
             extract_impl(symbollib, base, eval_type, target_interface)
         }
         EvaluatedType::OpaqueTypeInstance {

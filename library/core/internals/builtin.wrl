@@ -3,7 +3,7 @@ module builtin
 use core.{
     array.Array, 
     bool.Bool, 
-    concurrent.{Prospect, Eventual, Sequence},
+    concurrent.{Prospect, Eventual},
     maybe.some,
     memory.WeakRef,
     numeric.Int32,
@@ -117,7 +117,7 @@ public model outcome<T, U> {
 }
 
 public model sequence {
-    public static function sequenceId(sequence: Sequence) -> Int32 {
+    public static function sequenceId() -> Int32 {
         invoke(builtin(InjunctionType.SequenceId), some(sequence))
     }
 

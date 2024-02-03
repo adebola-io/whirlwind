@@ -489,6 +489,22 @@ fn it_allows_only_valid_type_declarations() {
 }
 
 #[test]
+fn it_allows_interfaces_to_implement_themselves() {
+    check_types!(
+        "module Test
+        
+        interface SomeInterface<S> {
+            public function takeIn<T implements SomeInterface<S>>(value: T) -> S {
+                val := this.takeIn(value)
+                core.sentinels.unreachable()
+            }
+        }
+        ",
+        &[("val", "S")]
+    );
+}
+
+#[test]
 fn method_inherits_generic_arguments() {
     check_types!(
         "
@@ -520,6 +536,37 @@ fn method_inherits_generic_arguments() {
             ("strClone", "GenericModel<String>"),
             ("swapped", "Tuple<String, Bool>")
         ]
+    );
+}
+
+#[test]
+fn it_errors_on_duplicate_imports() {
+    text_produces_errors!(
+        "
+        module Test
+
+        import 'namespace' {
+            'import1' as function a
+            'import1' as function b
+        }
+        ",
+        &[TypeErrorType::DuplicateImportName {
+            name: format!("import1")
+        }]
+    );
+}
+
+#[test]
+fn it_errors_on_generic_import_functions() {
+    text_produces_errors!(
+        "
+        module Test
+
+        import 'namespace' {
+            'identity' as function identity<T>(value: T) -> T
+        }
+        ",
+        &[TypeErrorType::GenericFunctionImport]
     );
 }
 

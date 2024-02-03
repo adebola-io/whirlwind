@@ -324,6 +324,10 @@ pub enum TypeErrorType {
     SelfReference {
         valuename: String,
     },
+    DuplicateImportName {
+        name: String,
+    },
+    GenericFunctionImport,
 }
 
 pub fn invalid_binary(left: String, operator: BinOperator, right: String, span: Span) -> TypeError {

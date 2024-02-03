@@ -129,7 +129,11 @@ public model String
     /// assertThat(name.endsWith("ael"))
     /// ```
     public function endsWith(pat: String) -> Bool {
-        todo()
+        thisIter := this.vec.asInt32Array().reverse()
+        patternIter := pat.vec.asInt32Array().reverse()
+        thisIter.zip(patternIter).all(fn (tuple) {
+            tuple.a == tuple.b
+        })
     }
     /// Returns true if the string is made up entirely of alphabetic and numeric characters.
     /// ## Usage
@@ -383,7 +387,12 @@ public model String
     /// assertThat(name.startsWith("Jo"))
     /// ```
     public function startsWith(pat: String) -> Bool {
-        todo()
+        thisIter := this.vec.asInt32Array().iter()
+        patternIter := pat.vec.asInt32Array().iter()
+        thisIter.zip(patternIter).all(fn (tuple) {
+            var { a, b } = tuple
+            a == b
+        })
     }
     /// Creates a string with at least the specified capacity.
     /// ### Usage

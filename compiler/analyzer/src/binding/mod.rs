@@ -576,7 +576,7 @@ mod bind_utils {
                 },
                 (CurrentModuleType::Never, "never") => &mut symbol_library.never,
                 (CurrentModuleType::Iteration, name) => match name {
-                    "Iterable" => &mut symbol_library.iteratable,
+                    "Iterable" => &mut symbol_library.iterable,
                     "AsIterator" => &mut symbol_library.asiter,
                     _ => return index,
                 },

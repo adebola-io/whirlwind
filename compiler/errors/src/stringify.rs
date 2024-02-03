@@ -136,6 +136,8 @@ impl std::fmt::Display for TypeErrorType {
         TypeErrorType::MissingConstraint => format!("This method should have a constraint that matches its interface provider."),
         TypeErrorType::UnexpectedConstraint => format!("Method does not expect a constraint."),
         TypeErrorType::SelfReference { valuename } => format!("{valuename} cannot be referenced in its own declaration."),
+        TypeErrorType::DuplicateImportName { name } => format!("'{name}' has already been imported in this namespace."),
+        TypeErrorType::GenericFunctionImport => format!("External functions cannot have generic parameters."),
         };
         write!(f, "{message}")
     }

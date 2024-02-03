@@ -4,7 +4,6 @@
 module concurrent
 
 use core.{
-    internals.builtin,
     numeric.Int32,
     string.String,
     sentinels.todo
@@ -37,13 +36,7 @@ public model CurrentSequence {
 }
 
 /// A running set of instructions.
-public model Sequence {
-    /// Returns the id of the sequence.
-    /// The id of the main sequence is always 0.
-    public function getId -> Int32 {
-        return builtin.sequence.sequenceId(this)
-    }
-} 
+public model Sequence {} 
 
 public model SequenceError {
     public var errorType: SequenceErrorType

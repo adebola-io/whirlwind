@@ -2,9 +2,15 @@ module memory
 
 use core.bool.Bool
 use core.internals.builtin
+use core.numeric.Int32
 use core.sentinels.todo
 
 public use ref.WeakRef
+
+/// Returns the address of an object instance in linear memory.
+public function getOffset<T>(value: T) -> Int32 {
+    todo()
+}
 
 
 /// Determines whether two variables point to the same location in memory
