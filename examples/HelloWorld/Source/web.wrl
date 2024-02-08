@@ -2,36 +2,132 @@
 module web
 
 use tangent.{
-    actions, button, constraint, horizontalView, renderStatic, stateful, 
-    StateStore, style.{style, Layout}, text, verticalView, view.View
+    actions, button, constraint, horizontal, renderStatic, stateful, 
+    StateStore, style.{style, Layout}, text, vertical, view.View
 }
 
 function appButtonRow -> View {
-    horizontalView()
-        .constraint(
-            constraint("mobile").layout(Layout.Vertical).gap(20)
+    buttonStyles := StyleList()
+        .bgColor("blue")
+        .color("white")
+        .strokeWidth(2)
+    windowResize: WindowResizeEventHandler := fn(event, view) {
+        if event.height() > 720 {
+            return VerticalView.from(view)
+        }
+        return view
+    }
+    increment: ClickEventHandler := fn(event, view) {
+        updateState("@counter.value", fn(state) state.increment())
+        return view
+    }
+    decrement: ClickEventHandler := fn(event, view) {
+        updateState("@counter.value", fn(state) state.decrement())
+        return view
+    }
+    return HorizontalView("button-row")
+        .onWindowResize(windowResizeListener)
+        .append(
+            HorizontalView("button")
+                .applyStyles(buttonStyles)
+                .onClick(increment)
+                .append(TextView("Click To Increment."))
         )
         .append(
-            button(some(text("Add")))
-                .style(style().bgColor("blue").color("white"))
-                .onClick(actions.increment("@counter.value"))
+            HorizontalView("button")
+                .applyStyles(buttonStyles)
+                .onClick(decrement)
+                .append(TextView("Click to Decrement."))
         )
+}
+
+function appNavLinks -> View {
+    navLinks := [
+        Tuple("Home", "home"), 
+        Tuple("About", "about"),
+        Tuple("Contact", "contact")
+        Tuple("Blog", "blog")
+    ]
+    
+    selectedNavigationEffect: StateEffect := Tuple(
+        "@nav.current", 
+        fn(state, view) {
+            styles := if state.asStr()! == view.innerText() {
+                StyleList().fontWeight("bold").color("green")
+            } else {
+                StyleList().fontWeight("normal").color("white")
+            }
+            view.applyStyles(styles)
+            return view
+        });
+    
+    return HorizontalView("navigation-items")
+        .appendAll(
+            navLinks.iter().map(fn(tuple) {
+                TextView(tuple.a, "navigation-item")
+                    .linkTo(tuple.b)
+                    .addEffect(selectedNavigationEffect)
+            }).collect()
+        )
+}
+
+/// The website's header component.
+function appHeader -> View {
+    headerStyles := StyleList()
+        .relWidth(100)
+        .strokeBottom(2, StrokeType.Solid, "black")
+        .bgColor("white")
+        .shadow(0, 0, 8, 0)
+
+    return HorizontalView("header")
+        .applyStyles(headerStyles)
+        .append(appNavLinks())
+}
+
+function appCardItem(item: CardItem, idx: Int32) -> View {
+    containerStyles := StyleList()
+        .fillParent()
+        .translateY(String.fmt("%\%").add(idx * -100))
+        .bgColor("white")
+
+    headingStyles := StyleList()
+        .fontWeight(FontWeight.Bold)
+        .fontSize(100) 
+
+    return VerticalView("card-item")
+        .applyStyles(containerStyles)
         .append(
-            button(some(text("Subtract")))
-                .style(style().bgColor("blue").color("white"))
-                .onClick(actions.decrement("@counter.value"))
+            ImageView(item.src, "Item image")
+                .applyStyles(StyleList().width(100).height(120))
         )
+        .append(TextView(item.name).applyStyles(headingStyles))
+        .append(TextView(item.data))
+}
+
+function appCardStack -> View {
+    cardItems := getCardItems().run().await().unwrapOr([])
+    return StackView("card-stack")
+        .applyStyles(StyleList().size(100))
+        .appendAll(cardItems.iter().enumerate().map(fn(cardItem) {
+            var { a as idx, b as item } = cardItem
+            return appCardItem(item, idx)
+        }).collect())
 }
 
 public function appStage -> View {
-    verticalView()
-        .style(style().fillScreen())
-        .onMount(actions.setTitle("Home | Tangent"))
-        .append(stateful("@counter.value").asText().bold())
+    mountEventHandler: MountEventHandler := fn(event, view) {
+        setStageTitle("Home | Tangent")
+        return view
+    }
+
+    return VerticalView("stage")
+        .applyStyles(StyleList().fillScreen())
+        .onMount(mountEventHandler)
+        .append(StateView("@counter.value"))
         .append(appButtonRow())
 }
 
+
 public function main {
-    store := StateStore().set("@counter.value", 0)
     assets := renderStatic(appStage, store)
 }
