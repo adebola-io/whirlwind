@@ -24,9 +24,7 @@ The [Whirlwind website](http://whirlwind-lang.vercel.app) is still pending. For 
 
 Whirlwind is inspired heavily by the syntax of already existing languages. An example of Whirlwind code is:
 
-```rs
-use system.io.print
-
+```ts
 /// Function to add two numbers.
 function add(a: Int, b: Int) -> Int {
    return a + b
@@ -34,8 +32,7 @@ function add(a: Int, b: Int) -> Int {
 
 /// Entry to the program.
 function main {
-   c := add(2, 3)
-   print(c)
+   add(2, 3)
 }
 ```
 
