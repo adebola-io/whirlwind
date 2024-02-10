@@ -1,0 +1,9 @@
+module conversion
+
+function celsiusToKelvin(input: Int32) -> Int32 {
+    return Int32.fromStr((input + 273.15).toFixed(some(2)))!
+}
+
+function kelvinToCelsius(input: Int32) -> Int32 {
+    return Int32.fromStr((input - 273.15).toFixed(some(2)))!
+}

@@ -3,20 +3,20 @@ module maybe
 use core.{
     bool.Bool,
     interfaces.{Guaranteed, Try, Default},
-    internals.{builtin, never},
+    internals.never,
     outcome.{ok, err, Outcome},
     string.{Display, String},
-    sentinels.{fatal},
+    sentinels.fatal
 }
 
 /// Creates a `Maybe` with no value.
 public function none<T> -> ?T {
-    return builtin.maybe.none()
+    return none()
 }
 
 /// Creates a `Maybe` with an internal value.
 public function some<T>(value: T) -> ?T {
-    return builtin.maybe.some(value)
+    return some(value)
 }
 
 /// A value that may or may not exist.
