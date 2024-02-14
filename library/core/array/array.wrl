@@ -228,6 +228,7 @@ public model Array<T>
         }
     }
     /// Returns the item at a particular index in the array, if it exists.
+    /// 
     /// Indexes are zero-based, meaning that the first item is at index 0.
     /// ### Usage
     /// ```
@@ -240,7 +241,7 @@ public model Array<T>
     /// last item in the array.
     /// ```
     /// arr := [15, 25, 35, 45, 55]
-    /// assert(arr.at(-1) == some(55))
+    /// assertThat(arr.at(-1) == some(55))
     /// ```
     public function at(index: Int32) -> ?T {
         if index >= 0 && index < this.len {

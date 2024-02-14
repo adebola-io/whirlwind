@@ -425,7 +425,7 @@ public model String
     /// greeting := String.fmt("Hello, %!")
     /// greetingStr := greeting.add("John").finish()
     /// 
-    /// assert(greetingStr).Equals("Hello, John!")
+    /// assert(greetingStr).equals("Hello, John!")
     /// ```
     public static function fmt(template: String) -> Template {
         return Template(template)

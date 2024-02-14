@@ -47,8 +47,12 @@ impl std::fmt::Display for TypeErrorType {
         TypeErrorType::TypeAsValue { type_ } => format!("{type_} refers to an abstract type, generic parameter or a type alias, but it is being used as a value here."),
         TypeErrorType::InstanceStaticMethodAccess { model_name, method_name } => format!("{method_name} refers a static function, so it cannot be called by instances of {model_name}."),
         TypeErrorType::MismatchedReturnType { expected, found } => if expected == "{void}" {
-            format!("The enclosing function has no return type, but '{found}' is being returned here.")
-        } else {format!("The enclosing function expects a return type of '{expected}' but found '{found}'.")},
+            format!("The function has no return type, but '{found}' is being returned here.")
+        } else if found == "{void}" { 
+            format!("The function should return '{expected}', but no value is being returned.")
+        } else {
+            format!("The function should return '{expected}', but '{found}' is being returned instead.")
+        },
         TypeErrorType::NoSuchProperty { base_type, property } => format!("Property '{property}' does not exist on a value of type '{base_type}'."),
         TypeErrorType::UnimplementedInterface { offender, _interface } => format!("Operation failed because the type '{offender}' does not implement '{_interface}'."),
         TypeErrorType::NotCallable { caller } => format!("{caller} is not a callable type."),

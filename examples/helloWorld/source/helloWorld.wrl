@@ -10,8 +10,13 @@ function helloWorld {
     print("Hello, world!")
 }
 
+/// A function that adds two numbers.
+function add(x: Int32, y: Int32) -> Int32 {
+    return x + y
+}
+
 /// Greets a person.
-function greeting(name: String) {   
+function greet(name: String) {   
     print(String.fmt("Good day, %!").add(name))
 }
 
@@ -21,69 +26,29 @@ function factorial(n: Int32) -> Int32 {
     else n * factorial(n - 1)
 }
 
-enum Operation {
-    Add,
-    Subtract,
-    Minus,
-    Divide
-}
-/// A simple calculator in Whirlwind.
-function calculator(operation: Operation, a: Number, b: Number) -> Number {
-    if operation == Operation.Add {
-        a + b
-    } else if operation == Operation.Subtract {
-        a - b
-    } else if operation == Operation.Minus {
-        a * b
-    } else {
-        a / b
-    };
-    todo()
-}
-
 /// A function that returns true if a string is a palindrome.
 function isPalindrome(str: String) -> Bool {
     return str == str.reverse()
 }
 
-var evenSquares = 
-    fn(numbers: []Int) 
-        numbers
-            .iter()
-            .filter(fn(num) num % 2 == 0)
-            .map(fn(num) num ^ 2)
-            .collect()
+/// A function that returns the maximum number in an array of numbers.
+/// It returns nothing if the list is empty.
+function maximum(numbers: []Int32) -> ?Int32 {
+    // Start with the first number in the list.
+    var max = numbers.at(0)?
+    // Check through the list to see is there is a greater number.
+    for number in numbers {
+        if number > max {
+            // If a bigger number is found, update the max value.
+            max = number
+        }
+    }
+    return some(max)
+}
 
 /// Returns the nth Fibonacci number.
 function fibonacci(n: Int32) -> Int32 {
     if n == 0 { 0 } 
     else if n == 1 { 1 } 
     else fibonacci(n - 1) + fibonacci(n - 2)
-}
-
-/// Extracts the last names from a list.
-public function lastNames(names: []String) -> []String {
-    names
-        .iter()
-        .filterMap(fn(name) name.split(' ').at(-1))
-        .collect()
-}
-
-test "It does some stuff" {
-    model Person {
-        public var name: String
-        var children: Array<Person>
-        new(name: String){
-            this.name = name
-        } 
-
-        public function firstChild -> ?Person {
-            return this.children.first()
-        }
-        public function lastChild -> ?Person {
-            return this.children.last()
-        }
-    }
-
-    person := Person("Johnny")
 }

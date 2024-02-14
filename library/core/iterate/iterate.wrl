@@ -50,13 +50,8 @@ public interface Iterable<I> {
     /// ```
     public function collect -> []I {
         array := []
-        while true {
-            nextItem := this.next()
-            if nextItem.isNone() {
-                break
-            }
-            nextItemVal := nextItem.unwrap()
-            array.push(nextItemVal)
+        for item in this {
+            array.push(item)
         }
         array
     }
@@ -83,15 +78,11 @@ public interface Iterable<I> {
     /// [1, 2, 3].iter().forEach(fn(value) print(value))
     /// ```
     public function forEach(callback: fn(value: I)) {
-        while true {
-            next := this.next()
-            if next.isNone() {
-                break
-            }
-            callback(next.unwrap())
+        for item in this {
+            callback(item)
         }
     }
-    /// Reduces an Iterable to a single value by applying a function against an
+    /// Reduces an `Iterable` to a single value by applying a function against an
     /// accumulator and each element in the sequence. It allows combinatory or aggregative 
     /// operations to be depicted in a concise and functional way.
     /// 
@@ -151,9 +142,8 @@ public interface Iterable<I> {
     }
     /// Returns the first `Maybe.some` element in the iteration.
     public function findMap<J>(predicate: fn(value: I) -> ?J) -> ?J {
-        while true {
-            nextElement := this.next()?
-            maybeValue := predicate(nextElement)
+        for item in this {
+            maybeValue := predicate(item)
             if maybeValue.isSome() {
                 return maybeValue
             }
@@ -174,12 +164,8 @@ public interface Iterable<I> {
     /// assert(iterator.next()).equals(some(14))
     /// ```
     public function any(predicate: fn(value: I) -> Bool) -> Bool {
-        while true {
-            next := this.next()
-            if next.isNone() {
-                break
-            }
-            if predicate(next.unwrap()) {
+        for item in this {
+            if predicate(item) {
                 return true
             }
         }
@@ -203,12 +189,8 @@ public interface Iterable<I> {
     /// assert(iter.next()).equals(some(20))
     /// ```
     public function all(predicate: fn(value: I) -> Bool) -> Bool {
-        while true {
-            next := this.next()
-            if next.isNone() {
-                break
-            }
-            if !predicate(next.unwrap()) {
+        for item in this {
+            if !predicate(item) {
                 return false
             }
         }
@@ -237,8 +219,7 @@ public interface Iterable<I> {
     /// assert(namesIter.next()).equals(some("Bao"))
     /// ```
     public function find(predicate: fn(value: I) -> Bool) -> ?I {
-        while true {
-            item := this.next()?
+        for item in this {
             if predicate(item) {
                 return some(item)
             }
@@ -292,9 +273,8 @@ public interface Iterable<I> {
     /// assertThat(iter.next() == some(20))
     /// ```
     public function until(condition: fn(value: I) -> Bool) {
-        while true {
-            next := this.next()
-            if next.isNone() or condition(next!) {
+        for item in this {
+            if condition(item) {
                 break
             }
         }
