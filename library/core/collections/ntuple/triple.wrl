@@ -66,8 +66,8 @@ public model Triple<T, U, V>
     /// ```
     /// use core.collections.Triple
     /// 
-    /// quadruple := Triple("hello", false, some(9))
-    /// transposed := triple.transpose()
+    /// var quadruple = Triple("hello", false, some(9))
+    /// var transposed = triple.transpose()
     /// 
     /// assert(transposed).equals(Triple(some(9), false, "hello"))
     /// ```

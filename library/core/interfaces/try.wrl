@@ -16,11 +16,11 @@ use core.prelude.Outcome
 /// #### First Approach:
 /// ```
 /// function parseAndDouble1(numberStr: String) -> Maybe<Int32> {
-///     maybeInteger := Int32.fromStr(numberStr)
+///     var maybeInteger = Int32.fromStr(numberStr)
 ///     if maybeInteger.isNone() {
 ///         return none()
 ///     }
-///     integer := maybeInteger.unwrap()
+///     var integer = maybeInteger.unwrap()
 ///     return some(integer * integer)
 /// }
 /// ```
@@ -32,7 +32,7 @@ use core.prelude.Outcome
 ///     // returned from this function. If the parsing is 
 ///     // successful, then the value is passed to the variable
 ///     // "integer".
-///     integer := Int32.fromStr(numberStr)? 
+///     var integer = Int32.fromStr(numberStr)? 
 ///     return some(integer * integer)
 /// }
 /// ```

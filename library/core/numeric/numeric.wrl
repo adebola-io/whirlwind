@@ -36,7 +36,7 @@ public model Int32
     /// Returns true if the value is less than 0.
     /// ### Usage
     /// ```
-    /// x := -1
+    /// var x = -1
     /// assertThat(x.isNegative())
     /// ```
     public function isNegative -> Bool {
@@ -60,7 +60,7 @@ public model Int64
     /// Returns true if the value is less than 0.
     /// ### Usage
     /// ```
-    /// x := -1
+    /// var x: Int64 = -1
     /// assertThat(x.isNegative())
     /// ```
     public function isNegative -> Bool {

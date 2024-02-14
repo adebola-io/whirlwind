@@ -30,7 +30,7 @@ use core.{
 /// }
 /// ```
 public function todo<M implements Display>(message?: M) -> never {
-    messageStr := message.map(fn (message) message.toStr())
+    var messageStr = message.map(fn (message) message.toStr())
     return fatal(messageStr.orElse(fn some("Entered unfinished code.")))
 }
 
@@ -103,11 +103,11 @@ import "internals:control" {
 /// }
 /// ```
 public function fatal(message?: String) -> never {
-    errorMessage := message.unwrapOr("Fatal Sequence error.")
+    var errorMessage = message.unwrapOr("Fatal Sequence error.")
     // generate stack trace.
-    messageOffset := getOffset(errorMessage)
-    messageLength := errorMessage.length()
-    id := builtin.sequence.sequenceId()
+    var messageOffset = getOffset(errorMessage)
+    var messageLength = errorMessage.length()
+    var id = builtin.sequence.sequenceId()
     stop(id, messageOffset, messageLength)
 }
 
@@ -134,7 +134,7 @@ public function fatal(message?: String) -> never {
 /// 
 /// ```
 public function memoize<T>(func: fn -> T) -> fn -> T {
-    value := none()
+    var value = none()
     return fn {
         if value.isNone() {
             value = some(func())
@@ -160,7 +160,7 @@ public function memoize<T>(func: fn -> T) -> fn -> T {
 /// initializeApp() // Does nothing.
 /// ```
 public function once(func: fn) -> fn {
-    hasRun := false
+    var hasRun = false
     return fn {
         if !hasRun { return }
         hasRun = true
@@ -208,8 +208,8 @@ public function always<T>(value: T) -> fn -> T {
 /// 
 /// ### Usage
 /// ```
-/// originalValue := 42
-/// returnedValue := identity(originalValue)
+/// var originalValue = 42
+/// var returnedValue = identity(originalValue)
 /// 
 /// assert(originalValue).equals(returnedValue)
 /// ```

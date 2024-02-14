@@ -25,7 +25,7 @@ public model Set<T implements Hash>
 {
     var items: HashMap<T, Bool>
     new(data?: []T) {
-        // dataVal := data.unwrapOrDefault()
+        // var dataVal = data.unwrapOrDefault()
         this.items = HashMap()
         // for element in dataVal {
         //     this.items.set(element, true)
@@ -36,7 +36,7 @@ public model Set<T implements Hash>
         todo()
     }
     public function [Display.toStr]|=(T implements Display) -> String {
-        str := "Set { "
+        var str = "Set { "
         for { a as idx, b as tuple } in this.items.iter().enumerate() {
             var { a as item } = tuple
             str += item.toStr()
@@ -53,13 +53,13 @@ public model Set<T implements Hash>
     /// ```
     /// use core.collections.Set
     /// 
-    /// set := Set()
+    /// var set = Set()
     /// set.add("hello")
     /// 
-    /// assertThat()
+    /// assertThat(set.has("hello"))
     /// ```
     public function add(element: T) {
-        _ := this.items.set(element, true)
+        var _ = this.items.set(element, true)
     }
     /// Checks if an element is contained within the current set.
     public function has(element: T) -> Bool {
@@ -83,7 +83,7 @@ public model Set<T implements Hash>
     /// assertThat(!set.has(1))
     /// ```
     public function remove(element: T) {
-        _ := this.items.remove(element)
+        var _ = this.items.remove(element)
     }
     /// Returns true if the current set contains the exact same 
     /// elements as the other.
@@ -98,7 +98,7 @@ public model Set<T implements Hash>
     /// Returns a new set consisting of the elements from the current
     /// set that are not in another set.
     public function difference(other: This) -> This {
-        difference := Set()
+        var difference = Set()
         for { a as element } in this.items {
             if !other.has(element) {
                 difference.add(element)
@@ -117,15 +117,15 @@ public model Set<T implements Hash>
     /// ```
     /// use core.collections.Set
     /// 
-    /// setA := [1, 2, 3, 4])
-    /// setB := Set([3, 4, 5, 6])
+    /// var setA = [1, 2, 3, 4])
+    /// var setB = Set([3, 4, 5, 6])
     /// 
-    /// union := setA.union(setB)
+    /// var union = setA.union(setB)
     /// 
     /// assertThat(union.equals(Set([1, 2, 3, 4, 5, 6])))
     /// ```
     public function union(other: This) -> This {
-        unionSet := Set()
+        var unionSet = Set()
         this.items
             .iter()
             .chain(other.items.iter())
@@ -138,15 +138,15 @@ public model Set<T implements Hash>
     /// ```
     /// use core.collections.Set
     /// 
-    /// setA := Set([1, 2, 3, 4])
-    /// setB := Set([3, 4, 5, 6])
+    /// var setA = Set([1, 2, 3, 4])
+    /// var setB = Set([3, 4, 5, 6])
     /// 
-    /// union := setA.intersection(setB)
+    /// var union = setA.intersection(setB)
     /// 
     /// assertThat(union.equals(Set([3, 4])))
     /// ```
     public function intersection(other: This) -> This {
-        unionSet := Set()
+        var unionSet = Set()
         for { a as element} in this.items {
             if other.has(element) {
                 unionSet.add(element)
@@ -159,7 +159,7 @@ public model Set<T implements Hash>
     /// ```
     /// use core.collections.Set
     /// 
-    /// set := Set([1, 2, 8, 9])
+    /// var set = Set([1, 2, 8, 9])
     /// 
     /// assert(set.cardinality()).equals(4)
     /// ```
@@ -184,8 +184,8 @@ public model Set<T implements Hash>
     /// ```
     /// use core.collections.Set
     /// 
-    /// setA := Set([1, 2, 3, 4, 5])
-    /// setB := Set([2, 3, 5])
+    /// var setA = Set([1, 2, 3, 4, 5])
+    /// var setB = Set([2, 3, 5])
     /// 
     /// assertThat(setB.isSubsetOf(setA))
     /// ```
@@ -203,8 +203,8 @@ public model Set<T implements Hash>
     /// ```
     /// use core.collections.Set
     /// 
-    /// setA := Set([1, 2, 3, 4, 5])
-    /// setB := Set([2, 3, 5])
+    /// var setA = Set([1, 2, 3, 4, 5])
+    /// var setB = Set([2, 3, 5])
     /// 
     /// assertThat(setA.isSupersetOf(setB))
     /// ```

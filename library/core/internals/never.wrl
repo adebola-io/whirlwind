@@ -22,8 +22,8 @@ module never
 /// function blackHole -> never {
 ///     core.sentinels.exit(1) // Exits the program and never returns.
 /// }
-/// num: Int32 := blackHole() // valid.
-/// str: String := blackHole() // valid.
+/// var num: Int32 = blackHole() // valid.
+/// var str: String = blackHole() // valid.
 /// 
 /// function produceValue -> String {
 ///     return blackHole() // valid.
@@ -33,7 +33,7 @@ module never
 /// This means that the following statements will produce errors.
 /// <!--#ignore-->
 /// ```
-/// neverNum: never := 0 // will not compile.
+/// var neverNum: never = 0 // will not compile.
 /// type Recursive = Recursive
 /// neverBool: Recursive = true // will not compile.
 /// 

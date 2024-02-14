@@ -19,7 +19,7 @@ public model Error {
 /// Returns a string value corresponding to the path of the current working directory.
 /// ### Usage
 /// ```
-/// currentDir := system.process.cwd()
+/// var currentDir = system.process.cwd()
 /// print("The current directory is " + currentDir)
 /// ```
 public function cwd -> String {

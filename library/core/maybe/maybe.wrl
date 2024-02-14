@@ -44,7 +44,7 @@ public model Maybe<T>
     /// Converts the Maybe to a string.
     /// ### Usage
     /// ```
-    /// maybeInt := some(90)
+    /// var maybeInt = some(90)
     /// assert(maybeInt.toStr()).equals("Maybe.some(90)")
     /// 
     /// maybeInt = none()
@@ -83,7 +83,7 @@ public model Maybe<T>
     /// later is the case.
     /// ### Usage
     /// ```
-    /// maybeVal := some("Hello, world!")
+    /// var maybeVal = some("Hello, world!")
     /// assert(maybeVal.expect("No value!!")).equals("Hello, world!")
     /// ```
     public function expect(error: String) -> T {
@@ -92,10 +92,10 @@ public model Maybe<T>
     /// Returns a Bool indicating if the Maybe contains no value.
     /// ### Usage
     /// ```
-    /// noValue: ?String := none()
+    /// var noValue: ?String = none()
     /// assertThat(noValue.isNone())
     /// 
-    /// stringValue := some("boy")
+    /// var stringValue = some("boy")
     /// assertThat(!stringValue.isNone())
     /// ```
     public function isNone -> Bool {
@@ -104,10 +104,10 @@ public model Maybe<T>
     /// Returns a Bool indicating whether there is a value contained or not.
     /// ### Usage
     /// ```
-    /// stringValue := some("boy")
+    /// var stringValue = some("boy")
     /// assertThat(stringValue.isSome())
     /// 
-    /// noValue: ?String := none()
+    /// var noValue: ?String = none()
     /// assertThat(!noValue.isSome())
     /// ```
     public function isSome -> Bool {
@@ -117,15 +117,15 @@ public model Maybe<T>
     /// upholds a given predicate.
     /// ### Usage
     /// ```
-    /// predicate := fn(value: Int32) value == 42
+    /// var predicate = fn(value: Int32) value == 42
     /// 
-    /// maybeInt := some(42)
+    /// var maybeInt = some(42)
     /// assertThat(maybeInt.isSomeAnd(predicate))
     /// 
-    /// maybeInt2 := some(100)
+    /// var maybeInt2 = some(100)
     /// assertThat(!maybeInt2.isSomeAnd(predicate))
     /// 
-    /// maybeInt3: ?Int32 := none()
+    /// var maybeInt3: ?Int32 = none()
     /// assertThat(!maybeInt3.isSomeAnd(predicate))
     /// ```
     public function isSomeAnd(predicate: fn(value: T) -> Bool) -> Bool {
@@ -134,10 +134,10 @@ public model Maybe<T>
     /// Performs a computation if there is an internal value contained.
     /// ### Usage
     /// ```
-    /// maybeValue := some(42)
+    /// var maybeValue = some(42)
     /// 
     /// maybeValue.isSomeThen(fn(value) {
-    ///     message := String.fmt("The value is %").add(value).finish()
+    ///     var message = String.fmt("The value is %").add(value).finish()
     ///     print(message)
     /// })
     /// ```
@@ -155,15 +155,15 @@ public model Maybe<T>
     /// upholds a given predicate.
     /// ### Usage
     /// ```
-    /// predicate := fn(value: Int32) value > 5
+    /// var predicate = fn(value: Int32) value > 5
     /// 
-    /// maybeInt := some(10)
+    /// var maybeInt = some(10)
     /// assertThat(maybeInt.isNoneOr(predicate))
     /// 
-    /// maybeInt2: ?Int32 := none()
+    /// var maybeInt2: ?Int32 = none()
     /// assertThat(maybeInt2.isNoneOr(predicate))
     /// 
-    /// maybeInt3 := some(4)
+    /// var maybeInt3 = some(4)
     /// assertThat(not maybeInt3.isNoneOr(predicate))
     /// ```
     public function isNoneOr(predicate: fn(value: T) -> Bool) -> Bool {
@@ -182,9 +182,9 @@ public model Maybe<T>
     /// ### Usage
     /// ```
     /// use core.math.parseInt
-    /// parseError := fn Error("Could not parse.")
+    /// var parseError = fn Error("Could not parse.")
     /// 
-    /// intErr := parseInt("a9s").someOrElse(parseError)
+    /// var intErr = parseInt("a9s").someOrElse(parseError)
     /// 
     /// assert(intErr).equals(err(Error("Could not parse.")))
     /// ```
@@ -200,7 +200,7 @@ public model Maybe<T>
     /// <!--ignore-->
     /// ### Usage
     /// ```
-    /// numValue := some(89)
+    /// var numValue = some(89)
     /// assert(numValue.unwrap()).equals(89)
     /// ```
     /// <!--ignore-->
@@ -219,7 +219,7 @@ public model Maybe<T>
     /// Returns the internal value, or another given value.
     /// ### Usage
     /// ```
-    /// maybeVal := some(45)
+    /// var maybeVal = some(45)
     /// assert(maybeVal.unwrapOr(0)).equals(45)
     /// 
     /// maybeVal = none()
@@ -235,12 +235,12 @@ public model Maybe<T>
     /// Converts a `Maybe<T>` to a `Maybe<E>` by applying a transformation function.
     /// ### Usage
     /// ```
-    /// double := fn(x: Number) x * 2
+    /// var double = fn(x: Number) x * 2
     /// 
-    /// first := some(9).map(double)
+    /// var first = some(9).map(double)
     /// assert(first!).equals(18)
     /// 
-    /// second: ?Number := none().map(double)
+    /// var second: ?Number = none().map(double)
     /// assertThat(double.isNone())
     /// ```
     public function map<U>(transform: fn(former: T) -> U) -> ?U {
@@ -260,10 +260,10 @@ public model Maybe<T>
     /// If it does not, it returns the default value of the internal type.
     /// ### Usage
     /// ```
-    /// i := some(50)
+    /// var i = some(50)
     /// assert(i.unwrapOrDefault()).equals(50)
     /// 
-    /// j: ?Int32 := none()
+    /// var j: ?Int32 = none()
     /// assert(j.unwrapOrDefault()).equals(0) // default value for Int32.
     //  ```
     public function unwrapOrDefault|=(T implements Default) -> T {

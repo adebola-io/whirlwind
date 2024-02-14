@@ -18,7 +18,7 @@ public use prospect.Prospect
 /// async function asyncSquare(a: Int32) -> Int32 {
 ///     return a * a
 /// }
-/// num := toSync(asyncSquare(2))
+/// var num = toSync(asyncSquare(2))
 /// assert(num).equals(4) // 2 * 2.
 /// ```
 /// It is the same as running `.run().await()` on the prospect (Its implementation is quite literally that).

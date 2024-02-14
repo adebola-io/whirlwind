@@ -24,7 +24,7 @@ import "internal:math" {
     /// ```
     /// use core.math.sqrt
     /// 
-    /// num := sqrt(4)
+    /// var num = sqrt(4)
     /// assertThat(num == 2)
     /// ```
     "sqrt" as public function sqrt(a: Number) -> Number
@@ -79,7 +79,7 @@ import "internal:math" {
     /// 64-bit floating-point number.
     /// ### Usage
     /// ```
-    /// pi := core.math.pi() // 3.1415926536...
+    /// var pi = core.math.pi() // 3.1415926536...
     /// ```
     "pi" as public function pi() -> Float64
 
@@ -92,13 +92,13 @@ import "internal:math" {
 /// 
 /// ### Usage
 /// ```
-/// use core.math.psRandom
-/// randNo := psRandom(some(0..10))
+/// use core.math.psrandom
+/// var randNo = psrandom(some(0..10))
 /// assert(randNo).isLessThan(11)
 /// ```
 /// If no range is provided, it uses the range 0 to 1 (inclusive).
 /// ```
-/// randNo2 := psRandom()
+/// var randNo2 = psrandom()
 /// assert(randNo2).isLessThan(2)
 /// ```
 public function psrandom(range?: Range<Int32>) -> Float64 {
@@ -117,7 +117,7 @@ public function psrandom(range?: Range<Int32>) -> Float64 {
 /// assert(min(1, 5)).equals(1)
 /// ```
 public function min<T implements Orderable>(first: T, second: T) -> T {
-    ordering := first.compare(second)
+    var ordering = first.compare(second)
     if ordering == Ordering.Less {
         return first
     } else if ordering == Ordering.Greater {
@@ -137,7 +137,7 @@ public function min<T implements Orderable>(first: T, second: T) -> T {
 /// assert(max(1, 3)).equals(3)
 /// ```
 public function max<T implements Orderable>(first: T, second: T) -> T {
-    ordering := first.compare(second)
+    var ordering = first.compare(second)
     if ordering == Ordering.Less {
         return second
     } else if ordering == Ordering.Greater {

@@ -3,7 +3,7 @@ module terminal
 /// Prints a message or an object to the console, terminal 
 /// or any predefined output interface.
 public function print<M implements Display>(message: M) {
-    messageStr := message.toStr()
+    var messageStr = message.toStr()
     todo()
 }
 
@@ -17,7 +17,7 @@ public function prompt(message?: String) -> String {
 /// Prints a message or an object to the console, terminal, 
 /// or any predefined output interface.
 public function printFmt<T implements Display>(data: T) {
-    dataStr := data.toFmtStr()
+    var dataStr = data.toFmtStr()
     todo()
 }
 

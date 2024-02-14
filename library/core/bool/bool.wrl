@@ -30,10 +30,10 @@ public model Bool
     /// Creates a `Maybe<T>` based on the value.
     /// ### Usage
     /// ```
-    /// operationSuccessful := true
-    /// message := fn "Operation successful!"
+    /// var operationSuccessful = true
+    /// var message = fn "Operation successful!"
     /// 
-    /// optionalMessage := operationSuccessful.ifTrue(message)
+    /// var optionalMessage = operationSuccessful.ifTrue(message)
     /// 
     /// assertThat(optionalMessage.isSome())
     /// ```

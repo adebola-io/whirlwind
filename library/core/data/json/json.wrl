@@ -33,7 +33,7 @@ public interface JsonValue {
     /// ```
     /// use core.data.JsonString
     /// 
-    /// str := JsonString()
+    /// var str = JsonString()
     /// assert(str.getType()).equals(JsonValueType.String)
     /// ```
     public function getType -> JsonValueType
@@ -42,7 +42,7 @@ public interface JsonValue {
     /// ```
     /// use core.data.JsonNull
     /// 
-    /// null := JsonNull()
+    /// var null = JsonNull()
     /// assertThat(null.isNull())
     /// ```
     public function isNull -> Bool {
@@ -53,7 +53,7 @@ public interface JsonValue {
     /// ```
     /// use core.data.JsonString
     /// 
-    /// str := JsonString()
+    /// var str = JsonString()
     /// assertThat(str.isString())
     /// ```
     public function isString -> Bool {
@@ -64,7 +64,7 @@ public interface JsonValue {
     /// ```
     /// use core.data.JsonNumber
     /// 
-    /// num := JsonNumber(some(42))
+    /// var num = JsonNumber(some(42))
     /// assertThat(num.isNumber())
     /// ```
     public function isNumber -> Bool {
@@ -75,7 +75,7 @@ public interface JsonValue {
     /// ```
     /// use core.data.JsonArray
     /// 
-    /// arr := JsonArray()
+    /// var arr = JsonArray()
     /// assertThat(arr.isArray())
     /// ```
     public function isArray -> Bool {
@@ -94,10 +94,10 @@ public interface JsonValue {
     /// ```
     /// use core.data.{JsonArray, JsonString}
     /// 
-    /// arr := JsonArray()
+    /// var arr = JsonArray()
     /// Assert(arr.asArray()).equals(some([]))
     /// 
-    /// str := JsonString()
+    /// var str = JsonString()
     /// assert(str.asArray()).equals(none())
     /// ```
     public function asArray -> ?[]RawJsonVal {
@@ -109,10 +109,10 @@ public interface JsonValue {
     /// ```
     /// use core.data.{JsonString, JsonBool}
     /// 
-    /// str := JsonString()
+    /// var str = JsonString()
     /// assert(str.asString()).equals(some(""))
     /// 
-    /// bool := JsonBool(some(true))
+    /// var bool = JsonBool(some(true))
     /// assert(str.asString()).equals(none())
     /// ```
     public function asString -> ?String {

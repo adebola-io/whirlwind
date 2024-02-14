@@ -9,7 +9,7 @@ use core.math.floor
 /// ```
 /// use core.collections.quickSort
 /// 
-/// arr := [5, 6, 7, 8, 2]
+/// var arr = [5, 6, 7, 8, 2]
 /// quickSort(arr)
 /// assert(arr).equals([2, 5, 6, 7, 8])
 /// ```
@@ -21,14 +21,14 @@ function quickSortInner<T implements Orderable>(arr: []T, left: Int32, right: In
     if left >= right { 
         return
     } 
-    pivot := arr[floor((left + right) / 2)]
-    i := left
-    j := right
+    var pivot = arr[floor((left + right) / 2)]
+    var i = left
+    var j = right
     while i <= j {
         while arr[i] < pivot { i += 1 }
         while arr[j] > pivot { j -= 1 }
         if i <= j {
-            temp := arr[j]
+            var temp = arr[j]
             arr[j] = arr[i]
             arr[i] = temp
             i += 1
@@ -49,12 +49,12 @@ public function mergeSort<T implements Orderable>(array: []T) {
 /// ```
 /// use core.collections.quickSort
 /// 
-/// arr := [5, 6, 7, 8, 2]
+/// var arr = [5, 6, 7, 8, 2]
 /// quickSort(arr)
 /// assert(arr).equals([2, 5, 6, 7, 8])
 /// ```
 function mergeArrays<T implements Orderable>(leftArray: []T, rightArray: []T) -> []T {
-    array := []
+    var array = []
     while leftArray.length() > 0 && rightArray.length() > 0 {
         if leftArray[0] < rightArray[0] {
             array.push(leftArray.shift()!)

@@ -37,16 +37,16 @@ public model Prospect<T> {
     /// by the callback.
     /// ### Usage
     /// ```
-    /// squared := async fn(a: Int32) a * a
-    /// doubled := fn(a: Number) a * 2
+    /// var squared = async fn(a: Int32) a * a
+    /// var doubled = fn(a: Number) a * 2
     /// 
-    /// num := squared(2).then(doubled).run().await()
+    /// var num = squared(2).then(doubled).run().await()
     /// assert(num).equals(12) // (2 * 2) * 3
     /// ```
     /// Callbacks can be joined consecutively, and they will run in the
     /// order in which they are chained.
     /// ```
-    /// prospect := async fn() print("Hello!")
+    /// var prospect = async fn() print("Hello!")
     /// prospect
     ///   .then(fn print("Good day!"))
     ///   .then(fn print("How do you do?"))
@@ -72,7 +72,7 @@ public model Prospect<T> {
     /// async function aFunc {
     ///     Print("Hello from prospect!")
     /// }
-    /// prospect := aFunc() // Nothing happens yet.
+    /// var prospect = aFunc() // Nothing happens yet.
     /// prospect.run() // aFunc runs and print "Hello from prospect!".
     /// ```
     /// After the prospect completes, its entire callback chain is invoked, 
@@ -81,7 +81,7 @@ public model Prospect<T> {
     /// async function aFunc {
     ///     print("Hello 1")
     /// }
-    /// prospect := aFunc()
+    /// var prospect = aFunc()
     /// prospect.then(fn() print("Hello 2"))
     /// prospect.run() // Prints "Hello 1", then prints "Hello 2".
     /// ```
@@ -91,7 +91,7 @@ public model Prospect<T> {
     /// This means that the following code will cause an error.
     /// <!--ignore-->
     /// ```
-    /// prospect2 := aFunc()
+    /// var prospect2 = aFunc()
     /// prospect2.run()
     /// prospect2.then(fn print("Something else.")) // Will cause an error.
     /// ```
@@ -121,15 +121,15 @@ public model Prospect<T> {
     /// ### Usage
     /// ```
     /// use core.Time.sleep
-    /// first := async fn {
+    /// var first = async fn {
     ///     sleep(300) 
     ///     return "Hello!"
     /// }
-    /// second := async fn {
+    /// var second = async fn {
     ///     sleep(500)
     ///     return "Hola!"
     /// }
-    /// greeting := first.race(second).run().await()
+    /// var greeting = first.race(second).run().await()
     /// assert(greeting).equals("Hello")
     /// ```
     public function race(other: Prospect<T>) -> Prospect<T> {
@@ -141,19 +141,19 @@ public model Prospect<T> {
     /// ### Usage
     /// ```
     /// use core.Time.sleep
-    /// first := async fn {
+    /// var first = async fn {
     ///     sleep(100)
     ///     return 1
     /// }
-    /// second := async fn {
+    /// var second = async fn {
     ///     sleep(200)
     ///     return 2
     /// }
-    /// third := async fn {
+    /// var third = async fn {
     ///     sleep(300)
     ///     return 3
     /// }
-    /// num := Prospect.raceAll([first, second, third]).run().await()
+    /// var num = Prospect.raceAll([first, second, third]).run().await()
     /// assert(num).equals(1)
     /// ```
     public static function raceAll<T>(prospects: Array<Prospect<T>>) -> Prospect<T> {

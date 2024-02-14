@@ -26,8 +26,7 @@ public model Eventual<T> implements Guaranteed<T> {
     /// Until the eventual is resolved, the value remains uninitialized, as with
     /// the value in `Maybe`.
     /// 
-    /// Trying to read it while it does not exist will lead to a runtime error in
-    /// the VM.
+    /// Trying to read it while it does not exist will lead to a runtime error.
     var value: T
     /// Returns true if the eventual has been resolved to a value.
     public function isResolved -> Bool {
@@ -49,9 +48,9 @@ public model Eventual<T> implements Guaranteed<T> {
     /// ### Usage
     /// ```
     /// async function asyncPrint() {
-    ///     Print("It's a good day!")
+    ///     print("It's a good day!")
     /// }
-    /// eventual := asyncPrint().run()
+    /// var eventual = asyncPrint().run()
     /// if eventual.tryAbort() {
     ///     print("Eventual was aborted.")
     /// } else {
@@ -84,7 +83,7 @@ public model Eventual<T> implements Guaranteed<T> {
         builtin.eventual.abort(this)
         this.aborted = true
         if this.resolved {
-            _ := fatal(some("Cannot abort an already resolved eventual."))
+            var _ = fatal(some("Cannot abort an already resolved eventual."))
         }
     }
     /// Blocks other operations in the enclosing sequence until the eventual is resolved.
@@ -103,16 +102,16 @@ public model Eventual<T> implements Guaranteed<T> {
     ///     core.time.sleep(1000)
     ///     return x
     /// }
-    /// x := 34
-    /// y := waitASec(x).run().await() // Waits a second and produces the value.
+    /// var x = 34
+    /// var y = waitASec(x).run().await() // Waits a second and produces the value.
     /// assertThat(x == y)
     /// ```
     /// Calling `.await()` on an already resolved eventual just returns a copy of the previously produced value.
     /// ```
-    /// eventual := waitASec().run()
+    /// var eventual = waitASec().run()
     /// 
-    /// a := eventual.await()
-    /// b := eventual.await()
+    /// var a = eventual.await()
+    /// var b = eventual.await()
     /// 
     /// assertThat(a == b)
     /// ```

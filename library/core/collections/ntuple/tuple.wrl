@@ -23,8 +23,8 @@ public model Tuple<T, U>
     /// Display.
     /// ### Usage
     /// ```
-    /// tuple := pair("hello", 123)
-    /// str := tuple.toStr()
+    /// var tuple = pair("hello", 123)
+    /// var str = tuple.toStr()
     /// 
     /// assert(str).equals("Tuple(hello, 123)")
     /// ```
@@ -50,8 +50,8 @@ public model Tuple<T, U>
     /// ```
     /// use core.collections.Tuple
     /// 
-    /// tuple := Tuple(true, "story")
-    /// swapped := tuple.swap()
+    /// var tuple = Tuple(true, "story")
+    /// var swapped = tuple.swap()
     /// assertThat(swapped == Tuple("story", true))
     /// ```
     public function swap -> Tuple<U, T> {
@@ -66,14 +66,14 @@ public model Tuple<T, U>
 /// 
 /// ### Usage
 /// ```
-/// pair1 := pair(1, "apple")
-/// pair2 := pair(true, [1, 2, 3])
+/// var pair1 = pair(1, "apple")
+/// var pair2 = pair(true, [1, 2, 3])
 /// 
 /// // Accessing elements of the tuple.
-/// first := pair1.a 
+/// var first = pair1.a 
 /// assert(first).equals(1)
 /// 
-/// second := pair1.b
+/// var second = pair1.b
 /// assert(second).equals("apple")
 /// ```
 public function pair<T, U>(a: T, b: U) -> Tuple<T, U> {

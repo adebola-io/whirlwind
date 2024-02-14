@@ -34,10 +34,10 @@ public model Outcome<T, E>
 
     public function [Display.toStr]|=(T implements Display and E implements Display) -> String {
         if this.isOk() {
-            value := builtin.outcome.unwrap(this)
+            var value = builtin.outcome.unwrap(this)
             return String.fmt("Outcome.ok(%)").add(value).finish()
         }
-        errValue := builtin.outcome.unwrapError(this)
+        var errValue = builtin.outcome.unwrapError(this)
         return String.fmt("Outcome.err(%)").add(errValue).finish()
     }
     function [Guaranteed.guarantee] -> T {
@@ -53,13 +53,13 @@ public model Outcome<T, E>
     /// Returns the inner value if the operation was a success, or causes a runtime error otherwise.
     /// ### Usage
     /// ```
-    /// outcome := ok(9)
-    /// value := outcome.unwrap()
+    /// var outcome = ok(9)
+    /// var value = outcome.unwrap()
     /// assert(value).equals(9)
     /// ```
     /// <!--ignore-->
     /// ```
-    /// outcome := err("This was an error")
+    /// var outcome = err("This was an error")
     /// outcome.unwrap() // Will cause a runtime error.
     /// ```
     public function unwrap -> T {
@@ -71,8 +71,8 @@ public model Outcome<T, E>
     /// Returns the inner error value if the outcome is an error, or causes a runtime error otherwise.
     /// ### Usage
     /// ```
-    /// outcome := err("An error occured.")
-    /// value := outcome.asErr()
+    /// var outcome = err("An error occured.")
+    /// var value = outcome.asErr()
     /// assert(value).equals("An error occured.")
     /// ```
     public function asErr -> E {
@@ -85,7 +85,7 @@ public model Outcome<T, E>
     /// i.e. The operation was successful.
     /// ### Usage
     /// ```
-    /// outcome := ok(9)
+    /// var outcome = ok(9)
     /// assertThat(outcome.isOk())
     /// ```
     public function isOk -> Bool {
@@ -96,7 +96,7 @@ public model Outcome<T, E>
     /// i.e. The operation failed.
     /// ### Usage
     /// ```
-    /// outcome := err("Something went wrong.")
+    /// var outcome = err("Something went wrong.")
     /// AssertThat(outcome.isErr())
     /// ```
     public function isErr -> Bool {
@@ -105,7 +105,7 @@ public model Outcome<T, E>
     /// Checks if the outcome was successful and checks its internal value as well.
     /// ### Usage
     /// ```
-    /// outcome := ok(42)
+    /// var outcome = ok(42)
     /// assertThat(outcome.isOkAnd(fn(value) value == 42))
     /// ```
     public function isOkAnd(predicate: fn(value: T) -> Bool) -> Bool {
@@ -114,7 +114,7 @@ public model Outcome<T, E>
     /// Checks if the outcome failed and checks the error value as well.
     /// ### Usage
     /// ```
-    /// outcome := err("Something went wrong.")
+    /// var outcome = err("Something went wrong.")
     /// assertThat(outcome.isErrAnd(fn(error) error == "Something went wrong."))
     /// ```
     public function isErrAnd(predicate: fn(value: E) -> Bool) -> Bool {
@@ -127,11 +127,11 @@ public model Outcome<T, E>
     /// Converts an `Outcome<T, E>` to an `Outcome<U, E>` by applying a function.
     /// ### Usage
     /// ```
-    /// okValue := ok(69)
-    /// errValue := err("Error occurred.")
+    /// var okValue = ok(69)
+    /// var errValue = err("Error occurred.")
     /// 
-    /// newOk := okValue.map(fn(value) value / 3)
-    /// newErr := errValue.map(fn(value) value / 3)
+    /// var newOk = okValue.map(fn(value) value / 3)
+    /// var newErr = errValue.map(fn(value) value / 3)
     /// 
     /// assertThat(newOk == ok(23))
     /// assertThat(newErr == err("Error occurred."))
@@ -150,7 +150,7 @@ enum OutcomeType {
 /// Returns an `Outcome` with a value.
 /// ### Usage
 /// ```
-/// outcome := ok(9)
+/// var outcome = ok(9)
 /// assertThat(outcome.isOk())
 /// ```
 public function ok<T, U>(value: T) -> Outcome<T, U> {
@@ -161,7 +161,7 @@ public function ok<T, U>(value: T) -> Outcome<T, U> {
 /// Returns an `Outcome` with an error.
 /// ### Usage
 /// ```
-/// outcome := err("Something went wrong.")
+/// var outcome = err("Something went wrong.")
 /// assertThat(outcome.isErr())
 /// ```
 public function err<T, U>(error: U) -> Outcome<T, U> {

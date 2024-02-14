@@ -26,7 +26,7 @@ public model ArrayStack<T> {
     /// ## Usage
     /// ```wrl
     /// use core.collections.ArrayStack
-    /// stack := ArrayStack()
+    /// var stack = ArrayStack()
     ///
     /// AssertThat(stack.capacity() == 0)
     /// stack.setCapacity(1) // Sets the stack to contain only one item.

@@ -33,7 +33,7 @@ public model ColoredString implements Display {
     }
 
     public static function from<T implements Display>(value: T) -> This {
-        text := value.toStr()
+        var text = value.toStr()
         ColoredString(some(text))
     }
 }

@@ -35,18 +35,18 @@ public model String
     /// Adds two strings together.
     /// ## Usage
     /// ```
-    /// str := "Hello" + ", world!"
+    /// var str = "Hello" + ", world!"
     /// assert(str).equals("Hello, world!")
     /// ```
     public function [Addition.add](other: This) -> This {
-        newString := this
+        var newString = this
         newString.vec.append(this.vec)
         return newString
     }
     /// Creates an iterator from the contents of a string.
     /// ## Usage
     /// ```
-    /// str := "This is a string"
+    /// var str = "This is a string"
     /// 
     /// for char in str {
     ///     print(char)
@@ -58,7 +58,7 @@ public model String
     /// Adds text to the end of the string.
     /// ## Usage
     /// ```
-    /// str := "Hello"
+    /// var str = "Hello"
     /// 
     /// str.append(", world!")
     /// 
@@ -77,8 +77,8 @@ public model String
     /// Changes the first character of every word in the string to upper case.
     /// ## Usage
     /// ```
-    /// str := "jonathan is a boy"
-    /// str2 := str.capitalCase()
+    /// var str = "jonathan is a boy"
+    /// var str2 = str.capitalCase()
     /// 
     /// assert(str2).equals("Jonathan Is A Boy")
     /// ```
@@ -88,7 +88,7 @@ public model String
     /// Returns an iterator over the valid characters in the string.
     /// ## Usage
     /// ```
-    /// str := "adebola.io"
+    /// var str = "adebola.io"
     /// 
     /// for char in str.chars() {
     ///     print(char)
@@ -100,7 +100,7 @@ public model String
     /// Empties the string of its characters.
     /// ## Usage
     /// ```
-    /// str := "tralalalalaleeday"
+    /// var str = "tralalalalaleeday"
     /// 
     /// str.clear()
     /// 
@@ -113,7 +113,7 @@ public model String
     /// Returns true if a substring is contained within the string.
     /// ## Usage
     /// ```
-    /// str := "This is a world premiere."
+    /// var str = "This is a world premiere."
     /// 
     /// assertThat(str.contains("world"))
     /// assertThat(str.contains("premiere"))
@@ -124,13 +124,13 @@ public model String
     /// Returns true if the string ends with a given pattern.
     /// ### Usage
     /// ```
-    /// name := "Michael"
+    /// var name = "Michael"
     /// assertThat(name.endsWith("l"))
     /// assertThat(name.endsWith("ael"))
     /// ```
     public function endsWith(pat: String) -> Bool {
-        thisIter := this.vec.asInt32Array().reverse()
-        patternIter := pat.vec.asInt32Array().reverse()
+        var thisIter = this.vec.asInt32Array().reverse()
+        var patternIter = pat.vec.asInt32Array().reverse()
         thisIter.zip(patternIter).all(fn (tuple) {
             tuple.a == tuple.b
         })
@@ -138,10 +138,10 @@ public model String
     /// Returns true if the string is made up entirely of alphabetic and numeric characters.
     /// ## Usage
     /// ```
-    /// str := "helloworld1234"
+    /// var str = "helloworld1234"
     /// assertThat(str.isAlphanumeric())
     /// 
-    /// str2 := "%hello_world$"
+    /// var str2 = "%hello_world$"
     /// assertThat(!str2.isAlphanumeric())
     /// ```
     public function isAlphanumeric -> Bool {
@@ -150,7 +150,7 @@ public model String
     /// Returns true if the string has no characters.
     /// ## Usage
     /// ```
-    /// str := ""
+    /// var str = ""
     /// assertThat(str.isEmpty())
     /// 
     /// str.append("Hello")
@@ -162,7 +162,7 @@ public model String
     /// Returns the number of characters in the string.
     /// ## Usage
     /// ```
-    /// str := "Hello"
+    /// var str = "Hello"
     /// 
     /// assert(str.length()).equals(5)
     /// ```
@@ -172,8 +172,8 @@ public model String
     /// Changes the case of all letters in the string to lower case.
     /// ## Usage
     /// ```
-    /// str := "HELLO, WORLD!"
-    /// str2 := str.lowerCase()
+    /// var str = "HELLO, WORLD!"
+    /// var str2 = str.lowerCase()
     /// 
     /// assert(str2).equals("hello, world!")
     /// ```
@@ -183,8 +183,8 @@ public model String
     /// Returns a version of the string with padding on both sides.
     /// ## Usage
     /// ```
-    /// str := "Alright"
-    /// str2 := str.pad(3)
+    /// var str = "Alright"
+    /// var str2 = str.pad(3)
     /// 
     /// assert(str2).equals("   Alright   ") // 3 spaces before and after.
     /// ```
@@ -194,8 +194,8 @@ public model String
     /// Returns a version of the string with left padding.
     /// ## Usage
     /// ```
-    /// str := "Alright"
-    /// str2 := str.padLeft(3)
+    /// var str = "Alright"
+    /// var str2 = str.padLeft(3)
     /// 
     /// assert(str2).equals("   Alright") // 3 spaces before.
     /// ```
@@ -205,8 +205,8 @@ public model String
     /// Returns a version of the string with left padding.
     /// ## Usage
     /// ```
-    /// str := "Alright"
-    /// str2 := str.padRight(3)
+    /// var str = "Alright"
+    /// var str2 = str.padRight(3)
     /// 
     /// assert(str2).equals("Alright   ") // 3 spaces before.
     /// ```
@@ -216,7 +216,7 @@ public model String
     /// Pads the string in place with whitespace on the left and right sides.
     /// ## Usage
     /// ```
-    /// str := "Hello, world!"
+    /// var str = "Hello, world!"
     /// str.padInPlace(3)
     /// 
     /// assert(str).equals("   Hello, world!   ")
@@ -227,13 +227,13 @@ public model String
     /// Adds text to the start of the string.
     /// ## Usage
     /// ```
-    /// str := "world!"
+    /// var str = "world!"
     /// str.prepend("Hello, ")
     /// 
     /// assert(str).equals("Hello, world!")
     /// ```
     public function prepend(prefix: String) {
-        newString := prefix
+        var newString = prefix
         newString += this
         this = newString
     }
@@ -241,15 +241,15 @@ public model String
     /// If count is 0, the empty string is returned.
     /// ## Usage
     /// ```
-    /// str := "Whirlwind"
+    /// var str = "Whirlwind"
     /// 
-    /// str2 := str.repeat(3)
+    /// var str2 = str.repeat(3)
     /// assert(str2).equals("WhirlwindWhirlwindWhirlwind") // 3 copies.
     /// 
-    /// str3 := str.repeat(1)
+    /// var str3 = str.repeat(1)
     /// assert(str3).equals("Whirlwind") // One copy.
     /// 
-    /// str3 := str.repeat(0)
+    /// var str3 = str.repeat(0)
     /// assertThat(str2.IsEmpty()) // No copies.
     /// ```
     public function repeat(count: Int32) -> String {
@@ -262,9 +262,9 @@ public model String
     /// Replaces all instances of a substring and returns the new string.
     /// ## Usage
     /// ```
-    /// str := "John goes to school. John buys a book."
+    /// var str = "John goes to school. John buys a book."
     /// 
-    /// str2 := str.replace("John", "Mike")
+    /// var str2 = str.replace("John", "Mike")
     /// 
     /// assert(str2).equals("Mike goes to school. Mike buys a book.")
     /// ```
@@ -274,9 +274,9 @@ public model String
     /// Returns a reversed version of the string.
     /// ## Usage
     /// ```
-    /// str := "pandemonium"
+    /// var str = "pandemonium"
     /// 
-    /// str2 := str.reverse()
+    /// var str2 = str.reverse()
     /// 
     /// assert(str2).equals("muinomednap")
     /// ```
@@ -287,7 +287,7 @@ public model String
     /// The range argument is exclusive, meaning it goes from the left index all the way to one before the right.
     /// ## Usage
     /// ```
-    /// str := "Hello, world!"
+    /// var str = "Hello, world!"
     /// 
     /// assert(str.slice(0..5)).equals(some("Hello")) // index 0 to 4.
     /// ```
@@ -297,8 +297,8 @@ public model String
     /// Divides the string into a list of substrings based on a delimeter.
     /// ## Usage
     /// ```
-    /// str := "Ring around the rosy"
-    /// words := str.split(" ")
+    /// var str = "Ring around the rosy"
+    /// var words = str.split(" ")
     /// 
     /// assert(words == ["Ring", "Around", "The", "Rosy"])
     /// ```
@@ -308,8 +308,8 @@ public model String
     /// Divides the string into a list of substrings based on a predicate.
     /// ## Usage
     /// ```
-    /// str := "Hello world. My name is James."
-    /// sentences := str.splitAt(fn(pat) pat == ". ")
+    /// var str = "Hello world. My name is James."
+    /// var sentences = str.splitAt(fn(pat) pat == ". ")
     /// 
     /// assert(sentences).equals(["Hello world", "My name is James."])
     /// ```
@@ -319,8 +319,8 @@ public model String
     /// Changes only the first character in the string to upper case.
     /// ## Usage
     /// ```
-    /// str := "nice to meet you, where you been?"
-    /// str2 := str.sentenceCase()
+    /// var str = "nice to meet you, where you been?"
+    /// var str2 = str.sentenceCase()
     /// 
     /// assert(str2).equals("Nice to meet you, where you been?")
     /// ```
@@ -330,7 +330,7 @@ public model String
     /// Returns a version of the string without left or right whitespace padding.
     /// ## Usage
     /// ```
-    /// str := "\n\n\nWhat then shall we say?  \n\n\n\r\t"
+    /// var str = "\n\n\nWhat then shall we say?  \n\n\n\r\t"
     /// 
     /// assert(str.trim()).equals("What then shall we say?")
     /// ```
@@ -340,7 +340,7 @@ public model String
     /// Mutates the string in place and removes left or right whitespace padding.
     /// ## Usage
     /// ```
-    /// str := "\n\n\nWhat then shall we say?  \n\n\n\r\t"
+    /// var str = "\n\n\nWhat then shall we say?  \n\n\n\r\t"
     /// 
     /// str.trimInPlace()
     /// 
@@ -352,7 +352,7 @@ public model String
     /// Returns a version of the string without left whitespace padding.
     /// ## Usage
     /// ```
-    /// str := "\n\n\nWhat then shall we say?\n"
+    /// var str = "\n\n\nWhat then shall we say?\n"
     /// 
     /// assert(str.trimStart()).equals("What then shall we say?\n")
     /// ```
@@ -362,7 +362,7 @@ public model String
     /// Returns a version of the string without right whitespace padding.
     /// ## Usage
     /// ```
-    /// str := "\nWhat then shall we say?\n\n\n"
+    /// var str = "\nWhat then shall we say?\n\n\n"
     /// 
     /// assert(str.trimEnd()).equals("\nWhat then shall we say?")
     /// ```
@@ -372,7 +372,7 @@ public model String
     /// Changes the case of all letters in the string to upper case.
     /// ## Usage
     /// ```
-    /// str := "hello, world!"
+    /// var str = "hello, world!"
     /// assert(str.upperCase()).equals("HELLO, WORLD!")
     /// ```
     public function upperCase -> String {
@@ -382,13 +382,13 @@ public model String
     /// 
     /// ### Usage
     /// ```
-    /// name := "Joshua"
+    /// var name = "Joshua"
     /// assertThat(name.startsWith("J"))
     /// assertThat(name.startsWith("Jo"))
     /// ```
     public function startsWith(pat: String) -> Bool {
-        thisIter := this.vec.asInt32Array().iter()
-        patternIter := pat.vec.asInt32Array().iter()
+        var thisIter = this.vec.asInt32Array().iter()
+        var patternIter = pat.vec.asInt32Array().iter()
         thisIter.zip(patternIter).all(fn (tuple) {
             var { a, b } = tuple
             a == b
@@ -411,8 +411,8 @@ public model String
     /// Creates a string from a value that implements Display.
     /// ### Usage
     /// ```
-    /// value := 1234
-    /// valueStr := String.from(value)
+    /// var value = 1234
+    /// var valueStr = String.from(value)
     /// 
     /// assert(valueStr).equals("1234")
     /// ```
@@ -422,8 +422,8 @@ public model String
     /// Creates a new formattable string template.
     /// ### Usage
     /// ```
-    /// greeting := String.fmt("Hello, %!")
-    /// greetingStr := greeting.add("John").finish()
+    /// var greeting = String.fmt("Hello, %!")
+    /// var greetingStr = greeting.add("John").finish()
     /// 
     /// assert(greetingStr).equals("Hello, John!")
     /// ```
@@ -443,7 +443,7 @@ public model Chars implements Iterable<String> {
     }
     /// Returns the next character.
     public function [Iterable.next] -> ?String {
-        // nextChar := this.string.at(this.idx)?
+        // var nextChar = this.string.at(this.idx)?
         // this.idx += 1
         // return some(nextChar)
         todo()

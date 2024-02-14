@@ -31,16 +31,16 @@ public model Template implements Display {
     /// Sets an argument based on the list of named parameters in the template string.
     /// ### Usage
     /// ```
-    /// weather := "bright"
-    /// emotion := "happy"
+    /// var weather = "bright"
+    /// var emotion = "happy"
     /// 
-    /// template := String.fmt(
+    /// var template = String.fmt(
     ///            "The day is %{weather}, 
     ///             It's bright and fair,
     ///             Oh %{emotion} day,
     ///             The day of joy!")
     /// 
-    /// completed := template
+    /// var completed = template
     ///                 .set("weather", weather)
     ///                 .set("emotion", emotion)
     ///                 .finish()
@@ -59,11 +59,11 @@ public model Template implements Display {
     /// in the template string.
     /// ### Usage
     /// ```
-    /// name := "Sefunmi"
-    /// age := 21
+    /// var name = "Sefunmi"
+    /// var age = 21
     /// 
-    /// template := String.fmt("My name is % and I am % years old.")
-    /// completed := template.add(name).add(age).finish()
+    /// var template = String.fmt("My name is % and I am % years old.")
+    /// var completed = template.add(name).add(age).finish()
     /// 
     /// assert(completed).equals("My name is Sefunmi and I am 21 years old.")
     /// ```
@@ -74,7 +74,7 @@ public model Template implements Display {
     /// Appends new template text to the end of the template.
     /// ### Usage
     /// ```
-    /// name := String.fmt("Welcome, %!")
+    /// var name = String.fmt("Welcome, %!")
     /// name.add("Mark")
     /// 
     /// name.extend(" Good %.")
@@ -94,7 +94,7 @@ public model Template implements Display {
     /// transformer is ignored until it is.
     /// ### Usage
     /// ```
-    /// template := String.fmt("Hello %!")
+    /// var template = String.fmt("Hello %!")
     /// 
     /// template.transform(0, fn(x) x.capitalCase())
     /// template.add("john")
@@ -116,7 +116,7 @@ public model Template implements Display {
 test "create templates" {
     use core.testing.assertThat
 
-    template := Template("Hello, %!")
+    var template = Template("Hello, %!")
     template.add("world")
     assertThat(template.finish() == "Hello, world!")
 }

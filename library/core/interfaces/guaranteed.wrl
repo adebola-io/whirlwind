@@ -13,15 +13,15 @@ module guaranteed
 /// the `.unwrap()` method.
 /// <!--ignore-->
 /// ```
-/// name: ?String := some("Alice")
-/// greeting := "Hello, " + name!
+/// var name: ?String = some("Alice")
+/// var greeting = "Hello, " + name!
 /// assert(greeting).equals("Hello, Alice")
 /// 
 /// name = none()
 /// name! // causes an error.
 /// 
-/// age: Outcome<Number, Error> := ok(25)
-/// message := "You are " + age! " years old"
+/// var age: Outcome<Number, Error> = ok(25)
+/// var message = "You are " + age! " years old"
 /// age = err(Error("Invalid age."))
 /// age! // causes an error.
 /// ```
@@ -43,8 +43,8 @@ module guaranteed
 ///     }
 /// }
 /// 
-/// acc := BackAccount(100)
-/// invalidAcc := BankAccount(-100)
+/// var acc = BackAccount(100)
+/// var invalidAcc = BankAccount(-100)
 /// 
 /// acc! // 100.
 /// invalidAcc! // causes an error.

@@ -63,7 +63,7 @@ public model Quadruple<T, U, V, W>
     /// ```
     /// use core.collections.{Quadruple, Tuple}
     /// 
-    /// quadruple := Quadruple(1, "Sefunmi", true, [35.5])
+    /// var quadruple = Quadruple(1, "Sefunmi", true, [35.5])
     /// var { a as first, b as second } = quadruple.toTuple()
     /// 
     /// assert(first).equals(Tuple(1, "Sefunmi"))
@@ -78,8 +78,8 @@ public model Quadruple<T, U, V, W>
     /// ```
     /// use core.collections.Quadruple
     /// 
-    /// quadruple := Quadruple("hello", false, some(9), 1.44)
-    /// transposed := quadruple.transpose()
+    /// var quadruple = Quadruple("hello", false, some(9), 1.44)
+    /// var transposed = quadruple.transpose()
     /// 
     /// assert(transposed).equals(Quadruple(1.44, some(9), false, "hello"))
     /// ```

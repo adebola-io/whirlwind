@@ -41,15 +41,15 @@ public interface Iterable<I> {
     /// Once the iterator is collected, it is exhausted and cannot produce new values.
     /// ### Usage
     /// ```
-    /// str := "Hello"
-    /// characters := str.chars()
-    /// charsArray := characters.collect()
+    /// var str = "Hello"
+    /// var characters = str.chars()
+    /// var charsArray = characters.collect()
     /// 
     /// assert(charsArray.length()).equals(5)
     /// assertThat(characters.next().isNone())
     /// ```
     public function collect -> []I {
-        array := []
+        var array = []
         for item in this {
             array.push(item)
         }
@@ -58,13 +58,13 @@ public interface Iterable<I> {
     /// Consumes the iterator and returns the number of elements left.
     /// ### Usage
     /// ```
-    /// arr := [1, 2, 3, 4, 5]
-    /// arrIter := arr.iter()
+    /// var arr = [1, 2, 3, 4, 5]
+    /// var arrIter = arr.iter()
     /// 
     /// assertThat(arrIter.count() == 5)
     /// ```
     public function count -> Int32 {
-        count := 0
+        var count = 0
         while this.next().isSome() {
             count += 1
         }
@@ -88,13 +88,13 @@ public interface Iterable<I> {
     /// 
     /// ### Usage
     /// ```
-    /// arr := ["this", "is", "the", "pathway"]
-    /// arrReduced := arr.iter().reduce(fn(acc, word) acc + " " + word)
+    /// var arr = ["this", "is", "the", "pathway"]
+    /// var arrReduced = arr.iter().reduce(fn(acc, word) acc + " " + word)
     /// 
     /// assert(arrReduced).equals("this is the pathway")
     /// ```
     public function reduce(reducer: fn(acc: I, current: I) -> I, initial: I) -> I {
-        accumulated := initial
+        var accumulated = initial
         for item in this {
             accumulated = reducer(accumulated, item)
         }
@@ -105,9 +105,9 @@ public interface Iterable<I> {
     /// should be kept or discarded.
     /// ### Usage
     /// ```
-    /// values := [20, 30, 40, 50, 60, 70]
+    /// var values = [20, 30, 40, 50, 60, 70]
     /// // Produce only elements divisible by 4.
-    /// divBy4 := values.iter().filter(fn(x) x % 4 == 0)
+    /// var divBy4 = values.iter().filter(fn(x) x % 4 == 0)
     /// 
     /// assert(divBy4.next()).equals(some(20))
     /// assert(divBy4.next()).equals(some(40))
@@ -120,8 +120,8 @@ public interface Iterable<I> {
     /// given function to every element of the current iterator as it runs.
     /// ### Usage
     /// ```
-    /// list := [1, 2, 3, 4]
-    /// listTransformed := list.iter().map(fn(x) x * 3).collect()
+    /// var list = [1, 2, 3, 4]
+    /// var listTransformed = list.iter().map(fn(x) x * 3).collect()
     /// 
     /// assert(listTransformed).equals([3, 6, 9, 12])
     /// ```
@@ -132,8 +132,8 @@ public interface Iterable<I> {
     /// values that meets a certain condition.
     /// ### Usage
     /// ```
-    /// names := ["Mary Jane", "Johnny", "Susan Ade", "Habeeb Michaels"]
-    /// lastNames := names.iter().filterMap(fn(value) value.split(' ').at(-1)).collect()
+    /// var names = ["Mary Jane", "Johnny", "Susan Ade", "Habeeb Michaels"]
+    /// var lastNames = names.iter().filterMap(fn(value) value.split(' ').at(-1)).collect()
     /// 
     /// assert(lastNames).equals(["Jane", "Ade", "Michaels"])
     /// ```
@@ -143,7 +143,7 @@ public interface Iterable<I> {
     /// Returns the first `Maybe.some` element in the iteration.
     public function findMap<J>(predicate: fn(value: I) -> ?J) -> ?J {
         for item in this {
-            maybeValue := predicate(item)
+            var maybeValue = predicate(item)
             if maybeValue.isSome() {
                 return maybeValue
             }
@@ -156,7 +156,7 @@ public interface Iterable<I> {
     /// after the target element is found, the iterator can still be used.
     /// ### Usage
     /// ```
-    /// iterator := [11, 12, 13, 14, 15].iter()
+    /// var iterator = [11, 12, 13, 14, 15].iter()
     /// 
     /// assertThat(iterator.any(fn(x) x % 2 == 0)) // Returns true at 12.
     /// // Iterator can still be used.
@@ -174,7 +174,7 @@ public interface Iterable<I> {
     /// Returns true if all the elements produced by the iterator match a predicate.
     /// ### Usage
     /// ```
-    /// iter := [3, 6, 9, 12, 15].iter()
+    /// var iter = [3, 6, 9, 12, 15].iter()
     /// 
     /// assertThat(iter.all(fn(x) x % 3 == 0)) // Consumes the entire iterator and returns true.
     /// ```
@@ -208,9 +208,9 @@ public interface Iterable<I> {
     /// 
     /// ### Usage
     /// ```
-    /// nameList := ["Mary", "Uche", "Abdul", "Fatima", "Bao"]
-    /// namesIter := names.iter()
-    /// startsWithA := namesiter().find(fn(name) name.startsWith("A"))
+    /// var nameList = ["Mary", "Uche", "Abdul", "Fatima", "Bao"]
+    /// var namesIter = names.iter()
+    /// var startsWithA = namesiter().find(fn(name) name.startsWith("A"))
     /// 
     /// assert(startsWithA).equals(some("Abdul"))
     /// 
@@ -230,26 +230,26 @@ public interface Iterable<I> {
     /// 
     /// ### Usage
     /// ```
-    /// numbers := [2, 4, 6, 8, 10]
-    /// firstThree := numbers.iter().take(3)
+    /// var numbers = [2, 4, 6, 8, 10]
+    /// var firstThree = numbers.iter().take(3)
     /// 
     /// assert(firstThree).equals([2, 4, 6])
     /// ```
     /// If the iterator ends before the array is filled, then the incomplete array is returned.
     /// ```
-    /// firstTen := numbers.iter().take(10)
+    /// var firstTen = numbers.iter().take(10)
     /// 
     /// assert(firstTen).equals([2, 4, 6, 8, 10])
     /// ```
     public function take(n: Int32) -> []I {
-        i := n
-        taken := []
+        var i = n
+        var taken = []
         while i > 0 {
-            maybeItem := this.next()
+            var maybeItem = this.next()
             if maybeItem.isNone() {
                 break
             }
-            item := maybeItem.unwrap()
+            var item = maybeItem.unwrap()
             taken.push(item)
             i -= 1
         }
@@ -264,8 +264,8 @@ public interface Iterable<I> {
     /// 
     /// ### Usage
     /// ```
-    /// numbers := [10, 12, 14, 16, 18, 20]
-    /// iter := numbers.iter()
+    /// var numbers = [10, 12, 14, 16, 18, 20]
+    /// var iter = numbers.iter()
     /// 
     /// iter.until(fn(x) x > 15) // Stops at 16.
     /// 
@@ -285,10 +285,10 @@ public interface Iterable<I> {
     /// 
     /// ### Usage
     /// ```
-    /// numbers := [1, 2, 3, 4, 5].iter()
-    /// words := ["one", "two", "three", "four", "five"].iter()
+    /// var numbers = [1, 2, 3, 4, 5].iter()
+    /// var words = ["one", "two", "three", "four", "five"].iter()
     /// 
-    /// numbersAndWords := numbers.zip(words)
+    /// var numbersAndWords = numbers.zip(words)
     /// 
     /// assertThat(numbersAndWords.next() == some(pair(1, "one")))
     /// assertThat(numbersAndWords.next() == some(pair(2, "two")))
@@ -301,10 +301,10 @@ public interface Iterable<I> {
     /// The iteration will always end with the fallback value.
     /// ### Usage
     /// ```
-    /// numbers := [1, 2, 3, 4]
-    /// iter := numbers.iter().interleave(5)
+    /// var numbers = [1, 2, 3, 4]
+    /// var iter = numbers.iter().interleave(5)
     /// 
-    /// numbersWith5 := iter.collect()
+    /// var numbersWith5 = iter.collect()
     /// assert(numbersWith5).equals([1, 5, 2, 5, 3, 5, 4, 5])
     /// ```
     public function interleave(value: I) -> Interleave<I, This> {
@@ -314,9 +314,9 @@ public interface Iterable<I> {
     /// returning the rest.
     /// ### Usage
     /// ```
-    /// fruits := ["apple", "banana", "cherry", "date", "elderberry"]
+    /// var fruits = ["apple", "banana", "cherry", "date", "elderberry"]
     /// 
-    /// iter := fruits.iter().skip(2)
+    /// var iter = fruits.iter().skip(2)
     /// 
     /// assert(iter.collect()).equals(["cherry", "date", "elderberry"])
     /// ```
@@ -328,10 +328,10 @@ public interface Iterable<I> {
     /// 
     /// ### Usage
     /// ```
-    /// numIter := [1, 2, 3].iter()
-    /// numIter2 := [4, 5, 6].iter()
+    /// var numIter = [1, 2, 3].iter()
+    /// var numIter2 = [4, 5, 6].iter()
     /// 
-    /// chained := numIter.chain(numIter2)
+    /// var chained = numIter.chain(numIter2)
     /// 
     /// assert(chained.collect()).equals([1, 2, 3, 4, 5, 6])
     /// ```
@@ -348,7 +348,7 @@ public model Enumerate<I, J implements Iterable<I>> implements Iterable<Tuple<In
         this.iterator = iterator
     }
     public function [Iterable.next] -> ?Tuple<Int32, I> {
-        value := this.iterator.next()?
+        var value = this.iterator.next()?
         this.indexer += 1
         return some(Tuple(this.indexer, value))
     }
@@ -363,7 +363,7 @@ public model Filter<I, J implements Iterable<I>> implements Iterable<I> {
         this.predicate = predicate
     }
     public function [Iterable.next] -> ?I {
-        value := this.iterator.next()?
+        var value = this.iterator.next()?
         while !this.predicate(value) {
             value = this.iterator.next()?
         }
@@ -379,7 +379,7 @@ public model FilterMap<I, J, K implements Iterable<I>> implements Iterable<J> {
         this.predicate = predicate
     }
     public function [Iterable.next] -> ?J {
-        mapped := this.predicate(this.iterator.next()?)
+        var mapped = this.predicate(this.iterator.next()?)
         while mapped.isNone() {
             mapped = this.predicate(this.iterator.next()?)
         }
@@ -414,8 +414,8 @@ public model Zip<I, I1 implements Iterable<I>, J, I2 implements Iterable<J>> imp
         this.second = second
     }
     public function [Iterable.next] -> ?Tuple<I, J> {
-        firstItem := this.first.next()?
-        secondItem := this.second.next()?
+        var firstItem = this.first.next()?
+        var secondItem = this.second.next()?
         return some(Tuple(firstItem, secondItem))
     }
 }
@@ -433,7 +433,7 @@ public model Interleave<I, J implements Iterable<I>> implements Iterable<I> {
         if this.flag {
             return some(this.delimeter)
         } else {
-            value := this.iterator.next()?
+            var value = this.iterator.next()?
             this.flag = true
             return some(value)
         }
@@ -494,7 +494,7 @@ public model Chain
         if this.firstEnded {
             return this.second.next()
         } else {
-            nextItem := this.first.next()
+            var nextItem = this.first.next()
             if nextItem.isNone() {
                 this.firstEnded = true
                 this.second.next()
