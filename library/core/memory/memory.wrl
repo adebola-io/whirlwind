@@ -7,9 +7,16 @@ use core.sentinels.todo
 
 public use ref.WeakRef
 
+import "internal:mem" {
+    /// Returns the value at a particular offset in linear memory.
+    "at" as public function at(offset: Int32) -> Int32;
+}
+
 /// Returns the address of an object instance in linear memory.
 public function getOffset<T>(value: T) -> Int32 {
-    todo()
+    // False recursion. The implementation of this function
+    // is built into the compiler.
+    return getOffset(value)
 }
 
 

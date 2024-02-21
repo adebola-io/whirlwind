@@ -25,11 +25,11 @@ public model Set<T implements Hash>
 {
     var items: HashMap<T, Bool>
     new(data?: []T) {
-        // var dataVal = data.unwrapOrDefault()
+        var dataVal = data.unwrapOrDefault()
         this.items = HashMap()
-        // for element in dataVal {
-        //     this.items.set(element, true)
-        // }
+        for element in dataVal {
+            var {} = this.items.set(element, true)
+        }
     }
 
     public function [AsIterator.iter] -> SetIterator<T> {
@@ -45,7 +45,7 @@ public model Set<T implements Hash>
             }
         }
         str += " }"
-        str
+        return str
     }
     /// Adds an element to the set.
     /// 
@@ -83,13 +83,18 @@ public model Set<T implements Hash>
     /// assertThat(!set.has(1))
     /// ```
     public function remove(element: T) {
-        var _ = this.items.remove(element)
+        var {} = this.items.remove(element)
     }
     /// Returns true if the current set contains the exact same 
     /// elements as the other.
     public function equals(other: This) -> Bool {
         for { a as element } in this.items {
             if !other.has(element) {
+                return false
+            }
+        }
+        for { a as element } in other.items {
+            if !this.has(element) {
                 return false
             }
         }
@@ -164,14 +169,14 @@ public model Set<T implements Hash>
     /// assert(set.cardinality()).equals(4)
     /// ```
     public function cardinality -> Int32 {
-        this.items.length()
+        return this.items.length()
     }
     /// Returns the number of elements in the set.
     /// ### Usage
     /// ```
     /// ```
     public function length -> Int32 {
-        this.items.length()
+        return this.items.length()
     }
     /// Returns the power set of the current set, i.e.
     /// the set of all possible subsets.

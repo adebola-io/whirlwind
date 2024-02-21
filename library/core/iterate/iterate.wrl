@@ -214,7 +214,7 @@ public interface Iterable<I> {
     /// 
     /// assert(startsWithA).equals(some("Abdul"))
     /// 
-    /// // If there are still elements, the iterator can still be used.
+    /// // If there are still elements left, the iterator can still be used.
     /// assert(namesIter.next()).equals(some("Fatima"))
     /// assert(namesIter.next()).equals(some("Bao"))
     /// ```
@@ -314,7 +314,6 @@ public interface Iterable<I> {
     /// ### Usage
     /// ```
     /// var fruits = ["apple", "banana", "cherry", "date", "elderberry"]
-    /// 
     /// var iter = fruits.iter().skip(2)
     /// 
     /// assert(iter.collect()).equals(["cherry", "date", "elderberry"])
@@ -328,8 +327,7 @@ public interface Iterable<I> {
     /// ### Usage
     /// ```
     /// var numIter = [1, 2, 3].iter()
-    /// var numIter2 = [4, 5, 6].iter()
-    /// 
+    /// var numIter2 = [4, 5, 6].iter() 
     /// var chained = numIter.chain(numIter2)
     /// 
     /// assert(chained.collect()).equals([1, 2, 3, 4, 5, 6])
