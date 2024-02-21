@@ -7,7 +7,7 @@ module sentinels
 
 use core.{
     string.{Display, String},
-    internals.{builtin, never},
+    internals.never,
     maybe.{none, some},
     memory.getOffset,
     numeric.Int32,
@@ -81,7 +81,9 @@ import "internals:control" {
     /// use core.sentinels.exit
     /// exit(0)
     /// ```
-    "exit" as public function exit(code?: Int32) -> never 
+    "exit" as public function exit(code?: Int32) -> never
+    /// Returns the ID of the current sequence.
+    "getSeqId" as public function getSequenceID -> Int32
 }
 
 /// Called when an execution sequence encounters an unrecoverable or
@@ -107,7 +109,7 @@ public function fatal(message?: String) -> never {
     // generate stack trace.
     var messageOffset = getOffset(errorMessage)
     var messageLength = errorMessage.length()
-    var id = builtin.sequence.sequenceId()
+    var id = getSequenceID()
     stop(id, messageOffset, messageLength)
 }
 

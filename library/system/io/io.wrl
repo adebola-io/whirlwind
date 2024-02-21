@@ -8,8 +8,6 @@
 /// for a consistent interface.
 module io
 
-use core.prelude.{Outcome, Int32}
-
 public use terminal.{print, prompt, printFmt}
 
 /// This interface is implemented by any entity that can write

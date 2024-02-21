@@ -4,3 +4,4 @@ module system
 public use fs
 public use io
 public use path
+public use net

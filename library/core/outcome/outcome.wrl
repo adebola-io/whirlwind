@@ -3,9 +3,9 @@ module outcome
 use core.{
     bool.Bool,
     interfaces.{Try, Guaranteed},
-    internals.{never, builtin},
+    internals.never,
     maybe.{none, some},
-    sentinels.{fatal, todo},
+    sentinels.fatal,
     string.{Display, String}
 }
 
@@ -29,25 +29,31 @@ public model Outcome<T, E>
     + Guaranteed<T> 
     + Try<T, Outcome<never, E>> 
 {
-    /// Flag representing the type of outcome.
-    var flag: OutcomeType
+    var successValue: ?T;
+    var errorValue: ?E;
 
-    public function [Display.toStr]|=(T implements Display and E implements Display) -> String {
+    new(successValue: ?T, errorValue?: E) {
+        this.successValue = successValue
+        this.errorValue = errorValue
+    }
+
+    public function [Display.toStr]|=(T implements Display and E implements Display) -> String 
+    {
         if this.isOk() {
-            var value = builtin.outcome.unwrap(this)
+            var value = this.successValue.unwrap();
             return String.fmt("Outcome.ok(%)").add(value).finish()
         }
-        var errValue = builtin.outcome.unwrapError(this)
+        var errValue = this.errorValue.unwrap();
         return String.fmt("Outcome.err(%)").add(errValue).finish()
     }
     function [Guaranteed.guarantee] -> T {
-        this.unwrap()
+        return this.unwrap()
     }
     function [Try.try] -> Outcome<T, Outcome<never, E>> {
         if this.isOk() {
             return ok(this.unwrap())
         } else {
-            return todo()
+            return err(err(this.errorValue.unwrap()))
         }
     }
     /// Returns the inner value if the operation was a success, or causes a runtime error otherwise.
@@ -64,9 +70,9 @@ public model Outcome<T, E>
     /// ```
     public function unwrap -> T {
         if this.isErr() {
-            fatal(some("Called Unwrap on an Err value."))
+            fatal(some("Called unwrap on an error value."))
         }
-        return builtin.outcome.unwrap(this)
+        return this.successValue.unwrap()
     }
     /// Returns the inner error value if the outcome is an error, or causes a runtime error otherwise.
     /// ### Usage
@@ -79,7 +85,7 @@ public model Outcome<T, E>
         if this.isOk() {
             fatal(some("Called AsErr on an Ok value."))
         }
-        return builtin.outcome.unwrapError(this)
+        return this.errorValue.unwrap()
     }
     /// Returns true if the outcome is `ok` 
     /// i.e. The operation was successful.
@@ -89,7 +95,7 @@ public model Outcome<T, E>
     /// assertThat(outcome.isOk())
     /// ```
     public function isOk -> Bool {
-        return this.flag == OutcomeType.Ok
+        return this.successValue.isSome()
     }
 
     /// Returns true if the outcome is an `err`.
@@ -100,7 +106,7 @@ public model Outcome<T, E>
     /// AssertThat(outcome.isErr())
     /// ```
     public function isErr -> Bool {
-        return this.flag == OutcomeType.Err
+        return this.successValue.isNone()
     }
     /// Checks if the outcome was successful and checks its internal value as well.
     /// ### Usage
@@ -142,11 +148,6 @@ public model Outcome<T, E>
 
 }
 
-enum OutcomeType {
-    Ok,
-    Err
-}
-
 /// Returns an `Outcome` with a value.
 /// ### Usage
 /// ```
@@ -154,8 +155,7 @@ enum OutcomeType {
 /// assertThat(outcome.isOk())
 /// ```
 public function ok<T, U>(value: T) -> Outcome<T, U> {
-    // Outcome(OutcomeVal.Ok(value))
-    todo()
+    return Outcome(some(value))
 }
 
 /// Returns an `Outcome` with an error.
@@ -165,6 +165,5 @@ public function ok<T, U>(value: T) -> Outcome<T, U> {
 /// assertThat(outcome.isErr())
 /// ```
 public function err<T, U>(error: U) -> Outcome<T, U> {
-    // Outcome(OutcomeVal.Err(errorValue))
-    todo()
+    return Outcome(none(), some(error))
 }

@@ -1,10 +1,24 @@
 module terminal
 
+use core.memory.getOffset;
+
+import "system" {
+    /// Takes a string from memory and prints it to the console.
+    "startPrint" as function startPrint(start: Int32, length: Int32)
+}
+
 /// Prints a message or an object to the console, terminal 
 /// or any predefined output interface.
+/// ```
+/// use system.io.print
+/// 
+/// print("Hello from the other side!")
+/// ```
 public function print<M implements Display>(message: M) {
     var messageStr = message.toStr()
-    todo()
+    var offset = getOffset(messageStr)
+    var length = messageStr.length()
+    startPrint(offset, length)
 }
 
 /// Displays an optional message to the console, terminal or
@@ -16,8 +30,10 @@ public function prompt(message?: String) -> String {
 
 /// Prints a message or an object to the console, terminal, 
 /// or any predefined output interface.
-public function printFmt<T implements Display>(data: T) {
-    var dataStr = data.toFmtStr()
-    todo()
+public function printFmt<T implements Display>(message: T) {
+    var messageStr = message.toFmtStr()
+    var offset = getOffset(messageStr)
+    var length = messageStr.length()
+    startPrint(offset, length)
 }
 

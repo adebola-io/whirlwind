@@ -47,7 +47,6 @@ public model String
     /// ## Usage
     /// ```
     /// var str = "This is a string"
-    /// 
     /// for char in str {
     ///     print(char)
     /// }
@@ -59,7 +58,6 @@ public model String
     /// ## Usage
     /// ```
     /// var str = "Hello"
-    /// 
     /// str.append(", world!")
     /// 
     /// assert(str).equals("Hello, world!")
@@ -101,7 +99,6 @@ public model String
     /// ## Usage
     /// ```
     /// var str = "tralalalalaleeday"
-    /// 
     /// str.clear()
     /// 
     /// assert(str).equals("")

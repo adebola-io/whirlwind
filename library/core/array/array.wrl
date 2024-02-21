@@ -373,7 +373,6 @@ public model Array<T>
     /// ### Usage
     /// ```
     /// var arr = ["Arnold", "Daniel", "Harriet", "Donald", "Dele"]
-    /// 
     /// var [startsWithD, others] = arr.partition(fn(x) x.startsWith("D"))
     /// 
     /// assertThat(startsWithD == ["Donald", "Dele", "Daniel"])
@@ -577,7 +576,6 @@ public model Array<T>
     /// ### Usage
     /// ```
     /// var arr = [1, 2, 3]
-    /// 
     /// var shuffledArray = arr.shuffled()
     /// ```
     public function shuffled -> []T {

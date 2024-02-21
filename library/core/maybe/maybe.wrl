@@ -135,11 +135,16 @@ public model Maybe<T>
     /// ### Usage
     /// ```
     /// var maybeValue = some(42)
+    /// var message: String;
     /// 
     /// maybeValue.isSomeThen(fn(value) {
-    ///     var message = String.fmt("The value is %").add(value).finish()
-    ///     print(message)
+    ///     message = String
+    ///         .fmt("The value is %")
+    ///         .add(value)
+    ///         .finish()
     /// })
+    /// 
+    /// assert(message).equals("The value is 42");
     /// ```
     public function isSomeThen(consequent: fn(value: T)) {
         if this.isNone() {
@@ -236,8 +241,8 @@ public model Maybe<T>
     /// ### Usage
     /// ```
     /// var double = fn(x: Number) x * 2
-    /// 
     /// var first = some(9).map(double)
+    /// 
     /// assert(first!).equals(18)
     /// 
     /// var second: ?Number = none().map(double)

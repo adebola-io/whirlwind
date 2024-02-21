@@ -140,7 +140,7 @@ public model Prospect<T> {
     /// other eventuals in the list.
     /// ### Usage
     /// ```
-    /// use core.Time.sleep
+    /// use core.time.sleep
     /// var first = async fn {
     ///     sleep(100)
     ///     return 1

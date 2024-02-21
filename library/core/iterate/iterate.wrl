@@ -148,7 +148,7 @@ public interface Iterable<I> {
                 return maybeValue
             }
         }
-        core.sentinels.unreachable()
+        return none()
     }
     /// Checks if any of the elements produced by the iterator matches a predicate.
     /// 
@@ -210,7 +210,7 @@ public interface Iterable<I> {
     /// ```
     /// var nameList = ["Mary", "Uche", "Abdul", "Fatima", "Bao"]
     /// var namesIter = names.iter()
-    /// var startsWithA = namesiter().find(fn(name) name.startsWith("A"))
+    /// var startsWithA = namesIter.find(fn(name) name.startsWith("A"))
     /// 
     /// assert(startsWithA).equals(some("Abdul"))
     /// 
@@ -224,9 +224,9 @@ public interface Iterable<I> {
                 return some(item)
             }
         }
-        core.sentinels.unreachable()
+        return none()
     }
-    /// collects the next _n_ elements from the iterator into an array.
+    /// collects the next `_n_` elements from the iterator into an array.
     /// 
     /// ### Usage
     /// ```
@@ -287,7 +287,6 @@ public interface Iterable<I> {
     /// ```
     /// var numbers = [1, 2, 3, 4, 5].iter()
     /// var words = ["one", "two", "three", "four", "five"].iter()
-    /// 
     /// var numbersAndWords = numbers.zip(words)
     /// 
     /// assertThat(numbersAndWords.next() == some(pair(1, "one")))
