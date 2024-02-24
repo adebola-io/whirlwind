@@ -59,7 +59,7 @@ public model Set<T implements Hash>
     /// assertThat(set.has("hello"))
     /// ```
     public function add(element: T) {
-        var _ = this.items.set(element, true)
+        var {} = this.items.set(element, true)
     }
     /// Checks if an element is contained within the current set.
     public function has(element: T) -> Bool {
@@ -74,7 +74,7 @@ public model Set<T implements Hash>
     /// ### Usage
     /// ```
     /// use core.collections.Set
-    /// set = Set()
+    /// var set = Set()
     /// 
     /// set.add(1)
     /// set.add(2)

@@ -1,0 +1,47 @@
+module serialization
+
+const VERSION: Int32 = 0
+
+public model Engine {}
+enum ObjectKind {}
+
+public function checkCompatible
+(
+    engine: Engine, 
+    mmap: []Int32, 
+    expected: ObjectKind
+) -> anyhow.Outcome<Bool> 
+{
+    var obj = File.parse(mmap).context("failed to parse precompiled artifact as an ELF")
+    var expectedEFlags = switch expected 
+    {
+        case ObjectKind.Module => obj.EF_WASMTIME_MODULE
+        else => obj.EF_WASMTIME_COMPONENT
+    }
+    switch obj.flags() 
+    {
+        case FileFlags.ELF(os_abi = obj.ELFOSABI_WASMTIME, abi_version = 0, eFlags) => 
+        {
+            if eFlags == expectedEflags 
+            {
+
+            }
+        }
+        else => return anyhow.Error("incompatible object file format")
+    }
+    var data = obj
+        .sectionByName(obj.ELF_WASM_ENGINE)
+        .okOrElse(fn {
+            anyhow.Error(
+                String.fmt("Failed to find section %").add(obj.ELF_WASM_ENGINE).finish()
+            )
+        })?
+        .data()?
+    var { a as first, b as data } = data
+        .splitFirst()
+        .okOrElse(fn anyhow.Error("Invalid engine section"))
+    if first != VERSION 
+    {
+        return anyhow.Error("mismatched")
+    }
+}

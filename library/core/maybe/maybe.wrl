@@ -11,12 +11,13 @@ use core.{
 
 /// Creates a `Maybe` with no value.
 public function none<T> -> ?T {
+    // False recursion. The function is transformed by the compiler.
     return none()
 }
 
 /// Creates a `Maybe` with an internal value.
 public function some<T>(value: T) -> ?T {
-    return some(value)
+    return Maybe(value)
 }
 
 /// A value that may or may not exist.
@@ -37,6 +38,10 @@ public model Maybe<T>
     /// internals of the model, or without first checking the
     /// flag.
     var value: T
+    new(value: T) {
+        this._exists = true
+        this.value = value
+    }
     /// Implementation of the Default interface.
     static function [Default.init] -> This {
         return none()

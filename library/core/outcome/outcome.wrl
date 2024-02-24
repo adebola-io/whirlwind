@@ -33,6 +33,12 @@ public model Outcome<T, E>
     var errorValue: ?E;
 
     new(successValue: ?T, errorValue?: E) {
+        if successValue.isNone() and errorValue.isNone() {
+            fatal(some("Cannot construct an empty Outcome"))
+        }
+        if successValue.isSome() and errorValue.isSome() {
+            fatal(some("Cannot construct an Outcome with a success and error value."))
+        }
         this.successValue = successValue
         this.errorValue = errorValue
     }

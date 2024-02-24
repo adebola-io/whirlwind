@@ -1,6 +1,8 @@
 module leetcode
 
-/// ## Longest substring without repeating characters.
+use core.collections.Set
+
+/// ### Longest substring without repeating characters.
 /// _Given a string `s`, find the length of the longest substring without repeating characters._
 /// 
 /// ### Example 1:
@@ -20,8 +22,51 @@ module leetcode
 /// Input: s = "pwwkew"
 /// Output: 3 (wke)
 /// ```
-public function longestUniqueSubstring(input: String) -> Int {
-    count := 0
+public function longestUniqueSubstring(input: String) -> Int32 {
+    start := 0
+    usedChars := Set()
+    maxLength := 0
+    chars := input.chars().collect()
 
-    return count
+    for { a as idx, b as char } in chars.iter().enumerate() {
+        // If the character is already in the set, move the start pointer until
+        // the character is removed from the set.
+        while usedChars.has(char) {
+            usedChars.remove(chars[start])
+            start += 1
+        }
+        // Add the current character to the set and update the max length.
+        usedChars.add(char)
+        maxLength = core.math.max(maxLength, idx - start + 1)
+    }
+    return start
 }
+
+/// Returns true if the string is a palindrome.
+public function isPalindrome(string: String) -> Bool {
+    return string == string.reverse()
+}
+
+/// Given an array of numbers and a target sum, 
+/// find two numbers that add up to the target.
+public function twoSum(array: []Int32, target: Int32) -> ?Tuple<Int32, Int32> {
+    set := Set()
+    for number in array {
+        if set.has(target - number) {
+            return some(Tuple(number, target - number))
+        }
+        set.add(number)
+    }
+    return none()
+}
+
+function getTextColor(backgroundColor: String) {
+    // Convert hex color to RGB values.
+    rgb := backgroundColor
+    .split('')
+    .iter()
+    .map(fn (x) Int32.fromStr(x)!)
+    .collect()
+    luminance := 0.2126 * rgb[0] + 0.7152 + rgb[1] + 0.0722 * rgb[2]
+} 
+

@@ -1,113 +1,132 @@
-
 module web
 
-use tangent.{
+use {
     actions, button, constraint, horizontal, renderStatic, stateful, 
     StateStore, style.{style, Layout}, text, vertical, view.View
 }
 
 function appButtonRow -> View {
-    buttonStyles := StyleList()
-        .bgColor("blue")
-        .color("white")
-        .strokeWidth(2)
-    windowResize: WindowResizeEventHandler := fn(event, view) {
-        if event.height() > 720 {
+    // Define button styles
+    var buttonStyles = createStyle()
+        .setBackgroundColor(Color.Blue)
+        .setTextColor(Color.White)
+        .setStrokeWidth(2)
+
+    // Window resize event handler
+    var windowResize: WindowResizeEventHandler = fn(event, view) {
+        // If window height is less than 720 pixels, switch to vertical view
+        if evenheight() < 720 {
             return VerticalView.from(view)
         }
         return view
     }
-    increment: ClickEventHandler := fn(event, view) {
-        updateState("@counter.value", fn(state) state.increment())
+
+    // Increment button click event handler
+    var increment: ClickEventHandler = fn(event, view) {
+        // Get the current value of the counter from the view's state
+        var previousValue = view.getState("@counter.value")!.asNumber()!
+        // Increment the counter value by 1
+        view.updateState("@counter.value", State.number(previousValue + 1))
         return view
     }
-    decrement: ClickEventHandler := fn(event, view) {
-        updateState("@counter.value", fn(state) state.decrement())
+
+    // Decrement button click event handler
+    var decrement: ClickEventHandler = fn(event, view) {
+        // Get the current value of the counter from the view's state
+        var previousValue = view.getState("@counter.value")!.asNumber()!
+        // Decrement the counter value by 1
+        view.updateState("@counter.value", State.number(previousValue - 1))
         return view
     }
+
+    // Construct and return a horizontal view containing buttons
     return HorizontalView("button-row")
+        // Attach window resize event listener
         .onWindowResize(windowResizeListener)
+        // Append increment button
         .append(
             HorizontalView("button")
-                .applyStyles(buttonStyles)
+                .apply(buttonStyles)
                 .onClick(increment)
-                .append(TextView("Click To Increment."))
+                .append(TextView("Click To Incremen"))
         )
+        // Append decrement button
         .append(
             HorizontalView("button")
-                .applyStyles(buttonStyles)
+                .apply(buttonStyles)
                 .onClick(decrement)
-                .append(TextView("Click to Decrement."))
+                .append(TextView("Click to Decremen"))
         )
 }
 
+
 function appNavLinks -> View {
-    navLinks := [
+    var navLinks = [
         Tuple("Home", "home"), 
         Tuple("About", "about"),
-        Tuple("Contact", "contact")
+        Tuple("Contact", "contact"),
         Tuple("Blog", "blog")
     ]
     
-    selectedNavigationEffect: StateEffect := Tuple(
-        "@nav.current", 
+    var selectNavLink: StateEffect = Tuple(
+        "@nav.current",
         fn(state, view) {
-            styles := if state.asStr()! == view.innerText() {
-                StyleList().fontWeight("bold").color("green")
+            var currentPage = state.toStr()
+            var { a as fontWeight, b as color } = if currentPage == view.innerText() {
+                Tuple(FontWeighBold, Color.Green)
             } else {
-                StyleList().fontWeight("normal").color("white")
+                Tuple(FontWeighNormal, Color.White)
             }
-            view.applyStyles(styles)
+            var styles = createStyle().setFontWeight(fontWeight).setTextColor(color)
+            view.apply(styles)
             return view
         });
     
-    return HorizontalView("navigation-items")
-        .appendAll(
-            navLinks.iter().map(fn(tuple) {
-                TextView(tuple.a, "navigation-item")
-                    .linkTo(tuple.b)
-                    .addEffect(selectedNavigationEffect)
-            }).collect()
-        )
+    var navLinkRowView = HorizontalView("navigation-items")
+    for navLink in navLinks {
+        var textView = TextView(navLink, "navigation-item")
+            .addEffect(selectNavLink)
+            .linkTo(tuple.b)
+        navLinkRowView.append(textView)
+    }
 }
 
-/// The website's header component.
+/// The website's header componen
 function appHeader -> View {
-    headerStyles := StyleList()
-        .relWidth(100)
+    var headerStyles = createStyle()
+        .width(Size.Screen)
         .strokeBottom(2, StrokeType.Solid, "black")
         .bgColor("white")
         .shadow(0, 0, 8, 0)
 
     return HorizontalView("header")
-        .applyStyles(headerStyles)
+        .apply(headerStyles)
         .append(appNavLinks())
 }
 
 function appCardItem(item: CardItem, idx: Int32) -> View {
-    containerStyles := StyleList()
+    containerStyles := createStyle()
         .fillParent()
         .translateY(String.fmt("%\%").add(idx * -100))
-        .bgColor("white")
+        .bgColor(Color.White)
 
-    headingStyles := StyleList()
-        .fontWeight(FontWeight.Bold)
+    headingStyles := createStyle()
+        .fontWeight(FontWeighBold)
         .fontSize(100) 
 
     return VerticalView("card-item")
-        .applyStyles(containerStyles)
+        .apply(containerStyles)
         .append(
-            ImageView(item.src, "Item image")
-                .applyStyles(StyleList().width(100).height(120))
+            ImageView(item.src, "Item image").apply(Style().size(Size.Pixels(200)))
         )
-        .append(TextView(item.name).applyStyles(headingStyles))
+        .append(TextView(item.name).apply(headingStyles))
         .append(TextView(item.data))
 }
 
 function appCardStack -> View {
     cardItems := getCardItems().run().await().unwrapOr([])
     return StackView("card-stack")
-        .applyStyles(StyleList().size(100))
+        .apply(Style().size(Size.Pixels(200)))
         .appendAll(cardItems.iter().enumerate().map(fn(cardItem) {
             var { a as idx, b as item } = cardItem
             return appCardItem(item, idx)
@@ -115,14 +134,14 @@ function appCardStack -> View {
 }
 
 public function appStage -> View {
-    mountEventHandler: MountEventHandler := fn(event, view) {
-        setStageTitle("Home | Tangent")
+    var setTitle: MountEventHandler = fn(event, view) {
+        view.setStageTitle("Home | Tangent")
         return view
     }
 
     return VerticalView("stage")
-        .applyStyles(StyleList().fillScreen())
-        .onMount(mountEventHandler)
+        .apply(Formasize(Size.Screen))
+        .onMount(setTitle)
         .append(StateView("@counter.value"))
         .append(appButtonRow())
 }
@@ -130,4 +149,201 @@ public function appStage -> View {
 
 public function main {
     assets := renderStatic(appStage, store)
+}
+
+
+// Define a function called appButtonRow that generates a view containing a horizontal row of buttons
+function appButtonRow -> View {
+    buttonStyles := createStyle()
+        .setBackgroundColor(Color.Blue)
+        .setTextColor(Color.White)
+        .setStrokeWidth(2)
+
+    hoverStyles := createStyle()
+        .setBackgroundColor(Color.LightBlue)
+        .setTextColor(Color.Black)
+
+    disabledStyles := createStyle()
+        .setBackgroundColor(Color.Gray)
+        .setTextColor(Color.DarkGray)
+
+    windowResize: WindowResizeEventHandler := fn(event, view) {
+        if evenheight() < 720 {
+            VerticalView.from(view)
+        } else {
+            view
+        }
+    }
+
+    disableButton := fn(view: View) {
+        view.apply(disabledStyles).disableEvent('click')
+    }
+
+    enableButton := fn(view: View) {
+        view.apply(buttonStyles).enableEvent('click')
+    }
+
+    incrementHandler: ClickEventHandler := fn(event, view) {
+        previousValue := view.getState("@counter.value")!.asNumber()!
+        if (previousValue == 50) {
+            return
+        }
+        newState := State.number(previousValue + 1)
+        view.updateState("@counter.value", newState)
+    }
+
+    decrementHandler: ClickEventHandler := fn(event, view) {
+        previousValue := view.getState("@counter.value")!.asNumber()!
+        if (previousValue == 0) {
+            return
+        }
+        newState := State.number(previousValue - 1)
+        view.updateState("@counter.value", newState)
+    }
+
+    mouseOverHandler: MouseEventHandler := fn(event, view) {
+        view.apply(hoverStyles)
+    }
+
+    mouseOutHandler: MouseEventHandler := fn(event, view) {
+        view.apply(buttonStyles)
+    }
+
+    incrementEffect := Effect("@counter.value", fn(state, view) {
+        value := state.asNumber().unwrap()
+        if value >= 50 { disableButton(view) } else { enableButton(view) }
+    })
+
+    decrementEffect := Effect("@counter.value", fn(state, view) {
+        value := state.asNumber().unwrap()
+        if value <= 0 { disableButton(view) } else { enableButton(view) }
+    })
+
+    HorizontalView()
+        .onWindowResize(windowResizeListener)
+        .append(
+            HorizontalView()
+                .preset(ViewPreseButton)
+                .apply(buttonStyles)
+                .onClick(incrementHandler)
+                .onMouseOver(mouseOverHandler)
+                .onMouseOut(mouseOutHandler)
+                .withEffect(incrementEffect)
+                .append(TextView("Click to Incremen"))
+        )
+        .append(
+            HorizontalView()
+                .preset(ViewPreseButton)
+                .apply(buttonStyles)
+                .onClick(decrementHandler)
+                .onMouseOver(mouseOverHandler)
+                .onMouseOut(mouseOutHandler)
+                .withEffect(decrementEffect)
+                .append(TextView("Click to Decremen"))
+        )
+}
+
+
+// Define a function called accordionSection that generates a collapsible section for the accordion
+function accordionSection(title: String, content: View) -> View {
+    // Define styles for the section title
+    var titleStyles = createStyle()
+        .setBackgroundColor(Color.LightGray)
+        .setTextColor(Color.Black)
+        .setPadding(10)
+        .setMarginBottom(5)
+        .setCursor("pointer")
+
+    // Define styles for the section content
+    var contentStyles = createStyle()
+        .setPadding(10)
+        .setBorder("1px solid gray")
+        .setDisplay("none")
+
+    // Define click event handler for toggling section visibility
+    var toggleVisibility: ClickEventHandler = fn(event, view) {
+        // Toggle visibility of content when section title is clicked
+        var content = view.getChildView("content")
+        if (contengetStyle("display") === "none") {
+            contensetStyle("display", "block")
+        } else {
+            contensetStyle("display", "none")
+        }
+        return view
+    }
+
+    // Return a vertical view containing section title and content
+    return VerticalView()
+        // Add section title with click event to toggle visibility
+        .append(
+            HorizontalView()
+                .apply(titleStyles)
+                .onClick(toggleVisibility)
+                .append(TextView(title))
+        )
+        // Add section content
+        .append(
+            VerticalView("content")
+                .apply(contentStyles)
+                .append(content)
+        )
+}
+
+// Define a function called accordion that generates an accordion component with multiple sections
+function accordion(sections: []Tuple<String, View>) -> View {
+    // Return a vertical view containing multiple accordion sections
+    return VerticalView()
+        // Append each accordion section to the accordion component
+        .appendAll(
+            sections.map(fn(section) {
+                return accordionSection(section[0], section[1])
+            })
+        )
+}
+
+// Usage example:
+var accordionView = accordion([
+    Tuple("Section 1", TextView("Content for Section 1")),
+    Tuple("Section 2", TextView("Content for Section 2")),
+    Tuple("Section 3", TextView("Content for Section 3"))
+])
+
+
+function appRecipeCard(recipe: Recipe) -> View {
+    var { recipeTitle, ingredients, instructions } = recipe
+    // Define styles
+    cardStyles := createStyle()
+        .backgroundColor(Color.White)
+        .borderRadius(Size.Pixels(10))
+        .boxShadow(
+            Shadow()
+                .offsetY(Size.Pixels(2))
+                .blurRadius(Size.Pixels(4))
+                .color(Color.Gray)
+        )
+        .padding(Size.Pixels(20))
+        .width(Size.Percent(80))
+        .margin(Size.Pixels(20))
+
+    titleStyles := createStyle().fontSize(Size.Points(24)).fontWeight(FontWeight.Bold).marginBottom(Size.Pixels(10))
+
+    ingredientStyles := createStyle().marginBottom(Size.Pixels(8))
+
+    instructionStyles := createStyle().marginBottom(Size.Pixels(8))
+
+    // Create UI components
+    return Box('RecipeCard')
+        .apply(cardStyles)
+        .appendAll([
+            Text(recipeTitle).apply(titleStyles),
+            Box('Ingredients').append([
+                Text('Ingredients:'),
+                UnorderedList(ingredients.map(fn(ingredient) ListItem(ingredient)).toArray())
+                    .apply(ingredientStyles)
+            ]),
+            Box('Instructions').append([
+                Text('Instructions:'),
+                UnorderedList(instructions.map(fn(instruction) ListItem(instruction)).toArray()).apply(instructionStyles)
+            ])
+        ])
 }

@@ -2,6 +2,7 @@ module numeric
 
 use core.{
     bool.Bool,
+    collections.Hash,
     interfaces.Default,
     ops.{
         Addition, Sequenced, Subtraction, 
@@ -32,6 +33,7 @@ public model Int32
         + Default 
         + Orderable 
         + FromStr
+        + Hash
 {
     /// Returns true if the value is less than 0.
     /// ### Usage
@@ -56,6 +58,7 @@ public model Int64
         + Default 
         + Orderable 
         + FromStr
+        + Hash
 {
     /// Returns true if the value is less than 0.
     /// ### Usage
@@ -80,6 +83,7 @@ public model Float32
     + Orderable 
     + FromStr
     + FixedPoint
+    + Hash
 {
     // Compiler built in.
 }
@@ -96,6 +100,7 @@ public model Float64
     + Orderable 
     + FromStr
     + FixedPoint
+    + Hash
 {
     // Compiler built in.
 }

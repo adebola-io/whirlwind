@@ -75,7 +75,7 @@ impl Supposition {
         let mut supposition = Supposition::new(base);
         supposition.implementations.push(interface);
 
-        return Ok(supposition);
+        Ok(supposition)
     }
     /// Returns true if there are no interfaces or methods in the supposition.
     pub fn is_empty(&self) -> bool {
@@ -175,7 +175,7 @@ impl Supposition {
         }
         // There could possibly be filtering out to deduplicate converged interfaces and methods,
         // but I find it to be too much work for very little gain.
-        return Ok(Supposition {
+        Ok(Supposition {
             base: self.base,
             implementations: self
                 .implementations
@@ -187,7 +187,7 @@ impl Supposition {
                 .into_iter()
                 .chain(other.methods.into_iter())
                 .collect(),
-        });
+        })
     }
 
     /// For two suppositions A and B, it represents the type clause `A or B`.
@@ -237,6 +237,6 @@ impl Supposition {
                     });
             };
         });
-        return method_types_for_self;
+        method_types_for_self
     }
 }
