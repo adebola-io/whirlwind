@@ -1,0 +1,174 @@
+module outcome
+
+use core.{
+    bool.Bool,
+    interfaces.{Try, Guaranteed},
+    internals.never,
+    maybe.{none, some},
+    sentinels.fatal,
+    string.{Display, String}
+}
+
+/// An `Outcome` is a generic model 
+/// that represents the possible results of an operation. 
+/// 
+/// It has two possible states:
+/// - `ok(T)`: The operation was successful and returned a value of type `T`.
+/// - `err(E)`: The operation failed and returned an error of type `E`.
+/// 
+/// The Outcome can be used to represent the results of fallible operations,
+/// such as:
+/// - reading a file, 
+/// - parsing a string,
+/// - executing a database query, or
+/// - connecting to a server.
+/// 
+/// It presents a way to handle errors predictably.
+public model Outcome<T, E> 
+    implements Display|=(T implements Display and E implements Display)
+    + Guaranteed<T> 
+    + Try<T, Outcome<never, E>> 
+{
+    var successValue: ?T;
+    var errorValue: ?E;
+
+    new(successValue: ?T, errorValue?: E) {
+        if successValue.isNone() and errorValue.isNone() {
+            fatal(some("Cannot construct an empty Outcome"))
+        }
+        if successValue.isSome() and errorValue.isSome() {
+            fatal(some("Cannot construct an Outcome with a success and error value."))
+        }
+        this.successValue = successValue
+        this.errorValue = errorValue
+    }
+
+    public function [Display.toStr]|=(T implements Display and E implements Display) -> String 
+    {
+        if this.isOk() {
+            var value = this.successValue.unwrap();
+            return String.fmt("Outcome.ok(%)").add(value).finish()
+        }
+        var errValue = this.errorValue.unwrap();
+        return String.fmt("Outcome.err(%)").add(errValue).finish()
+    }
+    function [Guaranteed.guarantee] -> T {
+        return this.unwrap()
+    }
+    function [Try.try] -> Outcome<T, Outcome<never, E>> {
+        if this.isOk() {
+            return ok(this.unwrap())
+        }
+        return err(err(this.errorValue.unwrap()))
+    }
+    /// Returns the inner value if the operation was a success, or causes a runtime error otherwise.
+    /// ### Usage
+    /// ```
+    /// var outcome = ok(9)
+    /// var value = outcome.unwrap()
+    /// assert(value).equals(9)
+    /// ```
+    /// <!--ignore-->
+    /// ```
+    /// var outcome = err("This was an error")
+    /// outcome.unwrap() // Will cause a runtime error.
+    /// ```
+    public function unwrap -> T {
+        if this.isErr() {
+            fatal(some("Called unwrap on an error value."))
+        }
+        return this.successValue.unwrap()
+    }
+    /// Returns the inner error value if the outcome is an error, or causes a runtime error otherwise.
+    /// ### Usage
+    /// ```
+    /// var outcome = err("An error occured.")
+    /// var value = outcome.asErr()
+    /// assert(value).equals("An error occured.")
+    /// ```
+    public function asErr -> E {
+        if this.isOk() {
+            fatal(some("Called AsErr on an Ok value."))
+        }
+        return this.errorValue.unwrap()
+    }
+    /// Returns true if the outcome is `ok` 
+    /// i.e. The operation was successful.
+    /// ### Usage
+    /// ```
+    /// var outcome = ok(9)
+    /// assertThat(outcome.isOk())
+    /// ```
+    public function isOk -> Bool {
+        return this.successValue.isSome()
+    }
+
+    /// Returns true if the outcome is an `err`.
+    /// i.e. The operation failed.
+    /// ### Usage
+    /// ```
+    /// var outcome = err("Something went wrong.")
+    /// AssertThat(outcome.isErr())
+    /// ```
+    public function isErr -> Bool {
+        return this.successValue.isNone()
+    }
+    /// Checks if the outcome was successful and checks its internal value as well.
+    /// ### Usage
+    /// ```
+    /// var outcome = ok(42)
+    /// assertThat(outcome.isOkAnd(fn(value) value == 42))
+    /// ```
+    public function isOkAnd(predicate: fn(value: T) -> Bool) -> Bool {
+        this.isOk() and predicate(this.unwrap())
+    }
+    /// Checks if the outcome failed and checks the error value as well.
+    /// ### Usage
+    /// ```
+    /// var outcome = err("Something went wrong.")
+    /// assertThat(outcome.isErrAnd(fn(error) error == "Something went wrong."))
+    /// ```
+    public function isErrAnd(predicate: fn(value: E) -> Bool) -> Bool {
+        this.isErr() and predicate(this.asErr())
+    }
+    /// Converts an `Outcome<T, E>` to a `Maybe<T>`.
+    public function ok -> ?T {
+        if this.isOk() { some(this.unwrap()) } else { none() }
+    }
+    /// Converts an `Outcome<T, E>` to an `Outcome<U, E>` by applying a function.
+    /// ### Usage
+    /// ```
+    /// var okValue = ok(69)
+    /// var errValue = err("Error occurred.")
+    /// 
+    /// var newOk = okValue.map(fn(value) value / 3)
+    /// var newErr = errValue.map(fn(value) value / 3)
+    /// 
+    /// assertThat(newOk == ok(23))
+    /// assertThat(newErr == err("Error occurred."))
+    /// ```
+    public function map<U>(predicate: fn(former: T) -> U) -> Outcome<U, E> {
+        ok(predicate(this?))
+    }   
+
+}
+
+/// Returns an `Outcome` with a value.
+/// ### Usage
+/// ```
+/// var outcome = ok(9)
+/// assertThat(outcome.isOk())
+/// ```
+public function ok<T, U>(value: T) -> Outcome<T, U> {
+    return Outcome(some(value))
+}
+
+/// Returns an `Outcome` with an error.
+/// ### Usage
+/// ```
+/// var outcome = err("Something went wrong.")
+/// assertThat(outcome.isErr())
+/// ```
+public function err<T, U>(error: U) -> Outcome<T, U> {
+    return Outcome(none(), some(error))
+}

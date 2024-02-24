@@ -1,0 +1,15 @@
+{
+   "name": "@whirlwind/herald",
+   "version": "0.0.0",
+   "description": "The Whirlwind setup tool.",
+   "main": "index.js",
+   "scripts": {
+      "dev": "node source/index.js",
+      "test": "echo \"Error: no test specified\" && exit 1"
+   },
+   "keywords": [
+      "languages"
+   ],
+   "author": "Adebola Akomolafe",
+   "license": "ISC"
+}

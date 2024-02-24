@@ -1,0 +1,19 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "shell",
+      "command": "cd source/server && cargo build",
+      "problemMatcher": ["$rustc"],
+      "group": "build",
+      "label": "Build Server Binary (Debug)"
+    },
+    {
+      "type": "shell",
+      "command": "cd source/server && cargo build --release",
+      "problemMatcher": ["$rustc"],
+      "group": "build",
+      "label": "Build Server Binary (Release)"
+    }
+  ]
+}

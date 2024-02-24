@@ -12,7 +12,7 @@ function convertToFull(data) {
         if (line.includes(": ")) return line;
         return line.replace(/\w+\s\:\=/, (match) => {
             const [variable] = match.split(/\s/);
-            let result = `var ${variable} =`
+            const result = `var ${variable} =`
             return result;
         });
     })

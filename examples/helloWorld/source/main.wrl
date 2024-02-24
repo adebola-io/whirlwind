@@ -1,0 +1,7 @@
+module helloWorld
+
+use system.io.print
+
+function main {
+    print('Hello, world!')
+}

@@ -1,0 +1,9 @@
+module selfHost
+
+use system.io.print
+use system.env.readArgs
+
+function main {
+    args := readArgs().skipFirst(2)
+    print('This is the first step.')
+}

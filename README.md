@@ -17,7 +17,7 @@ The [Whirlwind website](http://whirlwind-lang.vercel.app) is still pending. For 
 -  Static, Nominal Typing System.
 -  Support for Generic Programming.
 -  Support for Union Types.
--  Inbuilt Testing capabilities. (todo)
+-  Inbuilt Testing capabilities.
 -  Modular organization.
 
 ## Syntax 📐
