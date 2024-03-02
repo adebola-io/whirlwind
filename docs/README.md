@@ -1,4 +1,4 @@
-# Whirlwind Docs.
+# Whirlwind Docs
 
 This folder contains (sparse) notes to get up to speed in aiding Whirlwind's development process. It is mostly geared towards people who either wish to contribute to this repository, or gain a deeper understanding of the language's concepts.
 

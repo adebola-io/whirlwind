@@ -1,5 +1,5 @@
 {
-    "name": "whirlwindExamples.helloWorld",
+    "name": "whirlwind-examples.hello-world",
     "type": "binary",
     "version": "0.0.1",
     "description": "A simple hello world example in Whirlwind.",

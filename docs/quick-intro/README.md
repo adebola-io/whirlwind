@@ -1,4 +1,4 @@
-# Quick Intro to Whirlwind.
+# Quick Intro to Whirlwind
 
 ## Installation
 
@@ -34,7 +34,7 @@
 
 ### Destructuring
 
-## Modules and Imports.
+## Modules and Imports
 
 ### The `super` Module
 
@@ -52,8 +52,8 @@
 
 ### Important Interfaces
 
-## Union Types.
+## Union Types
 
 ## Enums
 
-## External Functions.
+## External Functions

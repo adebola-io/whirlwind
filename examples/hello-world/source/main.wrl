@@ -1,4 +1,4 @@
-module helloWorld
+module main
 
 use system.io.print
 

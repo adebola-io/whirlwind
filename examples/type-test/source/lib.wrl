@@ -108,11 +108,11 @@ test "Testing types." {
     arr3[0] = num // arr3 should infer type Array<Number> 
 
     arr4 := []
-    arr4 == [none(), some(true)] // arr4 should infer type Array<Maybe<Bool>>
+    arr4 = [none(), some([]), some([some(true)])] // arr4 should infer type Array<Maybe<Array<Maybe<Bool>>>>
 
 
     // Destructuring.
-    model Person implements Default {
+    model Person implements Default + Display {
         public var name: String
         public var age: Int32 // Set automatically.
         new(name: String, age?: Int32) {
@@ -121,6 +121,12 @@ test "Testing types." {
         }
         static function [Default.init] -> This {
             return Person("{unknown}")
+        }
+        public function [Display.toStr] -> String {
+            return String.fmt("Person { name: %, age: %}")
+                .add(this.name)
+                .add(this.age)
+                .finish()
         }
     }
     var person: Person // possible because Person implements Default.

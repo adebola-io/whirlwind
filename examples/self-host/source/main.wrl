@@ -1,4 +1,4 @@
-module selfHost
+module main
 
 use system.io.print
 use system.env.readArgs

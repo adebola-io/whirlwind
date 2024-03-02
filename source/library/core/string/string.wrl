@@ -160,7 +160,6 @@ public model String
     /// ## Usage
     /// ```
     /// var str = "Hello"
-    /// 
     /// assert(str.length()).equals(5)
     /// ```
     public function length -> Int32 {

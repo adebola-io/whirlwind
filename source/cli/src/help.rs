@@ -4,7 +4,7 @@ pub fn print_help() {
     let handle = Colored::from("|-").cyan();
     let welcome = Colored::from("🥏 Whirlwind.").cyan().bold();
     let sideline = Colored::from("|>").cyan();
-    println!("{handle}{welcome}");
+    println!("\n{handle}{welcome}");
     println!("{sideline} Whirlwind is a programming language for creating cool applications.");
     blankline();
     println!(

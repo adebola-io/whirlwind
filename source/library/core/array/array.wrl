@@ -514,7 +514,7 @@ public model Array<T>
     public function vectorAdd|=(T implements Addition)(other: []T) -> []T {
         var newArray = []
         var i = 0
-        while i < other.length() or i < this.len {
+        while i < other.len or i < this.len {
             var a = this.at(i)
             var b = other.at(i)
             if a.isNone() && b.isNone() {

@@ -3,7 +3,6 @@ module tuple
 use ntuple.NTuple
 use core.string.{Display, String}
 use core.maybe.some
-use core.sentinels.todo
 
 /// A simple ordered pair of items. Elements within a tuple can be of any type,
 /// and the order in which they are defined is preserved.
@@ -31,11 +30,10 @@ public model Tuple<T, U>
     public function [Display.toStr]|=(
         T implements Display and U implements Display
     ) -> String {
-        todo()
-        // return String.fmt("Tuple(%, %)")
-        //     .add(this.a)
-        //     .add(this.b)
-        //     .finish()
+        return String.fmt("Tuple(%, %)")
+            .add(this.a)
+            .add(this.b)
+            .finish()
     }
 
     public function [NTuple.first] -> ?T {
