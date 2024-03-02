@@ -1,7 +1,0 @@
-{
-    "name": "whirlwind-examples.self-host",
-    "version": "0.0.1",
-    "description": "An experimental compiler for Whirlwind, written in Whirlwind.",
-    "authors": ["The Whirlwind Team"],
-    "namespace": "system"
-}

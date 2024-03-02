@@ -26,7 +26,7 @@ public use core
 public use core.{
     array.{Array, UInt8Array},
     bool.Bool,
-    collections.{Tuple, pair},
+    collections.{HashMap, Tuple, pair},
     concurrent.{Eventual, Prospect, toSync},
     interfaces.{
         Default, Guaranteed, Try

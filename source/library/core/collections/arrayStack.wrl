@@ -4,8 +4,10 @@ module arrayStack
 use core.{
     array.Array,
     bool.Bool,
+    maybe.some,
     numeric.Int32,
     outcome.{err, ok, Outcome},
+    sentinels.fatal
 }
 
 /// An implementation of a stack using an array.
@@ -18,7 +20,9 @@ public model ArrayStack<T> {
    
     new(capacity?: Int32) {
         this.items = []
-        // this._capacity = capacity.unwrapOr(UINTMAX)
+        // The default capacity is infinity
+        this._capacity = -1
+        
     }
     /// Dynamically change the number of items in the stack.
     ///
@@ -49,6 +53,9 @@ public model ArrayStack<T> {
     /// assertThat(stack.size() == 2)
     /// ```
     public function setCapacity(value: Int32) {
+        if value < 0 {
+            fatal(some("Cannot set capacity to a negative value"))
+        }
         while value < this.items.length() {
             this.items.pop()
         }
@@ -59,12 +66,35 @@ public model ArrayStack<T> {
         this.items.last()
     }
     /// Removes the last item from the stack and returns it, if it exists.
+    /// ### Usage
+    /// ```
+    /// use core.collections.ArrayStack
+    /// 
+    /// var stack = ArrayStack()
+    /// assertThat(stack.pop() == none()) // Stack is empty.
+    /// 
+    /// stack.push(8)
+    /// assertThat(stack.pop() == some(8)) // Removes the top item.
+    /// assertThat(stack.pop() == none()) // Stack is empty again.
+    /// ```
     public function pop -> ?T {
         this.items.pop()
     }
     /// Enter data into the stack.
     ///
     /// This method will fail if the size of the stack is already at maximum length.
+    /// ### Usage
+    /// ```
+    /// use core.collections.ArrayStack
+    /// 
+    /// var stack = ArrayStack()
+    /// stack.push(10)
+    /// stack.push(11)
+    /// assertThat(stack.size() == 2)
+    /// 
+    /// stack.push(12)
+    /// assertThat(stack.size() == 3)
+    /// ```
     public function push(data: T) -> Outcome<Bool, StackError> {
         if this.items.length() == this._capacity {
             err(StackError.AlreadyFull)
@@ -74,13 +104,44 @@ public model ArrayStack<T> {
         }
     }
     /// Returns the capacity of the stack.
+    /// ### Usage
+    /// ```
+    /// use core.collections.ArrayStack
+    /// 
+    /// var stack = ArrayStack()
+    /// assertThat(stack.capacity() == 0)
+    /// 
+    /// stack.setCapacity(10)
+    /// assertThat(stack.capacity() == 10)
+    /// ```
     public function capacity -> Int32 {
         return this._capacity
     }
     /// Returns the size of the stack.
+    /// ### Usage
+    /// ```
+    /// use core.collections.ArrayStack
+    /// 
+    /// var stack = ArrayStack()
+    /// assertThat(stack.size() == 0)
+    /// 
+    /// stack.push(10)
+    /// assertThat(stack.size() == 1)
+    /// ```
     public function size -> Int32 {
         return this.items.length()
-    }   
+    } 
+    /// Returns true if the stack is empty.
+    /// ### Usage
+    /// ```
+    /// use core.collections.ArrayStack
+    /// 
+    /// var stack = ArrayStack()
+    /// assertThat(stack.isEmpty())
+    /// ```
+    public function isEmpty -> Bool {
+        return this.items.length() == 0
+    }  
 }
 
 public enum StackError {

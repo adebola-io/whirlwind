@@ -1,0 +1,8 @@
+[project.info]
+name = "whirlwind-examples.hello-world"
+type = "binary"
+version = "0.0.1"
+description = "A simple hello world example in Whirlwind."
+authors = ["The Whirlwind Team"]
+namespace = "system"
+entry = "source/main.wrl"

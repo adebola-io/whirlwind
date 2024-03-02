@@ -1,0 +1,7 @@
+[project.info]
+name = "whirlwind-examples.algorithms"
+type = "library"
+version = "0.0.1"
+description = "Implementation of various algorithms in Whirlwind."
+authors = ["The Whirlwind Team"]
+license = "Apache-2.0"

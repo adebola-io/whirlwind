@@ -10,17 +10,29 @@ use ntuple.Tuple
 
 public interface Hash {}
 
+import "internal:map" {
+    /// Creates a new Hashmap and returns its unique identifier.
+    "newMap" as function newMap() -> Int32;
+}
+
 /// An interface to be implemented by models that can be transformed into
 /// a hashmap of sorts.
 public interface ToMap<K implements Hash, V> {
     public function toMap -> HashMap<K, V>
 }
 
+/// A hashmap implementation in Whirlwind.
+/// 
+/// Hashmaps are used to store key-value pairs. 
 public model HashMap<K implements Hash, V> 
     implements AsIterator<Tuple<K, V>, HashMapIterable<K, V>> 
     + Default
 {
-    new(){}
+    var id: Int32
+
+    new(){
+        this.id = newMap()
+    }
 
     public function [AsIterator.iter] -> HashMapIterable<K, V> {
         return HashMapIterable(this)
@@ -33,6 +45,10 @@ public model HashMap<K implements Hash, V>
     /// If the key is already present in the map, then it will be replaced.
     /// ### Usage
     /// ```
+    /// var map = HashMap()
+    /// map.set("hello", "world")
+    /// 
+    /// assert(map.get("hello")).equals(some("world"))
     /// ```
     public function set(key: K, value: V) -> V {
         todo()
@@ -40,6 +56,11 @@ public model HashMap<K implements Hash, V>
     /// Retrieves a value from the hashmap.
     /// ### Usage
     /// ```
+    /// var map = HashMap()
+    /// map.set(10, "greetings")
+    /// 
+    /// var value = map.get(10)
+    /// assert(value).equals(some("greetings"))
     /// ```
     public function get(key: K) -> ?V {
         todo()
@@ -47,6 +68,7 @@ public model HashMap<K implements Hash, V>
     /// Removes a key-value pair from the hashmap.
     /// ### Usage
     /// ```
+    /// 
     /// ```
     public function remove(key: K) -> ?V {
         todo()

@@ -1,7 +1,0 @@
-{
-    "name": "whirlwind-examples.type-test",
-    "version": "0.0.1",
-    "description": "Testing the type system of Whirlwind.",
-    "authors": ["The Whirlwind Team"],
-    "namespace": "system"
-}

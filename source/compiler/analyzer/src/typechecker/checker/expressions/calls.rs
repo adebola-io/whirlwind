@@ -14,6 +14,10 @@ pub fn typecheck_call_expression(
         return instantiate_model(symbollib, model, checker_ctx, callexp);
     }
 
+    if let EvaluatedType::EnumInstance { .. } = caller {
+        return EvaluatedType::Unknown; // todo.
+    }
+
     if caller.is_unknown() {
         callexp.arguments.iter_mut().for_each(|arg| {
             typecheck_expression(arg, checker_ctx, symbollib);

@@ -2,6 +2,7 @@ module memory
 
 use core.bool.Bool
 use core.internals.builtin
+use core.internals.never
 use core.numeric.Int32
 use core.sentinels.todo
 
@@ -17,6 +18,18 @@ public function getOffset<T>(value: T) -> Int32 {
     // False recursion. The implementation of this function
     // is built into the compiler.
     return getOffset(value)
+}
+
+
+/// Returns the last value on the call stack.
+/// 
+/// It will crash the program if it is called when 
+/// the call stack has more than one value in it,
+/// or when the call stack is empty.
+public function stackLast() -> never {
+    // False recursion. The implementation of this function
+    // is built into the compiler.
+    return stackLast()
 }
 
 
