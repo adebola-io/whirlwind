@@ -5,7 +5,6 @@ use core.{
     bool.Bool,
     collections.Hash,
     interfaces.Default,
-    internals.builtin,
     iterate.{AsIterator, Iterable}, 
     numeric.Int32,
     ops.{Addition, Range},
@@ -81,7 +80,7 @@ public model String
     /// assert(str2).equals("Jonathan Is A Boy")
     /// ```
     public function capitalCase -> String {
-        return builtin.strings.capitalCase(this)
+        todo()
     }
     /// Returns an iterator over the valid characters in the string.
     /// ## Usage
@@ -116,7 +115,7 @@ public model String
     /// assertThat(str.contains("premiere"))
     /// ```
     public function contains(substr: String) -> Bool {
-       todo()
+       return this.vec.asArray().includes(substr.vec.asArray())
     }
     /// Returns true if the string ends with a given pattern.
     /// ### Usage
@@ -126,8 +125,8 @@ public model String
     /// assertThat(name.endsWith("ael"))
     /// ```
     public function endsWith(pat: String) -> Bool {
-        var thisIter = this.vec.asInt32Array().reverse()
-        var patternIter = pat.vec.asInt32Array().reverse()
+        var thisIter = this.vec.asArray().reverse()
+        var patternIter = pat.vec.asArray().reverse()
         thisIter.zip(patternIter).all(fn (tuple) {
             tuple.a == tuple.b
         })
@@ -142,7 +141,7 @@ public model String
     /// assertThat(!str2.isAlphanumeric())
     /// ```
     public function isAlphanumeric -> Bool {
-        return builtin.strings.isAlphanumeric(this)
+        todo()
     }
     /// Returns true if the string has no characters.
     /// ## Usage
@@ -174,7 +173,7 @@ public model String
     /// assert(str2).equals("hello, world!")
     /// ```
     public function lowerCase -> String {
-        return builtin.strings.lowerCase(this)
+        todo()
     }
     /// Returns a version of the string with padding on both sides.
     /// ## Usage
@@ -185,7 +184,7 @@ public model String
     /// assert(str2).equals("   Alright   ") // 3 spaces before and after.
     /// ```
     public function pad(count: Int32) -> String {
-        return builtin.strings.pad(this, count)
+        todo()
     }
     /// Returns a version of the string with left padding.
     /// ## Usage
@@ -196,7 +195,7 @@ public model String
     /// assert(str2).equals("   Alright") // 3 spaces before.
     /// ```
     public function padLeft(count: Int32) -> String {
-        return builtin.strings.padLeft(this, count)
+        todo()
     }
     /// Returns a version of the string with left padding.
     /// ## Usage
@@ -207,7 +206,7 @@ public model String
     /// assert(str2).equals("Alright   ") // 3 spaces before.
     /// ```
     public function padRight(count: Int32) -> String {
-        return builtin.strings.padRight(this, count)
+        todo()
     }
     /// Pads the string in place with whitespace on the left and right sides.
     /// ## Usage
@@ -265,7 +264,7 @@ public model String
     /// assert(str2).equals("Mike goes to school. Mike buys a book.")
     /// ```
     public function replace(subStr: String, newStr: String) -> String {
-        return builtin.strings.replace(this, subStr, newStr)
+        todo()
     }
     /// Returns a reversed version of the string.
     /// ## Usage
@@ -277,7 +276,11 @@ public model String
     /// assert(str2).equals("muinomednap")
     /// ```
     public function reverse -> String {
-        todo()
+        var newString = ""
+        for char in this.chars() {
+            newString = char + newString
+        }
+        return newString
     }
     /// Returns a section of the string.
     /// The range argument is exclusive, meaning it goes from the left index all the way to one before the right.
@@ -288,7 +291,7 @@ public model String
     /// assert(str.slice(0..5)).equals(some("Hello")) // index 0 to 4.
     /// ```
     public function slice(bounds: Range<Int32>) -> ?String {
-        return builtin.strings.slice(this, bounds)
+        todo()
     }
     /// Divides the string into a list of substrings based on a delimeter.
     /// ## Usage
@@ -299,7 +302,7 @@ public model String
     /// assert(words == ["Ring", "Around", "The", "Rosy"])
     /// ```
     public function split(delim: String) -> []String {
-        return builtin.strings.split(this, delim)
+        todo()
     }
     /// Divides the string into a list of substrings based on a predicate.
     /// ## Usage
@@ -310,7 +313,7 @@ public model String
     /// assert(sentences).equals(["Hello world", "My name is James."])
     /// ```
     public function splitAt(predicate: fn(pattern: String) -> Bool) -> []String {
-        return builtin.strings.splitAt(this, predicate)
+        todo()
     }
     /// Changes only the first character in the string to upper case.
     /// ## Usage
@@ -321,7 +324,10 @@ public model String
     /// assert(str2).equals("Nice to meet you, where you been?")
     /// ```
     public function sentenceCase -> String {
-        return builtin.strings.sentenceCase(this)
+        return this.chars()
+            .next()
+            .map(fn (c) c.upperCase() + this.slice(1..this.length()).unwrapOr(""))
+            .unwrapOr("")
     }
     /// Returns a version of the string without left or right whitespace padding.
     /// ## Usage
@@ -331,7 +337,7 @@ public model String
     /// assert(str.trim()).equals("What then shall we say?")
     /// ```
     public function trim -> String {
-        return builtin.strings.trim(this)
+        todo()
     }  
     /// Mutates the string in place and removes left or right whitespace padding.
     /// ## Usage
@@ -353,7 +359,7 @@ public model String
     /// assert(str.trimStart()).equals("What then shall we say?\n")
     /// ```
     public function trimStart -> String {
-        return builtin.strings.trimStart(this)
+        todo()
     } 
     /// Returns a version of the string without right whitespace padding.
     /// ## Usage
@@ -363,7 +369,7 @@ public model String
     /// assert(str.trimEnd()).equals("\nWhat then shall we say?")
     /// ```
     public function trimEnd -> String {
-        return builtin.strings.trimEnd(this)
+        todo()
     }
     /// Changes the case of all letters in the string to upper case.
     /// ## Usage
@@ -372,7 +378,7 @@ public model String
     /// assert(str.upperCase()).equals("HELLO, WORLD!")
     /// ```
     public function upperCase -> String {
-        return builtin.strings.trimEnd(this)
+        todo()
     }
     /// Returns true if the string starts with a given pattern.
     /// 
@@ -383,12 +389,9 @@ public model String
     /// assertThat(name.startsWith("Jo"))
     /// ```
     public function startsWith(pat: String) -> Bool {
-        var thisIter = this.vec.asInt32Array().iter()
-        var patternIter = pat.vec.asInt32Array().iter()
-        thisIter.zip(patternIter).all(fn (tuple) {
-            var { a, b } = tuple
-            a == b
-        })
+        var iterA = this.vec.asArray().iter()
+        var iterB = pat.vec.asArray().iter()
+        return iterA.zip(iterB).all(fn (tuple) tuple.a == tuple.b)
     }
     /// Creates a string with at least the specified capacity.
     /// ### Usage
@@ -401,7 +404,8 @@ public model String
     /// ### Usage
     /// ```
     /// ```
-    public static function fromUtf8(array: UInt8Array) -> This {
+    public static function fromUtf8(vec: UInt8Array) -> This {
+        // return String { vec = array }
         todo()
     }
     /// Creates a string from a value that implements Display.

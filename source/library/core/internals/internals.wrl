@@ -12,5 +12,5 @@ module internals
 
 
 public use never.never
-public use builtin
-public use injunction.{Injunction, invoke}
+public use wasm
+

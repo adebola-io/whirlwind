@@ -6,26 +6,26 @@ use core.numeric.Int32
 use string.String
 use display.Display
 
-/// A string intended for display on a terminal, 
+/// A string intended for display on a console or terminal, 
 /// that may have custom colors and styles applied to it.
 public model ColoredString implements Display {
     public var text: String
     var codes: []Int32
 
     new(text?: String) {
-        this.text = todo()
-        // this.text = Maybe.unwrapOrDefault(text)
-        this.codes = []
+        this.text = text.unwrapOrDefault()
     }
 
-    /// Changes the color of the terminal text to blue.
+    /// Changes the color of the text to blue.
     public function blue -> This {
-        todo()
+        this.codes.push(34)
+        return this
     }
 
-    ///
+    /// Changes the color of the text to red.
     public function red -> This {
-        todo()
+        this.codes.push(31)
+        return this
     }
 
     public function [Display.toStr] -> String {
@@ -34,6 +34,6 @@ public model ColoredString implements Display {
 
     public static function from<T implements Display>(value: T) -> This {
         var text = value.toStr()
-        ColoredString(some(text))
+        return ColoredString(some(text))
     }
 }

@@ -40,11 +40,11 @@ public model UInt8Array {
 
     /// Converts the UInt8Array to an array of 32-bit integers so that it can be
     /// indexed into and iterated over.
-    /// # Usage
+    /// ### Usage
     /// ```
     /// 
     /// ```
-    public function asInt32Array -> Array<Int32> {
+    public function asArray -> Array<Int32> {
         todo()
     }
 

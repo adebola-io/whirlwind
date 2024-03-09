@@ -4,9 +4,8 @@ use concurrent.Sequence
 use core.{
     bool.Bool,
     interfaces.Guaranteed,
-    internals.builtin,
     maybe.some,
-    sentinels.fatal,
+    sentinels.{fatal, todo},
 }
 
 /// An eventual is an asynchronously running operation,
@@ -61,7 +60,7 @@ public model Eventual<T> implements Guaranteed<T> {
         if this.aborted {
             return true
         }
-        builtin.eventual.abort(this)
+        todo() 
         this.aborted = true
         if this.resolved {
             return false
@@ -80,7 +79,7 @@ public model Eventual<T> implements Guaranteed<T> {
         if this.aborted {
             return
         }
-        builtin.eventual.abort(this)
+        todo()
         this.aborted = true
         if this.resolved {
             var _ = fatal(some("Cannot abort an already resolved eventual."))
@@ -123,7 +122,7 @@ public model Eventual<T> implements Guaranteed<T> {
             return this.value
         }
         this.resolved = true
-        return builtin.eventual.await(this)
+        todo()
     }
     /// Forces the eventual to be resolved, and panics if it isn't.
     /// 

@@ -4,7 +4,6 @@ use concurrent.SequenceError
 use core.{
     array.Array,
     bool.Bool,
-    internals.builtin,
     maybe.some,
     numeric.Int32,
     sentinels.{fatal, todo},
@@ -100,7 +99,7 @@ public model Prospect<T> {
             fatal(some("Cannot rerun a consumed Prospect."))
         }
         this.consumed = true
-        return builtin.eventual.create(this)
+        return todo()
     }
     /// Sets a timeout on the prospect's eventual execution. If the duration elapses 
     /// before the eventual can be resolved, it is abruptly aborted.

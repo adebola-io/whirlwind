@@ -4,6 +4,7 @@ use core.{
     bool.Bool,
     collections.Hash,
     interfaces.Default,
+    internals.wasm,
     ops.{
         Addition, Sequenced, Subtraction, 
         Multiplication, Division, Orderable,
@@ -35,6 +36,55 @@ public model Int32
         + FromStr
         + Hash
 {
+    /// Adds two Int32 values.
+    /// ### Usage
+    /// ```
+    /// var a = 1
+    /// var b = 2
+    /// 
+    /// assertThat(a.add(b) == 3)
+    /// ```
+    public function [Addition.add](other: Int32) -> Int32 {
+        return wasm.__i32_add(this, other)
+    }
+
+    /// Subtracts two Int32 values.
+    /// ### Usage
+    /// ```
+    /// var a = 3
+    /// var b = 2
+    /// 
+    /// assertThat(a.sub(b) == 1) // 3 - 2 
+    /// ```
+    public function [Subtraction.sub](other: Int32) -> Int32 {
+        return wasm.__i32_sub(this, other)
+    }
+
+    /// Multiplies this value by another.
+    /// ### Usage
+    /// ```
+    /// var a = 2
+    /// var b = 3
+    /// 
+    /// assertThat(a.mul(b) == 3)
+    /// ```
+    public function [Multiplication.mul](other: Int32) -> Int32 {
+        return wasm.__i32_mul(this, other)
+    }
+
+    /// Divides this Int32 by another Int32.
+    /// ### Usage
+    /// ```
+    /// var a = 4
+    /// var b = 2
+    /// 
+    /// assertThat(a.div(b) == 2)
+    /// ```
+    public function [Division.div](other: Int32) -> Int32 {
+        return wasm.__i32_div_s(this, other)
+    }
+
+
     /// Returns true if the value is less than 0.
     /// ### Usage
     /// ```
@@ -42,7 +92,7 @@ public model Int32
     /// assertThat(x.isNegative())
     /// ```
     public function isNegative -> Bool {
-        this < 0
+        return wasm.__i32_lt_s(this, 0) == 1
     }
     // Compiler built in.
 }
@@ -67,7 +117,7 @@ public model Int64
     /// assertThat(x.isNegative())
     /// ```
     public function isNegative -> Bool {
-        this < 0
+        return wasm.__i64_lt_s(this, 0) == 1
     }
     // Compiler built-in.
 }

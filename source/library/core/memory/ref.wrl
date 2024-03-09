@@ -1,7 +1,7 @@
 module ref
 
 use core.interfaces.Guaranteed
-use core.internals.builtin
+use core.sentinels.todo
 
 
 
@@ -12,6 +12,10 @@ use core.internals.builtin
 /// object is no longer reachable through other strong references, it will
 /// be cleared and the WeakRef will point to empty memory.
 public model WeakRef<T> implements Guaranteed<T> {
+
+    new(value: T){
+        todo()
+    }
 
     /// Implementation of the Guaranteed interface.
     function [Guaranteed.guarantee] -> T {
@@ -28,11 +32,6 @@ public model WeakRef<T> implements Guaranteed<T> {
 
     /// Retrieves the value in the reference.
     public function deref -> ?T {
-        return builtin.deref(this)
-    }
-
-    /// Creates a weak reference to an object.
-    public static function to(value: T) -> This {
-        builtin.weakref(value)
+        todo()
     }
 }

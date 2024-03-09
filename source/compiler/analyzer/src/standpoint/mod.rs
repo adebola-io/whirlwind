@@ -119,7 +119,7 @@ impl Standpoint {
         name: &str,
         phase: ResolutionPhase,
     ) -> Option<PathIndex> {
-        let (name, dir_map) = if name == "Package" {
+        let (name, dir_map) = if name == "package" {
             return Some(self.entry_module);
         } else if name == "super" {
             let parent_folder_of_dir = get_parent_dir(dir)?;

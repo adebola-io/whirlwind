@@ -10,15 +10,15 @@ public interface Addition {
 }
 
 public interface Subtraction {
-    public function subtract(other: This) -> This
+    public function sub(other: This) -> This
 }
 
 public interface Multiplication {
-    public function multiply(other: This) -> This
+    public function mul(other: This) -> This
 }
 
 public interface Division {
-    public function division(other: This) -> This
+    public function div(other: This) -> This
 }
 
 // public interface Index<I, R> {

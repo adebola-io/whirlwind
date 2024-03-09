@@ -7,6 +7,10 @@ use core.prelude.todo
 
 
 public model Url implements Display {
+    var scheme: String
+    var host: String
+    var path: String
+
     public function [Display.toStr] -> String {
         todo()
     }

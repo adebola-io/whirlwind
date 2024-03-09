@@ -120,7 +120,8 @@ public function min<T implements Orderable>(first: T, second: T) -> T {
     var ordering = first.compare(second)
     if ordering == Ordering.Less {
         return first
-    } else if ordering == Ordering.Greater {
+    } 
+    if ordering == Ordering.Greater {
         return second
     }
     return first

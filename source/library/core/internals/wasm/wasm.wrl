@@ -1,0 +1,394 @@
+/// This module lists all of the instructions in the 
+/// WebAssembly specification, providing a way to interact with
+/// them directly from Whirlwind.
+/// 
+/// Note that this module is _not_ meant to be used directly.
+/// All its exported functions will be replaced with single
+/// instructions by the compiler.
+module wasm
+
+use core.internals.never
+use core.numeric.{Int32, Int64, Float32, Float64}
+
+model funcref {}
+
+import "@wasm" {
+    /// The `unreachable` instruction is used to trap execution if the program 
+    /// enters an invalid state.
+    "unreachable" as public function __unreachable -> never
+
+    /// The `nop` instruction does nothing.
+    "nop" as public function __nop
+
+    "block" as public function __block
+
+    "loop" as public function __loop
+
+    "if" as public function __if
+
+    "else" as public function __else
+
+    "end" as public function __end
+
+    "br" as public function __br
+
+    "br_if" as public function __br_if
+
+    "br_table" as public function __br_table
+
+    "return" as public function __return
+
+    "call" as public function __call
+
+    "call_indirect" as public function __call_indirect
+
+    "drop" as public function __drop
+
+    "select" as public function __select
+
+    "local.get" as public function __local_get
+
+    "local.set" as public function __local_set
+
+    "local.tee" as public function __local_tee
+
+    "global.get" as public function __global_get
+
+    "global.set" as public function __global_set
+
+    "table.get" as public function __table_get
+
+    "table.set" as public function __table_set
+
+    "i32.load" as public function __i32_load(a: Int32) -> Int32
+
+    "i64.load" as public function __i64_load(a: Int32) -> Int64
+
+    "f32.load" as public function __f32_load(a: Int32) -> Float32
+
+    "f64.load" as public function __f64_load(a: Int32) -> Float64
+
+    "i64.load8_s" as public function __i64_load8_s(a: Int32) -> Int64
+
+    "i64.load8_u" as public function __i64_load8_u(a: Int32) -> Int64
+
+    "i64.load16_s" as public function __i64_load16_s(a: Int32) -> Int64
+
+    "i64.load16_u" as public function __i64_load16_u(a: Int32) -> Int64
+
+    "i64.load32_s" as public function __i64_load32_s(a: Int32) -> Int64
+
+    "i64.load32_u" as public function __i64_load32_u(a: Int32) -> Int64
+
+    "i32.store" as public function __i32_store(a: Int32, b: Int32)
+
+    "i64.store" as public function __i64_store(a: Int32, b: Int64)
+
+    "f32.store" as public function __f32_store(a: Int32, b: Float32)
+
+    "f64.store" as public function __f64_store(a: Int32, b: Float64)
+
+    "i32.store8" as public function __i32_store8(a: Int32, b: Int32)
+
+    "i32.store16" as public function __i32_store16(a: Int32, b: Int32)
+
+    "i64.store8" as public function __i64_store8(a: Int32, b: Int64)
+
+    "i64.store16" as public function __i64_store16(a: Int32, b: Int64)
+
+    "i64.store32" as public function __i64_store32(a: Int32, b: Int64)
+
+    "memory.size" as public function __memory_size -> Int32
+
+    "memory.grow" as public function __memory_grow(a: Int32) -> Int32
+
+    "i32.const" as public function __i32_const -> Int32
+
+    "i64.const" as public function __i64_const -> Int64
+
+    "f32.const" as public function __f32_const -> Float32
+
+    "f64.const" as public function __f64_const -> Float64
+
+    "i32.eqz" as public function __i32_eqz(a: Int32) -> Int32
+
+    "i32.eq" as public function __i32_eq(a: Int32, b: Int32) -> Int32
+
+    "i32.ne" as public function __i32_ne(a: Int32, b: Int32) -> Int32
+
+    "i32.lt_s" as public function __i32_lt_s(a: Int32, b: Int32) -> Int32
+
+    "i32.lt_u" as public function __i32_lt_u(a: Int32, b: Int32) -> Int32
+
+    "i32.gt_s" as public function __i32_gt_s(a: Int32, b: Int32) -> Int32
+
+    "i32.gt_u" as public function __i32_gt_u(a: Int32, b: Int32) -> Int32
+
+    "i32.le_s" as public function __i32_le_s(a: Int32, b: Int32) -> Int32
+
+    "i32.le_u" as public function __i32_le_u(a: Int32, b: Int32) -> Int32
+
+    "i32.ge_s" as public function __i32_ge_s(a: Int32, b: Int32) -> Int32
+
+    "i32.ge_u" as public function __i32_ge_u(a: Int32, b: Int32) -> Int32
+
+    "i64.eqz" as public function __i64_eqz(a: Int64) -> Int32
+
+    "i64.eq" as public function __i64_eq(a: Int64, b: Int64) -> Int32
+
+    "i64.ne" as public function __i64_ne(a: Int64, b: Int64) -> Int32
+
+    "i64.lt_s" as public function __i64_lt_s(a: Int64, b: Int64) -> Int32
+
+    "i64.lt_u" as public function __i64_lt_u(a: Int64, b: Int64) -> Int32
+
+    "i64.gt_s" as public function __i64_gt_s(a: Int64, b: Int64) -> Int32
+
+    "i64.gt_u" as public function __i64_gt_u(a: Int64, b: Int64) -> Int32
+
+    "i64.le_s" as public function __i64_le_s(a: Int64, b: Int64) -> Int32
+
+    "i64.le_u" as public function __i64_le_u(a: Int64, b: Int64) -> Int32
+
+    "i64.ge_s" as public function __i64_ge_s(a: Int64, b: Int64) -> Int32
+
+    "i64.ge_u" as public function __i64_ge_u(a: Int64, b: Int64) -> Int32
+
+    "f32.eq" as public function __f32_eq(a: Float32, b: Float32) -> Int32
+
+    "f32.ne" as public function __f32_ne(a: Float32, b: Float32) -> Int32
+
+    "f32.lt" as public function __f32_lt(a: Float32, b: Float32) -> Int32
+
+    "f32.gt" as public function __f32_gt(a: Float32, b: Float32) -> Int32
+
+    "f32.le" as public function __f32_le(a: Float32, b: Float32) -> Int32
+
+    "f32.ge" as public function __f32_ge(a: Float32, b: Float32) -> Int32
+
+    "f64.eq" as public function __f64_eq(a: Float64, b: Float64) -> Int32
+
+    "f64.ne" as public function __f64_ne(a: Float64, b: Float64) -> Int32
+
+    "f64.lt" as public function __f64_lt(a: Float64, b: Float64) -> Int32
+
+    "f64.gt" as public function __f64_gt(a: Float64, b: Float64) -> Int32
+
+    "f64.le" as public function __f64_le(a: Float64, b: Float64) -> Int32
+
+    "f64.ge" as public function __f64_ge(a: Float64, b: Float64) -> Int32
+
+    "i32.clz" as public function __i32_clz(a: Int32) -> Int32
+
+    "i32.ctz" as public function __i32_ctz(a: Int32) -> Int32
+
+    "i32.popcnt" as public function __i32_popcnt(a: Int32) -> Int32
+
+    "i32.add" as public function __i32_add(a: Int32, b: Int32) -> Int32
+
+    "i32.sub" as public function __i32_sub(a: Int32, b: Int32) -> Int32
+
+    "i32.mul" as public function __i32_mul(a: Int32, b: Int32) -> Int32
+
+    "i32.div_s" as public function __i32_div_s(a: Int32, b: Int32) -> Int32
+
+    "i32.div_u" as public function __i32_div_u(a: Int32, b: Int32) -> Int32
+
+    "i32.rem_s" as public function __i32_rem_s(a: Int32, b: Int32) -> Int32
+
+    "i32.rem_u" as public function __i32_rem_u(a: Int32, b: Int32) -> Int32
+
+    "i32.and" as public function __i32_and(a: Int32, b: Int32) -> Int32
+
+    "i32.or" as public function __i32_or(a: Int32, b: Int32) -> Int32
+
+    "i32.xor" as public function __i32_xor(a: Int32, b: Int32) -> Int32
+
+    "i32.shl" as public function __i32_shl(a: Int32, b: Int32) -> Int32
+
+    "i32.shr_s" as public function __i32_shr_s(a: Int32, b: Int32) -> Int32
+
+    "i32.shr_u" as public function __i32_shr_u(a: Int32, b: Int32) -> Int32
+
+    "i32.rotl" as public function __i32_rotl(a: Int32, b: Int32) -> Int32
+
+    "i32.rotr" as public function __i32_rotr(a: Int32, b: Int32) -> Int32
+
+    "i64.clz" as public function __i64_clz(a: Int64) -> Int32
+
+    "i64.ctz" as public function __i64_ctz(a: Int64) -> Int32
+
+    "i64.popcnt" as public function __i64_popcnt(a: Int64) -> Int32
+
+    "i64.add" as public function __i64_add(a: Int64, b: Int64) -> Int64
+
+    "i64.sub" as public function __i64_sub(a: Int64, b: Int64) -> Int64
+
+    "i64.mul" as public function __i64_mul(a: Int64, b: Int64) -> Int64
+
+    "i64.div_s" as public function __i64_div_s(a: Int64, b: Int64) -> Int64
+
+    "i64.div_u" as public function __i64_div_u(a: Int64, b: Int64) -> Int64
+
+    "i64.rem_s" as public function __i64_rem_s(a: Int64, b: Int64) -> Int64
+
+    "i64.rem_u" as public function __i64_rem_u(a: Int64, b: Int64) -> Int64
+
+    "i64.and" as public function __i64_and(a: Int64, b: Int64) -> Int64
+
+    "i64.or" as public function __i64_or(a: Int64, b: Int64) -> Int64
+
+    "i64.xor" as public function __i64_xor(a: Int64, b: Int64) -> Int64
+
+    "i64.shl" as public function __i64_shl(a: Int64, b: Int64) -> Int64
+
+    "i64.shr_s" as public function __i64_shr_s(a: Int64, b: Int64) -> Int64
+
+    "i64.shr_u" as public function __i64_shr_u(a: Int64, b: Int64) -> Int64
+
+    "i64.rotl" as public function __i64_rotl(a: Int64, b: Int64) -> Int64
+
+    "i64.rotr" as public function __i64_rotr(a: Int64, b: Int64) -> Int64
+
+    "f32.abs" as public function __f32_abs(a: Float32) -> Float32
+
+    "f32.neg" as public function __f32_neg(a: Float32) -> Float32
+
+    "f32.ceil" as public function __f32_ceil(a: Float32) -> Float32
+
+    "f32.floor" as public function __f32_floor(a: Float32) -> Float32
+
+    "f32.trunc" as public function __f32_trunc(a: Float32) -> Float32
+
+    "f32.nearest" as public function __f32_nearest(a: Float32) -> Float32
+
+    "f32.sqrt" as public function __f32_sqrt(a: Float32) -> Float32
+
+    "f32.add" as public function __f32_add(a: Float32, b: Float32) -> Float32
+
+    "f32.sub" as public function __f32_sub(a: Float32, b: Float32) -> Float32
+
+    "f32.mul" as public function __f32_mul(a: Float32, b: Float32) -> Float32
+
+    "f32.div" as public function __f32_div(a: Float32, b: Float32) -> Float32
+
+    "f32.min" as public function __f32_min(a: Float32, b: Float32) -> Float32
+
+    "f32.max" as public function __f32_max(a: Float32, b: Float32) -> Float32
+
+    "f32.copysign" as public function __f32_copysign(a: Float32, b: Float32) -> Float32
+
+    "f64.abs" as public function __f64_abs(a: Float64) -> Float64
+
+    "f64.neg" as public function __f64_neg(a: Float64) -> Float64
+
+    "f64.ceil" as public function __f64_ceil(a: Float64) -> Float64
+
+    "f64.floor" as public function __f64_floor(a: Float64) -> Float64
+
+    "f64.trunc" as public function __f64_trunc(a: Float64) -> Float64
+
+    "f64.nearest" as public function __f64_nearest(a: Float64) -> Float64
+
+    "f64.sqrt" as public function __f64_sqrt(a: Float64) -> Float64
+
+    "f64.add" as public function __f64_add(a: Float64, b: Float64) -> Float64
+
+    "f64.sub" as public function __f64_sub(a: Float64, b: Float64) -> Float64
+
+    "f64.mul" as public function __f64_mul(a: Float64, b: Float64) -> Float64
+
+    "f64.div" as public function __f64_div(a: Float64, b: Float64) -> Float64
+
+    "f64.min" as public function __f64_min(a: Float64, b: Float64) -> Float64
+
+    "f64.max" as public function __f64_max(a: Float64, b: Float64) -> Float64
+
+    "f64.copysign" as public function __f64_copysign(a: Float64, b: Float64) -> Float64
+
+    "i32.wrap_i64" as public function __i32_wrap_i64(a: Int64) -> Int32
+
+    "i64.trunc_f32_s" as public function __i64_trunc_f32_s(a: Float32) -> Int64
+
+    "i64.trunc_f32_u" as public function __i64_trunc_f32_u(a: Float32) -> Int64
+
+    "i64.trunc_f64_s" as public function __i64_trunc_f64_s(a: Float64) -> Int64
+
+    "i64.trunc_f64_u" as public function __i64_trunc_f64_u(a: Float64) -> Int64
+
+    "f32.convert_i32_s" as public function __f32_convert_i32_s(a: Int32) -> Float32
+
+    "f32.convert_i32_u" as public function __f32_convert_i32_u(a: Int32) -> Float32
+
+    "f64.convert_i32_s" as public function __f64_convert_i32_s(a: Int32) -> Float64
+
+    "f64.convert_i32_u" as public function __f64_convert_i32_u(a: Int32) -> Float64
+
+    "f32.convert_i64_s" as public function __f32_convert_i64_s(a: Int64) -> Float32
+
+    "f32.convert_i64_u" as public function __f32_convert_i64_u(a: Int64) -> Float32
+
+    "f64.convert_i64_s" as public function __f64_convert_i64_s(a: Int64) -> Float64
+
+    "f64.convert_i64_u" as public function __f64_convert_i64_u(a: Int64) -> Float64
+
+    "f32.demote_f64" as public function __f32_demote_f64(a: Float64) -> Float32
+
+    "f64.promote_f32" as public function __f64_promote_f32(a: Float32) -> Float64
+
+    "i32.reinterpret_f32" as public function __i32_reinterpret_f32(a: Float32) -> Int32
+
+    "i64.reinterpret_f64" as public function __i64_reinterpret_f64(a: Float64) -> Int64
+
+    "f32.reinterpret_i32" as public function __f32_reinterpret_i32(a: Int32) -> Float32
+
+    "f64.reinterpret_i64" as public function __f64_reinterpret_i64(a: Int64) -> Float64
+
+    "i32.extend8_s" as public function __i32_extend8_s(a: Int32) -> Int32
+
+    "i32.extend16_s" as public function __i32_extend16_s(a: Int32) -> Int32
+
+    "i64.extend8_s" as public function __i64_extend8_s(a: Int32) -> Int64
+
+    "i64.extend16_s" as public function __i64_extend16_s(a: Int32) -> Int64
+
+    "i64.extend32_s" as public function __i64_extend32_s(a: Int32) -> Int64
+
+    "ref.null" as public function __ref_null -> Int32
+
+    "ref.is_null" as public function __ref_is_null(a: Int32) -> Int32
+
+    "ref.func" as public function __ref_func -> funcref
+
+    "i32.trunc_sat_f32_s" as public function __i32_trunc_sat_f32_s(a: Float32) -> Int32
+
+    "i32.trunc_sat_f32_u" as public function __i32_trunc_sat_f32_u(a: Float32) -> Int32
+
+    "i32.trunc_sat_f64_s" as public function __i32_trunc_sat_f64_s(a: Float64) -> Int32
+
+    "i32.trunc_sat_f64_u" as public function __i32_trunc_sat_f64_u(a: Float64) -> Int32
+
+    "i64.trunc_sat_f32_s" as public function __i64_trunc_sat_f32_s(a: Float32) -> Int64
+
+    "i64.trunc_sat_f32_u" as public function __i64_trunc_sat_f32_u(a: Float32) -> Int64
+
+    "i64.trunc_sat_f64_s" as public function __i64_trunc_sat_f64_s(a: Float64) -> Int64
+
+    "i64.trunc_sat_f64_u" as public function __i64_trunc_sat_f64_u(a: Float64) -> Int64
+
+    "memory.init" as public function __memory_init(a: Int32, b: Int32, c: Int32)
+    
+    "data.drop" as public function __data_drop
+
+    "memory.copy" as public function __memory_copy(a: Int32, b: Int32, c: Int32)
+
+    "memory.fill" as public function __memory_fill(a: Int32, b: Int32, c: Int32)
+
+    "table.init" as public function __table_init(a: Int32, b: Int32, c: Int32)
+
+    "elem.drop" as public function __elem_drop
+
+    "table.copy" as public function __table_copy(a: Int32, b: Int32, c: Int32)
+
+    "table.grow" as public function __table_grow(a: Int32, b: Int32) -> Int32
+}

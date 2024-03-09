@@ -13,7 +13,6 @@ use core.{
     collections.Tuple,
     maybe.{none, some},
     numeric.Int32,
-    sentinels.todo
 }
 
 /// ## The Iterable interface
@@ -334,6 +333,19 @@ public interface Iterable<I> {
     public function chain<That implements Iterable<I>>(that: That) -> Chain<I, This, That> {
         return Chain(this, that)
     }
+    /// Returns a new iterator that skips over repeated items, 
+    /// thereby producing only unique values.
+    /// 
+    /// ### Usage
+    /// ```
+    /// var items = [1, 1, 2, 3, 4, 4, 5, 6, 6, 6]
+    /// var uniqueItems = items.iter().unique()
+    /// 
+    /// assert(uniqueItems).equals([1, 2, 3, 4, 5, 6])
+    /// ```
+    public function unique -> Unique<I, This> {
+        return Unique(this)
+    }
 }
 
 public model Enumerate<I, J implements Iterable<I>> implements Iterable<Tuple<Int32, I>>> {
@@ -397,12 +409,22 @@ public model Map<I, O, J implements Iterable<I>> implements Iterable<O> {
 
 public model Unique<I, J implements Iterable<I>> implements Iterable<I> {
     var seen: []I
+    var iterator: J
+    new(iterator: J) {
+        this.iterator = iterator
+    }
     public function [Iterable.next] -> ?I {
-        todo()
+        var item = this.iterator.next()?
+        while this.seen.contains(item) {
+            item = this.iterator.next()?
+        }
+        this.seen.push(item)
+        return some(item)
     }
 }
 
-public model Zip<I, I1 implements Iterable<I>, J, I2 implements Iterable<J>> implements Iterable<Tuple<I, J>>> {
+public model Zip<I, I1 implements Iterable<I>, J, I2 implements Iterable<J>> implements Iterable<Tuple<I, J>>> 
+{
     var first: I1
     var second: I2
     new(first: I1, second: I2) {
@@ -489,14 +511,13 @@ public model Chain
     public function [Iterable.next] -> ?I {
         if this.firstEnded {
             return this.second.next()
+        }
+        var nextItem = this.first.next()
+        if nextItem.isNone() {
+            this.firstEnded = true
+            return this.second.next()
         } else {
-            var nextItem = this.first.next()
-            if nextItem.isNone() {
-                this.firstEnded = true
-                this.second.next()
-            } else {
-                nextItem
-            }
+            return nextItem
         }   
     }
 }

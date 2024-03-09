@@ -125,7 +125,7 @@ public model Array<T>
     public function reset|=(T implements Default) {
         var i = 0
         while i < this.len {
-            var default: T 
+            var default: T
             this[i] = default
             i += 1
         }
@@ -371,15 +371,12 @@ public model Array<T>
     public function partition(check: fn(item: T) -> Bool) -> [][]T {
         var trueItems = []
         var falseItems = []
-        var i = 0
-        while i < this.len {
-            var item = this[i]
+        for item in this {
             if check(item) {
                 trueItems.push(item)
             } else {
                 falseItems.push(item)
             }
-            i += 1
         }
         return [trueItems, falseItems]
     }
@@ -544,7 +541,7 @@ public model Array<T>
     /// assert(firstItem).equals(some(1))
     /// ```
     /// If there is no element in the array,
-    /// then none() is returned, and the operation 
+    /// then `none()` is returned, and the operation 
     /// does nothing.
     /// ```
     /// var arr = []

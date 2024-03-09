@@ -1,7 +1,6 @@
 module memory
 
 use core.bool.Bool
-use core.internals.builtin
 use core.internals.never
 use core.numeric.Int32
 use core.sentinels.todo
@@ -65,5 +64,5 @@ public function same<T>(left: T, right: T) -> Bool {
 /// assert(b).equals([1, 2, 3])
 /// ```
 public function swap<T>(a: T, b: T) {
-    builtin.swap(a, b)
+    todo()
 }

@@ -2,7 +2,6 @@ module quadruple
 
 use core.maybe.some
 use core.string.{Display, String}
-use core.sentinels.todo
 
 use ntuple.NTuple
 use tuple.{Tuple, pair}
@@ -36,13 +35,12 @@ public model Quadruple<T, U, V, W>
             and W implements Display
         ) -> String
     {
-        todo()
-        // return String.fmt("Quadruple(%, %, %, %)")
-        //     .add(this.a.toStr())
-        //     .add(this.b.toStr())
-        //     .add(this.c.toStr())
-        //     .add(this.d.toStr())
-        //     .finish()
+        return String.fmt("Quadruple(%, %, %, %)")
+            .add(this.a.toStr())
+            .add(this.b.toStr())
+            .add(this.c.toStr())
+            .add(this.d.toStr())
+            .finish()
     }
 
     public function [NTuple.first] -> ?T {
