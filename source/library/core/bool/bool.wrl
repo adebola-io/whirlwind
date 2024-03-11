@@ -2,11 +2,9 @@
 /// boolean values.
 module bool
 
-use core.{
-    maybe.{some, none},
-    interfaces.Default,
-    string.{Display, FromStr, String}
-}
+use core.maybe.{none, some}
+use core.interfaces.Default
+use core.string.{Display, FromStr, String}
 
 /// A representation of boolean values, `true` or `false`.
 public model Bool 

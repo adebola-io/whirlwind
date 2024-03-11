@@ -1,41 +1,40 @@
 pub struct Callable {
     pub name: String,
-    pub statements: Vec<MiddleStatement>,
+    pub statements: Vec<SimplifiedStatement>,
 }
 
 pub struct Symbols {}
 
-pub enum MiddleStatement {
-    Expression(MiddleExpression),
-    WhileLoop(MiddleWhileLoop),
-    VariableDeclaration(MiddleVariableDecl),
-    ConstantDeclaration(MiddleConstantDecl),
-    Break(MiddleBreak),
-    Continue(MiddleContinue),
-    Return(MiddleReturn),
+pub enum SimplifiedStatement {
+    Expression(SimplifiedExpression),
+    WhileLoop(SimplifiedWhileLoop),
+    VariableDeclaration(SimplifiedVariableDecl),
+    Break(SimplifiedBreak),
+    Continue(SimplifiedContinue),
+    Return(SimplifiedReturn),
 }
 
-pub struct MiddleConstantDecl {}
+pub struct SimplifiedConstantDecl {}
 
-pub struct MiddleContinue {}
+pub struct SimplifiedContinue {}
 
-pub struct MiddleReturn {}
+pub struct SimplifiedReturn {}
 
-pub struct MiddleBreak {}
+pub struct SimplifiedBreak {}
 
-pub struct MiddleWhileLoop {
-    pub condition: MiddleExpression,
-    pub body: MiddleBlock,
+pub struct SimplifiedWhileLoop {
+    pub condition: SimplifiedExpression,
+    pub body: SimplifiedBlock,
 }
 
-pub struct MiddleVariableDecl {}
+pub struct SimplifiedVariableDecl {}
 
-pub enum MiddleExpression {
+pub enum SimplifiedExpression {
     NumericOp(Box<NumericOp>),
-    Block(MiddleBlock),
+    Block(SimplifiedBlock),
 }
 
-pub struct MiddleBlock {}
+pub struct SimplifiedBlock {}
 
 pub struct NumericOp {}
 

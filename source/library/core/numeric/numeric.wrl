@@ -1,17 +1,16 @@
 module numeric
 
-use core.{
-    bool.Bool,
-    collections.Hash,
-    interfaces.Default,
-    internals.wasm,
-    ops.{
-        Addition, Sequenced, Subtraction, 
-        Multiplication, Division, Orderable,
-        Bitwise
-    },
-    string.{String, Display, FromStr},
+use core.bool.Bool
+use core.collections.Hash
+use core.interfaces.Default
+use core.internals.wasm
+use core.maybe.some
+use core.ops.{
+    Addition, Sequenced, Subtraction, 
+    Multiplication, Division, Orderable,
+    Ordering, Bitwise
 }
+use core.string.{String, Display, FromStr}
 
 /// Interface for rendering 
 public interface FixedPoint {
@@ -84,6 +83,130 @@ public model Int32
         return wasm.__i32_div_s(this, other)
     }
 
+    /// Returns the remainder after dividing this Int32 by another Int32.
+    /// ### Usage
+    /// ```
+    /// var a = 5
+    /// var b = 3
+    /// 
+    /// assertThat(a.rem(b) == 2)
+    /// ```
+    public function [Division.rem](other: Int32) -> Int32 {
+        return wasm.__i32_rem_s(this, other)
+    }
+
+    /// Returns the bitwise AND of this Int32 and another.
+    /// ### Usage
+    /// ```
+    /// var a = 5
+    /// var b = 3
+    /// 
+    /// assertThat(a.bitwiseAnd(b) == 1)
+    /// ```
+    public function [Bitwise.bitand](other: Int32) -> Int32 {
+        return wasm.__i32_and(this, other)
+    }
+
+    /// Returns the bitwise OR of this Int32 and another.
+    /// ### Usage
+    /// ```
+    /// var a = 5
+    /// var b = 3
+    /// 
+    /// assertThat(a.bitwiseOr(b) == 7)
+    /// ```
+    public function [Bitwise.bitor](other: Int32) -> Int32 {
+        return wasm.__i32_or(this, other)
+    }
+
+    /// Returns the bitwise XOR of this Int32 and another.
+    /// ### Usage
+    /// ```
+    /// var a = 5
+    /// var b = 3
+    /// 
+    /// assertThat(a.bitwiseXor(b) == 6)
+    /// ```
+    public function [Bitwise.bitxor](other: Int32) -> Int32 {
+        return wasm.__i32_xor(this, other)
+    }
+
+    /// Returns the bitwise left shift of this Int32 and another.
+    /// ### Usage
+    /// ```
+    /// var a = 5
+    /// var b = 3
+    /// 
+    /// assertThat(a.bitwiseLShift(b) == 10)
+    /// ```
+    public function [Bitwise.lshift](other: Int32) -> Int32 {
+        return wasm.__i32_shl(this, other)
+    }
+
+    /// Returns the bitwise right shift of this Int32 and another.
+    /// ### Usage
+    /// ```
+    /// var a = 5
+    /// var b = 3
+    /// 
+    /// assertThat(a.bitwiseRShift(b) == 1)
+    /// ```
+    public function [Bitwise.rshift](other: Int32) -> Int32 {
+        return wasm.__i32_shr_s(this, other)
+    }
+
+    /// Returns the next item in a sequence.
+    /// ### Usage
+    /// ```
+    /// var a = 1
+    /// assertThat(a.nextItem() == 2)
+    /// ```
+    public function [Sequenced.nextItem] -> ?Int32 {
+        return some(wasm.__i32_add(this, 1))
+    }
+
+    static function [Default.init] -> Int32 {
+        return 0
+    }
+
+    /// Returns the ordering of this `Int32` in relation to another `Int32`.
+    /// ### Usage
+    /// ```
+    /// var x = 1
+    /// var y = 2
+    /// 
+    /// assertThat(x.compare(y) == Ordering.Less)
+    /// assertThat(y.compare(x) == Ordering.Greater)
+    /// ```
+    public function [Orderable.compare](other: Int32) -> Ordering {
+        if wasm.__i32_gt_s(this, other) == 1 {
+            return Ordering.Greater
+        }
+        if wasm.__i32_lt_s(this, other) == 1 {
+            return Ordering.Less
+        }
+        return Ordering.Equal
+    }
+
+    /// Returns true if the value is 0.
+    /// ### Usage
+    /// ```
+    /// var x = 0
+    /// assertThat(x.isZero())
+    /// ```
+    public function isZero -> Bool {
+        return wasm.__i32_eqz(this) == 1
+    }
+
+    /// Returns true if the value is greater than 0.
+    /// ### Usage
+    /// ```
+    /// var x = 1
+    /// assertThat(x.isPositive())
+    /// ```
+    public function isPositive -> Bool {
+        return this.isZero() or wasm.__i32_gt_s(this, 0) == 1
+    }
 
     /// Returns true if the value is less than 0.
     /// ### Usage
@@ -94,7 +217,6 @@ public model Int32
     public function isNegative -> Bool {
         return wasm.__i32_lt_s(this, 0) == 1
     }
-    // Compiler built in.
 }
 
 public model Int64
@@ -110,6 +232,187 @@ public model Int64
         + FromStr
         + Hash
 {
+    /// Adds two Int64 values.
+    /// ### Usage
+    /// ```
+    /// var a: Int64 = 1
+    /// var b: Int64 = 2
+    /// 
+    /// assertThat(a.add(b) == 3)
+    /// ```
+    public function [Addition.add](other: Int64) -> Int64 {
+        return wasm.__i64_add(this, other)
+    }
+
+    /// Subtracts two Int64 values.
+    /// ### Usage
+    /// ```
+    /// var a: Int64 = 3
+    /// var b: Int63 = 2
+    /// 
+    /// assertThat(a.sub(b) == 1) // 3 - 2 
+    /// ```
+    public function [Subtraction.sub](other: Int64) -> Int64 {
+        return wasm.__i64_sub(this, other)
+    }
+
+    /// Multiplies this value by another.
+    /// ### Usage
+    /// ```
+    /// var a: Int64 = 2
+    /// var b: Int64 = 3
+    /// 
+    /// assertThat(a.mul(b) == 3)
+    /// ```
+    public function [Multiplication.mul](other: Int64) -> Int64 {
+        return wasm.__i64_mul(this, other)
+    }
+
+    /// Divides this Int64 by another Int64.
+    /// ### Usage
+    /// ```
+    /// var a: Int64 = 4
+    /// var b: Int64 = 2
+    /// 
+    /// assertThat(a.div(b) == 2)
+    /// ```
+    public function [Division.div](other: Int64) -> Int64 {
+        return wasm.__i64_div_s(this, other)
+    }
+
+    /// Returns the remainder after dividing this Int64 by another Int64.
+    /// ### Usage
+    /// ```
+    /// var a: Int64 = 5
+    /// var b: Int64 = 3
+    /// 
+    /// assertThat(a.rem(b) == 2)
+    /// ```
+    public function [Division.rem](other: Int64) -> Int64 {
+        return wasm.__i64_rem_s(this, other)
+    }
+
+    /// Returns the bitwise AND of this Int64 and another.
+    /// ### Usage
+    /// ```
+    /// var a: Int64 = 5
+    /// var b: Int64 = 3
+    /// 
+    /// assertThat(a.bitwiseAnd(b) == 1)
+    /// ```
+    public function [Bitwise.bitand](other: Int64) -> Int64 {
+        return wasm.__i64_and(this, other)
+    }
+
+    /// Returns the bitwise OR of this Int64 and another.
+    /// ### Usage
+    /// ```
+    /// var a: Int64 = 5
+    /// var b: Int64 = 3
+    /// 
+    /// assertThat(a.bitor(b) == 7)
+    /// ```
+    public function [Bitwise.bitor](other: Int64) -> Int64 {
+        return wasm.__i64_or(this, other)
+    }
+
+    /// Returns the bitwise XOR of this Int64 and another.
+    /// ### Usage
+    /// ```
+    /// var a: Int64 = 5
+    /// var b: Int64 = 3
+    /// 
+    /// assertThat(a.bitxor(b) == 6)
+    /// ```
+    public function [Bitwise.bitxor](other: Int64) -> Int64 {
+        return wasm.__i64_xor(this, other)
+    }
+
+    /// Returns the bitwise left shift of this Int64 and another.
+    /// ### Usage
+    /// ```
+    /// var a: Int64 = 5
+    /// var b: Int64 = 3
+    /// 
+    /// assertThat(a.lshift(b) == 10)
+    /// ```
+    public function [Bitwise.lshift](other: Int64) -> Int64 {
+        return wasm.__i64_shl(this, other)
+    }
+
+    /// Returns the bitwise right shift of this Int32 and another.
+    /// ### Usage
+    /// ```
+    /// var a: Int64 = 5
+    /// var b: Int64 = 3
+    /// 
+    /// assertThat(a.rshift(b) == 1)
+    /// ```
+    public function [Bitwise.rshift](other: Int64) -> Int64 {
+        return wasm.__i64_shr_s(this, other)
+    }
+
+    /// Returns the next item in a sequence.
+    /// ### Usage
+    /// ```
+    /// var a: Int64 = 1
+    /// assertThat(a.nextItem() == 2)
+    /// ```
+    public function [Sequenced.nextItem] -> ?Int64 {
+        return some(wasm.__i64_add(this, 1))
+    }
+
+    /// Returns the default value of `Int64`.
+    /// 
+    /// ### Usage
+    /// ```
+    /// var x: Int64
+    /// 
+    /// assertThat(x == 0)
+    /// ```
+    static function [Default.init] -> Int64 {
+        return 0
+    }
+
+    /// Returns the ordering of this `Int32` in relation to another `Int32`.
+    /// ### Usage
+    /// ```
+    /// var x: Int64 = 1
+    /// var y: Int64 = 2
+    /// 
+    /// assertThat(x.compare(y) == Ordering.Less)
+    /// assertThat(y.compare(x) == Ordering.Greater)
+    /// ```
+    public function [Orderable.compare](other: Int64) -> Ordering {
+        if wasm.__i64_gt_s(this, other) == 1 {
+            return Ordering.Greater
+        }
+        if wasm.__i64_lt_s(this, other) == 1 {
+            return Ordering.Less
+        }
+        return Ordering.Equal
+    }
+
+    /// Returns true if the value is 0.
+    /// ### Usage
+    /// ```
+    /// var x: Int64 = 0
+    /// assertThat(x.isZero())
+    /// ```
+    public function isZero -> Bool {
+        return wasm.__i64_eqz(this) == 1
+    }
+
+    /// Returns true if the value is greater than 0.
+    /// ### Usage
+    /// ```
+    /// var x: Int64 = 1
+    /// assertThat(x.isPositive())
+    /// ```
+    public function isPositive -> Bool {
+        return this.isZero() or wasm.__i64_gt_s(this, 0) == 1
+    }
+
     /// Returns true if the value is less than 0.
     /// ### Usage
     /// ```
@@ -119,7 +422,6 @@ public model Int64
     public function isNegative -> Bool {
         return wasm.__i64_lt_s(this, 0) == 1
     }
-    // Compiler built-in.
 }
 
 /// A 32-bit floating number.

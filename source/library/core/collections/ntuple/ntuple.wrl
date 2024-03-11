@@ -1,9 +1,8 @@
 module ntuple
 
-use core.{
-    internals.never,
-    maybe.none,
-}
+use core.internals.never
+use core.maybe.none
+
 public use quadruple.Quadruple
 public use quintuple.Quintuple
 public use sextuple.Sextuple

@@ -1,12 +1,11 @@
 module set
 
-use core.{
-    bool.Bool,
-    iterate.{AsIterator, Iterable},
-    numeric.Int32,
-    sentinels.todo,
-    string.{Display, String}
-}
+use core.bool.Bool
+use core.iterate.{AsIterator, Iterable}
+use core.numeric.Int32
+use core.sentinels.todo
+use core.string.{Display, String}
+
 use super.{Hash, HashMap}
 
 

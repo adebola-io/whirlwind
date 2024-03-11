@@ -2,24 +2,23 @@
 /// ordered collections of values.
 module array
 
-use core.{
-    bool.Bool,
-    interfaces.Default,
-    iterate.{AsIterator, Iterable, Reversed},
-    math.{max, min, psrandom},
-    maybe.{none, some},
-    numeric.Int32,
-    ops.{Addition, Orderable},
-    sentinels.{todo},
-    string.{Display, String}
-}
+use core.bool.Bool
+use core.interfaces.Default
+use core.iterate.{AsIterator, Iterable, Reversed}
+use core.math.{max, min, psrandom}
+use core.maybe.{none, some}
+use core.numeric.Int32
+use core.ops.{Addition, Orderable}
+use core.sentinels.todo
+use core.string.{Display, String}
+
 public use uInt8Array.UInt8Array
 
 /// A contiguous, growable list of items of the same type.
 public model Array<T> 
     implements Addition
         + AsIterator<T, ArrayIter<T>> 
-        + Default 
+        + Default
         + Display|=(T implements Display)
 {
     /// The number of items in the array.

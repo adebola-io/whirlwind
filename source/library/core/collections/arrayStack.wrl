@@ -1,14 +1,12 @@
 module arrayStack
 
 
-use core.{
-    array.Array,
-    bool.Bool,
-    maybe.some,
-    numeric.Int32,
-    outcome.{err, ok, Outcome},
-    sentinels.fatal
-}
+use core.array.Array
+use core.bool.Bool
+use core.maybe.some
+use core.numeric.Int32
+use core.outcome.{err, ok, Outcome}
+use core.sentinels.fatal
 
 /// An implementation of a stack using an array.
 /// 

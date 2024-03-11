@@ -1,14 +1,19 @@
 module hashMap
 
-use core.{
-    sentinels.todo,
-    interfaces.Default, 
-    iterate.{AsIterator, Iterable},
-    numeric.Int32,
-}
+use core.sentinels.todo
+use core.interfaces.Default
+use core.iterate.{AsIterator, Iterable}
+use core.numeric.Int32
 use ntuple.Tuple
 
-public interface Hash {}
+public interface Hasher {
+
+}
+
+public interface Hash {
+    /// Feeds this value into a given hasher.
+    // public function hash<H implements Hasher>(state: H)
+}
 
 import "internal:map" {
     /// Creates a new Hashmap and returns its unique identifier.

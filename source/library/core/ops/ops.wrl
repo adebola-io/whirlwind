@@ -10,21 +10,31 @@ public interface Addition {
 }
 
 public interface Subtraction {
+    /// Subtracts a value from the current value.
     public function sub(other: This) -> This
 }
 
 public interface Multiplication {
+    /// Multiplies this value by another.
     public function mul(other: This) -> This
 }
 
 public interface Division {
+    /// Divides this value by another.
     public function div(other: This) -> This
+    /// Returns the remainder of this value divided by another.
+    public function rem(other: This) -> This
 }
 
 // public interface Index<I, R> {
 //     public function index(indexer: I) -> R
 // }
 
+/// The Ordering enum type represents the possible results of comparing two values. 
+/// 
+/// It is conceptually similar to the standard comparisons used 
+/// in other programming languages, making it intuitive and useful 
+/// in various sorting or comparison-related algorithms.
 public enum Ordering {
     Less,
     Greater,

@@ -25,7 +25,7 @@ public model String
     var vec: UInt8Array
     /// Implementation of the Display trait.
     public function [Display.toStr] -> String {
-       return "\"" + this + "\"" // todo: escape inner double quotes.
+       return '"' + this.replace('"', '\\"') + '"'
     }
     /// Implementation of the Default trait.
     static function [Default.init] -> This {
