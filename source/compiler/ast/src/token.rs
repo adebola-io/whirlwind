@@ -205,7 +205,6 @@ pub enum Keyword {
     Async,
     Break,
     Case,
-    Const,
     Continue,
     Else,
     Enum,

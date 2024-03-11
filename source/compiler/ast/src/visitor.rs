@@ -1,7 +1,7 @@
 use crate::{
-    AccessExpr, ArrayExpr, AssignmentExpr, BinaryExpr, Block, CallExpr, ConstantDeclaration,
-    EnumDeclaration, Expression, ForStatement, FunctionDeclaration, FunctionExpr, Identifier,
-    IfExpression, ImportDeclaration, IndexExpr, InterfaceDeclaration, LogicExpr, ModelDeclaration,
+    AccessExpr, ArrayExpr, AssignmentExpr, BinaryExpr, Block, CallExpr, EnumDeclaration,
+    Expression, ForStatement, FunctionDeclaration, FunctionExpr, Identifier, IfExpression,
+    ImportDeclaration, IndexExpr, InterfaceDeclaration, LogicExpr, ModelDeclaration,
     ModuleDeclaration, Parameter, ReturnStatement, ShorthandVariableDeclaration, Statement,
     TestDeclaration, ThisExpr, TypeEquation, UnaryExpr, UpdateExpr, UseDeclaration,
     VariableDeclaration, WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
@@ -184,7 +184,6 @@ pub trait ASTVisitorNoArgs<Output: Default = ()> {
             Statement::InterfaceDeclaration(t) => self.interface_declaraion(t),
             Statement::ModuleDeclaration(m) => self.module_declaration(m),
             Statement::UseDeclaration(u) => self.use_declaration(u),
-            Statement::ConstantDeclaration(c) => self.constant(c),
             Statement::VariableDeclaration(v) => self.variable_declaration(v),
             _ => Output::default(),
         }
@@ -316,9 +315,6 @@ pub trait ASTVisitorNoArgs<Output: Default = ()> {
     fn variable_declaration(&self, var_decl: &VariableDeclaration) -> Output {
         Output::default()
     }
-    fn constant(&self, constant: &ConstantDeclaration) -> Output {
-        Output::default()
-    }
     /// Visit a function node.
     fn function(&self, function: &FunctionDeclaration) -> Output {
         let body = &function.body;
@@ -360,7 +356,6 @@ pub trait MutASTVisitor<Output: Default = ()> {
                 self.free_expr(e);
             }
             Statement::VariableDeclaration(v) => self.variable_declaration(v),
-            Statement::ConstantDeclaration(c) => self.constant(c),
             Statement::ModelDeclaration(_) => todo!(),
             Statement::ModuleDeclaration(_) => todo!(),
             Statement::RecordDeclaration => todo!(),
@@ -388,8 +383,6 @@ pub trait MutASTVisitor<Output: Default = ()> {
     fn free_expr(&mut self, exp: &mut Expression) {
         self.expression(exp);
     }
-
-    fn constant(&mut self, constant: &mut ConstantDeclaration) {}
 
     fn while_statement(&mut self, while_stat: &mut WhileStatement) {}
 
@@ -460,7 +453,6 @@ pub trait ASTVisitorExprOutputNoArgs<Output: Default = ()> {
             Statement::WhileStatement(w) => self.while_statement(w),
             Statement::ReturnStatement(r) => self.return_statement(r),
             Statement::VariableDeclaration(v) => self.var_decl(v),
-            Statement::ConstantDeclaration(c) => self.constant(c),
             Statement::ForStatement(f) => self.for_statement(f),
             Statement::ContinueStatement(c) => self.continue_statement(c),
             Statement::BreakStatement(b) => self.break_statement(b),
@@ -503,8 +495,6 @@ pub trait ASTVisitorExprOutputNoArgs<Output: Default = ()> {
     fn shorthand_var_decl(&self, variable_decl: &ShorthandVariableDeclaration) {}
 
     fn var_decl(&self, variable_decl: &VariableDeclaration) {}
-
-    fn constant(&self, constant: &ConstantDeclaration) {}
 
     fn function_declaration(&self, function: &FunctionDeclaration) {}
 

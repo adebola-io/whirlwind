@@ -871,10 +871,6 @@ fn get_symbol_kind_and_detail(
             SymbolKind::VARIABLE,
             Some(symbol_library.format_evaluated_type(inferred_type)),
         ),
-        SemanticSymbolKind::Constant { inferred_type, .. } => (
-            SymbolKind::CONSTANT,
-            Some(symbol_library.format_evaluated_type(inferred_type)),
-        ),
         SemanticSymbolKind::Function { .. } => (SymbolKind::FUNCTION, None),
         SemanticSymbolKind::TypeName { .. } => (SymbolKind::INTERFACE, None),
         SemanticSymbolKind::Attribute { .. } => (SymbolKind::FIELD, None),
@@ -902,9 +898,7 @@ fn is_valid_complete_target(
         .is_some_and(|path| sym.was_declared_in(path))
         && sym.kind.is_public();
     let valid_location = match &sym.kind {
-        SemanticSymbolKind::Variable { .. } | SemanticSymbolKind::Constant { .. } => {
-            sym.ident_span().is_before(Span::at(pos))
-        }
+        SemanticSymbolKind::Variable { .. } => sym.ident_span().is_before(Span::at(pos)),
         _ => true,
     };
     let closest = (closest_symbol.is_some() && {

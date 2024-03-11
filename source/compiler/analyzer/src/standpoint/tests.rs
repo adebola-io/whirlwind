@@ -4,26 +4,20 @@ use std::path::PathBuf;
 use crate::{Module, PathIndex, Standpoint, CORE_LIBRARY_PATH};
 
 #[test]
-fn bind_variables_and_constants() {
+fn bind_variables() {
     let text = "
             module Test; 
 
             public function main() {
                 greeting := \"Say Hello\";
-                const CONSTANT: Number = 9090;
             }
         ";
     let mut module = Module::from_text(text);
     module.module_path = Some(PathBuf::from("testing://Test.wrl"));
     let standpoint = Standpoint::build_from_module(module, false).unwrap();
-    assert!(standpoint.diagnostics.len() == 1);
     assert!(standpoint
         .symbol_library
         .find(|symbol| symbol.name == "greeting")
-        .is_some());
-    assert!(standpoint
-        .symbol_library
-        .find(|symbol| symbol.name == "CONSTANT")
         .is_some());
     println!(
         "{:#?}",

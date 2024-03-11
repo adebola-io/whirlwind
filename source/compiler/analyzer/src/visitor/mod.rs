@@ -2,14 +2,13 @@ use ast::maybe;
 
 use crate::{
     LiteralIndex, TypedAccessExpr, TypedArrayExpr, TypedAssignmentExpr, TypedBinExpr, TypedBlock,
-    TypedBreakStatement, TypedCallExpr, TypedConstantDeclaration, TypedContinueStatement,
-    TypedEnumDeclaration, TypedExpression, TypedFnExpr, TypedForStatement,
-    TypedFunctionDeclaration, TypedIdent, TypedIfExpr, TypedImportDeclaration, TypedIndexExpr,
-    TypedInterfaceDeclaration, TypedInterfacePropertyType, TypedLogicExpr, TypedModelDeclaration,
-    TypedModelPropertyType, TypedModuleDeclaration, TypedReturnStatement,
-    TypedShorthandVariableDeclaration, TypedStmnt, TypedTestDeclaration, TypedThisExpr,
-    TypedTypeEquation, TypedUnaryExpr, TypedUpdateExpr, TypedUseDeclaration,
-    TypedVariableDeclaration, TypedWhileStatement,
+    TypedBreakStatement, TypedCallExpr, TypedContinueStatement, TypedEnumDeclaration,
+    TypedExpression, TypedFnExpr, TypedForStatement, TypedFunctionDeclaration, TypedIdent,
+    TypedIfExpr, TypedImportDeclaration, TypedIndexExpr, TypedInterfaceDeclaration,
+    TypedInterfacePropertyType, TypedLogicExpr, TypedModelDeclaration, TypedModelPropertyType,
+    TypedModuleDeclaration, TypedReturnStatement, TypedShorthandVariableDeclaration, TypedStmnt,
+    TypedTestDeclaration, TypedThisExpr, TypedTypeEquation, TypedUnaryExpr, TypedUpdateExpr,
+    TypedUseDeclaration, TypedVariableDeclaration, TypedWhileStatement,
 };
 
 #[allow(unused_variables)]
@@ -178,7 +177,6 @@ pub trait TypedVisitorNoArgs<Output: Default = ()> {
             TypedStmnt::InterfaceDeclaration(t) => self.interface_declaration(t),
             TypedStmnt::ModuleDeclaration(m) => self.module_declaration(m),
             TypedStmnt::UseDeclaration(u) => self.use_declaration(u),
-            TypedStmnt::ConstantDeclaration(c) => self.constant(c),
             TypedStmnt::TestDeclaration(t) => self.test_declaration(t),
             TypedStmnt::ReturnStatement(rettye) => self.return_statement(rettye),
             TypedStmnt::BreakStatement(brk) => self.break_statement(brk),
@@ -315,9 +313,6 @@ pub trait TypedVisitorNoArgs<Output: Default = ()> {
     // fn variable_declaration(&self, var_decl: &TypedVariableDeclaration) -> Output {
     //     Output::default()
     // }
-    fn constant(&self, constant: &TypedConstantDeclaration) -> Output {
-        self.expr(&constant.value)
-    }
 
     fn test_declaration(&self, test: &TypedTestDeclaration) -> Output {
         self.block(&test.body)
@@ -388,7 +383,6 @@ pub trait ShortcircuitTypedVisitorNoArgs<'a, Output = ()> {
             TypedStmnt::InterfaceDeclaration(t) => self.interface_declaration(t),
             TypedStmnt::ModuleDeclaration(m) => self.module_declaration(m),
             TypedStmnt::UseDeclaration(u) => self.use_declaration(u),
-            TypedStmnt::ConstantDeclaration(c) => self.constant(c),
             TypedStmnt::TestDeclaration(t) => self.test_declaration(t),
             TypedStmnt::ReturnStatement(rettye) => self.return_statement(rettye),
             TypedStmnt::BreakStatement(brk) => self.break_statement(brk),
@@ -534,9 +528,6 @@ pub trait ShortcircuitTypedVisitorNoArgs<'a, Output = ()> {
     // fn variable_declaration(&self, var_decl: &TypedVariableDeclaration) -> Output {
     //     Output::default()
     // }
-    fn constant(&self, constant: &'a TypedConstantDeclaration) -> Option<Output> {
-        self.expr(&constant.value)
-    }
 
     fn test_declaration(&self, test: &'a TypedTestDeclaration) -> Option<Output> {
         self.block(&test.body)
@@ -611,7 +602,6 @@ pub trait ASTVisitorExprOutputNoArgs<Output: Default = ()> {
             TypedStmnt::WhileStatement(w) => self.while_statement(w),
             TypedStmnt::ReturnStatement(r) => self.return_statement(r),
             TypedStmnt::VariableDeclaration(v) => self.var_decl(v),
-            TypedStmnt::ConstantDeclaration(c) => self.constant(c),
             TypedStmnt::ForStatement(f) => self.for_statement(f),
             TypedStmnt::ContinueStatement(c) => self.continue_statement(c),
             TypedStmnt::BreakStatement(b) => self.break_statement(b),
@@ -654,8 +644,6 @@ pub trait ASTVisitorExprOutputNoArgs<Output: Default = ()> {
     fn shorthand_var_decl(&self, variable_decl: &TypedShorthandVariableDeclaration) {}
 
     fn var_decl(&self, variable_decl: &TypedVariableDeclaration) {}
-
-    fn constant(&self, constant: &TypedConstantDeclaration) {}
 
     fn function_declaration(&self, function: &TypedFunctionDeclaration) {}
 

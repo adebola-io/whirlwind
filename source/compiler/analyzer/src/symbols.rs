@@ -1,7 +1,7 @@
 use crate::{EvaluatedType, IntermediateType, IntermediateTypeClause, PathIndex};
 use ast::{
-    ConstantSignature, EnumSignature, ShorthandVariableSignature, Span, TypeEquationSignature,
-    WhirlNumber, WhirlString,
+    EnumSignature, ShorthandVariableSignature, Span, TypeEquationSignature, WhirlNumber,
+    WhirlString,
 };
 use std::{path::Path, vec};
 
@@ -122,11 +122,6 @@ pub enum SemanticSymbolKind {
         declared_type: Option<IntermediateType>,
         inferred_type: EvaluatedType,
     },
-    Constant {
-        is_public: bool,
-        declared_type: IntermediateType,
-        inferred_type: EvaluatedType,
-    },
     /// An attribute in a model.
     Attribute {
         owner_model: SymbolIndex,
@@ -196,7 +191,6 @@ impl SemanticSymbolKind {
             | SemanticSymbolKind::Model { is_public, .. }
             | SemanticSymbolKind::Enum { is_public, .. }
             | SemanticSymbolKind::Variable { is_public, .. }
-            | SemanticSymbolKind::Constant { is_public, .. }
             | SemanticSymbolKind::Function { is_public, .. }
             | SemanticSymbolKind::TypeName { is_public, .. }
             | SemanticSymbolKind::Import { is_public, .. }
@@ -315,30 +309,7 @@ impl SemanticSymbol {
             origin_scope_id,
         }
     }
-    /// Create a new symbol from a constant.
-    pub fn from_constant(
-        constant: &ConstantSignature,
-        path_to_module: PathIndex,
-        origin_span: Span,
-        origin_scope_id: Option<ScopeId>,
-    ) -> Self {
-        Self {
-            // taking the name makes it un-lookup-able.
-            name: constant.name.name.to_owned(),
-            kind: SemanticSymbolKind::Constant {
-                is_public: constant.is_public,
-                declared_type: IntermediateType::Placeholder,
-                inferred_type: EvaluatedType::Unknown,
-            },
-            references: vec![SymbolReferenceList {
-                module_path: path_to_module,
-                starts: vec![constant.name.span.start],
-            }],
-            doc_info: constant.info.clone(), // todo.
-            origin_span,
-            origin_scope_id,
-        }
-    }
+
     /// Create a new symbol from a type.
     pub fn from_type(
         _type: &TypeEquationSignature,

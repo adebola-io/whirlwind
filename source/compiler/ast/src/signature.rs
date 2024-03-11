@@ -135,19 +135,6 @@ pub struct VariableSignature {
     pub var_type: Option<TypeExpression>,
 }
 
-/// Entry to mark a constant.
-#[derive(Debug, Signature, Hash)]
-pub struct ConstantSignature {
-    /// Name of the constant.
-    pub name: Identifier,
-    /// Documentation about the constant, if any.
-    pub info: Option<Vec<String>>,
-    /// Whether or not the constant is denoted by `public`.
-    pub is_public: bool,
-    /// The constant's assigned type.
-    pub var_type: TypeExpression,
-}
-
 /// An entry to mark a function.
 #[derive(Debug, Signature, Hash)]
 pub struct FunctionSignature {

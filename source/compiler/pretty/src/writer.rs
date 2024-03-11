@@ -196,28 +196,6 @@ impl<'a> SymbolWriter<'a> {
                     }
                 }
             }
-            SemanticSymbolKind::Constant {
-                is_public,
-                declared_type,
-                inferred_type,
-            } => {
-                if *is_public {
-                    string.push_str("public ")
-                }
-                string.push_str("const ");
-                string.push_str(&symbol.name);
-                string.push_str(": ");
-                // Always favor displaying the inferred type over the declared one.
-                if !matches!(inferred_type, EvaluatedType::Unknown { .. }) {
-                    let type_as_string = self
-                        .standpoint
-                        .symbol_library
-                        .format_evaluated_type(inferred_type);
-                    string.push_str(&type_as_string);
-                } else {
-                    string.push_str(&self.print_intermediate_type(declared_type))
-                }
-            }
             SemanticSymbolKind::Attribute {
                 owner_model,
                 is_public,

@@ -480,7 +480,6 @@ pub trait LexerInner {
             "async" => token!(Keyword::Async, self),
             "break" => token!(Keyword::Break, self),
             "case" => token!(Keyword::Case, self),
-            "const" => token!(Keyword::Const, self),
             "model" => token!(Keyword::Model, self),
             "continue" => token!(Keyword::Continue, self),
             "else" => token!(Keyword::Else, self),

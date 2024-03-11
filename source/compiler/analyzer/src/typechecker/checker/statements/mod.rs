@@ -29,7 +29,6 @@ pub fn typecheck_statement(
         TypedStmnt::ShorthandVariableDeclaration(shorthand_variable) => {
             typecheck_shorthand_variable_declaration(shorthand_variable, checker_ctx, symbollib)
         }
-        // TypedStmnt::ConstantDeclaration(_) => todo!(),
         TypedStmnt::FunctionDeclaration(function) => {
             function::typecheck_function(function, checker_ctx, symbollib)
         }

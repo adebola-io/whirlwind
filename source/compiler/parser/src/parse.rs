@@ -1,19 +1,18 @@
 use ast::{
     AccessExpr, ArrayExpr, ArrayType, AssignmentExpr, AttributeSignature, BinaryExpr, Block,
-    BoundConstraintType, Bracket::*, BreakStatement, CallExpr, Comment, ConstantDeclaration,
-    ConstantSignature, ContinueStatement, DiscreteType, EnumDeclaration, EnumSignature,
-    EnumVariant, Expression, ExpressionPrecedence, ForStatement, FunctionDeclaration, FunctionExpr,
-    FunctionSignature, FunctionalType, GenericParameter, Identifier, IfExpression,
-    ImportDeclaration, IndexExpr, InterfaceBody, InterfaceDeclaration, InterfaceProperty,
-    InterfacePropertyType, InterfaceSignature, Keyword::*, LogicExpr, LoopLabel, LoopVariable,
-    MaybeType, MemberType, MethodSignature, ModelBody, ModelDeclaration, ModelProperty,
-    ModelPropertyType, ModelSignature, ModuleAmbience, ModuleDeclaration, Operator::*, Parameter,
-    ReturnStatement, ScopeAddress, ScopeEntry, ScopeType, ShorthandVariableDeclaration,
-    ShorthandVariableSignature, Span, Spannable, Statement, TernaryType, TestDeclaration, ThisExpr,
-    Token, TokenType, TypeClause, TypeEquation, TypeEquationSignature, TypeExpression, UnaryExpr,
-    UnionType, UpdateExpr, UseDeclaration, UsePath, UseTarget, UseTargetSignature,
-    VariableDeclaration, VariablePattern, VariableSignature, WhileStatement, WhirlBoolean,
-    WhirlNumber, WhirlString,
+    BoundConstraintType, Bracket::*, BreakStatement, CallExpr, Comment, ContinueStatement,
+    DiscreteType, EnumDeclaration, EnumSignature, EnumVariant, Expression, ExpressionPrecedence,
+    ForStatement, FunctionDeclaration, FunctionExpr, FunctionSignature, FunctionalType,
+    GenericParameter, Identifier, IfExpression, ImportDeclaration, IndexExpr, InterfaceBody,
+    InterfaceDeclaration, InterfaceProperty, InterfacePropertyType, InterfaceSignature, Keyword::*,
+    LogicExpr, LoopLabel, LoopVariable, MaybeType, MemberType, MethodSignature, ModelBody,
+    ModelDeclaration, ModelProperty, ModelPropertyType, ModelSignature, ModuleAmbience,
+    ModuleDeclaration, Operator::*, Parameter, ReturnStatement, ScopeAddress, ScopeEntry,
+    ScopeType, ShorthandVariableDeclaration, ShorthandVariableSignature, Span, Spannable,
+    Statement, TernaryType, TestDeclaration, ThisExpr, Token, TokenType, TypeClause, TypeEquation,
+    TypeEquationSignature, TypeExpression, UnaryExpr, UnionType, UpdateExpr, UseDeclaration,
+    UsePath, UseTarget, UseTargetSignature, VariableDeclaration, VariablePattern,
+    VariableSignature, WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
 };
 use errors::{self as errors, expected, ParseError};
 use lexer::Lexer;
@@ -951,10 +950,6 @@ impl<L: Lexer> Parser<L> {
             TokenType::Keyword(Interface) => self
                 .interface_declaration(false)
                 .map(|t| Statement::InterfaceDeclaration(t)),
-            // // const..
-            TokenType::Keyword(Const) => self
-                .constant_declaration(false)
-                .map(|c| Statement::ConstantDeclaration(c)),
             // // import..
             TokenType::Keyword(Import) => self
                 .import_declaration()
@@ -1148,9 +1143,6 @@ impl<L: Lexer> Parser<L> {
             TokenType::Keyword(Interface) => self
                 .interface_declaration(true)
                 .map(|t| Statement::InterfaceDeclaration(t)),
-            TokenType::Keyword(Const) => self
-                .constant_declaration(true)
-                .map(|c| Statement::ConstantDeclaration(c)),
             // Parse public shorthand variable declaration as syntax error.
             TokenType::Ident(_) => {
                 let statement = self.statement();
@@ -3197,72 +3189,72 @@ impl<L: Lexer> Parser<L> {
         Partial::from_tuple((Some(statement), expr_errors))
     }
 
-    /// Parse a constant declaration.
-    fn constant_declaration(&self, is_public: bool) -> Imperfect<ConstantDeclaration> {
-        expect_or_return!(TokenType::Keyword(Const), self);
-        let start = self.token().unwrap().span.start;
-        let info = self.get_doc_comment();
-        self.advance(); // Move past const.
-        let name = check!(self.identifier());
-        let var_type = check!(self.type_label());
-        let mut errors = vec![];
+    // /// Parse a constant declaration.
+    // fn constant_declaration(&self, is_public: bool) -> Imperfect<ConstantDeclaration> {
+    //     expect_or_return!(TokenType::Keyword(Const), self);
+    //     let start = self.token().unwrap().span.start;
+    //     let info = self.get_doc_comment();
+    //     self.advance(); // Move past const.
+    //     let name = check!(self.identifier());
+    //     let var_type = check!(self.type_label());
+    //     let mut errors = vec![];
 
-        let signature = ConstantSignature {
-            name,
-            info,
-            is_public,
-            var_type,
-        };
-        let entry_no = self
-            .module_ambience()
-            .register(ScopeEntry::Constant(signature));
+    //     let signature = ConstantSignature {
+    //         name,
+    //         info,
+    //         is_public,
+    //         var_type,
+    //     };
+    //     let entry_no = self
+    //         .module_ambience()
+    //         .register(ScopeEntry::Constant(signature));
 
-        let address = ScopeAddress {
-            module_id: self.module_ambience().module_id,
-            scope_id: self.module_ambience().current_scope(),
-            entry_no,
-        };
+    //     let address = ScopeAddress {
+    //         module_id: self.module_ambience().module_id,
+    //         scope_id: self.module_ambience().current_scope(),
+    //         entry_no,
+    //     };
 
-        let end;
-        let partial = if !self
-            .token()
-            .is_some_and(|token| token._type == TokenType::Operator(Assign))
-        {
-            errors.push(expected(TokenType::Operator(Assign), self.last_token_end()));
-            Partial::from_errors(errors)
-        } else {
-            self.advance(); // Move past =
-            let (value_value, mut value_errors) = self.expression().to_tuple();
-            errors.append(&mut value_errors);
-            if value_value.is_none() {
-                return Partial::from_errors(errors);
-            }
-            let value = value_value.unwrap();
-            if self
-                .token()
-                .is_some_and(|token| token._type == TokenType::Operator(SemiColon))
-            {
-                end = self.token().unwrap().span.end;
-                self.advance();
-            } else {
-                // errors.push(expected(
-                //     TokenType::Operator(SemiColon),
-                //     self.last_token_end(),
-                // ));
-                end = self.last_token_end().end;
-            }
-            Partial {
-                value: Some(ConstantDeclaration {
-                    address,
-                    value,
-                    span: Span { start, end },
-                }),
-                errors,
-            }
-        };
+    //     let end;
+    //     let partial = if !self
+    //         .token()
+    //         .is_some_and(|token| token._type == TokenType::Operator(Assign))
+    //     {
+    //         errors.push(expected(TokenType::Operator(Assign), self.last_token_end()));
+    //         Partial::from_errors(errors)
+    //     } else {
+    //         self.advance(); // Move past =
+    //         let (value_value, mut value_errors) = self.expression().to_tuple();
+    //         errors.append(&mut value_errors);
+    //         if value_value.is_none() {
+    //             return Partial::from_errors(errors);
+    //         }
+    //         let value = value_value.unwrap();
+    //         if self
+    //             .token()
+    //             .is_some_and(|token| token._type == TokenType::Operator(SemiColon))
+    //         {
+    //             end = self.token().unwrap().span.end;
+    //             self.advance();
+    //         } else {
+    //             // errors.push(expected(
+    //             //     TokenType::Operator(SemiColon),
+    //             //     self.last_token_end(),
+    //             // ));
+    //             end = self.last_token_end().end;
+    //         }
+    //         Partial {
+    //             value: Some(ConstantDeclaration {
+    //                 address,
+    //                 value,
+    //                 span: Span { start, end },
+    //             }),
+    //             errors,
+    //         }
+    //     };
 
-        partial
-    }
+    //     partial
+    // }
 
     /// Parse an import declaration.
     fn import_declaration(&self) -> Imperfect<ImportDeclaration> {

@@ -516,10 +516,6 @@ impl<'a> CompletionFinder<'a> {
                 CompletionItemKind::VARIABLE,
                 Some(symbol_library.format_evaluated_type(inferred_type)),
             ),
-            SemanticSymbolKind::Constant { inferred_type, .. } => (
-                CompletionItemKind::CONSTANT,
-                Some(symbol_library.format_evaluated_type(inferred_type)),
-            ),
             SemanticSymbolKind::Function { .. } => (
                 CompletionItemKind::FUNCTION,
                 Some(
@@ -644,7 +640,6 @@ impl<'a> CompletionFinder<'a> {
                 TypedStmnt::FreeExpression(e) => self.free_expr(e),
                 TypedStmnt::InterfaceDeclaration(t) => self.interface_declaration(t),
                 TypedStmnt::ModuleDeclaration(m) => self.module_declaration(m),
-                TypedStmnt::ConstantDeclaration(c) => self.constant(c),
                 TypedStmnt::TestDeclaration(t) => self.test_declaration(t),
                 TypedStmnt::ReturnStatement(rettye) => self.return_statement(rettye),
                 TypedStmnt::ForStatement(for_stat) => self.for_statement(for_stat),
@@ -839,13 +834,6 @@ impl<'a> CompletionFinder<'a> {
         var_decl: &analyzer::TypedVariableDeclaration,
     ) -> Option<CompletionResponse> {
         <Option<CompletionResponse>>::default()
-    }
-
-    fn constant(
-        &self,
-        constant: &analyzer::TypedConstantDeclaration,
-    ) -> Option<CompletionResponse> {
-        self.expr(&constant.value)
     }
 
     fn test_declaration(

@@ -17,7 +17,6 @@ public model ArrayStack<T> {
     var _capacity: Int32
    
     new(capacity?: Int32) {
-        this.items = []
         // The default capacity is infinity
         this._capacity = -1
         
@@ -30,7 +29,7 @@ public model ArrayStack<T> {
     /// use core.collections.ArrayStack
     /// var stack = ArrayStack()
     ///
-    /// AssertThat(stack.capacity() == 0)
+    /// assertThat(stack.capacity() == 0)
     /// stack.setCapacity(1) // Sets the stack to contain only one item.
     /// 
     /// stack.push(10).unwrap()

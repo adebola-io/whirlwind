@@ -394,7 +394,6 @@ pub fn symbol_to_type(
             is_invariant: false,
         },
         SemanticSymbolKind::Variable { inferred_type, .. } => inferred_type.clone(),
-        SemanticSymbolKind::Constant { inferred_type, .. } => inferred_type.clone(),
         SemanticSymbolKind::LoopVariable { inferred_type, .. } => inferred_type.clone(),
         SemanticSymbolKind::Parameter {
             is_optional,

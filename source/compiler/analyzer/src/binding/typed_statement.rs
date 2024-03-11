@@ -14,7 +14,6 @@ pub enum TypedStmnt {
     UseDeclaration(TypedUseDeclaration),
     VariableDeclaration(TypedVariableDeclaration),
     ShorthandVariableDeclaration(TypedShorthandVariableDeclaration),
-    ConstantDeclaration(TypedConstantDeclaration),
     TypedTypeEquation(TypedTypeEquation),
     ModelDeclaration(TypedModelDeclaration),
     ModuleDeclaration(TypedModuleDeclaration),
@@ -151,13 +150,6 @@ pub struct TypedImportDeclaration {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct TypedConstantDeclaration {
-    pub name: SymbolIndex,
-    pub value: TypedExpression,
-    pub span: Span,
-}
-
-#[derive(Debug, PartialEq)]
 pub struct TypedModelDeclaration {
     pub name: SymbolIndex,
     pub body: TypedModelBody,
@@ -238,7 +230,6 @@ pub fn span_of_typed_statement(
         TypedStmnt::TestDeclaration(t) => t.span,
         TypedStmnt::UseDeclaration(u) => u.span,
         TypedStmnt::VariableDeclaration(v) => v.span,
-        TypedStmnt::ConstantDeclaration(c) => c.span,
         TypedStmnt::ModelDeclaration(c) => c.span,
         TypedStmnt::FunctionDeclaration(f) => f.span,
         TypedStmnt::RecordDeclaration => todo!(),

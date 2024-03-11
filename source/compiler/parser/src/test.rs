@@ -3,13 +3,13 @@
 use crate::parse_text;
 use ast::{
     AccessExpr, ArrayExpr, AssignmentExpr, BinaryExpr, Block, BreakStatement, CallExpr,
-    ConstantDeclaration, ContinueStatement, DiscreteType, Else, EnumDeclaration, Expression,
-    ForStatement, FunctionDeclaration, FunctionExpr, Identifier, IfExpression, ImportDeclaration,
-    IndexExpr, InterfaceBody, InterfaceDeclaration, InterfaceProperty, LogicExpr, ModelBody,
-    ModelDeclaration, ModelProperty, ModelPropertyType, ModuleDeclaration, Parameter,
-    ReturnStatement, ScopeAddress, ScopeEntry, Span, Statement, TestDeclaration, ThisExpr,
-    TypeEquation, TypeExpression, UnaryExpr, UpdateExpr, UpdateOperator, UseDeclaration, UsePath,
-    UseTarget, VariableDeclaration, WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
+    ContinueStatement, DiscreteType, Else, EnumDeclaration, Expression, ForStatement,
+    FunctionDeclaration, FunctionExpr, Identifier, IfExpression, ImportDeclaration, IndexExpr,
+    InterfaceBody, InterfaceDeclaration, InterfaceProperty, LogicExpr, ModelBody, ModelDeclaration,
+    ModelProperty, ModelPropertyType, ModuleDeclaration, Parameter, ReturnStatement, ScopeAddress,
+    ScopeEntry, Span, Statement, TestDeclaration, ThisExpr, TypeEquation, TypeExpression,
+    UnaryExpr, UpdateExpr, UpdateOperator, UseDeclaration, UsePath, UseTarget, VariableDeclaration,
+    WhileStatement, WhirlBoolean, WhirlNumber, WhirlString,
 };
 
 #[test]
@@ -1175,24 +1175,6 @@ fn parse_shorthand_variables() {
                 span: [1, 27, 1, 38].into()
             })),
             span: [1, 1, 1, 39].into()
-        })
-    );
-}
-
-#[test]
-fn parse_constants() {
-    let mut parser = parse_text("const NAME: String = \"Sefunmi\";");
-    // parser.debug_allow_global_expressions = true;
-
-    assert_eq!(
-        parser.next().unwrap().unwrap(),
-        Statement::ConstantDeclaration(ConstantDeclaration {
-            address: [0, 0, 0].into(),
-            value: Expression::StringLiteral(WhirlString {
-                value: format!("Sefunmi"),
-                span: [1, 22, 1, 31].into()
-            }),
-            span: [1, 1, 1, 32].into()
         })
     );
 }

@@ -11,7 +11,6 @@ pub enum Statement {
     UseDeclaration(UseDeclaration),
     VariableDeclaration(VariableDeclaration),
     ShorthandVariableDeclaration(ShorthandVariableDeclaration),
-    ConstantDeclaration(ConstantDeclaration),
     ModelDeclaration(ModelDeclaration),
     ModuleDeclaration(ModuleDeclaration),
     FunctionDeclaration(FunctionDeclaration),
@@ -131,15 +130,6 @@ pub struct UseTargetSignature {
 #[derive(Debug, PartialEq)]
 pub struct ShorthandVariableDeclaration {
     pub address: ScopeAddress,
-    pub value: Expression,
-    pub span: Span,
-}
-
-/// A node in the AST for a constant variable declaration.
-#[derive(Debug, PartialEq)]
-pub struct ConstantDeclaration {
-    pub address: ScopeAddress,
-    /// The constant's assigned value.
     pub value: Expression,
     pub span: Span,
 }
@@ -404,16 +394,6 @@ impl Positioning for Statement {
                         nodes.append(&mut collect_closest_within_expression(self, value, span))
                     }
                 }
-                // Within a shorthand variable declaration.
-                Statement::ConstantDeclaration(const_decl) => {
-                    let expression = &const_decl.value;
-                    if expression.span().encloses(span) {
-                        // span is within the expression value of the node.
-                        nodes.append(&mut collect_closest_within_expression(
-                            self, expression, span,
-                        ))
-                    }
-                }
                 Statement::ExpressionStatement(expression)
                 | Statement::FreeExpression(expression) => nodes.append(
                     &mut collect_closest_within_expression(self, expression, span),
@@ -439,7 +419,6 @@ impl Spannable for Statement {
             Statement::TestDeclaration(t) => t.span,
             Statement::UseDeclaration(u) => u.span,
             Statement::VariableDeclaration(v) => v.span,
-            Statement::ConstantDeclaration(c) => c.span,
             Statement::ModelDeclaration(c) => c.span,
             Statement::FunctionDeclaration(f) => f.span,
             Statement::RecordDeclaration => todo!(),
@@ -462,7 +441,6 @@ impl Spannable for Statement {
             Statement::TestDeclaration(t) => t.span.start = start,
             Statement::UseDeclaration(u) => u.span.start = start,
             Statement::VariableDeclaration(v) => v.span.start = start,
-            Statement::ConstantDeclaration(c) => c.span.start = start,
             Statement::ModelDeclaration(c) => c.span.start = start,
             Statement::FunctionDeclaration(f) => f.span.start = start,
             Statement::RecordDeclaration => todo!(),
@@ -493,9 +471,6 @@ impl Spannable for Statement {
             Statement::ShorthandVariableDeclaration(ShorthandVariableDeclaration {
                 value: expression,
                 ..
-            })
-            | Statement::ConstantDeclaration(ConstantDeclaration {
-                value: expression, ..
             })
             | Statement::VariableDeclaration(VariableDeclaration {
                 value: Some(expression),

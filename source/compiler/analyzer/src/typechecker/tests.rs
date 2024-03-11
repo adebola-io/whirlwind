@@ -49,7 +49,6 @@ macro_rules! check_types {
                 if symbol_name == &symbol.name {
                     let inferred_type = match &symbol.kind {
                         SemanticSymbolKind::Variable { inferred_type, .. }
-                        | SemanticSymbolKind::Constant { inferred_type, .. }
                         | SemanticSymbolKind::TypeName { inferred_type, .. } => inferred_type,
                         _ => {
                             println!("{symbol:#?}");

@@ -412,23 +412,6 @@ impl<'a> TypedVisitorNoArgs<Option<HoverInfo>> for HoverFinder<'a> {
         None
     }
 
-    fn constant(&self, constant: &analyzer::TypedConstantDeclaration) -> Option<HoverInfo> {
-        within!(constant.span, self);
-        let symbol = self.standpoint.symbol_library.get(constant.name)?;
-        // Hovering over a variable name.
-        if symbol.ident_span().contains(self.pos) {
-            return Some(HoverInfo::from((self.standpoint, constant.name)));
-        }
-        // Hovering over variable type.
-        let declared_type = match &symbol.kind {
-            SemanticSymbolKind::Constant { declared_type, .. } => declared_type,
-            _ => return None,
-        };
-        maybe!(self.type_hover(declared_type));
-        // hovering over the variables' value.
-        self.expr(&constant.value)
-    }
-
     fn model_decl(&self, model: &analyzer::TypedModelDeclaration) -> Option<HoverInfo> {
         within!(model.span, self);
         // hovering over a model name.

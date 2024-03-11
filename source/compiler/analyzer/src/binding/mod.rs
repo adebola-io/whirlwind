@@ -8,11 +8,11 @@ use crate::{
     SymbolIndex, SymbolLibrary, SymbolReferenceList,
 };
 use ast::{
-    Block, ConstantDeclaration, EnumDeclaration, EnumVariant, Expression, FunctionExpr,
-    GenericParameter, Identifier, ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType,
-    ModuleAmbience, Parameter, ReturnStatement, ScopeAddress, ScopeEntry, ScopeType,
-    ShorthandVariableDeclaration, Span, Statement, TestDeclaration, TypeEquation, TypeExpression,
-    UseDeclaration, UseTarget, WhileStatement, WhirlString,
+    Block, EnumDeclaration, EnumVariant, Expression, FunctionExpr, GenericParameter, Identifier,
+    ModelBody, ModelDeclaration, ModelProperty, ModelPropertyType, ModuleAmbience, Parameter,
+    ReturnStatement, ScopeAddress, ScopeEntry, ScopeType, ShorthandVariableDeclaration, Span,
+    Statement, TestDeclaration, TypeEquation, TypeExpression, UseDeclaration, UseTarget,
+    WhileStatement, WhirlString,
 };
 use errors::ContextError;
 use std::{cell::RefCell, collections::HashMap, mem::take, vec};
@@ -434,31 +434,6 @@ mod bind_utils {
             ScopeEntry::ReservedSpace => {
                 unreachable!("Encountered a reserved space while binding.")
             }
-            ScopeEntry::Constant(constant) => {
-                let symbol = SemanticSymbol::from_constant(
-                    constant,
-                    binder.path,
-                    origin_span,
-                    origin_scope_id,
-                );
-                let index = symbol_library.add_to_table(binder.path, symbol);
-                let span = constant.name.span;
-                binder.known_values.insert(span, index);
-                let declared_const_type = types::bind_type_expression(
-                    &constant.var_type,
-                    binder,
-                    symbol_library,
-                    errors,
-                    ambience,
-                );
-                // Add type. Hackery to prevent recursive real-name-is-also-type-name loops.
-                if let SemanticSymbolKind::Constant { declared_type, .. } =
-                    &mut symbol_library.get_mut(index).unwrap().kind
-                {
-                    *declared_type = declared_const_type;
-                }
-                index
-            }
             ScopeEntry::Variable(variable) => {
                 let (symbol, span) = match &variable.name {
                     VariablePattern::Identifier(i) => (
@@ -814,16 +789,6 @@ mod statements {
                     ambience,
                 ))
             }
-            Statement::ConstantDeclaration(constant) => {
-                TypedStmnt::ConstantDeclaration(bind_constant_declaration(
-                    constant,
-                    binder,
-                    symbol_library,
-                    errors,
-                    literals,
-                    ambience,
-                ))
-            }
             Statement::ModelDeclaration(model) => TypedStmnt::ModelDeclaration(
                 bind_model_declaration(model, binder, symbol_library, errors, literals, ambience),
             ),
@@ -1020,40 +985,6 @@ mod statements {
                 ambience,
             ),
             span: shorthand.span,
-        };
-    }
-
-    /// Bind a constant declaration.
-    fn bind_constant_declaration(
-        constant: ConstantDeclaration,
-        binder: &mut Binder,
-        symbol_library: &mut SymbolLibrary,
-        errors: &mut Vec<ProgramDiagnostic>,
-        literals: &mut LiteralMap,
-        ambience: &mut ModuleAmbience,
-    ) -> TypedConstantDeclaration {
-        let symbol_idx = match handle_scope_entry(
-            binder,
-            symbol_library,
-            errors,
-            ambience,
-            constant.address,
-            constant.span,
-            false,
-        ) {
-            Ok(idx) | Err(idx) => idx,
-        };
-        return TypedConstantDeclaration {
-            name: symbol_idx,
-            value: bind_expression(
-                constant.value,
-                binder,
-                symbol_library,
-                errors,
-                literals,
-                ambience,
-            ),
-            span: constant.span,
         };
     }
 

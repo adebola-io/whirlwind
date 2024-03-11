@@ -1,9 +1,9 @@
 use std::hash::Hash;
 
 use crate::{
-    ConstantSignature, EnumSignature, FunctionSignature, InterfaceSignature, LoopLabel,
-    LoopVariable, ModelSignature, Parameter, ShorthandVariableSignature, TypeEquationSignature,
-    UseTargetSignature, VariablePattern, VariableSignature,
+    EnumSignature, FunctionSignature, InterfaceSignature, LoopLabel, LoopVariable, ModelSignature,
+    Parameter, ShorthandVariableSignature, TypeEquationSignature, UseTargetSignature,
+    VariablePattern, VariableSignature,
 };
 
 /// An id for the scope containing the declaration of a symbol in a module.
@@ -23,7 +23,6 @@ pub enum ScopeEntry {
     Parameter(Parameter),
     UseImport(UseTargetSignature),
     LoopVariable(LoopVariable),
-    Constant(ConstantSignature),
     LoopLabel(LoopLabel),
     // Entry reserved for a not yet parsed atom.
     ReservedSpace,
@@ -114,7 +113,6 @@ impl ScopeEntry {
             | ScopeEntry::Interface(InterfaceSignature { name, .. })
             | ScopeEntry::Parameter(Parameter { name, .. })
             | ScopeEntry::UseImport(UseTargetSignature { name, .. })
-            | ScopeEntry::Constant(ConstantSignature { name, .. })
             | ScopeEntry::Variable(VariableSignature {
                 name: VariablePattern::Identifier(name) | VariablePattern::ArrayPattern(name),
                 ..
@@ -169,7 +167,6 @@ impl ScopeEntry {
             | ScopeEntry::Interface(InterfaceSignature { name, .. })
             | ScopeEntry::Parameter(Parameter { name, .. })
             | ScopeEntry::UseImport(UseTargetSignature { name, .. })
-            | ScopeEntry::Constant(ConstantSignature { name, .. })
             | ScopeEntry::Variable(VariableSignature {
                 name: VariablePattern::Identifier(name) | VariablePattern::ArrayPattern(name),
                 ..
@@ -219,7 +216,6 @@ impl ScopeEntry {
             ScopeEntry::Enum(e) => e.is_public,
             ScopeEntry::Interface(t) => t.is_public,
             ScopeEntry::UseImport(u) => u.is_public,
-            ScopeEntry::Constant(c) => c.is_public,
             ScopeEntry::Variable(v) => v.is_public,
             _ => false,
         }
@@ -321,13 +317,6 @@ impl ScopeEntry {
     /// Returns true of the entry is reserved.
     pub fn is_reserved(&self) -> bool {
         matches!(self, ScopeEntry::ReservedSpace)
-    }
-
-    pub fn _const(&self) -> &ConstantSignature {
-        match self {
-            ScopeEntry::Constant(c) => c,
-            _ => panic!("{} is not a constant!", self.name()),
-        }
     }
 
     pub fn _interface(&self) -> &InterfaceSignature {

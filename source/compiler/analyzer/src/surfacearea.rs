@@ -81,7 +81,6 @@ impl<'a> TypedVisitorNoArgs for SurfaceAreaCalculator<'a> {
             crate::TypedStmnt::InterfaceDeclaration(t) => self.interface_declaration(t),
             crate::TypedStmnt::ModuleDeclaration(m) => self.module_declaration(m),
             crate::TypedStmnt::UseDeclaration(u) => self.use_declaration(u),
-            crate::TypedStmnt::ConstantDeclaration(c) => self.constant(c),
             crate::TypedStmnt::TestDeclaration(t) => self.test_declaration(t),
             crate::TypedStmnt::ReturnStatement(rettye) => self.return_statement(rettye),
             crate::TypedStmnt::BreakStatement(brk) => self.break_statement(brk),
@@ -280,11 +279,6 @@ impl<'a> TypedVisitorNoArgs for SurfaceAreaCalculator<'a> {
             self.surface_area().declared_in_module.push(*name);
         }
         var_decl.value.as_ref().map(|expr| self.expr(expr));
-    }
-
-    fn constant(&self, constant: &crate::TypedConstantDeclaration) {
-        self.surface_area().declared_in_module.push(constant.name);
-        self.expr(&constant.value);
     }
 
     fn test_declaration(&self, test: &crate::TypedTestDeclaration) {
