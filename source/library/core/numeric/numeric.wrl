@@ -91,7 +91,7 @@ public model Int32
     /// 
     /// assertThat(a.rem(b) == 2)
     /// ```
-    public function [Division.rem](other: Int32) -> Int32 {
+    public function rem(other: Int32) -> Int32 {
         return wasm.__i32_rem_s(this, other)
     }
 
@@ -288,7 +288,7 @@ public model Int64
     /// 
     /// assertThat(a.rem(b) == 2)
     /// ```
-    public function [Division.rem](other: Int64) -> Int64 {
+    public function rem(other: Int64) -> Int64 {
         return wasm.__i64_rem_s(this, other)
     }
 
@@ -437,6 +437,26 @@ public model Float32
     + FixedPoint
     + Hash
 {
+    public function [Addition.add](other: Float32) -> Float32 {
+        return wasm.__f32_add(this, other)
+    }
+
+    public function [Subtraction.sub](other: Float32) -> Float32 {
+        return wasm.__f32_sub(this, other)
+    }
+
+    public function [Division.div](other: Float32) -> Float32 {
+        return wasm.__f32_div(this, other)
+    }
+
+    public function [Multiplication.mul](other: Float32) -> Float32 {
+        return wasm.__f32_mul(this, other)
+    }
+
+    public function [Bitwise.bitand](other: Float32) -> Float32 {
+        core.sentinels.todo()
+    }
+
     // Compiler built in.
 }
 

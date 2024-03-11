@@ -1,20 +1,27 @@
 module range
 
-use core.{
-    iterate.Iterable,
-    maybe.{none, some},
-    ops.Sequenced,
-}
+use core.iterate.Iterable
+use core.maybe.{some, none}
+use core.ops.Sequenced
 
 public model Range<T implements Sequenced> implements Iterable<T> {
     public var start: T
+    var current: ?T
     public var end: T
 
+    new(start: T, end: T) {
+        this.start = start
+        this.current = some(start)
+        this.end = end
+    }
+
     public function [Iterable.next] -> ?T {
-        if this.start == this.end {
-            none()
+        var current = this.current?
+        if current == this.end {
+            this.current = none()
         } else {
-            some(this.start)
+            this.current = current.nextItem()
         }
+        return some(current)
     }
 }

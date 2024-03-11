@@ -22,8 +22,6 @@ public interface Multiplication {
 public interface Division {
     /// Divides this value by another.
     public function div(other: This) -> This
-    /// Returns the remainder of this value divided by another.
-    public function rem(other: This) -> This
 }
 
 // public interface Index<I, R> {
