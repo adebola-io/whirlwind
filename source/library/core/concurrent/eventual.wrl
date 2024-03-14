@@ -2,7 +2,7 @@ module eventual
 
 use concurrent.Sequence
 use core.{
-    bool.Bool,
+    boolean.boolean,
     interfaces.Guaranteed,
     maybe.some,
     sentinels.{fatal, todo},
@@ -15,9 +15,9 @@ use core.{
 /// when the operation ends.
 public model Eventual<T> implements Guaranteed<T> {
     /// Whether or not the eventual is resolved.
-    var resolved: Bool
+    var resolved: boolean
     /// Whether or not the eventual has been aborted.
-    var aborted: Bool
+    var aborted: boolean
     /// A reference to the parent sequence in charge of this eventual.
     public var sequence: Sequence
     /// The final value to be produced. 
@@ -28,11 +28,11 @@ public model Eventual<T> implements Guaranteed<T> {
     /// Trying to read it while it does not exist will lead to a runtime error.
     var value: T
     /// Returns true if the eventual has been resolved to a value.
-    public function isResolved -> Bool {
+    public function isResolved -> boolean {
         return this.resolved
     }
     /// Returns true if the eventual was aborted before it could finish execution.
-    public function wasAborted -> Bool {
+    public function wasAborted -> boolean {
         return this.aborted
     }
     /// Implementation of the Guaranteed interface.
@@ -56,7 +56,7 @@ public model Eventual<T> implements Guaranteed<T> {
     ///     print("Eventual is already resolved.")
     /// }
     /// ```
-    public function tryAbort -> Bool {
+    public function tryAbort -> boolean {
         if this.aborted {
             return true
         }

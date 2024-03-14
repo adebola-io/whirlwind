@@ -20,10 +20,10 @@ module never
 /// function blackHole -> never {
 ///     core.sentinels.exit(1) // Exits the program and never returns.
 /// }
-/// var num: Int32 = blackHole() // valid.
-/// var str: String = blackHole() // valid.
+/// var num: i32 = blackHole() // valid.
+/// var str: string = blackHole() // valid.
 /// 
-/// function produceValue -> String {
+/// function produceValue -> string {
 ///     return blackHole() // valid.
 /// }
 /// ```

@@ -5,9 +5,9 @@ module default
 /// Suppose there is a `Position` model that, if not set, should start at the origin (0, 0). A non implemented approach would be: 
 /// ```
 /// model Position {
-///    public var x: Number
-///    public var y: Number
-///    new(x: Number, y: Number) {
+///    public var x: number
+///    public var y: number
+///    new(x: number, y: number) {
 ///       this.x = x 
 ///       this.y = y 
 ///    }
@@ -20,9 +20,9 @@ module default
 /// Using the Default interface, it would instead be:
 /// ```
 /// model Position implements Default {
-///    public var x: Number
-///    public var y: Number
-///    new(x: Number, y: Number) {
+///    public var x: number
+///    public var y: number
+///    new(x: number, y: number) {
 ///       this.x = x 
 ///       this.y = y 
 ///    }

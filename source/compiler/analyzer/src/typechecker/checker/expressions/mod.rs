@@ -5,9 +5,7 @@ mod calls;
 
 use super::{statements::typecheck_generic_params, *};
 use crate::{
-    programdiagnostic::DiagnosticType,
-    utils::{distill_as_function_type, is_updateable},
-    Error, IntermediateType,
+    programdiagnostic::DiagnosticType, utils::distill_as_function_type, Error, IntermediateType,
 };
 pub use access::search_for_property;
 use access::typecheck_access_expression;
@@ -512,7 +510,7 @@ fn typecheck_index_expression(
             }
         }
         // Confirms that the indexer is at least an int32.
-        if let Some(idx) = symbollib.int32 {
+        if let Some(idx) = symbollib.i32 {
             let opaque_instance = evaluate(
                 &crate::IntermediateType::SimpleType {
                     value: idx,
@@ -616,27 +614,13 @@ fn typecheck_array_expression(
         let mut i = 1;
         let mut errors_gotten = vec![];
         for evaluated_type in element_types {
-            let mut unification = unify_types(
+            let unification = unify_types(
                 &next_type,
                 &evaluated_type,
                 symbollib,
                 UnifyOptions::None,
                 None,
             );
-            // For numeric types, casting should occur bidirectionally.
-            // So that elements will always scale the array upwards in size.
-            if is_numeric_type(&next_type, symbollib)
-                && is_numeric_type(&evaluated_type, symbollib)
-                && is_updateable(&array.elements[i], symbollib)
-            {
-                unification = unification.or(unify_types(
-                    &evaluated_type,
-                    &next_type,
-                    symbollib,
-                    UnifyOptions::None,
-                    None,
-                ));
-            }
             match unification {
                 Ok(new_type) => next_type = new_type,
                 Err(errortypes) => {
@@ -942,7 +926,7 @@ fn typecheck_identifier(
     };
     let eval_type = match symbol_to_type(symbol, name, symbollib) {
         Ok(value) => value,
-        Err(_) => return Ok(EvaluatedType::Unknown),
+        Err(error) => return Err(error),
     };
     Ok(eval_type)
 }

@@ -2,17 +2,15 @@
 /// ordered collections of values.
 module array
 
-use core.bool.Bool
+use core.boolean.boolean
 use core.interfaces.Default
 use core.iterate.{AsIterator, Iterable, Reversed}
 use core.math.{max, min, psrandom}
 use core.maybe.{none, some}
-use core.numeric.Int32
+use core.memory.{malloc, Ptr}
+use core.numeric.i32
 use core.ops.{Addition, Orderable}
-use core.sentinels.todo
-use core.string.{Display, String}
-
-public use uInt8Array.UInt8Array
+use core.string.{Display, string}
 
 /// A contiguous, growable list of items of the same type.
 public model Array<T> 
@@ -21,14 +19,15 @@ public model Array<T>
         + Default
         + Display|=(T implements Display)
 {
-    /// The number of items in the array.
-    var len: Int32
-    /// The current maximum amount of elements that can be in the array.
-    var capacity: Int32
-    /// The start of the array in the memory buffer.
-    var offset: Int32
-    /// The size of each element in the array.
-    var elementSize: Int32
+    var len: i32
+    var cap: i32
+    var data: Ptr
+
+    new(capacity: i32) {
+        this.len = 0
+        this.cap = capacity
+        this.data = malloc(this.cap)
+    }
     /// Returns an iterator over elements in this array.
     /// ### Usage
     /// ```
@@ -52,14 +51,23 @@ public model Array<T>
     /// assert(newArr).equals([1, 2, 3, 4, 5, 6, 7, 8])
     /// ```
     public function [Addition.add](other: []T) -> This {
-        var newArray = [];
-        this.iter().chain(other.iter()).forEach(fn(element) newArray.push(element))
-        return newArray
+        var result = [];
+        var i = 0
+        while i < this.len {
+            result.push(this[i])
+            i += 1
+        }
+        var j = 0
+        while j < this.len { 
+            result.push(this[j])
+            j += 1
+        }
+        return result
     }
     /// Implementation of the default trait.
     /// ### Usage
     /// ```
-    /// var empty: []Int32
+    /// var empty: []i32
     /// 
     /// assert(empty).equals([])
     /// ```
@@ -75,10 +83,10 @@ public model Array<T>
     /// 
     /// assert(arrAsStr).equals("[1, 6, 7, 8, 10]")
     /// ```
-    public function [Display.toStr]|=(T implements Display) -> String {
+    public function [Display.toStr]|=(T implements Display) -> string {
         var string = "["
         var i = 0
-        for element in this {
+        while i < this.len {
             var elementStr = this[i].toStr()
             string.append(elementStr)
             if i + 1 != this.len { 
@@ -97,13 +105,11 @@ public model Array<T>
     /// assert(arr).equals([11, 20, 21, 34, 46, 89])
     /// ```
     public function sortInPlace|=(T implements Orderable) {
-        todo()
+        this = this.sort()
     }
     /// Returns a sorted version of an array
     /// given that its elements are orderable.
     /// 
-    /// Sorting is stable, meaning that elements that have equal ordering 
-    /// remain in their original position.
     /// ### Usage
     /// ```
     /// var arr = [26, 10, 8, 35, 16, 87, 1, 12]
@@ -112,7 +118,7 @@ public model Array<T>
     /// assert(arrSorted).equals([1, 8, 10, 12, 16, 26, 35, 87])
     /// ```
     public function sort|=(T implements Orderable) -> []T {
-        todo()
+        return core.collections.timSort(this)
     }
     /// Fills an array with default values, given that the element type can be defaulted.
     /// ### Usage
@@ -140,8 +146,12 @@ public model Array<T>
     /// ```
     public function max|=(T implements Orderable) -> ?T {
         var maximum = this.first()?
-        this.iter().forEach(fn(value) maximum = max(maximum, value))
-        some(maximum)
+        var i = 0
+        while i < this.len {
+            maximum = max(maximum, this[i])
+            i += 1
+        }
+        return some(maximum)
     }
     /// Returns the smallest value in an array.
     /// It returns an empty value if the array is empty.
@@ -154,8 +164,12 @@ public model Array<T>
     /// ```
     public function min|=(T implements Orderable) -> ?T {
         var minimum = this.first()?
-        this.iter().forEach(fn(value) minimum = min(minimum, value))
-        some(minimum)
+        var i = 0
+        while i < this.len {
+            minimum = min(minimum, this[i])
+            i += 1
+        }
+        return some(minimum)
     }
     /// Returns the sum of all the elements in the array.
     /// If there are no elements in the array, it returns the default value of
@@ -169,8 +183,12 @@ public model Array<T>
     /// ```
     public function sum|=(T implements Addition + Default) -> T {
         var sum: T
-        this.iter().forEach(fn(item) sum += item)
-        sum
+        var i = 0
+        while i < this.len {
+            sum += this[i]
+            i += 1
+        }
+        return sum
     }
     /// Concatenates the elements in an array into one string and returns it.
     /// 
@@ -187,7 +205,7 @@ public model Array<T>
     /// 
     /// assertThat(joined2 == "1+2+3+4+5")
     /// ```
-    public function join|=(T implements Display)(separator?: String) -> String {
+    public function join|=(T implements Display)(separator?: string) -> string {
         var separatorValue = separator.unwrapOr(" ")
         var string = ""
         var i = 0
@@ -196,6 +214,7 @@ public model Array<T>
             if i + 1 != this.len {
                 string += separatorValue
             }
+            i += 1
         }
         return string
     }
@@ -232,7 +251,7 @@ public model Array<T>
     /// var arr = [15, 25, 35, 45, 55]
     /// assertThat(arr.at(-1) == some(55))
     /// ```
-    public function at(index: Int32) -> ?T {
+    public function at(index: i32) -> ?T {
         if index >= 0 && index < this.len {
             return some(this[index])
         }
@@ -251,7 +270,7 @@ public model Array<T>
     /// 
     /// assertThat(array.contains(str))
     /// ```
-    public function contains(value: T) -> Bool {
+    public function contains(value: T) -> boolean {
         this.indexOf(value).isSome()
     }
     /// Removes all elements in the array.
@@ -266,13 +285,28 @@ public model Array<T>
     public function clear {
         this = []
     }
+    /// Returns the capacity of the array.
+    /// 
+    /// The default capacity of an array is 8, but
+    /// it grows dynamically as more elements are added.
+    /// ### Usage
+    /// ```
+    /// var arr = [1, 2, 3, 4]
+    /// assert(arr.capacity() == 8)
+    /// 
+    /// arr += [5, 6, 7, 8, 9]
+    /// assert(arr.capacity() == 16)
+    /// ```
+    public function capacity -> i32 {
+        return this.cap
+    }
     /// Returns the first item in the array, if it exists.
     /// ### Usage
     /// ```
     /// var arr = [20, 30, 40, 50, 60]
     /// assert(arr.first().unwrap()).equals(20)
     /// 
-    /// var empty: []Int32 = []
+    /// var empty: []i32 = []
     /// assertThat(empty.first() == none())
     /// ```
     public function first -> ?T {
@@ -293,12 +327,20 @@ public model Array<T>
     /// var anotherSubArray = [4, 6, 5]
     /// assertThat(!mainArray.includes(anotherSubArray))
     /// ```
-    public function includes(subarray: []T) -> Bool {
-        if subarray.len == 0 {
-            return true
-        }
-        for element in this {
-            todo()
+    public function includes(subarray: []T) -> boolean {
+        var i = 0
+        while i + subarray.len <= this.len {
+            var j = 0
+            while j < subarray.len {
+                if this[i + j] != subarray[j] {
+                    break
+                }
+                j += 1
+            }
+            if j == subarray.len {
+                return true
+            }
+            i += 1
         }
         return false
     }
@@ -313,7 +355,7 @@ public model Array<T>
     /// var arr = [str1, str2, str3]
     /// assert(arr.indexOf(str2) == some(1)).
     /// ```
-    public function indexOf(value: T) -> ?Int32 {
+    public function indexOf(value: T) -> ?i32 {
         var i = 0
         while i < this.len {
             if this[i] == value {
@@ -331,8 +373,19 @@ public model Array<T>
     /// arr.insert(1, 2)
     /// assert(arr.at(1) == some(2))
     /// ```
-    public function insert(index: Int32, value: T) {
-        todo()
+    public function insert(index: i32, value: T) {
+        var result = []
+        var i = 0
+        while i < index {
+            result.push(this[i])
+            i += 1
+        }
+        result.push(value)
+        while i < this.len {
+            result.push(this[i])
+            i += 1
+        }
+        this = result
     }
     /// Inserts all the items from another array at the start of this array,
     /// shifting all its prior elements forward.
@@ -343,9 +396,9 @@ public model Array<T>
     /// assertThat(arr == [1, 2, 3, 4, 5, 6, 7, 8])
     /// ```
     public function prepend(prefix: []T) {
-        var newArray = prefix
-        newArray.append(this)
-        this = newArray
+        var result = prefix
+        result.append(this)
+        this = result
     }
     /// Returns the element before the last element in this array,
     /// if it exists.
@@ -367,15 +420,18 @@ public model Array<T>
     /// assertThat(startsWithD == ["Donald", "Dele", "Daniel"])
     /// assertThat(others == ["Arnold", "Harriet"])
     /// ```
-    public function partition(check: fn(item: T) -> Bool) -> [][]T {
+    public function partition(check: fn(item: T) -> boolean) -> [][]T {
         var trueItems = []
         var falseItems = []
-        for item in this {
+        var i = 0
+        while i < this.len {
+            var item = this[i]
             if check(item) {
                 trueItems.push(item)
-            } else {
-                falseItems.push(item)
+                continue
             }
+            falseItems.push(item)
+            i += 1
         }
         return [trueItems, falseItems]
     }
@@ -385,7 +441,7 @@ public model Array<T>
     /// var arr = [1, 2, 3, 4]
     /// assert(arr.length()).equals(4)
     /// ```
-    public function length -> Int32 {
+    public function length -> i32 {
         return this.len
     }
     /// Adds an item to the end of the array.
@@ -400,9 +456,12 @@ public model Array<T>
     /// assert(array.length()).equals(5)
     /// ```
     public function push(value: T) {
-        if this.len == this.capacity {
-            // todo.
-        }
+       if this.len == this.cap {
+           this.cap = this.cap * 2
+        //    this.data = realloc(this.data, this.cap)
+       }
+    //    this.data[this.len] = value
+       this.len += 1
     }
     /// Removes an item from the end of the array.
     /// ### Usage
@@ -416,12 +475,13 @@ public model Array<T>
     /// assert(array).equals([1])
     /// ```
     public function pop -> ?T {
-        if this.len == 0 {
-            return none()
-        }
-        var last = this[this.len - 1]
-        this.len -= 1
-        return some(last)
+       if this.len == 0 {
+        return none()
+       }
+
+       var last = this[this.len]
+       this.len -= 1
+       return some(last)
     }
     /// Returns an iterator that produces elements from the end of the array
     /// to the start.
@@ -450,8 +510,8 @@ public model Array<T>
     /// var arr = [1, 2, 3, 4, 5]
     /// var twoItems = arr.sample(2)
     /// ```
-    public function sample(n: Int32) -> []T {
-        if this.len == 0 {
+    public function sample(n: i32) -> []T {
+        if this.len == 0 or n < 0 {
             return []
         }
         if n > this.len {
@@ -460,8 +520,9 @@ public model Array<T>
         var indices = []
         var chosen = []
         while chosen.len < n {
-            var nextSelect = (psrandom() * 100).toFixed()
-            var selected = Int32.fromStr(nextSelect)! % this.len
+            var nextSelect = (psrandom() * (100).f64()).toFixed()
+            var select = i32.fromStr(nextSelect)!
+            var selected = this.len % select
             if indices.contains(selected) {
                 continue
             }
@@ -478,16 +539,47 @@ public model Array<T>
     /// ### Usage
     /// ```
     /// var array = [1, 2, 3, 4, 5]
-    /// var newArray = array.scalarAdd(5)
+    /// var result = array.scalarAdd(5)
     /// 
-    /// assert(newArray).equals([6, 7, 8, 9, 10])
+    /// assert(result).equals([6, 7, 8, 9, 10])
     /// ```
     public function scalarAdd|=(T implements Addition)(value: T) -> []T{
-        var newArray = []
-        for element in this {
-            newArray.push(element + value)
+        var result = []
+        var i = 0
+        while i < this.len {
+            result.push(this[i] + value)
+            i += 1 
         }
-        return newArray
+        return result
+    }
+    /// Creates a new array consisting of a range of elements
+    /// from the current array. It takes in the index to start
+    /// from and the index to end at.
+    /// 
+    /// ### Usage
+    /// ```
+    /// var array = [1, 2, 3, 4, 5]
+    /// var result = array.slice(1, 4)
+    /// 
+    /// assert(result).equals([2, 3, 4]) // Items from index 1 to 3.
+    /// ```
+    public function slice(start: i32, end?: i32) -> []T {
+        if this.len == 0 {
+            return []
+        }
+        var result = []
+        var sliceStart = start
+        var sliceEnd = if end.isNone() {
+            this.len
+        } else {
+            end.unwrap()
+        }
+        var i = sliceStart
+        while i < sliceEnd - 1 {
+            result.push(this[i])
+            i += 1
+        }
+        return result
     }
     /// Performs element-wise addition between this array and another array.
     /// ### Usage
@@ -495,8 +587,8 @@ public model Array<T>
     /// var array = [6, 4, 3, 4]
     /// var array2 = [5, 5, 3, 4]
     /// 
-    /// var newArray = array.vectorAdd(array2)
-    /// assert(newArray).equals([10, 9, 6, 8]) // adds the pairs of elements at indices.
+    /// var result = array.vectorAdd(array2)
+    /// assert(result).equals([10, 9, 6, 8]) // adds the pairs of elements at indices.
     /// ```
     /// If both arrays are not the same size, it will copy the remaining elements from
     /// the bigger array and return an array that is its size.
@@ -504,11 +596,11 @@ public model Array<T>
     /// var array3 = [1, 2]
     /// var array4 = [4, 5, 6, 8]
     /// 
-    /// var newArray2 = array3.scalarAdd(array4)
-    /// assert(newArray).equals([5, 7, 6, 8]); // copies 6 and 8.
+    /// var result2 = array3.scalarAdd(array4)
+    /// assert(result).equals([5, 7, 6, 8]); // copies 6 and 8.
     /// ```
     public function vectorAdd|=(T implements Addition)(other: []T) -> []T {
-        var newArray = []
+        var result = []
         var i = 0
         while i < other.len or i < this.len {
             var a = this.at(i)
@@ -517,14 +609,14 @@ public model Array<T>
                 break
             }
             if a.isNone() {
-                newArray.push(b!)
+                result.push(b!)
             } else if b.isNone() {
-                newArray.push(a!)
+                result.push(a!)
             } else {
-                newArray.push(a! + b!)
+                result.push(a! + b!)
             }
         }
-        return newArray
+        return result
     }
     /// Removes the first item in the array
     /// and shifts all the other items backward
@@ -553,10 +645,14 @@ public model Array<T>
         if this.len == 0 {
             return none()
         }
-        var first = this[0]
-        this.offset += this.elementSize
+        var firstItem = this[0]
+        var i = 0
         this.len -= 1
-        return some(first)
+        while i < this.len {
+            this[i] = this[i + 1]
+            i += 1
+        }
+        return some(firstItem)
     }
     /// Returns a new, shuffled version of the array.
     /// ### Usage
@@ -578,7 +674,7 @@ public model Array<T>
 /// An iterator built from the elements of an array.
 public model ArrayIter<T> implements Iterable<T> {
     var array: Array<T>
-    var idx: Int32
+    var idx: i32
     
     new(array: Array<T>) {
         this.array = array

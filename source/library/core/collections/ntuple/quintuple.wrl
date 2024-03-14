@@ -1,8 +1,7 @@
 module quintuple
 
 use core.maybe.some
-use core.string.{Display, String}
-use core.sentinels.todo
+use core.string.{Display, string}
 use ntuple.NTuple
 
 
@@ -36,16 +35,15 @@ public model Quintuple<T, U, V, W, X>
             and V implements Display
             and W implements Display
             and X implements Display
-        ) -> String
+        ) -> string
     {
-        todo()
-        // return String.fmt("Quintuple(%, %, %, %, %)")
-        //     .add(this.a.toStr())
-        //     .add(this.b.toStr())
-        //     .add(this.c.toStr())
-        //     .add(this.d.toStr())
-        //     .add(this.e.toStr())
-        //     .finish()
+        return string.fmt("Quintuple(%, %, %, %, %)")
+            .add(this.a.toStr())
+            .add(this.b.toStr())
+            .add(this.c.toStr())
+            .add(this.d.toStr())
+            .add(this.e.toStr())
+            .finish()
     }
 
     public function [NTuple.first] -> ?T {

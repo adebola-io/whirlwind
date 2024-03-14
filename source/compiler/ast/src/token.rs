@@ -137,6 +137,7 @@ impl From<Operator> for BinOperator {
             Operator::Divide => Self::Divide,
             Operator::Carat => Self::PowerOf,
             Operator::Ampersand => Self::BitAnd,
+            Operator::BitOr => Self::BitOr,
             Operator::Equal => Self::Equals,
             Operator::NotEqual => Self::NotEquals,
             Operator::Percent => Self::Remainder,

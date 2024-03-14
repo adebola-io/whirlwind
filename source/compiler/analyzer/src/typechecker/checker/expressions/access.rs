@@ -329,6 +329,8 @@ pub fn search_for_property(
         .chain(environment_implementations)
         .collect();
 
+    let mut interface_this_type_solutions = vec![];
+    let mut interface_inner_generics = vec![];
     let all_interface_methods = all_interfaces
         .into_iter()
         .filter_map(|implementation| {
@@ -339,7 +341,7 @@ pub fn search_for_property(
                     ..
                 } => {
                     // Update the solutions of the interfaces generics.
-                    generic_args.append(&mut interface_generics);
+                    interface_inner_generics.append(&mut interface_generics);
                     // Here a interface is treated as a generic argument and given a solution.
                     // This allows the `This` marker to refer to the implementing model, rather than the interface.
                     let generic_arguments = generic_args.clone();
@@ -359,7 +361,7 @@ pub fn search_for_property(
                         },
                         _ => unreachable!(),
                     };
-                    generic_args.push((interface_, this_solution));
+                    interface_this_type_solutions.push((interface_, this_solution));
                     let interface_symbol = symbollib.get_forwarded(interface_)?;
                     match &interface_symbol.kind {
                         SemanticSymbolKind::Interface { methods, .. } => Some(methods),
@@ -394,6 +396,8 @@ pub fn search_for_property(
         // need to chain the iterator for models.
         None => environment_methods.chain(all_interface_methods).collect(),
     };
+    generic_args.append(&mut interface_inner_generics);
+    generic_args.append(&mut interface_this_type_solutions);
     // Is property a method?
     // Search through the compound list of methods for appriopriate property.
     for method in complete_method_list.iter() {

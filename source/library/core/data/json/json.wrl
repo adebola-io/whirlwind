@@ -1,11 +1,11 @@
 module json
 
 use core.{
-    bool.Bool, 
+    boolean.boolean, 
     collections.HashMap,
     sentinels.todo,
-    string.String, 
-    numeric.Number, 
+    string.string,
+    numeric.number, 
     maybe.{none, some}
 }
 
@@ -16,12 +16,13 @@ public type RawJsonVal =
     | JsonBool 
     | JsonNumber 
     | JsonObject
+    | JsonNull
 
 public enum JsonValueType {
-    String,
+    string,
     Array,
-    Bool,
-    Number,
+    boolean,
+    number,
     Object,
     Null
 }
@@ -34,7 +35,7 @@ public interface JsonValue {
     /// use core.data.JsonString
     /// 
     /// var str = JsonString()
-    /// assert(str.getType()).equals(JsonValueType.String)
+    /// assert(str.getType()).equals(JsonValueType.string)
     /// ```
     public function getType -> JsonValueType
     /// Returns true if the JSON value is null.
@@ -45,7 +46,7 @@ public interface JsonValue {
     /// var null = JsonNull()
     /// assertThat(null.isNull())
     /// ```
-    public function isNull -> Bool {
+    public function isNull -> boolean {
         return this.getType() == JsonValueType.Null
     }
     /// Returns true if the JSON value is a string.
@@ -56,8 +57,8 @@ public interface JsonValue {
     /// var str = JsonString()
     /// assertThat(str.isString())
     /// ```
-    public function isString -> Bool {
-        return this.getType() == JsonValueType.String
+    public function isString -> boolean {
+        return this.getType() == JsonValueType.string
     }
     /// Returns true if the JSON value is numeric.
     /// ### Usage
@@ -67,8 +68,8 @@ public interface JsonValue {
     /// var num = JsonNumber(some(42))
     /// assertThat(num.isNumber())
     /// ```
-    public function isNumber -> Bool {
-        return this.getType() == JsonValueType.Number
+    public function isNumber -> boolean {
+        return this.getType() == JsonValueType.number
     }
     /// Returns true if the JSON value is an array.
     /// ### Usage
@@ -78,14 +79,37 @@ public interface JsonValue {
     /// var arr = JsonArray()
     /// assertThat(arr.isArray())
     /// ```
-    public function isArray -> Bool {
+    public function isArray -> boolean {
         return this.getType() == JsonValueType.Array
+    }
+    /// Returns true if the JSON value is an object.
+    /// ### Usage
+    /// ```
+    /// use core.data.JsonObject
+    /// 
+    /// var obj = JsonObject()
+    /// assertThat(obj.isObject())
+    /// ```
+    public function isObject -> boolean {
+        return this.getType() == JsonValueType.Object
     }
     /// Masks the underlying value as a raw json value.
     public function asValue -> RawJsonVal {
-        if this.isString() { return JsonString(this.asString()) }
-        if this.isArray() { return JsonArray(this.asArray()) }
-        if this.isNumber() {return JsonNumber(this.asNumber()) }
+        if this.isString() { 
+            return JsonString(this.asString()) 
+        }
+        if this.isArray() { 
+            return JsonArray(this.asArray()) 
+        }
+        if this.isNumber() {
+            return JsonNumber(this.asNumber()) 
+        }
+        if this.isObject() {
+            return JsonObject(this.asObject()) 
+        }
+        if this.isNull() {
+            return JsonNull()
+        }
         todo()
     }
     /// Converts a JSON array to its underlying value.
@@ -112,36 +136,36 @@ public interface JsonValue {
     /// var str = JsonString()
     /// assert(str.asString()).equals(some(""))
     /// 
-    /// var bool = JsonBool(some(true))
+    /// var boolean = JsonBool(some(true))
     /// assert(str.asString()).equals(none())
     /// ```
-    public function asString -> ?String {
+    public function asString -> ?string {
         return none()
     }
     /// Converts a JSON boolean to its underlying value.
-    public function asBool -> ?Bool {
+    public function asBool -> ?boolean {
         return none()
     }
     /// Converts a JSON number to its underlying value.
-    public function asNumber -> ?Number {
+    public function asNumber -> ?number {
         return none()
     }
     /// Converts a JSON object to its underlying value.
-    public function asObject -> ?HashMap<String, RawJsonVal> {
+    public function asObject -> ?HashMap<string, RawJsonVal> {
         return none()
     }
 }
 
 /// A string value that adheres to the JSON data format.
 public model JsonString implements JsonValue {
-    public var value: String
-    new(value?: String) {
+    public var value: string
+    new(value?: string) {
         this.value = value.unwrapOr("")
     }
     public function [JsonValue.getType] -> JsonValueType {
-        return JsonValueType.String
+        return JsonValueType.string
     }
-    public function [JsonValue.asString] -> ?String {
+    public function [JsonValue.asString] -> ?string {
         return some(this.value)
     }
 }
@@ -162,42 +186,49 @@ public model JsonArray implements JsonValue {
 
 /// A boolean value in the JSON format.
 public model JsonBool implements JsonValue {
-    public var value: Bool
-    new(value?: Bool) {
+    public var value: boolean
+    new(value?: boolean) {
         this.value = value.unwrapOr(false)
     }
     public function [JsonValue.getType] -> JsonValueType {
-        return JsonValueType.Bool
+        return JsonValueType.boolean
     }
-    public function [JsonValue.asBool] -> ?Bool {
+    public function [JsonValue.asBool] -> ?boolean {
         return some(this.value)
     }
 }
 
 /// A numeric value in the JSON format.
 public model JsonNumber implements JsonValue {
-    public var value: Number
-    new(value?: Number) {
+    public var value: number
+    new(value?: number) {
         this.value = value.unwrapOr(0)
     }
     public function [JsonValue.getType] -> JsonValueType {
-        return JsonValueType.Number
+        return JsonValueType.number
     }
-    public function [JsonValue.asNumber] -> ?Number {
+    public function [JsonValue.asNumber] -> ?number {
         return some(this.value)
     }
 }
 
 /// An object in the JSON format.
 public model JsonObject implements JsonValue {
-    public var map: HashMap<String, RawJsonVal>
-    new(map?: HashMap<String, RawJsonVal>) {
+    public var map: HashMap<string, RawJsonVal>
+    new(map?: HashMap<string, RawJsonVal>) {
         this.map = map.unwrapOr(HashMap())
     }
     public function [JsonValue.getType] -> JsonValueType {
         return JsonValueType.Object
     }
-    public function [JsonValue.asObject] -> ?HashMap<String, RawJsonVal> {
+    public function [JsonValue.asObject] -> ?HashMap<string, RawJsonVal> {
         return some(this.map)
     }      
+}
+
+public model JsonNull implements JsonValue {
+    new() {}
+    public function [JsonValue.getType] -> JsonValueType {
+        return JsonValueType.Null
+    }
 }

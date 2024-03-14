@@ -1,6 +1,6 @@
 module display
 
-use string.String
+use string.string
 
 /// The `Display` interface defines a contract for the conversion of models into string representations.
 /// This allows objects of different types to be seamlessly integrated into textual contexts,
@@ -10,16 +10,16 @@ use string.String
 /// ```
 /// // Implementing Display on a model.
 /// model Rectangle implements Display {
-///     var length: Int32
-///     var width: Int32
+///     var length: i32
+///     var width: i32
 ///     
-///     new(length: Int32, width: Int32) {
+///     new(length: i32, width: i32) {
 ///         this.length = length
 ///         this.width = width
 ///     }
 /// 
-///     public function [Display.toStr] -> String {
-///         var template = String.fmt("Rectangle { length: %, breadth: % }")
+///     public function [Display.toStr] -> string {
+///         var template = string.fmt("Rectangle { length: %, breadth: % }")
 ///         template.add(this.length).add(this.breadth).finish()
 ///     }
 /// }
@@ -28,9 +28,9 @@ use string.String
 /// ```
 public interface Display {
     /// Converts the implementing type to a string.
-    public function toStr -> String
+    public function toStr -> string
     /// Converts the implementing type to a formatted string.
-    public function toFmtStr -> String {
+    public function toFmtStr -> string {
         return this.toStr()
     }
 }

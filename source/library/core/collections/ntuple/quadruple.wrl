@@ -1,7 +1,7 @@
 module quadruple
 
 use core.maybe.some
-use core.string.{Display, String}
+use core.string.{Display, string}
 
 use ntuple.NTuple
 use tuple.{Tuple, pair}
@@ -33,9 +33,9 @@ public model Quadruple<T, U, V, W>
             and U implements Display
             and V implements Display
             and W implements Display
-        ) -> String
+        ) -> string
     {
-        return String.fmt("Quadruple(%, %, %, %)")
+        return string.fmt("Quadruple(%, %, %, %)")
             .add(this.a.toStr())
             .add(this.b.toStr())
             .add(this.c.toStr())

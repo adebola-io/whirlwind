@@ -14,7 +14,7 @@ public use terminal.{print, prompt, printFmt}
 /// to streams of data.
 public interface Writer {
     /// Writes into a byte stream and returns the number of bytes written.
-    public async function write(bytes: []Int32) -> Outcome<Int32, IoError>
+    public async function write(bytes: []i32) -> Outcome<i32, IoError>
 }
 
 /// This interface is implemented by any entity that is capable of
@@ -22,7 +22,7 @@ public interface Writer {
 /// `.read` method, which reads bytes into a provided byte array.
 public interface Reader {
     /// Reads data from a specified source.
-    public async function read(bytes: []Int32, offset?: Int32, length?: Int32)
+    public async function read(bytes: []i32, offset?: i32, length?: i32)
 }
 
 public model IoError {

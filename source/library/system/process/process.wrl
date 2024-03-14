@@ -7,7 +7,7 @@ use core.{
 
 
 /// Returns the value of an environment variable.
-public function getEnv(varName: String) -> ?String {
+public function getEnv(varName: string) -> ?string {
     todo()
 }
 
@@ -22,12 +22,12 @@ public model Error {
 /// var currentDir = system.process.cwd()
 /// print("The current directory is " + currentDir)
 /// ```
-public function cwd -> String {
+public function cwd -> string {
     return builtin.sequence.cwd()
 }
 
 /// Schedules a function to run after a duration elapses.
-public function waitThen(callback: fn(), timeout: Int32) {
+public function waitThen(callback: fn(), timeout: i32) {
     CurrentSequence.sleep(timeout)
     callback()
 }

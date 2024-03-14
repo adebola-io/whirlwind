@@ -13,14 +13,14 @@ module guaranteed
 /// the `.unwrap()` method.
 /// <!--ignore-->
 /// ```
-/// var name: ?String = some("Alice")
+/// var name: ?string = some("Alice")
 /// var greeting = "Hello, " + name!
 /// assert(greeting).equals("Hello, Alice")
 /// 
 /// name = none()
 /// name! // causes an error.
 /// 
-/// var age: Outcome<Number, Error> = ok(25)
+/// var age: Outcome<number, Error> = ok(25)
 /// var message = "You are " + age! " years old"
 /// age = err(Error("Invalid age."))
 /// age! // causes an error.
@@ -31,12 +31,12 @@ module guaranteed
 /// It can be implemented by any custom class that defines the internal
 /// `guarantee()` method. For example:
 /// ```
-/// model BankAccount implements Guaranteed<Number> {
-///     var balance: Number
-///     new(balance: Number) {
+/// model BankAccount implements Guaranteed<number> {
+///     var balance: number
+///     new(balance: number) {
 ///         this.balance = balance
 ///     }
-///     function [Guaranteed.guarantee] -> Number {
+///     function [Guaranteed.guarantee] -> number {
 ///         if this.balance > 0 {
 ///           fatal("negative balance.")  
 ///         }

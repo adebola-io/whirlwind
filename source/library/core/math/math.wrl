@@ -4,8 +4,8 @@
 module math
 
 use core.{
-    bool.Bool,
-    numeric.{Float64, Number, Int32, Int},
+    boolean.boolean,
+    numeric.{f64, number, i32, int},
     ops.{Orderable, Ordering, Range},
 }
 
@@ -18,7 +18,7 @@ import "internal:math" {
     /// 
     /// assert(square(2)).equals(4)
     /// ```
-    "square" as public function square(a: Number) -> Number    
+    "square" as public function square(a: number) -> number    
     /// Computes the square root of a number.
     /// ### Usage
     /// ```
@@ -27,7 +27,7 @@ import "internal:math" {
     /// var num = sqrt(4)
     /// assertThat(num == 2)
     /// ```
-    "sqrt" as public function sqrt(a: Number) -> Number
+    "sqrt" as public function sqrt(a: number) -> number
     /// Returns the smallest integer greater than or equal to 
     /// the number passed in.
     /// ### Usage
@@ -37,7 +37,7 @@ import "internal:math" {
     /// assert(ceil(8.5)).equals(9)
     /// assert(ceil(10.23)).equals(11)
     /// ```
-    "ceil" as public function ceil(x: Number) -> Int32
+    "ceil" as public function ceil(x: number) -> i32
     /// Returns the largest integer smaller than or equal to
     /// the number passed in.
     /// ### Usage
@@ -47,7 +47,7 @@ import "internal:math" {
     /// assert(floor(9.3)).equals(9)
     /// assert(floor(100.99)).equals(100)
     /// ```
-    "floor" as public function floor(x: Number) -> Int32
+    "floor" as public function floor(x: number) -> i32
     /// Returns the absolute value of a number.
     /// 
     /// ### Usage
@@ -57,13 +57,13 @@ import "internal:math" {
     /// assert(max(-4)).equals(4)
     /// assert(max(10)).equals(10)
     /// ```
-    "abs" as public function abs(a: Number) -> Int32
+    "abs" as public function abs(a: number) -> i32
     /// Determines if a number is prime.
     /// ### Usage
     /// ```
     /// 
     /// ```
-    "isPrime" as public function isPrime(x: Number) -> Bool
+    "isPrime" as public function isPrime(x: number) -> boolean
     /// Calculates the greatest common divisor of two numbers.
     /// The GCD is the largest positive integer that divides both input 
     /// integers without a remainder.
@@ -74,17 +74,17 @@ import "internal:math" {
     /// assert(gcd(12, 18)).equals(6)
     /// assert(gcd(0, 24)).equals(0)
     /// ```
-    "gcd" as public function gcd(a: Number, b: Number) -> Int
+    "gcd" as public function gcd(a: number, b: number) -> int
     /// Returns the approximate value of the PI constant as a double-precision
     /// 64-bit floating-point number.
     /// ### Usage
     /// ```
     /// var pi = core.math.pi() // 3.1415926536...
     /// ```
-    "pi" as public function pi() -> Float64
+    "pi" as public function pi() -> f64
 
     /// Returns a random floating number in a specified range.
-    "randInRange" as function randInRange(start: Int32, end: Int32) -> Float64
+    "randInRange" as function randInRange(start: i32, end: i32) -> f64
 }
 
 
@@ -101,8 +101,8 @@ import "internal:math" {
 /// var randNo2 = psrandom()
 /// assert(randNo2).isLessThan(2)
 /// ```
-public function psrandom(range?: Range<Int32>) -> Float64 {
-    var { start, end }: Range<Int32> = range.unwrapOr(0..1);
+public function psrandom(range?: Range<i32>) -> f64 {
+    var { start, end }: Range<i32> = range.unwrapOr(0..1);
     return randInRange(start, end)
 }
 

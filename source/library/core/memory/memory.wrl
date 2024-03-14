@@ -1,23 +1,104 @@
 module memory
 
-use core.bool.Bool
+use core.boolean.boolean
 use core.internals.never
-use core.numeric.Int32
+use core.numeric.i32
 use core.sentinels.todo
 
 public use ref.WeakRef
 
 import "internal:mem" {
     /// Returns the value at a particular offset in linear memory.
-    "at" as public function at(offset: Int32) -> Int32;
+    "at" as public function at(offset: i32) -> i32;
 }
 
-/// Returns the address of an object instance in linear memory.
-public function getOffset<T>(value: T) -> Int32 {
-    // False recursion. The implementation of this function
-    // is built into the compiler.
-    return getOffset(value)
+public model Ptr {
+    public var address: i32
+
+    /// Determines whether two variables point to the same location in memory
+    /// by comparing their pointer values.
+    /// 
+    /// This function is unlike regular equality with the `==` operator, which 
+    /// compares values by matching their bytes.
+    /// ### Usage
+    /// ```
+    /// use core.memory.Ptr
+    /// var arr1 = []
+    /// var arr2 = arr1
+    /// 
+    /// assertThat(Ptr.same(arr1, arr2))
+    /// assertThat(Ptr.same(arr2, arr1))
+    /// ```
+    public static function same<T>(left: T, right: T) -> boolean {
+        todo()
+    }
+
+
+    /// Returns the address of an object instance in linear memory.
+    public static function getOffset<T>(value: T) -> i32 {
+        // False recursion. The implementation of this function
+        // is built into the compiler.
+        return Ptr.getOffset(value)
+    }
 }
+
+
+/// Given a number of bytes, `malloc` allocates a block of memory on the heap, 
+/// returning a pointer to the
+/// start of the block.
+/// 
+/// The memory is not initialized, so the contents are undefined.
+/// Use `calloc` if you want the memory to be initialized to zero.
+/// 
+/// @param size - The number of bytes to allocate.
+/// @returns A pointer to the start of the newly allocated block of memory.
+/// 
+/// ### Usage
+/// ```
+/// use core.memory.malloc
+/// 
+/// var ptr = malloc(1024)
+/// assertThat(ptr.address > 0)
+/// ```
+public function malloc(size: i32) -> Ptr {
+    todo()
+}
+
+
+/// Given a number of bytes, `calloc` allocates a block of memory on the heap,
+/// returning a pointer to the start of the block.
+/// 
+/// Unlike with `malloc`, the memory is initialized to zero.
+/// 
+/// @param size - The number of bytes to allocate.
+/// @returns A pointer to the start of the newly allocated block of memory.
+/// 
+/// ### Usage
+/// ```
+/// use core.memory.calloc
+/// 
+/// var ptr = calloc(1024)
+/// assertThat(ptr.address > 0)
+/// ```
+public function calloc(size: i32) -> Ptr {
+    todo()
+}
+
+
+/// Frees a block of memory previously allocated with `malloc` or `calloc`.
+/// 
+/// ### Usage
+/// ```
+/// use core.memory.free
+/// 
+/// var ptr = malloc(1024)
+/// free(ptr)
+/// ```
+public function free(p: Ptr) {
+    todo()
+}
+
+
 
 
 /// Returns the last value on the call stack.
@@ -25,29 +106,10 @@ public function getOffset<T>(value: T) -> Int32 {
 /// It will crash the program if it is called when 
 /// the call stack has more than one value in it,
 /// or when the call stack is empty.
-public function stackLast() -> never {
+public function stackLast -> never {
     // False recursion. The implementation of this function
     // is built into the compiler.
     return stackLast()
-}
-
-
-/// Determines whether two variables point to the same location in memory
-/// by comparing their pointer values.
-/// 
-/// This function is unlike regular equality with the `==` operator, which 
-/// compares values by matching their bytes.
-/// ### Usage
-/// ```
-/// use core.memory.same
-/// var arr1 = []
-/// var arr2 = arr1
-/// 
-/// assertThat(same(arr1, arr2))
-/// assertThat(same(arr2, arr1))
-/// ```
-public function same<T>(left: T, right: T) -> Bool {
-    todo()
 }
 
 

@@ -1,7 +1,7 @@
 module time
 
 use core.{
-    numeric.Int32,
+    numeric.i32,
     sentinels.todo
 }
 
@@ -9,13 +9,13 @@ public type Duration = Second | Millisecond
 
 public model Second {
 
-    public static function times(number: Int32) -> This {
+    public static function times(number: i32) -> This {
         todo()
     }
 }
 
 public model Millisecond {
-    public static function times(number: Int32) -> This {
+    public static function times(number: i32) -> This {
         todo()
     }
 }

@@ -1,7 +1,7 @@
 module tuple
 
 use ntuple.NTuple
-use core.string.{Display, String}
+use core.string.{Display, string}
 use core.maybe.some
 
 /// A simple ordered pair of items. Elements within a tuple can be of any type,
@@ -22,15 +22,15 @@ public model Tuple<T, U>
     /// Display.
     /// ### Usage
     /// ```
-    /// var tuple = pair("hello", 123)
+    /// var tuple = pair(true, 123)
     /// var str = tuple.toStr()
     /// 
-    /// assert(str).equals("Tuple(hello, 123)")
+    /// assert(str).equals("Tuple(true, 123)")
     /// ```
     public function [Display.toStr]|=(
         T implements Display and U implements Display
-    ) -> String {
-        return String.fmt("Tuple(%, %)")
+    ) -> string {
+        return string.fmt("Tuple(%, %)")
             .add(this.a)
             .add(this.b)
             .finish()

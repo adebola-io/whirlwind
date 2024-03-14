@@ -1,7 +1,7 @@
 module triple
 
 use core.maybe.some
-use core.string.{Display, String}
+use core.string.{Display, string}
 use core.interfaces.Default
 
 use ntuple.NTuple
@@ -32,9 +32,9 @@ public model Triple<T, U, V>
         T implements Display 
             and U implements Display
             and V implements Display
-        ) -> String
+        ) -> string
     {
-        return String.fmt("Triple(%, %, %)")
+        return string.fmt("Triple(%, %, %)")
             .add(this.a)
             .add(this.b)
             .add(this.c)

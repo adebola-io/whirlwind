@@ -19,7 +19,7 @@ pub enum CurrentModuleType {
     Regular,
     String,
     Array,
-    Bool,
+    Boolean,
     Numeric,
     Concurrent,
     Eventual,
@@ -39,7 +39,7 @@ pub trait IntrinsicPaths {
     const PRELUDE: &'static str = "prelude/prelude.wrl";
     const STRING: &'static str = "string/string.wrl";
     const ARRAY: &'static str = "array/array.wrl";
-    const BOOL: &'static str = "bool/bool.wrl";
+    const BOOL: &'static str = "boolean/boolean.wrl";
     const NUMERIC: &'static str = "numeric/numeric.wrl";
     const CONCURRENT: &'static str = "concurrent/concurrent.wrl";
     const PROSPECT: &'static str = "concurrent/prospect.wrl";

@@ -9,10 +9,10 @@
 module iterate 
 
 use core.{
-    bool.Bool,
+    boolean.boolean,
     collections.Tuple,
     maybe.{none, some},
-    numeric.Int32,
+    numeric.i32,
 }
 
 /// ## The Iterable interface
@@ -41,10 +41,10 @@ public interface Iterable<I> {
     /// ### Usage
     /// ```
     /// var str = "Hello"
-    /// var characters = str.chars()
-    /// var charsArray = characters.collect()
+    /// var characters = str.characters()
+    /// var charactersArray = characters.collect()
     /// 
-    /// assert(charsArray.length()).equals(5)
+    /// assert(charactersArray.length()).equals(5)
     /// assertThat(characters.next().isNone())
     /// ```
     public function collect -> []I {
@@ -62,7 +62,7 @@ public interface Iterable<I> {
     /// 
     /// assertThat(arrIter.count() == 5)
     /// ```
-    public function count -> Int32 {
+    public function count -> i32 {
         var count = 0
         while this.next().isSome() {
             count += 1
@@ -113,7 +113,7 @@ public interface Iterable<I> {
     /// assert(divBy4.next()).equals(some(40))
     /// assert(divBy4.next()).equals(some(60))
     /// ```
-    public function filter(predicate: fn(value: I) -> Bool) -> Filter<I, This> {
+    public function filter(predicate: fn(value: I) -> boolean) -> Filter<I, This> {
         return Filter(this, predicate)
     }
     /// The `.map()` method is an iterator adapter that allows the creation of a new iterator by applying a
@@ -163,7 +163,7 @@ public interface Iterable<I> {
     /// assert(iterator.next()).equals(some(13))
     /// assert(iterator.next()).equals(some(14))
     /// ```
-    public function any(predicate: fn(value: I) -> Bool) -> Bool {
+    public function any(predicate: fn(value: I) -> boolean) -> boolean {
         for item in this {
             if predicate(item) {
                 return true
@@ -178,7 +178,7 @@ public interface Iterable<I> {
     /// 
     /// assertThat(iter.all(fn(x) x % 3 == 0)) // Consumes the entire iterator and returns true.
     /// ```
-    /// Like the `.any()` method, `.All()` is also shortcircuiting, meaning it will stop advancing after the first
+    /// Like the `.any()` method, `.all()` is also shortcircuiting, meaning it will stop advancing after the first
     /// false item, whether or not there are still items in the iterator.
     /// ```
     /// iter = [12, 14, 15, 17, 18, 20].iter()
@@ -188,7 +188,7 @@ public interface Iterable<I> {
     /// assert(iter.next()).equals(some(18))
     /// assert(iter.next()).equals(some(20))
     /// ```
-    public function all(predicate: fn(value: I) -> Bool) -> Bool {
+    public function all(predicate: fn(value: I) -> boolean) -> boolean {
         for item in this {
             if !predicate(item) {
                 return false
@@ -218,7 +218,7 @@ public interface Iterable<I> {
     /// assert(namesIter.next()).equals(some("Fatima"))
     /// assert(namesIter.next()).equals(some("Bao"))
     /// ```
-    public function find(predicate: fn(value: I) -> Bool) -> ?I {
+    public function find(predicate: fn(value: I) -> boolean) -> ?I {
         for item in this {
             if predicate(item) {
                 return some(item)
@@ -239,7 +239,7 @@ public interface Iterable<I> {
     /// var firstTen = numbers.iter().take(10)
     /// assert(firstTen).equals([2, 4, 6, 8, 10])
     /// ```
-    public function take(n: Int32) -> []I {
+    public function take(n: i32) -> []I {
         var i = n
         var taken = []
         while i > 0 {
@@ -270,7 +270,7 @@ public interface Iterable<I> {
     /// assertThat(iter.next() == some(18))
     /// assertThat(iter.next() == some(20))
     /// ```
-    public function until(condition: fn(value: I) -> Bool) {
+    public function until(condition: fn(value: I) -> boolean) {
         for item in this {
             if condition(item) {
                 break
@@ -316,7 +316,7 @@ public interface Iterable<I> {
     /// 
     /// assert(iter.collect()).equals(["cherry", "date", "elderberry"])
     /// ```
-    public function skip(n: Int32) -> Skip<I, This> {
+    public function skip(n: i32) -> Skip<I, This> {
         return Skip(this, n)
     }
     /// Joins two iterators together .i.e. It starts producing values from the second iterator
@@ -348,14 +348,14 @@ public interface Iterable<I> {
     }
 }
 
-public model Enumerate<I, J implements Iterable<I>> implements Iterable<Tuple<Int32, I>>> {
+public model Enumerate<I, J implements Iterable<I>> implements Iterable<Tuple<i32, I>>> {
     var iterator: J
-    var indexer: Int32
+    var indexer: i32
     new(iterator: J) {
         this.indexer = 0
         this.iterator = iterator
     }
-    public function [Iterable.next] -> ?Tuple<Int32, I> {
+    public function [Iterable.next] -> ?Tuple<i32, I> {
         var value = this.iterator.next()?
         this.indexer += 1
         return some(Tuple(this.indexer, value))
@@ -365,8 +365,8 @@ public model Enumerate<I, J implements Iterable<I>> implements Iterable<Tuple<In
 
 public model Filter<I, J implements Iterable<I>> implements Iterable<I> {
     var iterator: J
-    var predicate: fn(value: I) -> Bool
-    new(iterator: J, predicate: fn(value: I) -> Bool){
+    var predicate: fn(value: I) -> boolean
+    new(iterator: J, predicate: fn(value: I) -> boolean){
         this.iterator = iterator
         this.predicate = predicate
     }
@@ -441,7 +441,7 @@ public model Zip<I, I1 implements Iterable<I>, J, I2 implements Iterable<J>> imp
 public model Interleave<I, J implements Iterable<I>> implements Iterable<I> {
     var delimeter: I
     var iterator: J
-    var flag: Bool
+    var flag: boolean
     new(iterator: J, delimeter: I) {
         this.iterator = iterator
         this.delimeter = delimeter
@@ -460,7 +460,7 @@ public model Interleave<I, J implements Iterable<I>> implements Iterable<I> {
 
 public model Reversed<I> implements Iterable<I> {
     var array: []I
-    var idx: Int32
+    var idx: i32
     new(array: []I) {
         this.array = array
         this.idx = array.length()
@@ -477,8 +477,8 @@ public model Reversed<I> implements Iterable<I> {
 
 public model Skip<I, J implements Iterable<I>> implements Iterable<I> {
     var iterator: J
-    var skipCount: Int32
-    new(iterator: J, n: Int32) {
+    var skipCount: i32
+    new(iterator: J, n: i32) {
         this.iterator = iterator
         this.skipCount = n
     }
@@ -502,7 +502,7 @@ public model Chain
 {
     var first: J
     var second: K
-    var firstEnded: Bool
+    var firstEnded: boolean
     new(first: J, second: K) {
         this.first = first
         this.second = second

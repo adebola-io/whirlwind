@@ -15,7 +15,7 @@ module lib
 /// var sixth = fibonacci(6)
 /// assert(sixth).equals(8)
 /// ```
-public function fibonacci(n: Int32) -> Int32 {
+public function fibonacci(n: i32) -> i32 {
     if n == 0 or n == 1 {
         return n
     }
@@ -33,7 +33,7 @@ public function fibonacci(n: Int32) -> Int32 {
 /// var str2 = "hello"
 /// assertThat(!isPalindrome(input))
 /// ```
-public function isPalindrome(input: String) -> Bool {
+public function isPalindrome(input: string) -> boolean {
     return input == input.reverse()
 }
 
@@ -58,12 +58,12 @@ public function isPalindrome(input: String) -> Bool {
 /// Input: nums = `[3, 3]`, target = 6
 /// 
 /// Output: [0, 1]
-public function twoSum(nums: []Int32, target: Int32) -> []Int32 {
+public function twoSum(nums: []i32, target: i32) -> []i32 {
     var map = HashMap()
 
     for { a as i, b as num } in nums.iter().enumerate() {
         var complement = target - num;
-        var maybeSolution: ?Int32 = map.get(complement);
+        var maybeSolution: ?i32 = map.get(complement);
         if maybeSolution.isSome() {
             return [maybeSolution.unwrap(), num]
         }

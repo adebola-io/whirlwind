@@ -4,8 +4,7 @@ use super::typecheck_expression;
 use crate::{
     unify_types,
     utils::{
-        boolean_instance, get_implementation_of, is_numeric_type, is_updateable, rangify,
-        update_expression_type,
+        boolean_instance, get_implementation_of, is_numeric_type, rangify, update_expression_type,
     },
     EvaluatedType, SymbolLibrary, TypecheckerContext, UnifyOptions,
 };
@@ -175,7 +174,7 @@ pub fn typecheck_binary_expression(
     binexp.inferred_type.clone()
 }
 
-/// Checks two types to confirm that they are unifiable in either direction.
+/// Checks two types to confirm that they are unifiable.
 fn converge_binary_types(
     symbollib: &mut SymbolLibrary,
     left: EvaluatedType,
@@ -193,13 +192,8 @@ fn converge_binary_types(
             Some(&mut generic_hashmap),
         )
     };
-    let mut unification = unifier(&left, &right);
-    let is_coercible = is_numeric_type(&left, symbollib)
-        && is_numeric_type(&right, symbollib)
-        && (is_updateable(&binexp.right, symbollib) || is_updateable(&binexp.left, symbollib));
-    if is_coercible {
-        unification = unification.or(unifier(&right, &left));
-    };
+    let unification = unifier(&left, &right);
+
     match unification {
         Ok(result_type) => {
             let generic_arguments = generic_hashmap.into_iter().collect::<Vec<_>>();

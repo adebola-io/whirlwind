@@ -1,10 +1,10 @@
 module set
 
-use core.bool.Bool
+use core.boolean.boolean
 use core.iterate.{AsIterator, Iterable}
-use core.numeric.Int32
+use core.numeric.i32
 use core.sentinels.todo
-use core.string.{Display, String}
+use core.string.{Display, string}
 
 use super.{Hash, HashMap}
 
@@ -22,19 +22,20 @@ public model Set<T implements Hash>
     + Display|=(T implements Display)
     + Hash
 {
-    var items: HashMap<T, Bool>
+    var items: HashMap<T, boolean>
     new(data?: []T) {
         var dataVal = data.unwrapOrDefault()
         this.items = HashMap()
-        for element in dataVal {
-            var {} = this.items.set(element, true)
+        var i = 0
+        while i < dataVal.length() {
+            var {} = this.items.set(dataVal[i], true)
         }
     }
 
     public function [AsIterator.iter] -> SetIterator<T> {
         todo()
     }
-    public function [Display.toStr]|=(T implements Display) -> String {
+    public function [Display.toStr]|=(T implements Display) -> string {
         var str = "Set { "
         for { a as idx, b as tuple } in this.items.iter().enumerate() {
             var { a as item } = tuple
@@ -50,8 +51,6 @@ public model Set<T implements Hash>
     /// 
     /// ### Usage
     /// ```
-    /// use core.collections.Set
-    /// 
     /// var set = Set()
     /// set.add("hello")
     /// 
@@ -61,18 +60,17 @@ public model Set<T implements Hash>
         var {} = this.items.set(element, true)
     }
     /// Checks if an element is contained within the current set.
-    public function has(element: T) -> Bool {
+    public function has(element: T) -> boolean {
         this.items.get(element).isSome()
     }
     /// Returns true if the set has no elements.
-    public function isEmpty -> Bool {
+    public function isEmpty -> boolean {
         this.items.length() == 0
     }
     /// Removes an element from the set. 
     /// If the element is not in the set, then nothing happens.
     /// ### Usage
     /// ```
-    /// use core.collections.Set
     /// var set = Set()
     /// 
     /// set.add(1)
@@ -86,14 +84,14 @@ public model Set<T implements Hash>
     }
     /// Returns true if the current set contains the exact same 
     /// elements as the other.
-    public function equals(other: This) -> Bool {
-        for { a as element } in this.items {
-            if !other.has(element) {
+    public function equals(other: This) -> boolean {
+        for key in this.items.keys() {
+            if !other.has(key) {
                 return false
             }
         }
-        for { a as element } in other.items {
-            if !this.has(element) {
+        for key in other.items.keys() {
+            if !this.has(key) {
                 return false
             }
         }
@@ -103,7 +101,7 @@ public model Set<T implements Hash>
     /// set that are not in another set.
     public function difference(other: This) -> This {
         var difference = Set()
-        for { a as element } in this.items {
+        for element in this.items.keys() {
             if !other.has(element) {
                 difference.add(element)
             }
@@ -112,16 +110,14 @@ public model Set<T implements Hash>
     }
     /// Returns true if the current set has no elements in common with 
     /// another set.
-    public function isDisjointFrom(other: This) -> Bool {
+    public function isDisjointFrom(other: This) -> boolean {
         this.intersection(other).isEmpty()
     }
     /// Generates a union set by combining the elements of the 
     /// current set with the elements of another set.
     /// ### Usage
     /// ```
-    /// use core.collections.Set
-    /// 
-    /// var setA = [1, 2, 3, 4])
+    /// var setA = Set([1, 2, 3, 4])
     /// var setB = Set([3, 4, 5, 6])
     /// 
     /// var union = setA.union(setB)
@@ -131,20 +127,17 @@ public model Set<T implements Hash>
     public function union(other: This) -> This {
         var unionSet = Set()
         this.items
-            .iter()
-            .chain(other.items.iter())
-            .forEach(fn (item) unionSet.add(item.a))
+            .keys()
+            .chain(other.items.keys())
+            .forEach(fn (item) unionSet.add(item))
         return unionSet
     }
     /// Generates an intersection set by selecting the common elements
     /// between the current set and another set.
     /// ### Usage
     /// ```
-    /// use core.collections.Set
-    /// 
     /// var setA = Set([1, 2, 3, 4])
     /// var setB = Set([3, 4, 5, 6])
-    /// 
     /// var union = setA.intersection(setB)
     /// 
     /// assertThat(union.equals(Set([3, 4])))
@@ -161,20 +154,18 @@ public model Set<T implements Hash>
     /// Returns the count of elements in the set.
     /// ### Usage
     /// ```
-    /// use core.collections.Set
-    /// 
     /// var set = Set([1, 2, 8, 9])
     /// 
     /// assert(set.cardinality()).equals(4)
     /// ```
-    public function cardinality -> Int32 {
+    public function cardinality -> i32 {
         return this.items.length()
     }
     /// Returns the number of elements in the set.
     /// ### Usage
     /// ```
     /// ```
-    public function length -> Int32 {
+    public function length -> i32 {
         return this.items.length()
     }
     /// Returns the power set of the current set, i.e.
@@ -186,14 +177,12 @@ public model Set<T implements Hash>
     /// another.
     /// ### Usage
     /// ```
-    /// use core.collections.Set
-    /// 
     /// var setA = Set([1, 2, 3, 4, 5])
     /// var setB = Set([2, 3, 5])
     /// 
     /// assertThat(setB.isSubsetOf(setA))
     /// ```
-    public function isSubsetOf(other: This) -> Bool {
+    public function isSubsetOf(other: This) -> boolean {
         for { a as element } in this.items {
             if !other.has(element) {
                 return false
@@ -205,14 +194,12 @@ public model Set<T implements Hash>
     /// from another.
     /// ### Usage
     /// ```
-    /// use core.collections.Set
-    /// 
     /// var setA = Set([1, 2, 3, 4, 5])
     /// var setB = Set([2, 3, 5])
     /// 
     /// assertThat(setA.isSupersetOf(setB))
     /// ```
-    public function isSupersetOf(other: This) -> Bool {
+    public function isSupersetOf(other: This) -> boolean {
         other.isSubsetOf(this)
     }
 }

@@ -4,8 +4,7 @@ use crate::{
     typechecker::checker::{AttributeAssignment, ScopeType},
     unify_types,
     utils::{
-        ensure_assignment_validity, get_implementation_of, infer_ahead, is_numeric_type,
-        is_updateable, update_expression_type,
+        ensure_assignment_validity, get_implementation_of, infer_ahead, update_expression_type,
     },
     EvaluatedType, SemanticSymbolKind, SymbolLibrary, TypecheckerContext, TypedAssignmentExpr,
     UnifyOptions,
@@ -41,26 +40,13 @@ pub fn typecheck_assignment_expression(
             | EvaluatedType::Generic { .. }
             | EvaluatedType::OpaqueTypeInstance { .. }
             | EvaluatedType::FunctionExpressionInstance { .. } => {
-                let mut unification = unify_types(
+                let unification = unify_types(
                     &left_type,
                     &right_type,
                     symbollib,
                     UnifyOptions::Conform,
                     Some(&mut generic_hashmap),
                 );
-                if is_numeric_type(&left_type, symbollib)
-                    && is_updateable(&assexp.left, &symbollib)
-                    && is_numeric_type(&right_type, symbollib)
-                    && is_updateable(&assexp.left, &symbollib)
-                {
-                    unification = unification.or(unify_types(
-                        &right_type,
-                        &left_type,
-                        symbollib,
-                        UnifyOptions::Conform,
-                        Some(&mut generic_hashmap),
-                    ))
-                }
                 match unification {
                     Ok(result_type) => result_type,
                     Err(errortypes) => {

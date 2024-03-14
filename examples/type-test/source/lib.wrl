@@ -18,31 +18,31 @@ test "Testing types." {
 
  
     // Coercion.
-    var stringItself = identity("String") // Should have type String.
+    var stringItself = identity("string") // Should have type string.
     var result = err(true)
     result = ok(none())
     result = ok(some("hello, world"))
-    // result should coerce to type Outcome<Maybe<String>, Bool>
+    // result should coerce to type Outcome<Maybe<string>, Bool>
 
     // Opaque types.
     model Football {
         new(){}
         /// Bounce for a football.
-        public function bounce -> String {
+        public function bounce -> string {
             "Football is bouncing..."
         }
     }
     model Tennisball {
         new(){}
         /// Bounce for a tennisball.
-        public function bounce -> String {
+        public function bounce -> string {
             "Tennisball is bouncing..."
         }
     }
     model Basketball {
         new(){}
         /// Bounce for a basketball.
-        public function bounce -> String {
+        public function bounce -> string {
             "Basketball is bouncing..."
         }
     }
@@ -53,7 +53,7 @@ test "Testing types." {
     ball.bounce()
 
     interface Bounceable {
-        public function bounce -> String
+        public function bounce -> string
     }
     function Nested<T implements Bounceable>(newBall: T) {
         type InnerBall = T | Ball
@@ -84,28 +84,24 @@ test "Testing types." {
     entity.transform()
 
     // Numeric types.
-    number := 90
-    number = 12
-    array := [1, 2, 3, 4, number, 255, 900]
-
-    numeric := 0
-    numeric = 900 // should coerce to UInt16.
+    numbe := 90
+    array := [1, 2, 3, 4, numbe, 255, 900]
 
     // function type coercion.
     strArray := ["hello", "world"]
     strArrayHasHello := strArray.iter().any(fn(element) element == "hello")
-    functor: fn -> fn(value: String) -> String := fn() fn(value) value.toStr()
+    functor: fn -> fn(value: string) -> string := fn() fn(value) value.toStr()
 
 
     // Auto inferred generics.
     arr := []
-    arr = ["Hello", "world"] // arr should infer type Array<String>
+    arr = ["Hello", "world"] // arr should infer type Array<string>
     firstItem := arr[0] // Should infer type string.
     arr2 := []
     arr2.push(some(true)) // arr2 should infer type Array<Maybe<Bool>>.
     arr3 := []
-    num: Number := 99
-    arr3[0] = num // arr3 should infer type Array<Number> 
+    num: number := 99
+    arr3[0] = num // arr3 should infer type Array<number> 
 
     arr4 := []
     arr4 = [none(), some([]), some([some(true)])] // arr4 should infer type Array<Maybe<Array<Maybe<Bool>>>>
@@ -113,17 +109,17 @@ test "Testing types." {
 
     // Destructuring.
     model Person implements Default + Display {
-        public var name: String
-        public var age: Int32 // Set automatically.
-        new(name: String, age?: Int32) {
+        public var name: string
+        public var age: i32 // Set automatically.
+        new(name: string, age?: i32) {
             this.name = name
             this.age = age.unwrapOrDefault()
         }
         static function [Default.init] -> This {
             return Person("{unknown}")
         }
-        public function [Display.toStr] -> String {
-            return String.fmt("Person { name: %, age: %}")
+        public function [Display.toStr] -> string {
+            return string.fmt("Person { name: %, age: %}")
                 .add(this.name)
                 .add(this.age)
                 .finish()
@@ -154,14 +150,14 @@ test "Testing types." {
 
     // Type constraints
     interface SomeStuff {
-        public function doA -> Bool
+        public function doA -> boolean
     }
     model A<T> implements Display|=(T implements Display) {
         var value: T
         new(value: T) {
             this.value = value
         }
-        public function [Display.toStr]|=(T implements Display) -> String {
+        public function [Display.toStr]|=(T implements Display) -> string {
             todo()
         }
     }

@@ -7,7 +7,7 @@
 module core
 
 public use array
-public use bool
+public use boolean
 public use collections
 public use concurrent
 public use data

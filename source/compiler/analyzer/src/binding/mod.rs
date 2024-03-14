@@ -528,20 +528,20 @@ mod bind_utils {
         // Account for intrinsic types.
         if entry.is_public() {
             *(match (&binder.current_module_type, entry.name()) {
-                (CurrentModuleType::String, "String") => &mut symbol_library.string,
+                (CurrentModuleType::String, "string") => &mut symbol_library.string,
                 (CurrentModuleType::Array, "Array") => &mut symbol_library.array,
-                (CurrentModuleType::Bool, "Bool") => &mut symbol_library.bool,
+                (CurrentModuleType::Boolean, "boolean") => &mut symbol_library.bool,
                 (CurrentModuleType::Prospect, "Prospect") => &mut symbol_library.prospect,
                 (CurrentModuleType::Maybe, "Maybe") => &mut symbol_library.maybe,
                 (CurrentModuleType::Numeric, name) => match name {
-                    "Int" => &mut symbol_library.int,
-                    "Float" => &mut symbol_library.float,
+                    "int" => &mut symbol_library.int,
+                    "float" => &mut symbol_library.float,
                     "BigInt" => &mut symbol_library.bigint,
-                    "Int32" => &mut symbol_library.int32,
-                    "Int64" => &mut symbol_library.int64,
-                    "Float32" => &mut symbol_library.float32,
-                    "Float64" => &mut symbol_library.float64,
-                    "Number" => &mut symbol_library.number,
+                    "i32" => &mut symbol_library.i32,
+                    "i64" => &mut symbol_library.i64,
+                    "f32" => &mut symbol_library.f32,
+                    "f64" => &mut symbol_library.f64,
+                    "number" => &mut symbol_library.number,
                     _ => return index,
                 },
                 (CurrentModuleType::Internal, name) => match name {

@@ -3,7 +3,7 @@ module hashMap
 use core.sentinels.todo
 use core.interfaces.Default
 use core.iterate.{AsIterator, Iterable}
-use core.numeric.Int32
+use core.numeric.i32
 use ntuple.Tuple
 
 public interface Hasher {
@@ -17,7 +17,7 @@ public interface Hash {
 
 import "internal:map" {
     /// Creates a new Hashmap and returns its unique identifier.
-    "newMap" as function newMap() -> Int32;
+    "newMap" as function newMap() -> i32;
 }
 
 /// An interface to be implemented by models that can be transformed into
@@ -33,7 +33,7 @@ public model HashMap<K implements Hash, V>
     implements AsIterator<Tuple<K, V>, HashMapIterable<K, V>> 
     + Default
 {
-    var id: Int32
+    var id: i32
 
     new(){
         this.id = newMap()
@@ -79,7 +79,29 @@ public model HashMap<K implements Hash, V>
         todo()
     }
     /// Returns the number of elements in the map.
-    public function length -> Int32 {
+    public function length -> i32 {
+        todo()
+    }
+    /// Returns an iterator over the keys in the map.
+    public function keys -> HashMapKeys<K> {
+        todo()
+    }
+    /// Returns an iterator over the values in the map.
+    public function values -> HashMapValues<V> {
+        todo()
+    }
+}
+
+public model HashMapKeys<K implements Hash> implements Iterable<K> {
+
+    public function [Iterable.next] -> ?K {
+        todo()
+    }
+}
+
+public model HashMapValues<V> implements Iterable<V> {
+
+    public function [Iterable.next] -> ?V {
         todo()
     }
 }

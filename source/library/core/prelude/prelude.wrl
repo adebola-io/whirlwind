@@ -24,21 +24,19 @@ module prelude
 
 public use core
 public use core.{
-    array.{Array, UInt8Array},
-    bool.Bool,
-    collections.{HashMap, Tuple, pair},
+    array.Array,
+    boolean.boolean,
+    collections.{HashMap, Set, Tuple, pair},
     concurrent.{Eventual, Prospect, toSync},
     interfaces.{
         Default, Guaranteed, Try
     },
     iterate.{Iterable, AsIterator},
     maybe.{none, some, Maybe},
-    numeric.{
-        Number, Int32, Int, Float, Int64, Float32, Float64
-    },
+    numeric.{number, i32, int, float, i64, f32, f64},
     outcome.{ok, err, Outcome},
     ops.Range,
     sentinels.{todo, fatal},
-    string.{Display, FromStr, String},
+    string.{Display, FromStr, string},
     internals.never,
 }

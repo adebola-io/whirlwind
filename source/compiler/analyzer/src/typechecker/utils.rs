@@ -114,10 +114,10 @@ pub fn is_numeric_type(evaluated_type: &EvaluatedType, symbollib: &SymbolLibrary
     matches!(
         evaluated_type, EvaluatedType::ModelInstance { model, .. }
         if [
-            symbollib.int32,
-            symbollib.int64,
-            symbollib.float64,
-            symbollib.float32,
+            symbollib.i32,
+            symbollib.i64,
+            symbollib.f64,
+            symbollib.f32,
         ].iter().filter_map(|sym| *sym).any(|sym| sym == *model)
     ) || matches!(
         evaluated_type, EvaluatedType::OpaqueTypeInstance { aliased_as, .. }
@@ -716,10 +716,17 @@ pub fn get_numeric_type(
             0,
         )
     };
+    let radix = match &value.value {
+        ast::Number::Binary(_) => 2,
+        ast::Number::Octal(_) => 8,
+        ast::Number::Hexadecimal(_) => 16,
+        _ => 10,
+    };
+
     match &value.value {
-        ast::Number::Decimal(decimal) => {
+        ast::Number::Decimal(number) => {
             // TODO: Move this to an earlier place.
-            let number_evaluated = decimal.parse::<f64>();
+            let number_evaluated = number.parse::<f64>();
             let number = match number_evaluated {
                 Ok(number) => number,
                 Err(error) => {
@@ -743,14 +750,42 @@ pub fn get_numeric_type(
                 }
                 // Integers.
                 if number > i32::MAX as f64 {
-                    return evaluate_index(get_intrinsic!(symbollib.int64));
+                    return evaluate_index(get_intrinsic!(symbollib.i64));
                 }
-                return evaluate_index(get_intrinsic!(symbollib.int32));
+                return evaluate_index(get_intrinsic!(symbollib.i32));
             } else {
-                return evaluate_index(get_intrinsic!(symbollib.float64));
+                return evaluate_index(get_intrinsic!(symbollib.f64));
             }
         }
-        _ => return evaluate_index(get_intrinsic!(symbollib.float64)),
+        ast::Number::Binary(number)
+        | ast::Number::Octal(number)
+        | ast::Number::Hexadecimal(number) => {
+            // TODO: Move this to an earlier place.
+            let number_evaluated = i64::from_str_radix(&number, radix);
+            let number = match number_evaluated {
+                Ok(number) => number,
+                Err(error) => {
+                    if let Some(ctx) = checker_ctx {
+                        ctx.0.push(ProgramDiagnostic {
+                            offending_file: ctx.1,
+                            _type: DiagnosticType::Error(crate::Error::Typing(TypeError {
+                                _type: TypeErrorType::NumericConversionError {
+                                    error: format!("{} with radix {}", error, radix),
+                                },
+                                span: value.span,
+                            })),
+                        });
+                    }
+                    return EvaluatedType::Unknown;
+                }
+            };
+            // Integers.
+            if number < (i32::MAX as i64) {
+                return evaluate_index(get_intrinsic!(symbollib.i32));
+            }
+            return evaluate_index(get_intrinsic!(symbollib.i64));
+        }
+        _ => return evaluate_index(get_intrinsic!(symbollib.float)),
     }
 }
 
@@ -1111,26 +1146,14 @@ pub fn update_expression_type(
                     return;
                 }
                 unified_type = optional_type.and_then(|opt_type| {
-                    let mut new_type = unify_types(
+                    unify_types(
                         inferred_type,
                         opt_type,
                         symbollib,
                         UnifyOptions::Conform,
                         None,
                     )
-                    .ok();
-                    // Numeric types should be upgraded when they are updated.
-                    if new_type.is_none() && is_numeric_type(inferred_type, symbollib) {
-                        new_type = unify_types(
-                            opt_type,
-                            inferred_type,
-                            symbollib,
-                            UnifyOptions::Conform,
-                            None,
-                        )
-                        .ok();
-                    }
-                    new_type
+                    .ok()
                 });
             }
 

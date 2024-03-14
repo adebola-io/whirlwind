@@ -3,9 +3,9 @@ module prospect
 use concurrent.SequenceError
 use core.{
     array.Array,
-    bool.Bool,
+    boolean.boolean,
     maybe.some,
-    numeric.Int32,
+    numeric.i32,
     sentinels.{fatal, todo},
 }
 use eventual.Eventual
@@ -22,7 +22,7 @@ use eventual.Eventual
 /// - interaction with other prospects, etc.
 public model Prospect<T> {
     /// The prospect has been executed.
-    var consumed: Bool
+    var consumed: boolean
     /// The function to execute when the run method is called.
     var func: fn -> T
 
@@ -36,8 +36,8 @@ public model Prospect<T> {
     /// by the callback.
     /// ### Usage
     /// ```
-    /// var squared = async fn(a: Int32) a * a
-    /// var doubled = fn(a: Number) a * 2
+    /// var squared = async fn(a: i32) a * a
+    /// var doubled = fn(a: number) a * 2
     /// 
     /// var num = squared(2).then(doubled).run().await()
     /// assert(num).equals(12) // (2 * 2) * 3
@@ -103,7 +103,7 @@ public model Prospect<T> {
     }
     /// Sets a timeout on the prospect's eventual execution. If the duration elapses 
     /// before the eventual can be resolved, it is abruptly aborted.
-    public function timeout(ms: Int32) -> Prospect<T> {
+    public function timeout(ms: i32) -> Prospect<T> {
         todo()
         return this
     }

@@ -20,12 +20,12 @@ pub struct SymbolLibrary {
     tables: HashMap<PathIndex, SymbolTable>,
     pub type_environments: Vec<TypeEnvironment>,
     // Numeric intrinsic values.
-    pub float32: Option<SymbolIndex>,
-    pub float64: Option<SymbolIndex>,
+    pub f32: Option<SymbolIndex>,
+    pub f64: Option<SymbolIndex>,
     pub int: Option<SymbolIndex>,
     pub float: Option<SymbolIndex>,
-    pub int32: Option<SymbolIndex>,
-    pub int64: Option<SymbolIndex>,
+    pub i32: Option<SymbolIndex>,
+    pub i64: Option<SymbolIndex>,
     pub bigint: Option<SymbolIndex>,
     pub number: Option<SymbolIndex>,
 
@@ -283,9 +283,10 @@ impl SymbolLibrary {
                 };
                 let truncated_generic_args = truncate_arguments(generic_params, generic_arguments);
                 self.format_generics_into(
-                    truncated_generic_args.iter(),
+                    generic_arguments.iter().map(|a| &a.1),
                     &mut string,
-                    truncated_generic_args.len(),
+                    // truncated_generic_args.len(),
+                    generic_arguments.len(),
                 );
             }
             EvaluatedType::Model(_) => string.push_str("{model}"),

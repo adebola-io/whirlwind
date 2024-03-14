@@ -6,11 +6,11 @@
 module sentinels
 
 use core.{
-    string.{Display, String},
+    string.{Display, string},
     internals.never,
     maybe.{none, some},
-    memory.getOffset,
-    numeric.Int32,
+    memory.Ptr,
+    numeric.i32,
 }
 
 /// Indicates that the current piece of code is unfinished.
@@ -21,7 +21,7 @@ use core.{
 /// Calling this function will *always* cause a sequence to crash.
 /// ### Usage
 /// ```
-/// function positiveSquare(a: Int32) -> Outcome<Int32, String> {
+/// function positiveSquare(a: i32) -> Outcome<i32, string> {
 ///     if a >= 0 {
 ///         return ok(a * a)
 ///     } else {
@@ -44,7 +44,7 @@ public function todo<M implements Display>(message?: M) -> never {
 /// ```
 /// use core.sentinels.unreachable
 /// 
-/// function validateInput(x: Int32) {
+/// function validateInput(x: i32) {
 ///     if x != 0 {
 ///         return
 ///     }
@@ -56,7 +56,7 @@ public function todo<M implements Display>(message?: M) -> never {
 /// ```
 /// 
 /// The `unreachable` function will always cause an error, signifying an unexpected condition.
-public function unreachable(message?: String) -> never {
+public function unreachable(message?: string) -> never {
     return fatal(message.orElse(fn some("Entered unreachable code.")))
 }
 
@@ -73,7 +73,7 @@ public function forever -> never {
 
 import "internals:control" {
     /// Immediately halts the execution of the sequence with a given ID.
-    "stop" as function stop(id: Int32, messageOffset: Int32, messageLength: Int32) -> never
+    "stop" as function stop(id: i32, messageOffset: i32, messageLength: i32) -> never
 
     /// Closes all sequences and exits the program with a given code.
     /// ### Usage
@@ -81,9 +81,9 @@ import "internals:control" {
     /// use core.sentinels.exit
     /// exit(0)
     /// ```
-    "exit" as public function exit(code?: Int32) -> never
+    "exit" as public function exit(code?: i32) -> never
     /// Returns the ID of the current sequence.
-    "getSeqId" as public function getSequenceID -> Int32
+    "getSeqId" as public function getSequenceID -> i32
 }
 
 /// Called when an execution sequence encounters an unrecoverable or
@@ -96,7 +96,7 @@ import "internals:control" {
 ///
 /// ### Usage
 /// ```
-/// function divide(number: Int32, divisor: Int32) -> Float {
+/// function divide(number: i32, divisor: i32) -> Float {
 ///     if divisor == 0 {
 ///         fatal(some("Cannot divide by zero!"))
 ///     } else {
@@ -104,10 +104,10 @@ import "internals:control" {
 ///     }
 /// }
 /// ```
-public function fatal(message?: String) -> never {
+public function fatal(message?: string) -> never {
     var errorMessage = message.unwrapOr("Fatal Sequence error.")
     // generate stack trace.
-    var messageOffset = getOffset(errorMessage)
+    var messageOffset = Ptr.getOffset(errorMessage)
     var messageLength = errorMessage.length()
     var id = getSequenceID()
     stop(id, messageOffset, messageLength)
@@ -123,7 +123,7 @@ public function fatal(message?: String) -> never {
 /// ```
 /// use core.sentinels.memoize
 /// 
-/// function doStuff -> Number {
+/// function doStuff -> number {
 ///     print("Computing value...")
 ///     // Perform computations.
 ///     return 42

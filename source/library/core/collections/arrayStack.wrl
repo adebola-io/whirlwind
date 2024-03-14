@@ -2,9 +2,9 @@ module arrayStack
 
 
 use core.array.Array
-use core.bool.Bool
+use core.boolean.boolean
 use core.maybe.some
-use core.numeric.Int32
+use core.numeric.i32
 use core.outcome.{err, ok, Outcome}
 use core.sentinels.fatal
 
@@ -14,9 +14,9 @@ use core.sentinels.fatal
 /// that stores items in one direction.
 public model ArrayStack<T> {
     var items: Array<T>
-    var _capacity: Int32
+    var _capacity: i32
    
-    new(capacity?: Int32) {
+    new(capacity?: i32) {
         // The default capacity is infinity
         this._capacity = -1
         
@@ -49,7 +49,7 @@ public model ArrayStack<T> {
     /// stack.setCapacity(2) // Shrinks the stack to only two items.
     /// assertThat(stack.size() == 2)
     /// ```
-    public function setCapacity(value: Int32) {
+    public function setCapacity(value: i32) {
         if value < 0 {
             fatal(some("Cannot set capacity to a negative value"))
         }
@@ -92,7 +92,7 @@ public model ArrayStack<T> {
     /// stack.push(12)
     /// assertThat(stack.size() == 3)
     /// ```
-    public function push(data: T) -> Outcome<Bool, StackError> {
+    public function push(data: T) -> Outcome<boolean, StackError> {
         if this.items.length() == this._capacity {
             err(StackError.AlreadyFull)
         } else {
@@ -111,7 +111,7 @@ public model ArrayStack<T> {
     /// stack.setCapacity(10)
     /// assertThat(stack.capacity() == 10)
     /// ```
-    public function capacity -> Int32 {
+    public function capacity -> i32 {
         return this._capacity
     }
     /// Returns the size of the stack.
@@ -125,7 +125,7 @@ public model ArrayStack<T> {
     /// stack.push(10)
     /// assertThat(stack.size() == 1)
     /// ```
-    public function size -> Int32 {
+    public function size -> i32 {
         return this.items.length()
     } 
     /// Returns true if the stack is empty.
@@ -136,7 +136,7 @@ public model ArrayStack<T> {
     /// var stack = ArrayStack()
     /// assertThat(stack.isEmpty())
     /// ```
-    public function isEmpty -> Bool {
+    public function isEmpty -> boolean {
         return this.items.length() == 0
     }  
 }

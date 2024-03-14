@@ -1,13 +1,13 @@
 module fs
 
-// use core.prelude.String
-// use core.prelude.{todo, Bool}
+// use core.prelude.string
+// use core.prelude.{todo, boolean}
 // use core.prelude.Outcome
 
 
 
-// // public type PathLike = String | Buffer | Url
-// public type FileHandle = Int32
+// // public type PathLike = string | Buffer | Url
+// public type FileHandle = i32
 
 // public model File {
 //     public async function open {
@@ -29,7 +29,7 @@ module fs
 
 
 // /// Closes an open file.
-// public async function close(handle: FileHandle) -> Outcome<Bool, FsError> {
+// public async function close(handle: FileHandle) -> Outcome<boolean, FsError> {
 //     return todo()
 // }
 
@@ -39,6 +39,6 @@ module fs
 // //     // return Err("")
 // // }
 
-// public async function readToString(filename: PathLike) -> Outcome<String, FsError> {
+// public async function readToString(filename: PathLike) -> Outcome<string, FsError> {
 //     todo()
 // }

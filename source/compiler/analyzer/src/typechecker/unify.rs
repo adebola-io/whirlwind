@@ -1,5 +1,5 @@
 use crate::{
-    utils::{is_numeric_type, distill_as_function_type, FunctionType, coerce}, EvaluatedType::*, 
+    utils::{distill_as_function_type, FunctionType, coerce}, EvaluatedType::*, 
     SemanticSymbolKind, SymbolIndex, SymbolLibrary, UNKNOWN, *,
 };
 use errors::TypeErrorType;
@@ -89,12 +89,12 @@ pub fn unify_types(
             )
         }
         // Numbers
-        (
-            ModelInstance { model: first_model, .. },
-            ModelInstance { model: second_model, .. },
-        ) if is_numeric_type(target, symbollib) && is_numeric_type(candidate, symbollib) => {
-            unify_numbers(first_model, second_model, target, candidate, symbollib, default_error)
-        }
+        // (
+        //     ModelInstance { model: first_model, .. },
+        //     ModelInstance { model: second_model, .. },
+        // ) if is_numeric_type(target, symbollib) && is_numeric_type(candidate, symbollib) => {
+        //     unify_numbers(first_model, second_model, target, candidate, symbollib, default_error)
+        // }
         // Comparing model or interface instances.
         // Two instances are unifiable if they refer to the same symbol,
         // and their generic list is unifiable.
@@ -449,58 +449,58 @@ pub fn unify_types(
     }
 }
 
-/// Unify two instances of numeric models.
-/// The casting chain is rtl,
-/// meaning that the right type must be smaller or equal in size
-/// to the left.
-/// Therefore:
-/// - Int32 <: Int32
-/// - Int64 <: Int32
-/// - Float32 <: Int64
-/// - Float64 <: Float32
-/// - Float64 <: Float64
-fn unify_numbers(
-    first_number: &SymbolIndex, 
-    second_number: &SymbolIndex, 
-    target: &EvaluatedType, 
-    candidate: &EvaluatedType,
-    symbollib: &SymbolLibrary, 
-    default_error: impl Fn() -> TypeErrorType, 
-) -> Result<EvaluatedType, Vec<TypeErrorType>> {
-    let first_model = *first_number;
-    let second_model = *second_number;
-    if first_model == second_model {
-        return Ok(target.clone());
-    }
-    let (first_is_int32, second_is_int32) = if let Some(idx) = symbollib.int32 {
-        (first_model == idx, second_model == idx)
-    } else {
-        (false, false)
-    };
-    let (_, second_is_int64) = if let Some(idx) = symbollib.int64 {
-        (first_model == idx, second_model == idx)
-    } else {
-        (false, false)
-    };
-    let (first_is_float64, _) = if let Some(idx) = symbollib.float64 {
-        (first_model == idx, second_model == idx)
-    } else {
-        (false, false)
-    };
-    // Float64 can subsume any other numeric type.
-    if first_is_float64 || 
-        // Int32 is castable to any other type.
-        second_is_int32 ||
-        // Int64 is castable to itself, f32 and f64.
-        (second_is_int64 && !first_is_int32)
-    {
-        return Ok(target.clone());
-    }
-    return Err(vec![default_error(), TypeErrorType::NumericCastingError {
-        left: symbollib.format_evaluated_type(target),
-        right: symbollib.format_evaluated_type(candidate)
-    }])
-}
+// /// Unify two instances of numeric models.
+// /// The casting chain is rtl,
+// /// meaning that the right type must be smaller or equal in size
+// /// to the left.
+// /// Therefore:
+// /// - Int32 <: Int32
+// /// - Int64 <: Int32
+// /// - Float32 <: Int64
+// /// - Float64 <: Float32
+// /// - Float64 <: Float64
+// fn unify_numbers(
+//     first_number: &SymbolIndex, 
+//     second_number: &SymbolIndex, 
+//     target: &EvaluatedType, 
+//     candidate: &EvaluatedType,
+//     symbollib: &SymbolLibrary, 
+//     default_error: impl Fn() -> TypeErrorType, 
+// ) -> Result<EvaluatedType, Vec<TypeErrorType>> {
+//     let first_model = *first_number;
+//     let second_model = *second_number;
+//     if first_model == second_model {
+//         return Ok(target.clone());
+//     }
+//     let (first_is_int32, second_is_int32) = if let Some(idx) = symbollib.int32 {
+//         (first_model == idx, second_model == idx)
+//     } else {
+//         (false, false)
+//     };
+//     let (_, second_is_int64) = if let Some(idx) = symbollib.int64 {
+//         (first_model == idx, second_model == idx)
+//     } else {
+//         (false, false)
+//     };
+//     let (first_is_float64, _) = if let Some(idx) = symbollib.float64 {
+//         (first_model == idx, second_model == idx)
+//     } else {
+//         (false, false)
+//     };
+//     // Float64 can subsume any other numeric type.
+//     if first_is_float64 || 
+//         // Int32 is castable to any other type.
+//         second_is_int32 ||
+//         // Int64 is castable to itself, f32 and f64.
+//         (second_is_int64 && !first_is_int32)
+//     {
+//         return Ok(target.clone());
+//     }
+//     return Err(vec![default_error(), TypeErrorType::NumericCastingError {
+//         left: symbollib.format_evaluated_type(target),
+//         right: symbollib.format_evaluated_type(candidate)
+//     }])
+// }
 
 /// Generates a solution for a generic based on another evaluated type.
 /// It simply checks to see if the other type obeys all the constraints defined on the generic.

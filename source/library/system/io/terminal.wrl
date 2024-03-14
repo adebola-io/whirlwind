@@ -4,7 +4,7 @@ use core.memory.getOffset;
 
 import "system" {
     /// Takes a string from memory and prints it to the console.
-    "startPrint" as function startPrint(start: Int32, length: Int32)
+    "startPrint" as function startPrint(start: i32, length: i32)
 }
 
 /// Prints a message or an object to the console, terminal 
@@ -23,7 +23,7 @@ public function print<M implements Display>(message: M) {
 /// Displays an optional message to the console, terminal or
 /// any predefined input interface, prompting the user to enter
 /// text.
-public function prompt(message?: String) -> String {
+public function prompt(message?: string) -> string {
     todo()
 }
 

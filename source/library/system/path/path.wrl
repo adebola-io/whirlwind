@@ -1,23 +1,23 @@
 module path
 
 use super.io.IoError
-use core.prelude.{Outcome, Bool, todo, String}
+use core.prelude.{Outcome, boolean, todo, string}
 
 public model Path {
     new() {
 
     }
     /// Returns true if a path exists.
-    public function exists -> Bool {
+    public function exists -> boolean {
         todo()
     }
     public function toAbsolute -> Outcome<Path, IoError> {
         todo()
     }
-    public function extname -> ?String {
+    public function extname -> ?string {
         todo()
     }
-    public function basename -> ?String {
+    public function basename -> ?string {
         todo()
     }
 }

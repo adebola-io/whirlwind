@@ -1,8 +1,9 @@
 module sort
 
 use core.ops.Orderable
-use core.numeric.Int32
+use core.numeric.i32
 use core.math.floor
+use core.maybe.some
 
 /// Performs an in-place Quicksort on the given array. 
 /// ### Usage
@@ -17,7 +18,8 @@ public function quickSort<T implements Orderable>(array: []T) {
     quickSortInner(array, 0, array.length() - 1)   
 }
 
-function quickSortInner<T implements Orderable>(arr: []T, left: Int32, right: Int32) {
+/// Helper function for `quickSort`.
+function quickSortInner<T implements Orderable>(arr: []T, left: i32, right: i32) {
     if left >= right { 
         return
     } 
@@ -39,10 +41,6 @@ function quickSortInner<T implements Orderable>(arr: []T, left: Int32, right: In
     quickSortInner(arr, i, right)
 }
 
-/// Implementation of the MergeSort algorithm in Whirlwind.
-public function mergeSort<T implements Orderable>(array: []T) {
-    core.sentinels.todo()
-}
 
 /// Performs an merging sort on a given array. 
 /// ### Usage
@@ -50,17 +48,109 @@ public function mergeSort<T implements Orderable>(array: []T) {
 /// use core.collections.quickSort
 /// 
 /// var arr = [5, 6, 7, 8, 2]
-/// quickSort(arr)
-/// assert(arr).equals([2, 5, 6, 7, 8])
+/// var sorted = mergeSort(arr)
+/// assert(sorted).equals([2, 5, 6, 7, 8])
 /// ```
+public function mergeSort<T implements Orderable>(array: []T) -> []T {
+    if array.length() <= 1 {
+        return array
+    }
+    var middle = core.math.floor(array.length() / 2)
+    var left = array.slice(0, some(middle))
+    var right = array.slice(middle)
+
+    return mergeArrays(mergeSort(left), mergeSort(right))
+}
+
+/// Merges two sorted arrays into a single sorted array.
 function mergeArrays<T implements Orderable>(leftArray: []T, rightArray: []T) -> []T {
-    var array = []
-    while leftArray.length() > 0 && rightArray.length() > 0 {
-        if leftArray[0] < rightArray[0] {
-            array.push(leftArray.shift()!)
+    var result = []
+    var leftIndex = 0
+    var rightIndex = 0
+
+    while leftIndex < leftArray.length() && rightIndex < rightArray.length() {
+        if leftArray[leftIndex] < rightArray[rightIndex] {
+            result.push(leftArray[leftIndex])
+            leftIndex += 1
         } else {
-            array.push(rightArray.shift()!)
+            result.push(rightArray[rightIndex])
+            rightIndex += 1
         }
     }
-    return array + leftArray + rightArray
+
+    return result + leftArray + rightArray
+}
+
+/// Performs a bubble sort on a given array.
+/// ### Usage
+/// ```
+/// use core.collections.bubbleSort
+/// 
+/// var arr = [5, 6, 7, 8, 2]
+/// bubbleSort(arr)
+/// assert(arr).equals([2, 5, 6, 7, 8])
+/// ```
+public function bubbleSort<T implements Orderable>(array: []T) {
+    var length = array.length()
+    if length <= 1 {
+        return
+    }
+
+    var swapped = true
+    while swapped {
+        swapped = false
+        var i = 0
+        while i < length - 1 {
+            if array[i] > array[i + 1] {
+                var temp = array[i]
+                array[i] = array[i + 1]
+                array[i + 1] = temp
+                swapped = true
+            }
+            i += 1
+        }
+    }
+}
+
+
+/// Performs an insertion sort on a given array.
+/// 
+/// ### Usage
+/// ```
+/// use core.collections.insertionSort
+/// 
+/// var arr = [5, 6, 7, 8, 2]
+/// insertionSort(arr)
+/// assert(arr).equals([2, 5, 6, 7, 8])
+/// ```
+public function insertionSort<T implements Orderable>(array: []T) {
+    var length = array.length()
+    if length <= 1 {
+        return
+    }
+    var i = 1
+    while i < length {
+        var j = i
+        while j > 0 && array[j - 1] > array[j] {
+            var temp = array[j - 1]
+            array[j - 1] = array[j]
+            array[j] = temp
+            j -= 1
+        }
+        i += 1
+    }
+}
+
+
+/// An implementation of the Tim Sort algorithm.
+/// ### Usage
+/// ```
+/// use core.collections.timSort
+/// 
+/// var arr = [5, 6, 7, 8, 2]
+/// var sorted = timSort(arr)
+/// assert(sorted).equals([2, 5, 6, 7, 8])
+/// ```
+public function timSort<T implements Orderable>(array: []T) -> []T {
+   core.sentinels.todo()
 }

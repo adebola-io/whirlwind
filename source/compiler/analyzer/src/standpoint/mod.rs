@@ -589,7 +589,7 @@ impl Standpoint {
                 match path_str.as_str() {
                     Self::ARRAY => CurrentModuleType::Array,
                     Self::CONCURRENT => CurrentModuleType::Concurrent,
-                    Self::BOOL => CurrentModuleType::Bool,
+                    Self::BOOL => CurrentModuleType::Boolean,
                     Self::NUMERIC => CurrentModuleType::Numeric,
                     Self::INTERNAL => CurrentModuleType::Internal,
                     Self::ITERATABLE => CurrentModuleType::Iteration,

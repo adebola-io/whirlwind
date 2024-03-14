@@ -1,11 +1,11 @@
 module maybe
 
 use core.{
-    bool.Bool,
+    boolean.boolean,
     interfaces.{Guaranteed, Try, Default},
     internals.never,
     outcome.{ok, err, Outcome},
-    string.{Display, String},
+    string.{Display, string},
     sentinels.fatal
 }
 
@@ -28,7 +28,7 @@ public model Maybe<T>
     + Try<T, ?never> 
 {
     /// A simple flag for marking existence or non-existence.
-    var exists: Bool
+    var exists: boolean
     /// The internal value.
     /// 
     /// This will point to the void value if 
@@ -55,11 +55,11 @@ public model Maybe<T>
     /// maybeInt = none()
     /// assert(maybeInt.toStr()).equals("Maybe.none")
     /// ```
-    public function [Display.toStr]|=(T implements Display) -> String {
+    public function [Display.toStr]|=(T implements Display) -> string {
         if this.isNone() {
             return "Maybe.none"
         }
-        return String.fmt("Maybe.some(%)").add(this.value).finish()
+        return string.fmt("Maybe.some(%)").add(this.value).finish()
     }
     /// Implementation of the `Guaranteed` interface.
     function [Guaranteed.guarantee] -> T {
@@ -90,38 +90,38 @@ public model Maybe<T>
     /// var maybeVal = some("Hello, world!")
     /// assert(maybeVal.expect("No value!!")).equals("Hello, world!")
     /// ```
-    public function expect(error: String) -> T {
+    public function expect(error: string) -> T {
         if this.isNone() { fatal(some(error)) } else { this.value }
     }
-    /// Returns a Bool indicating if the Maybe contains no value.
+    /// Returns a boolean indicating if the Maybe contains no value.
     /// ### Usage
     /// ```
-    /// var noValue: ?String = none()
+    /// var noValue: ?string = none()
     /// assertThat(noValue.isNone())
     /// 
     /// var stringValue = some("boy")
     /// assertThat(!stringValue.isNone())
     /// ```
-    public function isNone -> Bool {
+    public function isNone -> boolean {
         this.exists
     }
-    /// Returns a Bool indicating whether there is a value contained or not.
+    /// Returns a boolean indicating whether there is a value contained or not.
     /// ### Usage
     /// ```
     /// var stringValue = some("boy")
     /// assertThat(stringValue.isSome())
     /// 
-    /// var noValue: ?String = none()
+    /// var noValue: ?string = none()
     /// assertThat(!noValue.isSome())
     /// ```
-    public function isSome -> Bool {
+    public function isSome -> boolean {
        !this.exists
     }
-    /// Returns a Bool indicating whether there is a value contained, and it
+    /// Returns a boolean indicating whether there is a value contained, and it
     /// upholds a given predicate.
     /// ### Usage
     /// ```
-    /// var predicate = fn(value: Int32) value == 42
+    /// var predicate = fn(value: i32) value == 42
     /// 
     /// var maybeInt = some(42)
     /// assertThat(maybeInt.isSomeAnd(predicate))
@@ -129,20 +129,20 @@ public model Maybe<T>
     /// var maybeInt2 = some(100)
     /// assertThat(!maybeInt2.isSomeAnd(predicate))
     /// 
-    /// var maybeInt3: ?Int32 = none()
+    /// var maybeInt3: ?i32 = none()
     /// assertThat(!maybeInt3.isSomeAnd(predicate))
     /// ```
-    public function isSomeAnd(predicate: fn(value: T) -> Bool) -> Bool {
+    public function isSomeAnd(predicate: fn(value: T) -> boolean) -> boolean {
         this.isSome() and predicate(this.value)
     }
     /// Performs a computation if there is an internal value contained.
     /// ### Usage
     /// ```
     /// var maybeValue = some(42)
-    /// var message: String;
+    /// var message: string;
     /// 
     /// maybeValue.isSomeThen(fn(value) {
-    ///     message = String
+    ///     message = string
     ///         .fmt("The value is %")
     ///         .add(value)
     ///         .finish()
@@ -160,22 +160,22 @@ public model Maybe<T>
     public function isNoneThen(consequent: fn()) {
         if this.isNone() { consequent() }
     }
-    /// Returns a Bool indicating whether there is no value, or there is a value and it
+    /// Returns a boolean indicating whether there is no value, or there is a value and it
     /// upholds a given predicate.
     /// ### Usage
     /// ```
-    /// var predicate = fn(value: Int32) value > 5
+    /// var predicate = fn(value: i32) value > 5
     /// 
     /// var maybeInt = some(10)
     /// assertThat(maybeInt.isNoneOr(predicate))
     /// 
-    /// var maybeInt2: ?Int32 = none()
+    /// var maybeInt2: ?i32 = none()
     /// assertThat(maybeInt2.isNoneOr(predicate))
     /// 
     /// var maybeInt3 = some(4)
     /// assertThat(not maybeInt3.isNoneOr(predicate))
     /// ```
-    public function isNoneOr(predicate: fn(value: T) -> Bool) -> Bool {
+    public function isNoneOr(predicate: fn(value: T) -> boolean) -> boolean {
         this.isNone() or predicate(this.unwrap())
     }
     /// Maps a `Maybe<T>` to an `Outcome<T, E>` by passing in a fallback error
@@ -214,7 +214,7 @@ public model Maybe<T>
     /// ```
     /// <!--ignore-->
     /// ```
-    /// noValue: ?Number = none()
+    /// noValue: ?number = none()
     /// noValue.unwrap() // Will panic with an error.
     /// ```
     /// ### Panics
@@ -244,12 +244,12 @@ public model Maybe<T>
     /// Converts a `Maybe<T>` to a `Maybe<E>` by applying a transformation function.
     /// ### Usage
     /// ```
-    /// var double = fn(x: Number) x * 2
+    /// var double = fn(x: number) x * 2
     /// var first = some(9).map(double)
     /// 
     /// assert(first!).equals(18)
     /// 
-    /// var second: ?Number = none().map(double)
+    /// var second: ?number = none().map(double)
     /// assertThat(double.isNone())
     /// ```
     public function map<U>(transform: fn(former: T) -> U) -> ?U {
@@ -272,8 +272,8 @@ public model Maybe<T>
     /// var i = some(50)
     /// assert(i.unwrapOrDefault()).equals(50)
     /// 
-    /// var j: ?Int32 = none()
-    /// assert(j.unwrapOrDefault()).equals(0) // default value for Int32.
+    /// var j: ?i32 = none()
+    /// assert(j.unwrapOrDefault()).equals(0) // default value for i32.
     //  ```
     public function unwrapOrDefault|=(T implements Default) -> T {
         if this.isNone() {

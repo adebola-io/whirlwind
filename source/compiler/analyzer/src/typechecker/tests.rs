@@ -145,7 +145,7 @@ fn conditional_interface_impl() {
             d := displayable(c);
         }
         ",
-        &[("b", "Array<String>"), ("d", "Maybe<Bool>")]
+        &[("b", "Array<string>"), ("d", "Maybe<boolean>")]
     );
 }
 
@@ -156,7 +156,7 @@ fn unsatisfiable_constraint_for_generic() {
         module Test;
 
         interface SomeStuff {
-            public function doA -> Bool
+            public function doA -> boolean
         }
         interface SomeOtherStuff {
             public function doA
@@ -172,7 +172,7 @@ fn unsatisfiable_constraint_for_generic() {
             TypeErrorType::MismatchedMethods {
                 base_name: format!("T"),
                 method_name: format!("doA"),
-                second_signature: format!("fn -> Bool"),
+                second_signature: format!("fn -> boolean"),
                 first_signature: format!("fn"),
             }
         ]
@@ -186,13 +186,13 @@ fn unsatisfiable_constraint_for_discrete_type() {
         module Test;
 
         interface SomeStuff {
-            public function doA -> Bool
+            public function doA -> boolean
         }
         interface SomeOtherStuff {
             public function doA
         }
         model A<T> {
-            public function asj|=(String implements SomeOtherStuff) {
+            public function asj|=(string implements SomeOtherStuff) {
                 
             }
         }   
@@ -209,13 +209,13 @@ fn it_creates_type_environments() {
 
         model A<T> {
             var value: T
-            public function asj|=(T implements Try<Bool, Maybe<never>>) -> ?never {
+            public function asj|=(T implements Try<boolean, Maybe<never>>) -> ?never {
                 a := this.value?
                 some(todo())
             }
         }
         ",
-        &[("a", "Bool")]
+        &[("a", "boolean")]
     );
 }
 
@@ -229,12 +229,12 @@ fn it_creates_intrinsic_instances() {
     module Test;
 
     function main() {
-        boolean := true;
+        bool := true;
         str := \"Hello, World\";
         num := 34;
     }
     ",
-        &[("boolean", "Bool"), ("str", "String"), ("num", "Int32")]
+        &[("bool", "boolean"), ("str", "string"), ("num", "i32")]
     );
 }
 
@@ -245,8 +245,8 @@ fn it_creates_instances() {
     module Test;
 
     model Person {
-        public var name: String;
-        new(name: String) {
+        public var name: string;
+        new(name: string) {
             this.name = name;
         }
     }
@@ -256,7 +256,7 @@ fn it_creates_instances() {
         var { name as personName } = Person(\"John Doe\");
     }    
     ",
-        &[("person", "Person"), ("personName", "String")]
+        &[("person", "Person"), ("personName", "string")]
     );
 }
 
@@ -302,8 +302,8 @@ fn it_errors_on_string_and_number_binexp() {
     }
     ",
         &[TypeErrorType::Incomparable {
-            left: format!("String"),
-            right: format!("Int32")
+            left: format!("string"),
+            right: format!("i32")
         }]
     );
 }
@@ -314,13 +314,13 @@ fn ordering_types() {
         "module Test;
         
         function main() {
-            a /*: Int32 */ := 30;
-            b /*: Int32 */ := 300;
+            a /*: i32 */ := 30;
+            b /*: i32 */ := 300;
 
             c := b > a;       
         }
         ",
-        &[("a", "Int32"), ("b", "Int32"), ("c", "Bool")]
+        &[("a", "i32"), ("b", "i32"), ("c", "boolean")]
     );
 }
 
@@ -330,13 +330,13 @@ fn sequencing_types() {
         "module Test;
         
         function main() {
-            a /*: Int32 */ := 30;
-            b /*: Int32 */ := 300;
+            a /*: i32 */ := 30;
+            b /*: i32 */ := 300;
 
             c := a..b;       
         }
         ",
-        &[("a", "Int32"), ("b", "Int32"), ("c", "Range<Int32>")]
+        &[("a", "i32"), ("b", "i32"), ("c", "Range<i32>")]
     );
 }
 
@@ -346,20 +346,20 @@ fn other_binary_operations() {
         "module Test;
         
         function main() {
-            a /*: Int32 */ := 30;
-            b /*: Int32 */ := 300;
+            a /*: i32 */ := 30;
+            b /*: i32 */ := 300;
 
-            c := (a + b) - (a * b);
-            d := a % 10;
+            c /*: i32 */ := (a + b) - (a * b);
+            d := a.f64() % 10;
             e := d ^ 0.5;       
         }
         ",
         &[
-            ("a", "Int32"),
-            ("b", "Int32"),
-            ("c", "Int32"),
-            ("d", "Float64"),
-            ("e", "Float64")
+            ("a", "i32"),
+            ("b", "i32"),
+            ("c", "i32"),
+            ("d", "f64"),
+            ("e", "f64")
         ]
     );
 }
@@ -370,16 +370,16 @@ fn test_assignment_types() {
         "module Test;
         
         function main() {
-            a := 0;
-            a += 9; // valid.
+            a := (0).f64();
+            a += (9).f64(); // valid.
 
-            a += 0.293; // valid.
+            a += 0.293; 
             
-            string := \"Hello, world.\";
-            string += \"Welcome.\";
+            str := \"Hello, world.\";
+            str += \"Welcome.\";
         }
         ",
-        &[("a", "Float64"), ("string", "String")]
+        &[("a", "f64"), ("str", "string")]
     );
     assert_eq!(
         standpoint
@@ -387,7 +387,9 @@ fn test_assignment_types() {
             .iter()
             .filter(|diagnostic| diagnostic.is_error())
             .count(),
-        0
+        0,
+        "Diagnostics: {:?}",
+        standpoint.diagnostics
     );
 }
 
@@ -404,7 +406,7 @@ fn unary_minus_or_plus() {
             b = -b;
         }
         ",
-        &[("a", "Int32"), ("b", "Int32")]
+        &[("a", "i32"), ("b", "i32")]
     );
     assert_eq!(
         standpoint
@@ -424,7 +426,7 @@ fn unary_minus_or_plus() {
         }
         ",
         &[TypeErrorType::NumericExclusiveOperation {
-            typ: format!("String")
+            typ: format!("string")
         }]
     );
 }
@@ -438,11 +440,11 @@ fn it_infers_default_generic_arguments() {
             a := Generic();
         }
 
-        function Generic<T = String>(value?: T): T {
+        function Generic<T = string>(value?: T): T {
             todo()
         }
         ",
-        &[("a", "String")]
+        &[("a", "string")]
     );
 }
 
@@ -451,14 +453,14 @@ fn it_typechecks_type_declaration() {
     text_produces_errors!(
         "module Test;
 
-        type BoolIterator = Iterable<Bool>;
+        type booleanIterator = Iterable<boolean>;
 
         function main() {
             
         }
         ",
         &[TypeErrorType::ExpectedImplementableGotSomethingElse(
-            format!("Iterable<Bool>")
+            format!("Iterable<boolean>")
         )]
     );
 }
@@ -480,10 +482,13 @@ fn it_allows_only_valid_type_declarations() {
     check_types!(
         "module Test;
         
-        type StringAlias = ?String;
-        type Function = fn() -> Bool;
+        type stringAlias = ?string;
+        type Function = fn() -> boolean;
         ",
-        &[("StringAlias", "Maybe<String>"), ("Function", "fn -> Bool")]
+        &[
+            ("stringAlias", "Maybe<string>"),
+            ("Function", "fn -> boolean")
+        ]
     );
 }
 
@@ -518,22 +523,22 @@ fn method_inherits_generic_arguments() {
         public function getValue() -> T {
             return this.value
         }
-        public function getStringClone() -> GenericModel<String> {
+        public function getstringClone() -> GenericModel<string> {
             todo()
         }
     }
 
     genericModelInst := GenericModel(true);
     outerValue := genericModelInst.getValue();
-    strClone := genericModelInst.getStringClone();
+    strClone := genericModelInst.getstringClone();
 
     tuple := Tuple(true, 'story');
     swapped := tuple.swap();
     ",
         &[
-            ("outerValue", "Bool"),
-            ("strClone", "GenericModel<String>"),
-            ("swapped", "Tuple<String, Bool>")
+            ("outerValue", "boolean"),
+            ("strClone", "GenericModel<string>"),
+            ("swapped", "Tuple<string, boolean>")
         ]
     );
 }
