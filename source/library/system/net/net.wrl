@@ -2,16 +2,16 @@ module net
 
 public use http
 use core.prelude.Display
-use core.prelude.string
+use core.prelude.String
 use core.prelude.todo
 
 
 public model Url implements Display {
-    var scheme: string
-    var host: string
-    var path: string
+    var scheme: String
+    var host: String
+    var path: String
 
-    public function [Display.toStr] -> string {
+    public function [Display.toStr] -> String {
         todo()
     }
 }

@@ -10,7 +10,7 @@ use core.maybe.{none, some}
 use core.memory.{malloc, Ptr}
 use core.numeric.i32
 use core.ops.{Addition, Orderable}
-use core.string.{Display, string}
+use core.string.{Display, String}
 
 /// A contiguous, growable list of items of the same type.
 public model Array<T> 
@@ -74,7 +74,7 @@ public model Array<T>
     static function [Default.init] -> This {
         return []
     }
-    /// Converts an array to a string representation,
+    /// Converts an array to a String representation,
     /// given that its elements implement `Display`.
     /// ### Usage
     /// ```
@@ -83,19 +83,19 @@ public model Array<T>
     /// 
     /// assert(arrAsStr).equals("[1, 6, 7, 8, 10]")
     /// ```
-    public function [Display.toStr]|=(T implements Display) -> string {
-        var string = "["
+    public function [Display.toStr]|=(T implements Display) -> String {
+        var String = "["
         var i = 0
         while i < this.len {
             var elementStr = this[i].toStr()
-            string.append(elementStr)
+            String.append(elementStr)
             if i + 1 != this.len { 
-                string.append(", ")
+                String.append(", ")
             }
             i += 1
         }
-        string.append("]")
-        return string
+        String.append("]")
+        return String
     }
     /// Sorts the current array in place, given that its elements are orderable.
     /// ### Usage
@@ -190,7 +190,7 @@ public model Array<T>
         }
         return sum
     }
-    /// Concatenates the elements in an array into one string and returns it.
+    /// Concatenates the elements in an array into one String and returns it.
     /// 
     /// If no separator argument is specified, a single whitespace will be used instead.
     /// ### Usage
@@ -205,18 +205,18 @@ public model Array<T>
     /// 
     /// assertThat(joined2 == "1+2+3+4+5")
     /// ```
-    public function join|=(T implements Display)(separator?: string) -> string {
+    public function join|=(T implements Display)(separator?: String) -> String {
         var separatorValue = separator.unwrapOr(" ")
-        var string = ""
+        var String = ""
         var i = 0
         while i < this.len {
-            string += this[i].toStr()
+            String += this[i].toStr()
             if i + 1 != this.len {
-                string += separatorValue
+                String += separatorValue
             }
             i += 1
         }
-        return string
+        return String
     }
     /// Appends the contents of one array to the end of the current array.
     /// ### Usage

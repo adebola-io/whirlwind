@@ -13,7 +13,7 @@ module guaranteed
 /// the `.unwrap()` method.
 /// <!--ignore-->
 /// ```
-/// var name: ?string = some("Alice")
+/// var name: ?String = some("Alice")
 /// var greeting = "Hello, " + name!
 /// assert(greeting).equals("Hello, Alice")
 /// 

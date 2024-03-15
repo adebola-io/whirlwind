@@ -528,7 +528,7 @@ mod bind_utils {
         // Account for intrinsic types.
         if entry.is_public() {
             *(match (&binder.current_module_type, entry.name()) {
-                (CurrentModuleType::String, "string") => &mut symbol_library.string,
+                (CurrentModuleType::String, "String") => &mut symbol_library.string,
                 (CurrentModuleType::Array, "Array") => &mut symbol_library.array,
                 (CurrentModuleType::Boolean, "boolean") => &mut symbol_library.bool,
                 (CurrentModuleType::Prospect, "Prospect") => &mut symbol_library.prospect,

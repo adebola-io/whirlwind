@@ -21,9 +21,9 @@ module never
 ///     core.sentinels.exit(1) // Exits the program and never returns.
 /// }
 /// var num: i32 = blackHole() // valid.
-/// var str: string = blackHole() // valid.
+/// var str: String = blackHole() // valid.
 /// 
-/// function produceValue -> string {
+/// function produceValue -> String {
 ///     return blackHole() // valid.
 /// }
 /// ```

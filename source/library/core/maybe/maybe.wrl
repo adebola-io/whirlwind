@@ -5,7 +5,7 @@ use core.{
     interfaces.{Guaranteed, Try, Default},
     internals.never,
     outcome.{ok, err, Outcome},
-    string.{Display, string},
+    string.{Display, String},
     sentinels.fatal
 }
 
@@ -46,7 +46,7 @@ public model Maybe<T>
     static function [Default.init] -> This {
         return none()
     }
-    /// Converts the Maybe to a string.
+    /// Converts the Maybe to a String.
     /// ### Usage
     /// ```
     /// var maybeInt = some(90)
@@ -55,11 +55,11 @@ public model Maybe<T>
     /// maybeInt = none()
     /// assert(maybeInt.toStr()).equals("Maybe.none")
     /// ```
-    public function [Display.toStr]|=(T implements Display) -> string {
+    public function [Display.toStr]|=(T implements Display) -> String {
         if this.isNone() {
             return "Maybe.none"
         }
-        return string.fmt("Maybe.some(%)").add(this.value).finish()
+        return String.fmt("Maybe.some(%)").add(this.value).finish()
     }
     /// Implementation of the `Guaranteed` interface.
     function [Guaranteed.guarantee] -> T {
@@ -90,13 +90,13 @@ public model Maybe<T>
     /// var maybeVal = some("Hello, world!")
     /// assert(maybeVal.expect("No value!!")).equals("Hello, world!")
     /// ```
-    public function expect(error: string) -> T {
+    public function expect(error: String) -> T {
         if this.isNone() { fatal(some(error)) } else { this.value }
     }
     /// Returns a boolean indicating if the Maybe contains no value.
     /// ### Usage
     /// ```
-    /// var noValue: ?string = none()
+    /// var noValue: ?String = none()
     /// assertThat(noValue.isNone())
     /// 
     /// var stringValue = some("boy")
@@ -111,7 +111,7 @@ public model Maybe<T>
     /// var stringValue = some("boy")
     /// assertThat(stringValue.isSome())
     /// 
-    /// var noValue: ?string = none()
+    /// var noValue: ?String = none()
     /// assertThat(!noValue.isSome())
     /// ```
     public function isSome -> boolean {
@@ -139,10 +139,10 @@ public model Maybe<T>
     /// ### Usage
     /// ```
     /// var maybeValue = some(42)
-    /// var message: string;
+    /// var message: String;
     /// 
     /// maybeValue.isSomeThen(fn(value) {
-    ///     message = string
+    ///     message = String
     ///         .fmt("The value is %")
     ///         .add(value)
     ///         .finish()

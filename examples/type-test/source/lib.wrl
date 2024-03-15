@@ -84,8 +84,8 @@ test "Testing types." {
     entity.transform()
 
     // Numeric types.
-    numbe := 90
-    array := [1, 2, 3, 4, numbe, 255, 900]
+    num := 90
+    array := [1, 2, 3, 4, num, 255, 900]
 
     // function type coercion.
     strArray := ["hello", "world"]
@@ -100,7 +100,7 @@ test "Testing types." {
     arr2 := []
     arr2.push(some(true)) // arr2 should infer type Array<Maybe<Bool>>.
     arr3 := []
-    num: number := 99
+    num2: number := 99
     arr3[0] = num // arr3 should infer type Array<number> 
 
     arr4 := []
@@ -161,4 +161,6 @@ test "Testing types." {
             todo()
         }
     }
+
+    var a = A(A(true))
 }

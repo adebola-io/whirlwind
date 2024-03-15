@@ -1,15 +1,15 @@
 module response
 use request.HttpRequest
 
-use core.prelude.{string, i32, todo}
+use core.prelude.{String, i32, todo}
 use core.data.json.JsonValue
 
 /// The headers on a 
 public model ResponseHeaders {
-    public function set(key: string, value: string) {
+    public function set(key: String, value: String) {
         todo()
     }
-    public function get(key: string) -> ?string {
+    public function get(key: String) -> ?String {
         todo()
     }
 }
@@ -17,13 +17,13 @@ public model ResponseHeaders {
 public model HttpResponse {
     var _status: i32
     var headers: ResponseHeaders
-    var data: string
+    var data: String
     /// Build a response object from a request.
     public static function from(request: HttpRequest) -> This {
         return todo()
     }
     /// Returns the content type set in the response header.
-    public function contentType -> ?string {
+    public function contentType -> ?String {
         this.headers.get("Content-Type")
     }
     /// Sets the status code value of the response.
@@ -32,9 +32,9 @@ public model HttpResponse {
         return this
     }
     /// Sets the response type to HTML Text.
-    public function html(string: string) -> This {
+    public function html(String: String) -> This {
         this.headers.set("Content-Type", "text/html")
-        this.data = string
+        this.data = String
         return this
     }
     public function json<J implements JsonValue>(json: J) -> This {

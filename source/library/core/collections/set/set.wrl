@@ -4,7 +4,7 @@ use core.boolean.boolean
 use core.iterate.{AsIterator, Iterable}
 use core.numeric.i32
 use core.sentinels.todo
-use core.string.{Display, string}
+use core.string.{Display, String}
 
 use super.{Hash, HashMap}
 
@@ -35,7 +35,7 @@ public model Set<T implements Hash>
     public function [AsIterator.iter] -> SetIterator<T> {
         todo()
     }
-    public function [Display.toStr]|=(T implements Display) -> string {
+    public function [Display.toStr]|=(T implements Display) -> String {
         var str = "Set { "
         for { a as idx, b as tuple } in this.items.iter().enumerate() {
             var { a as item } = tuple

@@ -5,7 +5,7 @@ use core.{
     maybe.some,
     ops.{Orderable},
     sentinels.fatal,
-    string.{Display, string}
+    string.{Display, String}
 }
 
 /// Creates an assertion object.
@@ -20,9 +20,9 @@ public function assertThat(proposition: boolean) {
     }
 }
 
-/// Generates a string of an assertion error.
-function assertionMessage<T implements Display>(mainMessage: string, left: T, right: T) -> string {
-    var template = string.fmt(mainMessage)
+/// Generates a String of an assertion error.
+function assertionMessage<T implements Display>(mainMessage: String, left: T, right: T) -> String {
+    var template = String.fmt(mainMessage)
     template.extend("Contained value: %\nOther: %")
     return template.add(left).add(right).finish()
 }

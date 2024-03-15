@@ -483,7 +483,7 @@ fn typecheck_this_expression(
                     is_invariant: true,
                 }
             }
-            _ => unreachable!("{symbol:#?} is not a model or interface."),
+            _ => return EvaluatedType::Unknown,
         }
     })();
     this.inferred_type.clone()

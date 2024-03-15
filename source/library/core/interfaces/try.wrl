@@ -15,7 +15,7 @@ use core.prelude.Outcome
 /// 
 /// #### First Approach:
 /// ```
-/// function parseAndDouble1(numberStr: string) -> Maybe<i32> {
+/// function parseAndDouble1(numberStr: String) -> Maybe<i32> {
 ///     var maybeInteger = i32.fromStr(numberStr)
 ///     if maybeInteger.isNone() {
 ///         return none()
@@ -26,7 +26,7 @@ use core.prelude.Outcome
 /// ```
 /// #### Second Approach:
 /// ```
-/// function parseAndDouble2(numberStr: string) -> Maybe<i32> {
+/// function parseAndDouble2(numberStr: String) -> Maybe<i32> {
 ///     // i32.fromStr returns a Maybe<i32>. If the integer cannot be
 ///     // parsed, the none() value gotten is immediately
 ///     // returned from this function. If the parsing is 

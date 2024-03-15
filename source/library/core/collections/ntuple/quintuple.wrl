@@ -1,7 +1,7 @@
 module quintuple
 
 use core.maybe.some
-use core.string.{Display, string}
+use core.string.{Display, String}
 use ntuple.NTuple
 
 
@@ -35,9 +35,9 @@ public model Quintuple<T, U, V, W, X>
             and V implements Display
             and W implements Display
             and X implements Display
-        ) -> string
+        ) -> String
     {
-        return string.fmt("Quintuple(%, %, %, %, %)")
+        return String.fmt("Quintuple(%, %, %, %, %)")
             .add(this.a.toStr())
             .add(this.b.toStr())
             .add(this.c.toStr())

@@ -145,7 +145,7 @@ fn conditional_interface_impl() {
             d := displayable(c);
         }
         ",
-        &[("b", "Array<string>"), ("d", "Maybe<boolean>")]
+        &[("b", "Array<String>"), ("d", "Maybe<boolean>")]
     );
 }
 
@@ -192,7 +192,7 @@ fn unsatisfiable_constraint_for_discrete_type() {
             public function doA
         }
         model A<T> {
-            public function asj|=(string implements SomeOtherStuff) {
+            public function asj|=(String implements SomeOtherStuff) {
                 
             }
         }   
@@ -234,7 +234,7 @@ fn it_creates_intrinsic_instances() {
         num := 34;
     }
     ",
-        &[("bool", "boolean"), ("str", "string"), ("num", "i32")]
+        &[("bool", "boolean"), ("str", "String"), ("num", "i32")]
     );
 }
 
@@ -245,8 +245,8 @@ fn it_creates_instances() {
     module Test;
 
     model Person {
-        public var name: string;
-        new(name: string) {
+        public var name: String;
+        new(name: String) {
             this.name = name;
         }
     }
@@ -256,7 +256,7 @@ fn it_creates_instances() {
         var { name as personName } = Person(\"John Doe\");
     }    
     ",
-        &[("person", "Person"), ("personName", "string")]
+        &[("person", "Person"), ("personName", "String")]
     );
 }
 
@@ -302,7 +302,7 @@ fn it_errors_on_string_and_number_binexp() {
     }
     ",
         &[TypeErrorType::Incomparable {
-            left: format!("string"),
+            left: format!("String"),
             right: format!("i32")
         }]
     );
@@ -379,7 +379,7 @@ fn test_assignment_types() {
             str += \"Welcome.\";
         }
         ",
-        &[("a", "f64"), ("str", "string")]
+        &[("a", "f64"), ("str", "String")]
     );
     assert_eq!(
         standpoint
@@ -426,7 +426,7 @@ fn unary_minus_or_plus() {
         }
         ",
         &[TypeErrorType::NumericExclusiveOperation {
-            typ: format!("string")
+            typ: format!("String")
         }]
     );
 }
@@ -440,11 +440,11 @@ fn it_infers_default_generic_arguments() {
             a := Generic();
         }
 
-        function Generic<T = string>(value?: T): T {
+        function Generic<T = String>(value?: T): T {
             todo()
         }
         ",
-        &[("a", "string")]
+        &[("a", "String")]
     );
 }
 
@@ -482,11 +482,11 @@ fn it_allows_only_valid_type_declarations() {
     check_types!(
         "module Test;
         
-        type stringAlias = ?string;
+        type stringAlias = ?String;
         type Function = fn() -> boolean;
         ",
         &[
-            ("stringAlias", "Maybe<string>"),
+            ("stringAlias", "Maybe<String>"),
             ("Function", "fn -> boolean")
         ]
     );
@@ -523,7 +523,7 @@ fn method_inherits_generic_arguments() {
         public function getValue() -> T {
             return this.value
         }
-        public function getstringClone() -> GenericModel<string> {
+        public function getstringClone() -> GenericModel<String> {
             todo()
         }
     }
@@ -537,8 +537,8 @@ fn method_inherits_generic_arguments() {
     ",
         &[
             ("outerValue", "boolean"),
-            ("strClone", "GenericModel<string>"),
-            ("swapped", "Tuple<string, boolean>")
+            ("strClone", "GenericModel<String>"),
+            ("swapped", "Tuple<String, boolean>")
         ]
     );
 }

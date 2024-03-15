@@ -6,7 +6,7 @@
 module sentinels
 
 use core.{
-    string.{Display, string},
+    string.{Display, String},
     internals.never,
     maybe.{none, some},
     memory.Ptr,
@@ -21,7 +21,7 @@ use core.{
 /// Calling this function will *always* cause a sequence to crash.
 /// ### Usage
 /// ```
-/// function positiveSquare(a: i32) -> Outcome<i32, string> {
+/// function positiveSquare(a: i32) -> Outcome<i32, String> {
 ///     if a >= 0 {
 ///         return ok(a * a)
 ///     } else {
@@ -56,7 +56,7 @@ public function todo<M implements Display>(message?: M) -> never {
 /// ```
 /// 
 /// The `unreachable` function will always cause an error, signifying an unexpected condition.
-public function unreachable(message?: string) -> never {
+public function unreachable(message?: String) -> never {
     return fatal(message.orElse(fn some("Entered unreachable code.")))
 }
 
@@ -104,13 +104,19 @@ import "internals:control" {
 ///     }
 /// }
 /// ```
-public function fatal(message?: string) -> never {
+public function fatal(message?: String) -> never {
     var errorMessage = message.unwrapOr("Fatal Sequence error.")
-    // generate stack trace.
+    // todo: generate stack trace.
     var messageOffset = Ptr.getOffset(errorMessage)
     var messageLength = errorMessage.length()
     var id = getSequenceID()
     stop(id, messageOffset, messageLength)
+}
+
+/// Called when an execution sequence encounters a recoverable error. It displays a
+/// message at runtime, and continues execution with the normal flow.
+public function nonfatal(message: String) {
+    todo()
 }
 
 /// Caches the return value of a function based on its arguments. Subsequent

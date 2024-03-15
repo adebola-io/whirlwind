@@ -7,7 +7,7 @@ use core.{
 
 
 /// Returns the value of an environment variable.
-public function getEnv(varName: string) -> ?string {
+public function getEnv(varName: String) -> ?String {
     todo()
 }
 
@@ -16,13 +16,13 @@ public model Error {
 }
 
 
-/// Returns a string value corresponding to the path of the current working directory.
+/// Returns a String value corresponding to the path of the current working directory.
 /// ### Usage
 /// ```
 /// var currentDir = system.process.cwd()
 /// print("The current directory is " + currentDir)
 /// ```
-public function cwd -> string {
+public function cwd -> String {
     return builtin.sequence.cwd()
 }
 

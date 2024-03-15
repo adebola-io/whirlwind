@@ -1,12 +1,12 @@
 module fs
 
-// use core.prelude.string
+// use core.prelude.String
 // use core.prelude.{todo, boolean}
 // use core.prelude.Outcome
 
 
 
-// // public type PathLike = string | Buffer | Url
+// // public type PathLike = String | Buffer | Url
 // public type FileHandle = i32
 
 // public model File {
@@ -39,6 +39,6 @@ module fs
 // //     // return Err("")
 // // }
 
-// public async function readToString(filename: PathLike) -> Outcome<string, FsError> {
+// public async function readToString(filename: PathLike) -> Outcome<String, FsError> {
 //     todo()
 // }

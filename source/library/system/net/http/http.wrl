@@ -1,7 +1,7 @@
 module http
 
 use core.prelude.{
-    boolean, todo, Outcome, Prospect, string,
+    boolean, todo, Outcome, Prospect, String,
     i32, some, fatal,
 }
 public use request.{
@@ -17,7 +17,7 @@ model Endpoints {
     /// Registers a GET route.
     public function register(
         method: HttpMethod, 
-        route: string, 
+        route: String, 
         handler: fn(request: HttpRequest) -> Prospect<ServerOutcome>
     ) {
         todo()
@@ -29,14 +29,14 @@ public type ServerOutcome = Outcome<HttpResponse, HttpRequestError>
 /// A simple model for an HTTP server.
 /// 
 /// ## Constructor Arguments.
-/// - @param (name: string) The name to use to represent this server.
+/// - @param (name: String) The name to use to represent this server.
 /// - @param (port: i32) The port to listen on.
 public model HttpServer {
     var endpoints: Endpoints
     var middleware: []Middleware
     var isRunning: boolean
     var port: i32
-    new(name: string, port: i32) {
+    new(name: String, port: i32) {
         this.endpoints = Endpoints()
         this.middleware = []
         this.isRunning = false
@@ -44,7 +44,7 @@ public model HttpServer {
     }
     /// Registers a route for a request with a `GET` method. 
     public function get(
-        route: string,
+        route: String,
         handler: fn(request: HttpRequest) -> Prospect<ServerOutcome>
     ) -> This {
         this.assertInert()
@@ -53,7 +53,7 @@ public model HttpServer {
     }
     /// Registers a route for a request with a `POST` method.
     public function post(
-        route: string, 
+        route: String, 
         handler: fn(request: HttpRequest) -> Prospect<ServerOutcome>
     ) -> This {
         this.assertInert()

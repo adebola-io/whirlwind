@@ -5,7 +5,7 @@ module concurrent
 
 use core.{
     numeric.i32,
-    string.string,
+    string.String,
     sentinels.todo
 }
 public use eventual.Eventual
@@ -40,7 +40,7 @@ public model Sequence {}
 
 public model SequenceError {
     public var errorType: SequenceErrorType
-    public var message: ?string
+    public var message: ?String
 }
 
 public enum SequenceErrorType {

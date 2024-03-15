@@ -37,6 +37,6 @@ public use core.{
     outcome.{ok, err, Outcome},
     ops.Range,
     sentinels.{todo, fatal},
-    string.{Display, FromStr, string},
+    string.{Display, FromStr, String},
     internals.never,
 }

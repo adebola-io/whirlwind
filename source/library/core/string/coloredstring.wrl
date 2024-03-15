@@ -3,16 +3,16 @@ module coloredstring
 use core.sentinels.todo
 use core.maybe.some
 use core.numeric.i32
-use string.string
+use string.String
 use display.Display
 
-/// A string intended for display on a console or terminal, 
+/// A String intended for display on a console or terminal, 
 /// that may have custom colors and styles applied to it.
 public model ColoredString implements Display {
-    public var text: string
+    public var text: String
     var codes: []i32
 
-    new(text?: string) {
+    new(text?: String) {
         this.text = text.unwrapOrDefault()
     }
 
@@ -28,7 +28,7 @@ public model ColoredString implements Display {
         return this
     }
 
-    public function [Display.toStr] -> string {
+    public function [Display.toStr] -> String {
         todo()
     }
 

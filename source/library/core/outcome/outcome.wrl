@@ -6,7 +6,7 @@ use core.{
     internals.never,
     maybe.{none, some},
     sentinels.fatal,
-    string.{Display, string}
+    string.{Display, String}
 }
 
 /// An `Outcome` is a generic model 
@@ -19,7 +19,7 @@ use core.{
 /// The Outcome can be used to represent the results of fallible operations,
 /// such as:
 /// - reading a file, 
-/// - parsing a string,
+/// - parsing a String,
 /// - executing a database query, or
 /// - connecting to a server.
 /// 
@@ -43,14 +43,14 @@ public model Outcome<T, E>
         this.errorValue = errorValue
     }
 
-    public function [Display.toStr]|=(T implements Display and E implements Display) -> string 
+    public function [Display.toStr]|=(T implements Display and E implements Display) -> String 
     {
         if this.isOk() {
             var value = this.successValue.unwrap();
-            return string.fmt("Outcome.ok(%)").add(value).finish()
+            return String.fmt("Outcome.ok(%)").add(value).finish()
         }
         var errValue = this.errorValue.unwrap();
-        return string.fmt("Outcome.err(%)").add(errValue).finish()
+        return String.fmt("Outcome.err(%)").add(errValue).finish()
     }
     function [Guaranteed.guarantee] -> T {
         return this.unwrap()

@@ -10,31 +10,36 @@ use core.ops.{
     Multiplication, Division, Orderable,
     Ordering, Bitwise
 }
-use core.string.{string, Display, FromStr}
+use core.string.{String, Display, FromStr}
 
 /// Interface for rendering 
 public interface FixedPoint {
-    /// Returns a string representing a number in fixed-point notation.
+    /// Returns a String representing a number in fixed-point notation.
     /// ### Usage
     /// ```
     /// ```
-    public function toFixed(digits?: i32) -> string
+    public function toFixed(digits?: i32) -> String
 }
 
 public interface Convertible {
     /// Inteprets the number as a floating 32-bit number.
-    public function f32 -> f32 {
-        core.sentinels.todo()
-    }
+    /// ### Usage
+    /// ```
+    /// var i = (0).f64()
+    /// 
+    /// assert(i).equals(1.00)
+    /// ```
+    public function f32 -> f32
 
-    public function i64 -> i64 {
-        core.sentinels.todo()
-    }
+    /// Interprets the number as a 64-bit integer.
+    /// ### Usage
+    /// ```
+    /// var i = (0).i64()
+    /// ```
+    public function i64 -> i64
 
     /// Converts the current number into a floating 64-bit number.
-    public function f64 -> f64 {
-        core.sentinels.todo()
-    }
+    public function f64 -> f64
 }
 
 /// An 32-bit integer.

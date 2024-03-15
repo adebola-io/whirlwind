@@ -1,6 +1,6 @@
 module request
 
-use core.prelude.{todo, string, boolean, i32, Outcome, Display}
+use core.prelude.{todo, String, boolean, i32, Outcome, Display}
 use core.collections.HashMap
 use response.HttpResponse
 
@@ -16,9 +16,9 @@ model Buffer {
 }
   
 public model HttpRequest {
-    var _url: string
-    var data: HashMap<string, string>
-    new(url: string) {
+    var _url: String
+    var data: HashMap<String, String>
+    new(url: String) {
         this._url = url
         this.data = HashMap()
     }
@@ -26,14 +26,14 @@ public model HttpRequest {
         todo()
     }
     /// Returns the method of the request,
-    public function method -> string {
+    public function method -> String {
         todo()
     }
     /// Returns the URL route of the request.
-    public function url -> string {
+    public function url -> String {
         return this._url
     }
-    /// Gets the complete body buffer of the string asynchronously.
+    /// Gets the complete body buffer of the String asynchronously.
     public async function body -> Buffer {
         todo()
     }
@@ -46,7 +46,7 @@ public model HttpRequest {
         todo()
     }
     /// Stores data on the request object.
-    public function storeData(key: string, value: string) {
+    public function storeData(key: String, value: String) {
         var {} = this.data.set(key, value)
     }
     /// Creates a new response model from the request.
@@ -55,7 +55,7 @@ public model HttpRequest {
     }
     /// Returns an error based on this request.
     public function createError(
-        message: string, 
+        message: String, 
         statusCode?: i32
     ) -> HttpRequestError {
         return HttpRequestError(message, this, statusCode)
@@ -63,27 +63,27 @@ public model HttpRequest {
 }
 
 public model RequestHeaders {
-    function get(name: string) -> ?string {
+    function get(name: String) -> ?String {
         todo()
     }
-    function has(name: string) -> boolean {
+    function has(name: String) -> boolean {
         todo()
     }
     /// Returns the 
-    public function getOrErr(name: string) -> Outcome<string, HttpRequestError> 
+    public function getOrErr(name: String) -> Outcome<String, HttpRequestError> 
     {
         todo()
     }
 }
 public model RequestParams {
-    public function get(name: string) -> ?string {
+    public function get(name: String) -> ?String {
         todo()
     }
-    public function getOrErr(name: string) -> Outcome<string, HttpRequestError> 
+    public function getOrErr(name: String) -> Outcome<String, HttpRequestError> 
     {
         todo()
     }
-    function has(name: string) -> boolean {
+    function has(name: String) -> boolean {
         todo()
     }
 }
@@ -94,15 +94,15 @@ public model RequestParams {
 /// The error is non-fatal, meaning that it does not lead to the
 /// crashing of the server when it happens.
 public model HttpRequestError implements Display {
-    var message: string
-    var route: string
+    var message: String
+    var route: String
     var statusCode: i32
-    new(message: string, request: HttpRequest, statusCode?: i32) {
+    new(message: String, request: HttpRequest, statusCode?: i32) {
         this.message = message
         this.route = request.url()
         this.statusCode = statusCode.unwrapOr(400)
     }
-    public function [Display.toStr] -> string {
+    public function [Display.toStr] -> String {
         return "Error: " + this.message
     }
 }

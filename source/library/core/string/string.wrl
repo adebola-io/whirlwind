@@ -7,17 +7,21 @@ use core.interfaces.Default
 use core.iterate.{AsIterator, Iterable}
 use core.maybe.some
 use core.numeric.i32
-use core.ops.{Addition, Range}
-use core.sentinels.todo
+use core.ops.{Addition}
+use core.sentinels.{nonfatal, todo}
 
 public use display.Display
 public use coloredstring.ColoredString
 public use template.Template
 
+
+var CONT_MASK = 0b00111111
+var PADDING_CHARACTER = 0x20
+
 /// Model for creating, manipulating and formatting text sequences.
-public model string 
+public model String 
     implements Addition 
-    + AsIterator<string, Chars> 
+    + AsIterator<String, Chars> 
     + Default
     + Display
     + Hash
@@ -29,12 +33,12 @@ public model string
     }
 
     /// Implementation of the Display trait.
-    public function [Display.toStr] -> string {
+    public function [Display.toStr] -> String {
        return '"' + this.replace('"', '\\"') + '"'
     }
     /// Implementation of the Default trait.
     static function [Default.init] -> This {
-        return ""
+        return String([])
     }
     /// Adds two strings together.
     /// ## Usage
@@ -47,10 +51,10 @@ public model string
         newString.vec.append(this.vec)
         return newString
     }
-    /// Creates an iterator from the contents of a string.
+    /// Creates an iterator from the contents of a String.
     /// ## Usage
     /// ```
-    /// var str = "This is a string"
+    /// var str = "This is a String"
     /// for char in str {
     ///     print(char)
     /// }
@@ -58,7 +62,7 @@ public model string
     public function [AsIterator.iter] -> Chars {
         return Chars(this.vec.iter())
     }
-    /// Adds text to the end of the string.
+    /// Adds text to the end of the String.
     /// ## Usage
     /// ```
     /// var str = "Hello"
@@ -66,17 +70,17 @@ public model string
     /// 
     /// assert(str).equals("Hello, world!")
     /// ```
-    public function append(suffix: string) {
+    public function append(suffix: String) {
         this.vec.append(suffix.vec)
     }
-    /// Converts the string to an array of bytes.
+    /// Converts the String to an array of bytes.
     /// ### Usage
     /// ```
     /// ```
     public function bytes -> []i32 {
-        return this.vec
+        return this.vec + []
     }
-    /// Changes the first character of every word in the string to upper case.
+    /// Changes the first character of every word in the String to upper case.
     /// ## Usage
     /// ```
     /// var str = "jonathan is a boy"
@@ -84,10 +88,26 @@ public model string
     /// 
     /// assert(str2).equals("Jonathan Is A Boy")
     /// ```
-    public function capitalCase -> string {
-        todo()
+    public function capitalCase -> String {
+        var result = String.withCapacity((this.vec.length())) 
+        var isNewWord = true // Flag to track the start of a new word 
+
+        for char in this.characters() {
+            if char.isWhitespace() {  
+                isNewWord = true
+                result += char 
+            } else {
+                if isNewWord {
+                    result += char.upperCase()
+                    isNewWord = false
+                } else {
+                    result += char
+                }
+            }
+        }
+        return result 
     }
-    /// Returns an iterator over the valid characters in the string.
+    /// Returns an iterator over the valid characters in the String.
     /// ## Usage
     /// ```
     /// var str = "adebola.io"
@@ -99,7 +119,7 @@ public model string
     public function characters -> Chars {
         return Chars(this.vec.iter())
     }
-    /// Empties the string of its characters.
+    /// Empties the String of its characters.
     /// ## Usage
     /// ```
     /// var str = "tralalalalaleeday"
@@ -111,7 +131,7 @@ public model string
     public function clear {
         this.vec = Array(this.vec.capacity())
     }
-    /// Returns true if a substring is contained within the string.
+    /// Returns true if a substring is contained within the String.
     /// ## Usage
     /// ```
     /// var str = "This is a world premiere."
@@ -119,36 +139,108 @@ public model string
     /// assertThat(str.contains("world"))
     /// assertThat(str.contains("premiere"))
     /// ```
-    public function contains(substr: string) -> boolean {
+    public function contains(substr: String) -> boolean {
        return this.vec.includes(substr.vec)
     }
-    /// Returns true if the string ends with a given pattern.
+    /// Returns true if the String ends with a given pattern.
     /// ### Usage
     /// ```
     /// var name = "Michael"
     /// assertThat(name.endsWith("l"))
     /// assertThat(name.endsWith("ael"))
     /// ```
-    public function endsWith(pat: string) -> boolean {
-        var thisIter = this.vec.reverse()
-        var patternIter = pat.vec.reverse()
-        thisIter.zip(patternIter).all(fn (tuple) {
-            tuple.a == tuple.b
-        })
+    public function endsWith(pat: String) -> boolean {
+        var patternLength = pat.vec.length()
+        var stringLength = this.vec.length() 
+        if patternLength > stringLength {
+            return false
+        }
+        var i = stringLength - 1
+        while i > patternLength {
+            if this.vec[i] != pat.vec[i] {
+                return false
+            }
+            i -= 1
+        }
+        return true
     }
-    /// Returns true if the string is made up entirely of alphabetic and numeric characters.
+    /// Returns true if the String is made up entirely of (ASCII) alphabetic characters.
+    /// ## Usage
+    /// ```
+    /// var str = "abcdefghijklmnopqrstuvwxyz"
+    /// assertThat(str.isAsciiAlphabetic())
+    /// 
+    /// var str2 = "123"
+    /// assertThat(!str2.isAsciiAlphabetic())
+    /// ```
+    public function isAsciiAlphabetic -> boolean {
+        for character in this.characters() {
+            if character.vec.length() > 1 {
+                return false
+            }
+            var codePoint = character.vec[0]
+            if (codePoint < 65 or (codePoint > 90 and codePoint < 97) or codePoint > 122) {
+                return false
+            }
+        }
+        return false
+    }
+    /// Returns true if the String is made up entirely of (ASCII) numeric characters.
+    /// ## Usage
+    /// ```
+    /// var str2 = "123"
+    /// assertThat(str2.isAsciiNumeric())
+    /// 
+    /// var str = "abcdefghijklmnopqrstuvwxyz"
+    /// assertThat(!str.isAsciiNumeric())
+    /// ```
+    public function isAsciiNumeric -> boolean {
+        for character in this.characters() {
+            if character.vec.length() > 1 {
+                return false
+            }
+            var codePoint = character.vec[0]
+            if (codePoint < 48 or codePoint > 57) {
+                return false
+            }
+        }
+        return false
+    }
+    /// Returns true if the String is made up entirely of (ASCII) alphabetic and numeric characters.
     /// ## Usage
     /// ```
     /// var str = "helloworld1234"
-    /// assertThat(str.isAlphanumeric())
+    /// assertThat(str.isAsciiAlphanumeric())
     /// 
     /// var str2 = "%hello_world$"
-    /// assertThat(!str2.isAlphanumeric())
+    /// assertThat(!str2.isAsciiAlphanumeric())
     /// ```
-    public function isAlphanumeric -> boolean {
+    public function isAsciiAlphanumeric -> boolean {
+        for character in this.characters() {
+            if character.vec.length() > 1 {
+                return false
+            }
+            var codePoint = character.vec[0]
+            if (codePoint < 48) 
+                or (codePoint > 57 and codePoint < 65)
+                or (codePoint > 90 and codePoint < 97)
+                or codePoint > 122
+            {
+                return false
+            }
+        }
+        return false
+    }
+    /// Returns true if the String is made up entirely of whitespace characters.
+    /// ### Usage
+    /// ```
+    /// var str = "     "
+    /// assertThat(str.isWhitespace())
+    /// ```
+    public function isWhitespace -> boolean {
         todo()
     }
-    /// Returns true if the string has no characters.
+    /// Returns true if the String has no characters.
     /// ## Usage
     /// ```
     /// var str = ""
@@ -160,16 +252,27 @@ public model string
     public function isEmpty -> boolean {
         return this.vec.length() == 0
     }
-    /// Returns the number of bytes in the string.
-    /// ## Usage
+    /// Returns the number of bytes in the UTF-8 encoded String.
+    /// 
+    /// **Important:** For non-ASCII strings, the number of bytes will not 
+    /// directly correspond to the number of characters due to multibyte characters. 
+    /// 
+    /// To count the number of characters in a String, use the `str.characters().count()` function. 
+    /// ### Usage
     /// ```
-    /// var str = "Hello"
-    /// assert(str.length()).equals(5)
+    /// var str = "Hello" 
+    /// assert(str.length()).equals(5) // 5 bytes
+    /// 
+    /// var str2 = "こんにちは"  
+    /// assert(str2.length()).equals(9) // 9 bytes, but 3 characters
+    /// 
+    /// assert(str.characters().count()).equals(5)
+    /// assert(str2.characters().count()).equals(3)
     /// ```
     public function length -> i32 {
         return this.vec.length()
     }
-    /// Changes the case of all letters in the string to lower case.
+    /// Changes the case of all ASCII letters in the String to lower case.
     /// ## Usage
     /// ```
     /// var str = "HELLO, WORLD!"
@@ -177,10 +280,18 @@ public model string
     /// 
     /// assert(str2).equals("hello, world!")
     /// ```
-    public function lowerCase -> string {
-        todo()
+    public function lowerCase -> String {
+        var result = String.withCapacity(this.vec.length()) 
+        for char in this.characters() {
+            if char.isAsciiAlphabetic() and char.vec[0] >= 65 and char.vec[0] <= 90 { 
+                result.vec.push(char.vec[0] + 32)
+            } else {
+                result.vec.append(char.vec)
+            }
+        }
+        return result 
     }
-    /// Returns a version of the string with padding on both sides.
+    /// Returns a version of the String with padding on both sides.
     /// ## Usage
     /// ```
     /// var str = "Alright"
@@ -188,10 +299,33 @@ public model string
     /// 
     /// assert(str2).equals("   Alright   ") // 3 spaces before and after.
     /// ```
-    public function pad(count: i32) -> string {
-        todo()
+    public function pad(count: i32) -> String {
+        var paddingCount = if count < 0 {
+            nonfatal("InvalidArgument: Padding count cannot be negative. Defaulting to zero.")
+            0
+        } else {
+            count
+        }
+
+        var currentLength = this.vec.length()
+        var totalLength = currentLength + paddingCount * 2
+        var paddedString = String.withCapacity(totalLength)
+
+        var i = 0 
+        while i < totalLength {
+            if i < paddingCount || i >= currentLength + paddingCount {
+                // We're in the padding section
+                paddedString.vec[i] = PADDING_CHARACTER
+            } else {
+                // We're in the original content section
+                paddedString.vec[i] = this.vec[i - paddingCount]
+            }
+            i += 1
+        }
+
+        return paddedString
     }
-    /// Returns a version of the string with left padding.
+    /// Returns a version of the String with left padding.
     /// ## Usage
     /// ```
     /// var str = "Alright"
@@ -199,21 +333,63 @@ public model string
     /// 
     /// assert(str2).equals("   Alright") // 3 spaces before.
     /// ```
-    public function padLeft(count: i32) -> string {
-        todo()
+    public function padLeft(count: i32) -> String {
+        var paddingCount = if count < 0 {
+            nonfatal("InvalidArgument: Padding count cannot be negative. Defaulting to zero.")
+            0
+        } else {
+            count
+        }
+
+        var currentLength = this.vec.length()
+        var totalLength = currentLength + paddingCount
+        var paddedString = String.withCapacity(totalLength)
+
+        var i = 0 
+        while i < totalLength {
+            if i < paddingCount {
+                paddedString.vec[i] = PADDING_CHARACTER
+            } else {
+                paddedString.vec[i] = this.vec[i - paddingCount]
+            }
+            i += 1
+        }
+
+        return paddedString
     }
-    /// Returns a version of the string with left padding.
+    /// Returns a version of the String with left padding.
     /// ## Usage
-    /// ```
+    /// ``` 
     /// var str = "Alright"
     /// var str2 = str.padRight(3)
     /// 
     /// assert(str2).equals("Alright   ") // 3 spaces before.
     /// ```
-    public function padRight(count: i32) -> string {
-        todo()
+    public function padRight(count: i32) -> String {
+        var paddingCount = if count < 0 {
+            nonfatal("InvalidArgument: Padding count cannot be negative. Defaulting to zero.")
+            0
+        } else {
+            count
+        }
+
+        var currentLength = this.vec.length()
+        var totalLength = currentLength + paddingCount * 2
+        var paddedString = String.withCapacity(totalLength)
+
+        var i = 0 
+        while i < totalLength {
+            if i >= currentLength + paddingCount {
+                paddedString.vec[i] = PADDING_CHARACTER
+            } else {
+                paddedString.vec[i] = this.vec[i - paddingCount]
+            }
+            i += 1
+        }
+
+        return paddedString
     }
-    /// Pads the string in place with whitespace on the left and right sides.
+    /// Pads the String in place with whitespace on the left and right sides.
     /// ## Usage
     /// ```
     /// var str = "Hello, world!"
@@ -224,7 +400,7 @@ public model string
     public function padInPlace(count: i32) {
         this = this.pad(count)
     }
-    /// Adds text to the start of the string.
+    /// Adds text to the start of the String.
     /// ## Usage
     /// ```
     /// var str = "world!"
@@ -232,13 +408,13 @@ public model string
     /// 
     /// assert(str).equals("Hello, world!")
     /// ```
-    public function prepend(prefix: string) {
+    public function prepend(prefix: String) {
         var newString = prefix
         newString += this
         this = newString
     }
-    /// Returns a string value that is made from a number of copies of the original string.
-    /// If count is 0, the empty string is returned.
+    /// Returns a String value that is made from a number of copies of the original String.
+    /// If count is 0, the empty String is returned.
     /// ## Usage
     /// ```
     /// var str = "Whirlwind"
@@ -252,14 +428,14 @@ public model string
     /// var str3 = str.repeat(0)
     /// assertThat(str2.IsEmpty()) // No copies.
     /// ```
-    public function repeat(count: i32) -> string {
-        var str: string
+    public function repeat(count: i32) -> String {
+        var str: String
         for {} in 0..count {
            str.append(this)
         }
         return str
     }
-    /// Replaces all instances of a substring and returns the new string.
+    /// Replaces all instances of a substring and returns the new String.
     /// ## Usage
     /// ```
     /// var str = "John goes to school. John buys a book."
@@ -268,10 +444,10 @@ public model string
     /// 
     /// assert(str2).equals("Mike goes to school. Mike buys a book.")
     /// ```
-    public function replace(subStr: string, newStr: string) -> string {
+    public function replace(subStr: String, newStr: String) -> String {
         todo()
     }
-    /// Returns a reversed version of the string.
+    /// Returns a reversed version of the String.
     /// ## Usage
     /// ```
     /// var str = "pandemonium"
@@ -280,25 +456,25 @@ public model string
     /// 
     /// assert(str2).equals("muinomednap")
     /// ```
-    public function reverse -> string {
-        var newString = ""
+    public function reverse -> String {
+        var newString = String.withCapacity(this.vec.length())
         for char in this.characters() {
             newString = char + newString
         }
         return newString
     }
-    /// Returns a section of the string.
-    /// The range argument is exclusive, meaning it goes from the left index all the way to one before the right.
+    /// Returns a section of the String.
+    /// The range arguments are exclusive, meaning it goes from the left index all the way to one before the right.
     /// ## Usage
     /// ```
     /// var str = "Hello, world!"
     /// 
-    /// assert(str.slice(0..5)).equals(some("Hello")) // index 0 to 4.
+    /// assert(str.slice(0, some(5))).equals(some("Hello")) // index 0 to 4.
     /// ```
-    public function slice(bounds: Range<i32>) -> ?string {
+    public function slice(start: i32, end?: i32) -> ?String {
         todo()
     }
-    /// Divides the string into a list of substrings based on a delimeter.
+    /// Divides the String into a list of substrings based on a delimeter.
     /// ## Usage
     /// ```
     /// var str = "Ring around the rosy"
@@ -306,10 +482,10 @@ public model string
     /// 
     /// assert(words == ["Ring", "Around", "The", "Rosy"])
     /// ```
-    public function split(delim: string) -> []string {
+    public function split(delim: String) -> []String {
         todo()
     }
-    /// Divides the string into a list of substrings based on a predicate.
+    /// Divides the String into a list of substrings based on a predicate.
     /// ## Usage
     /// ```
     /// var str = "Hello world. My name is James."
@@ -317,10 +493,10 @@ public model string
     /// 
     /// assert(sentences).equals(["Hello world", "My name is James."])
     /// ```
-    public function splitAt(predicate: fn(pattern: string) -> boolean) -> []string {
+    public function splitAt(predicate: fn(pattern: String) -> boolean) -> []String {
         todo()
     }
-    /// Changes only the first character in the string to upper case.
+    /// Changes only the first character in the String to upper case.
     /// ## Usage
     /// ```
     /// var str = "nice to meet you, where you been?"
@@ -328,23 +504,32 @@ public model string
     /// 
     /// assert(str2).equals("Nice to meet you, where you been?")
     /// ```
-    public function sentenceCase -> string {
-        return this.characters()
-            .next()
-            .map(fn (c) c.upperCase() + this.slice(1..this.length()).unwrapOr(""))
-            .unwrapOr("")
+    public function sentenceCase -> String {
+        var result = String.withCapacity(this.vec.length())
+        var stringLength = this.vec.length()
+        var maybeFirstCharacter = this.characters().next()
+        if maybeFirstCharacter.isNone() {
+            return ""
+        }
+        result += maybeFirstCharacter.unwrap().upperCase()
+        var i = result.vec.length() // length of first character.
+        while i < stringLength {
+            result.vec.push(this.vec[i])
+            i += 1
+        }
+        return result
     }
-    /// Returns a version of the string without left or right whitespace padding.
+    /// Returns a version of the String without left or right whitespace padding.
     /// ## Usage
     /// ```
     /// var str = "\n\n\nWhat then shall we say?  \n\n\n\r\t"
     /// 
     /// assert(str.trim()).equals("What then shall we say?")
     /// ```
-    public function trim -> string {
+    public function trim -> String {
         todo()
     }  
-    /// Mutates the string in place and removes left or right whitespace padding.
+    /// Mutates the String in place and removes left or right whitespace padding.
     /// ## Usage
     /// ```
     /// var str = "\n\n\nWhat then shall we say?  \n\n\n\r\t"
@@ -356,36 +541,44 @@ public model string
     public function trimInPlace {
         this = this.trim()
     }   
-    /// Returns a version of the string without left whitespace padding.
+    /// Returns a version of the String without left whitespace padding.
     /// ## Usage
     /// ```
     /// var str = "\n\n\nWhat then shall we say?\n"
     /// 
     /// assert(str.trimStart()).equals("What then shall we say?\n")
     /// ```
-    public function trimStart -> string {
+    public function trimStart -> String {
         todo()
     } 
-    /// Returns a version of the string without right whitespace padding.
+    /// Returns a version of the String without right whitespace padding.
     /// ## Usage
     /// ```
     /// var str = "\nWhat then shall we say?\n\n\n"
     /// 
     /// assert(str.trimEnd()).equals("\nWhat then shall we say?")
     /// ```
-    public function trimEnd -> string {
-        todo()
+    public function trimEnd -> String { 
+       todo()
     }
-    /// Changes the case of all letters in the string to upper case.
+    /// Changes the case of all letters in the String to upper case.
     /// ## Usage
     /// ```
     /// var str = "hello, world!"
     /// assert(str.upperCase()).equals("HELLO, WORLD!")
     /// ```
-    public function upperCase -> string {
-        todo()
+    public function upperCase -> String {
+        var result = String.withCapacity(this.vec.length())
+        for char in this.characters() {
+            if char.isAsciiAlphabetic() and char.vec[0] >= 97 and char.vec[0] <= 122 {
+                result.vec.push(char.vec[0] - 32)
+            } else {
+                result.vec.append(char.vec)
+            }
+        }
+        return result 
     }
-    /// Returns true if the string starts with a given pattern.
+    /// Returns true if the String starts with a given pattern.
     /// 
     /// ### Usage
     /// ```
@@ -393,67 +586,79 @@ public model string
     /// assertThat(name.startsWith("J"))
     /// assertThat(name.startsWith("Jo"))
     /// ```
-    public function startsWith(pat: string) -> boolean {
-        var iterA = this.vec.iter()
-        var iterB = pat.vec.iter()
-        return iterA.zip(iterB).all(fn (tuple) tuple.a == tuple.b)
+    public function startsWith(pat: String) -> boolean {
+        var patternLength = pat.vec.length()
+        var stringLength = this.vec.length() 
+        if patternLength > stringLength {
+            return false
+        }
+        var i = 0
+        while i < patternLength {
+            if this.vec[i] != pat.vec[i] {
+                return false
+            }
+            i += 1
+        }
+        return true
     }
-    /// Creates a string with at least the specified capacity.
+    /// Creates a String with at least the specified capacity.
     /// ### Usage
     /// ```
     /// ```
     public static function withCapacity(capacity: i32) -> This {
-        return string(Array(capacity))
+        return String(Array(capacity))
     }
-    /// Creates a string from an array of bytes.
+    /// Creates a String from an array of bytes.
     /// ### Usage
     /// ```
     /// ```
     public static function fromUtf8(vec: []i32) -> This {
-        return string(vec)
+        return String(vec)
     }
-    /// Creates a string from a value that implements Display.
+    public static function fromCodePoint(point: i32) -> This {
+        return String([point])
+    }
+    /// Creates a String from a value that implements Display.
     /// ### Usage
     /// ```
     /// var value = 1234
-    /// var valueStr = string.from(value)
+    /// var valueStr = String.from(value)
     /// 
     /// assert(valueStr).equals("1234")
     /// ```
     public static function from<T implements Display>(value: T) -> This {
        return value.toStr()
     }
-    /// Creates a new formattable string template.
+    /// Creates a new formattable String template.
     /// ### Usage
     /// ```
-    /// var greeting = string.fmt("Hello, %!")
+    /// var greeting = String.fmt("Hello, %!")
     /// var greetingStr = greeting.add("John").finish()
     /// 
     /// assert(greetingStr).equals("Hello, John!")
     /// ```
-    public static function fmt(template: string) -> Template {
+    public static function fmt(template: String) -> Template {
         return Template(template)
     }
 }
 
 
-/// A simple iterator over the characters in a string.
-public model Chars implements Iterable<string> {
+/// A simple iterator over the characters in a String.
+public model Chars implements Iterable<String> {
     var idx: i32
     var bytes: ArrayIter<i32>
     
     new(bytes: ArrayIter<i32>) {
         this.idx = 0
-        this.bytes = bytes;
+        this.bytes = bytes
     }
-    /// Returns the next character in the string.
-    public function [Iterable.next] -> ?string {
-        return nextCodePoint(this.bytes).map(fn(ch) string.fromUtf8([ch]))
+    /// Returns the next character in the String.
+    public function [Iterable.next] -> ?String {
+        return nextCodePoint(this.bytes).map(fn(ch) String.fromUtf8([ch]))
     }
 }
 
-var CONT_MASK = 0b00111111
-
+// The algorithm is from the Rust standard library.
 public function nextCodePoint(bytes: ArrayIter<i32>) -> ?i32 {
     // Decode UTF-8
     var x = bytes.next()?
@@ -465,25 +670,25 @@ public function nextCodePoint(bytes: ArrayIter<i32>) -> ?i32 {
     // Decode from a byte combination out of: [[[x y] z] w]
     // NOTE: Performance is sensitive to the exact formulation here
     var init = utf8FirstByte(x, 2)
-    // SAFETY: `bytes` produces an UTF-8-like string,
+    // SAFETY: `bytes` produces an UTF-8-like String,
     // so the iterator must produce a value here.
     var y = bytes.next().unwrap()
     var ch = utf8AccContByte(init, y)
     if x > 0xE0 {
         // [[x y z] w] case
         // 5th bit in 0xE0 .. 0xEF is always clear, so `init` is still valid
-        // SAFETY: `bytes` produces an UTF-8-like string,
+        // SAFETY: `bytes` produces an UTF-8-like String,
         // so the iterator must produce a value here.
-        var z = bytes.next().unwrap();
-        var y_z = utf8AccContByte((y & CONT_MASK), z);
-        ch = init << 12 | y_z;
+        var z = bytes.next().unwrap()
+        var y_z = utf8AccContByte((y & CONT_MASK), z)
+        ch = init << 12 | y_z
         if x >= 0xF0 {
             // [x y z w] case
             // use only the lower 3 bits of `init`
-            // SAFETY: `bytes` produces an UTF-8-like string,
+            // SAFETY: `bytes` produces an UTF-8-like String,
             // so the iterator must produce a value here.
-            var w = bytes.next().unwrap() ;
-            ch = (init & 7) << 18 | utf8AccContByte(y_z, w);
+            var w = bytes.next().unwrap() 
+            ch = (init & 7) << 18 | utf8AccContByte(y_z, w)
         }
 
     }
@@ -500,8 +705,8 @@ function utf8AccContByte(ch: i32, byte: i32) -> i32 {
     ((ch << 6) | (byte & CONT_MASK))
 }
 
-/// Represents an interface for models that can be created from a string representation.
+/// Represents an interface for models that can be created from a String representation.
 public interface FromStr {
-    /// Parses a provided string and returns an instance of the implementing type.
-    public static function fromStr(str: string) -> ?This
+    /// Parses a provided String and returns an instance of the implementing type.
+    public static function fromStr(str: String) -> ?This
 }

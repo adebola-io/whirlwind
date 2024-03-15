@@ -3,7 +3,7 @@
 /// It provides a foundational framework that underpins countless aspects of the language's functionality.
 /// 
 /// The Core library is made up of utility functions and methods that streamline common programming tasks,
-/// ranging from string manipulation and arrays to networking and file system handling.
+/// ranging from String manipulation and arrays to networking and file system handling.
 module core
 
 public use array

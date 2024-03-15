@@ -1,7 +1,7 @@
 module path
 
 use super.io.IoError
-use core.prelude.{Outcome, boolean, todo, string}
+use core.prelude.{Outcome, boolean, todo, String}
 
 public model Path {
     new() {
@@ -14,10 +14,10 @@ public model Path {
     public function toAbsolute -> Outcome<Path, IoError> {
         todo()
     }
-    public function extname -> ?string {
+    public function extname -> ?String {
         todo()
     }
-    public function basename -> ?string {
+    public function basename -> ?String {
         todo()
     }
 }

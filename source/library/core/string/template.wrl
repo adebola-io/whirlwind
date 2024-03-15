@@ -6,7 +6,7 @@ use core.{
     sentinels.todo
 }
 use display.Display
-use string.string
+use string.String
 
 
 /// The Template model helps in the construction of dynamic strings by 
@@ -14,27 +14,27 @@ use string.string
 /// works by defining and substituting characters with values retreived from
 /// various sources, ensuring support for basic transformations and type safety.
 public model Template implements Display {
-    var template: string
-    var arguments: []string
-    var map: HashMap<string, string>
-    var transforms: []fn(x: string) -> string
+    var template: String
+    var arguments: []String
+    var map: HashMap<String, String>
+    var transforms: []fn(x: String) -> String
     
-    new(origin: string) {
+    new(origin: String) {
         this.map = HashMap()
         this.template = origin
         this.transforms = []
         this.arguments = []
     }
-    public function [Display.toStr] -> string {
+    public function [Display.toStr] -> String {
         return this.finish()
     }
-    /// Sets an argument based on the list of named parameters in the template string.
+    /// Sets an argument based on the list of named parameters in the template String.
     /// ### Usage
     /// ```
     /// var weather = "bright"
     /// var emotion = "happy"
     /// 
-    /// var template = string.fmt(
+    /// var template = String.fmt(
     ///            "The day is %{weather}, 
     ///             It's bright and fair,
     ///             Oh %{emotion} day,
@@ -51,18 +51,18 @@ public model Template implements Display {
     ///             Oh happy day,
     ///             The day of joy!")
     /// ```
-    public function set<A implements Display>(param: string, value: A) -> This {
+    public function set<A implements Display>(param: String, value: A) -> This {
         this.map.set(param, value.toStr())
         return this
     }
     /// Adds an argument according to the list of positional parameters
-    /// in the template string.
+    /// in the template String.
     /// ### Usage
     /// ```
     /// var name = "Sefunmi"
     /// var age = 21
     /// 
-    /// var template = string.fmt("My name is % and I am % years old.")
+    /// var template = String.fmt("My name is % and I am % years old.")
     /// var completed = template.add(name).add(age).finish()
     /// 
     /// assert(completed).equals("My name is Sefunmi and I am 21 years old.")
@@ -74,7 +74,7 @@ public model Template implements Display {
     /// Appends new template text to the end of the template.
     /// ### Usage
     /// ```
-    /// var name = string.fmt("Welcome, %!")
+    /// var name = String.fmt("Welcome, %!")
     /// name.add("Mark")
     /// 
     /// name.extend(" Good %.")
@@ -82,7 +82,7 @@ public model Template implements Display {
     /// 
     /// assert(name.finish()).equals("Welcome, Mark! Good Morning.")
     /// ```
-    public function extend(suffix: string) -> This {
+    public function extend(suffix: String) -> This {
         this.template += suffix
         return this
     }
@@ -94,19 +94,19 @@ public model Template implements Display {
     /// transformer is ignored until it is.
     /// ### Usage
     /// ```
-    /// var template = string.fmt("Hello %!")
+    /// var template = String.fmt("Hello %!")
     /// 
     /// template.transform(0, fn(x) x.capitalCase())
     /// template.add("john")
     /// 
     /// assert(template.finish()).equals("Hello, John!")
     /// ```
-    public function transform(arg: i32, transformer: fn(x: string) -> string) -> This {
+    public function transform(arg: i32, transformer: fn(x: String) -> String) -> This {
         this.transforms.push(transformer)
         return this
     }
-    /// Builds a string from the template with all the inputted values.
-    public function finish -> string {
+    /// Builds a String from the template with all the inputted values.
+    public function finish -> String {
         todo()
     }
 }

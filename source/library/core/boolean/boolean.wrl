@@ -3,8 +3,9 @@
 module boolean
 
 use core.maybe.{none, some}
+use core.numeric.i32
 use core.interfaces.Default
-use core.string.{Display, FromStr, string}
+use core.string.{Display, FromStr, String}
 
 /// A representation of boolean values, `true` or `false`.
 public model boolean 
@@ -16,11 +17,17 @@ public model boolean
         return false
     }
 
-    public function [Display.toStr] -> string {
+    public function [Display.toStr] -> String {
         if this { "true" } else "false"
     }
 
-    public static function [FromStr.fromStr](str: string) -> ?This {
+    /// Returns an integer representation of the boolean
+    /// (1 for `true`, 0 for `false`)
+    public function toInt -> i32 {
+        if this { 1 } else { 0 }
+    }
+
+    public static function [FromStr.fromStr](str: String) -> ?This {
         if str == "true" { some(true) } 
         else if str == "false" { some(false) }
         else none()

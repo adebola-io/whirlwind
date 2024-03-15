@@ -1,7 +1,7 @@
 module sextuple
 
 use core.maybe.some
-use core.string.{Display, string}
+use core.string.{Display, String}
 
 use ntuple.NTuple
 
@@ -47,9 +47,9 @@ public model Sextuple<T, U, V, W, X, Y>
             and W implements Display
             and X implements Display
             and Y implements Display
-        ) -> string
+        ) -> String
     {
-        return string.fmt("Sextuple(%, %, %, %, %, %)")
+        return String.fmt("Sextuple(%, %, %, %, %, %)")
             .add(this.a.toStr())
             .add(this.b.toStr())
             .add(this.c.toStr())
