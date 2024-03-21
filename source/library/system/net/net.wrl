@@ -11,7 +11,7 @@ public model Url implements Display {
     var host: String
     var path: String
 
-    public function [Display.toStr] -> String {
+    public function [Display.toString] -> String {
         todo()
     }
 }

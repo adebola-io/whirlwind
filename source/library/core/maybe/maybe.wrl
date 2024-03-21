@@ -50,12 +50,12 @@ public model Maybe<T>
     /// ### Usage
     /// ```
     /// var maybeInt = some(90)
-    /// assert(maybeInt.toStr()).equals("Maybe.some(90)")
+    /// assert(maybeInt.toString()).equals("Maybe.some(90)")
     /// 
     /// maybeInt = none()
-    /// assert(maybeInt.toStr()).equals("Maybe.none")
+    /// assert(maybeInt.toString()).equals("Maybe.none")
     /// ```
-    public function [Display.toStr]|=(T implements Display) -> String {
+    public function [Display.toString]|=(T implements Display) -> String {
         if this.isNone() {
             return "Maybe.none"
         }
@@ -108,7 +108,7 @@ public model Maybe<T>
     /// Returns a boolean indicating whether there is a value contained or not.
     /// ### Usage
     /// ```
-    /// var stringValue = some("boy")
+    /// var stringValue = some("body")
     /// assertThat(stringValue.isSome())
     /// 
     /// var noValue: ?String = none()

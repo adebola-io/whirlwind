@@ -43,7 +43,7 @@ public model Outcome<T, E>
         this.errorValue = errorValue
     }
 
-    public function [Display.toStr]|=(T implements Display and E implements Display) -> String 
+    public function [Display.toString]|=(T implements Display and E implements Display) -> String 
     {
         if this.isOk() {
             var value = this.successValue.unwrap();

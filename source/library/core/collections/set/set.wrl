@@ -6,17 +6,24 @@ use core.numeric.i32
 use core.sentinels.todo
 use core.string.{Display, String}
 
-use super.{Hash, HashMap}
+use super.{Hash, HashMap, HashMapKeys}
 
 
-public model SetIterator<T> implements Iterable<T> {
+public model SetIterator<T implements Hash> implements Iterable<T> {
+    var inner: HashMapKeys<T>
+
+    new(inner: HashMapKeys<T>) {
+        this.inner = inner
+    }
+
     public function [Iterable.next] -> ?T {
-        todo()
+        return this.inner.next()
     }
 }
 
 /// An unordered data structure that stores a collection 
 /// of unique elements, akin to the mathematical concept of a set.
+// todo: replace with bitset representation.
 public model Set<T implements Hash> 
     implements AsIterator<T, SetIterator<T>> 
     + Display|=(T implements Display)
@@ -33,13 +40,13 @@ public model Set<T implements Hash>
     }
 
     public function [AsIterator.iter] -> SetIterator<T> {
-        todo()
+        return SetIterator(this.items.keys())
     }
-    public function [Display.toStr]|=(T implements Display) -> String {
+    public function [Display.toString]|=(T implements Display) -> String {
         var str = "Set { "
         for { a as idx, b as tuple } in this.items.iter().enumerate() {
             var { a as item } = tuple
-            str += item.toStr()
+            str += item.toString()
             if idx + 1 != this.items.length() {
                 str += ", "
             }

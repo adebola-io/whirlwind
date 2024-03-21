@@ -72,7 +72,7 @@ macro_rules! check_types {
 fn it_solves_generics() {}
 
 #[test]
-fn it_solves_interface_impls_for_generics() {}
+fn it_solves_interface_impl_for_generics() {}
 
 #[test]
 fn it_blocks_self_referential_declarations() {
@@ -523,14 +523,14 @@ fn method_inherits_generic_arguments() {
         public function getValue() -> T {
             return this.value
         }
-        public function getstringClone() -> GenericModel<String> {
+        public function getStringClone() -> GenericModel<String> {
             todo()
         }
     }
 
     genericModelInst := GenericModel(true);
     outerValue := genericModelInst.getValue();
-    strClone := genericModelInst.getstringClone();
+    strClone := genericModelInst.getStringClone();
 
     tuple := Tuple(true, 'story');
     swapped := tuple.swap();
@@ -571,6 +571,25 @@ fn it_errors_on_generic_import_functions() {
         }
         ",
         &[TypeErrorType::GenericFunctionImport]
+    );
+}
+
+#[test]
+fn it_errors_on_invalid_enum_tags() {
+    text_produces_errors!(
+        "
+        module Test
+
+        enum Color {
+            Red(String<Color>),
+            Blue, 
+            Green,
+            Yellow
+        }
+        ",
+        &[TypeErrorType::UnexpectedGenericArgs {
+            name: format!("String")
+        }]
     );
 }
 

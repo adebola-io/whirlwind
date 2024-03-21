@@ -79,23 +79,23 @@ public model Array<T>
     /// ### Usage
     /// ```
     /// var arr = [1, 6, 7, 8, 10]
-    /// var arrAsStr = arr.toStr()
+    /// var arrAsStr = arr.toString()
     /// 
     /// assert(arrAsStr).equals("[1, 6, 7, 8, 10]")
     /// ```
-    public function [Display.toStr]|=(T implements Display) -> String {
-        var String = "["
+    public function [Display.toString]|=(T implements Display) -> String {
+        var string = "["
         var i = 0
         while i < this.len {
-            var elementStr = this[i].toStr()
-            String.append(elementStr)
+            var elementStr = this[i].toString()
+            string.append(elementStr)
             if i + 1 != this.len { 
-                String.append(", ")
+                string.append(", ")
             }
             i += 1
         }
-        String.append("]")
-        return String
+        string.append("]")
+        return string
     }
     /// Sorts the current array in place, given that its elements are orderable.
     /// ### Usage
@@ -190,7 +190,7 @@ public model Array<T>
         }
         return sum
     }
-    /// Concatenates the elements in an array into one String and returns it.
+    /// Concatenates the elements in an array into one string and returns it.
     /// 
     /// If no separator argument is specified, a single whitespace will be used instead.
     /// ### Usage
@@ -207,16 +207,16 @@ public model Array<T>
     /// ```
     public function join|=(T implements Display)(separator?: String) -> String {
         var separatorValue = separator.unwrapOr(" ")
-        var String = ""
+        var string = ""
         var i = 0
         while i < this.len {
-            String += this[i].toStr()
+            string += this[i].toString()
             if i + 1 != this.len {
-                String += separatorValue
+                string += separatorValue
             }
             i += 1
         }
-        return String
+        return string
     }
     /// Appends the contents of one array to the end of the current array.
     /// ### Usage
@@ -521,7 +521,7 @@ public model Array<T>
         var chosen = []
         while chosen.len < n {
             var nextSelect = (psrandom() * (100).f64()).toFixed()
-            var select = i32.fromStr(nextSelect)!
+            var select = i32.fromString(nextSelect)!
             var selected = this.len % select
             if indices.contains(selected) {
                 continue

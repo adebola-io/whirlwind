@@ -46,7 +46,12 @@
     "line_comment": {
       "name": "comment.line",
       "begin": "//",
+      "patterns": [{ "include": "#comment_tag" }],
       "end": "\n"
+    },
+    "comment_tag": {
+      "name": "meta.special_keyword keyword.storage.special_keyword",
+      "match": "@\\w+"
     },
     "string_literal": {
       "patterns": [
@@ -237,7 +242,7 @@
           "match": "\\.|\\{|\\;|,"
         }
       ],
-      "end": "(?=((public|var|function|model|interface|record|use)\\b)|;|//)"
+      "end": "(?=((public|var|function|model|interface|record||import|enum)\\b)|;|//)"
     },
 
     "enum_declaration": {
@@ -382,7 +387,7 @@
     "type_label": {
       "begin": "(\\:|\\-\\>)\\s*",
       "patterns": [{ "include": "#type_expression" }],
-      "end": "(,(?=\\s*([A-Za-z0-9_$]|_)+\\s*\\??\\s*(\\:|\\-\\>|\\))))|(?=(\\s(var|function|this))|[^A-Za-z0-9\\&\\?\\s\\|\\_\\.\\<\\>\\,\\(\\)\\[\\]])"
+      "end": "(,(?=\\s*([A-Za-z0-9_$]|_)+\\s*\\??\\s*(\\:|\\-\\>|\\))))|(?=(\\s(var|function|this|new|while))|[^A-Za-z0-9\\&\\?\\s\\|\\_\\.\\<\\>\\,\\(\\)\\[\\]])"
     },
     "discrete_type": {
       "patterns": [{ "include": "#type_name" }, { "include": "#generic_args" }]

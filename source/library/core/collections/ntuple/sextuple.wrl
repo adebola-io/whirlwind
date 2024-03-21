@@ -40,7 +40,7 @@ public model Sextuple<T, U, V, W, X, Y>
         this.f = sixth
     }
 
-    public function [Display.toStr]|=(
+    public function [Display.toString]|=(
             T implements Display
             and U implements Display 
             and V implements Display
@@ -50,12 +50,12 @@ public model Sextuple<T, U, V, W, X, Y>
         ) -> String
     {
         return String.fmt("Sextuple(%, %, %, %, %, %)")
-            .add(this.a.toStr())
-            .add(this.b.toStr())
-            .add(this.c.toStr())
-            .add(this.d.toStr())
-            .add(this.e.toStr())
-            .add(this.f.toStr())
+            .add(this.a.toString())
+            .add(this.b.toString())
+            .add(this.c.toString())
+            .add(this.d.toString())
+            .add(this.e.toString())
+            .add(this.f.toString())
             .finish()
     }
 

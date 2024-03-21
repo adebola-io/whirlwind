@@ -49,7 +49,7 @@ pub trait IntrinsicPaths {
     const OPS: &'static str = "ops/ops.wrl";
     const INTERFACES: &'static str = "interfaces/interfaces.wrl";
     const RANGE: &'static str = "ops/range.wrl";
-    const ITERATABLE: &'static str = "iterate/iterate.wrl";
+    const ITERABLE: &'static str = "iterate/iterate.wrl";
     const TRY: &'static str = "interfaces/try.wrl";
     const GUARANTEED: &'static str = "interfaces/guaranteed.wrl";
     const DEFAULT: &'static str = "interfaces/default.wrl";

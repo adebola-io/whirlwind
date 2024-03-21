@@ -29,7 +29,7 @@ public model Quintuple<T, U, V, W, X>
         this.e = fifth
     }
 
-    public function [Display.toStr]|=(
+    public function [Display.toString]|=(
             T implements Display 
             and U implements Display
             and V implements Display
@@ -38,11 +38,11 @@ public model Quintuple<T, U, V, W, X>
         ) -> String
     {
         return String.fmt("Quintuple(%, %, %, %, %)")
-            .add(this.a.toStr())
-            .add(this.b.toStr())
-            .add(this.c.toStr())
-            .add(this.d.toStr())
-            .add(this.e.toStr())
+            .add(this.a.toString())
+            .add(this.b.toString())
+            .add(this.c.toString())
+            .add(this.d.toString())
+            .add(this.e.toString())
             .finish()
     }
 

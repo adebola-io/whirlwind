@@ -23,11 +23,11 @@ public model Tuple<T, U>
     /// ### Usage
     /// ```
     /// var tuple = pair(true, 123)
-    /// var str = tuple.toStr()
+    /// var str = tuple.toString()
     /// 
     /// assert(str).equals("Tuple(true, 123)")
     /// ```
-    public function [Display.toStr]|=(
+    public function [Display.toString]|=(
         T implements Display and U implements Display
     ) -> String {
         return String.fmt("Tuple(%, %)")

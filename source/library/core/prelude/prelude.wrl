@@ -36,7 +36,7 @@ public use core.{
     numeric.{number, i32, int, float, i64, f32, f64},
     outcome.{ok, err, Outcome},
     ops.Range,
-    sentinels.{todo, fatal},
+    sentinels.{todo, fatal, unreachable},
     string.{Display, FromStr, String},
     internals.never,
 }

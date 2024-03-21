@@ -172,7 +172,7 @@ pub fn unify_types(
                     map.insert(*base, eval_type.clone());
                 }
             }
-            // Truncate the list of arguments to the appriopriate size.
+            // Truncate the list of arguments to the appropriate size.
             let generic_arg_length = match &first_instance_symbol.kind {
                 SemanticSymbolKind::Model { generic_params, .. } => generic_params.len(),
                 _ => return Ok(EvaluatedType::Unknown),

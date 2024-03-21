@@ -14,7 +14,6 @@ use errors::TypeError;
 use std::collections::HashMap;
 
 /// Typechecks an assignment expression.
-/// todo: handle constant values.
 pub fn typecheck_assignment_expression(
     assexp: &mut TypedAssignmentExpr,
     checker_ctx: &mut TypecheckerContext<'_>,

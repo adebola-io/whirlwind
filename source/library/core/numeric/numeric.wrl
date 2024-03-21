@@ -26,7 +26,6 @@ public interface Convertible {
     /// ### Usage
     /// ```
     /// var i = (0).f64()
-    /// 
     /// assert(i).equals(1.00)
     /// ```
     public function f32 -> f32
@@ -37,6 +36,14 @@ public interface Convertible {
     /// var i = (0).i64()
     /// ```
     public function i64 -> i64
+
+    /// Interprets the number as a 32-bit integer.
+    /// ### Usage
+    /// ```
+    /// var i = (0).i32()
+    /// assert(i).equals(0)
+    /// ```
+    public function i32 -> i32
 
     /// Converts the current number into a floating 64-bit number.
     public function f64 -> f64
@@ -238,10 +245,6 @@ public model i32
     /// ```
     public function isNegative -> boolean {
         return wasm.__i32_lt_s(this, 0) == 1
-    }
-
-    public static function fromi64(x: i64) -> i32 {
-        return wasm.__i32_wrap_i64(x)
     }
 }
 

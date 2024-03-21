@@ -28,7 +28,7 @@ public model Triple<T, U, V>
         this.c = third
     }
 
-    public function [Display.toStr]|=(
+    public function [Display.toString]|=(
         T implements Display 
             and U implements Display
             and V implements Display

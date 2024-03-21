@@ -18,19 +18,19 @@ use string.String
 ///         this.width = width
 ///     }
 /// 
-///     public function [Display.toStr] -> String {
-///         var template = String.fmt("Rectangle { length: %, breadth: % }")
-///         template.add(this.length).add(this.breadth).finish()
+///     public function [Display.toString] -> String {
+///         var tmpl = String.fmt("Rectangle { length: %, breadth: % }")
+///         return tmpl.add(this.length).add(this.breadth).finish()
 ///     }
 /// }
 /// 
-/// Rectangle(4, 6).toStr() // outputs "Rectangle { length: 4, breadth: 6 }"".
+/// Rectangle(4, 6).toString() // outputs "Rectangle { length: 4, breadth: 6 }"".
 /// ```
 public interface Display {
     /// Converts the implementing type to a String.
-    public function toStr -> String
+    public function toString -> String
     /// Converts the implementing type to a formatted String.
-    public function toFmtStr -> String {
-        return this.toStr()
+    public function toFormattedString -> String {
+        return this.toString()
     }
 }

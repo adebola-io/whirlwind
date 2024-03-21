@@ -28,12 +28,12 @@ public model ColoredString implements Display {
         return this
     }
 
-    public function [Display.toStr] -> String {
+    public function [Display.toString] -> String {
         todo()
     }
 
     public static function from<T implements Display>(value: T) -> This {
-        var text = value.toStr()
+        var text = value.toString()
         return ColoredString(some(text))
     }
 }

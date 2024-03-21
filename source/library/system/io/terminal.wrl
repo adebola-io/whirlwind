@@ -1,6 +1,6 @@
 module terminal
 
-use core.memory.getOffset;
+
 
 import "system" {
     /// Takes a String from memory and prints it to the console.
@@ -14,8 +14,8 @@ import "system" {
 /// print("Hello from the other side!")
 /// ```
 public function print<M implements Display>(message: M) {
-    var messageStr = message.toStr()
-    var offset = getOffset(messageStr)
+    var messageStr = message.toString()
+    var offset = todo()
     var length = messageStr.length()
     startPrint(offset, length)
 }
@@ -30,8 +30,8 @@ public function prompt(message?: String) -> String {
 /// Prints a message or an object to the console, terminal, 
 /// or any predefined output interface.
 public function printFmt<T implements Display>(message: T) {
-    var messageStr = message.toFmtStr()
-    var offset = getOffset(messageStr)
+    var messageStr = message.toFormattedString()
+    var offset = todo()
     var length = messageStr.length()
     startPrint(offset, length)
 }

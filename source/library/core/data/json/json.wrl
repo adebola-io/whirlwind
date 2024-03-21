@@ -93,33 +93,14 @@ public interface JsonValue {
     public function isObject -> boolean {
         return this.getType() == JsonValueType.Object
     }
-    /// Masks the underlying value as a raw json value.
-    public function asValue -> RawJsonVal {
-        if this.isString() { 
-            return JsonString(this.asString()) 
-        }
-        if this.isArray() { 
-            return JsonArray(this.asArray()) 
-        }
-        if this.isNumber() {
-            return JsonNumber(this.asNumber()) 
-        }
-        if this.isObject() {
-            return JsonObject(this.asObject()) 
-        }
-        if this.isNull() {
-            return JsonNull()
-        }
-        todo()
-    }
     /// Converts a JSON array to its underlying value.
-    /// If the underlying value is not an array, the method returns `None()`.
+    /// If the underlying value is not an array, the method returns `none()`.
     /// ### Usage
     /// ```
     /// use core.data.{JsonArray, JsonString}
     /// 
     /// var arr = JsonArray()
-    /// Assert(arr.asArray()).equals(some([]))
+    /// assert(arr.asArray()).equals(some([]))
     /// 
     /// var str = JsonString()
     /// assert(str.asArray()).equals(none())

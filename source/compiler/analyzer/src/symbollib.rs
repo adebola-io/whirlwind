@@ -283,11 +283,11 @@ impl SymbolLibrary {
                 };
                 let truncated_generic_args = truncate_arguments(generic_params, generic_arguments);
                 self.format_generics_into(
-                    generic_arguments.iter().map(|a| &a.1),
+                    truncated_generic_args.iter(),
                     &mut string,
-                    // truncated_generic_args.len(),
-                    generic_arguments.len(),
+                    truncated_generic_args.len(),
                 );
+                return string;
             }
             EvaluatedType::Model(_) => string.push_str("{model}"),
             EvaluatedType::Interface(_) => string.push_str("{interface}"),
@@ -424,7 +424,7 @@ impl SymbolLibrary {
             }
             EvaluatedType::Void => string.push_str("{void}"),
             EvaluatedType::Never => string.push_str("never"),
-            EvaluatedType::Unknown { .. } => string.push_str("{unknown}"),
+            EvaluatedType::Unknown => string.push_str("{unknown}"),
             EvaluatedType::Partial { types } => {
                 for (idx, typ) in types.iter().enumerate() {
                     string.push_str(&self.format_evaluated_type(&typ));

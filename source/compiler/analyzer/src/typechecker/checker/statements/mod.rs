@@ -2,11 +2,13 @@ use super::{expressions::typecheck_block, *};
 use crate::{utils::assume_clause_verity, VariablePatternForm};
 use ast::{unwrap_or_continue, unwrap_or_return, WhirlString};
 
+mod enum_declaration;
 mod forloop;
 mod function;
 mod interface_declaration;
 mod model_declaration;
 
+pub use enum_declaration::typecheck_enum_declaration;
 pub use interface_declaration::typecheck_interface;
 pub use model_declaration::typecheck_model_declaration;
 
@@ -22,7 +24,9 @@ pub fn typecheck_statement(
             typecheck_block(&mut test.body, false, checker_ctx, symbollib);
             pop_scopetype(checker_ctx);
         }
-        // TypedStmnt::EnumDeclaration(_) => todo!(),
+        TypedStmnt::EnumDeclaration(enum_) => {
+            typecheck_enum_declaration(enum_, checker_ctx, symbollib)
+        }
         TypedStmnt::VariableDeclaration(variable) => {
             typecheck_variable_declaration(variable, checker_ctx, symbollib)
         }

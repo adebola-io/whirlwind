@@ -1,7 +1,11 @@
 module main
 
-use system.io.print
+function print<T implements Display>(message: T) {
+    todo()
+}
 
 function main {
     print('Hello, world!')
 }
+
+

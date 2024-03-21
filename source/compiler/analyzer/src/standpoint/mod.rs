@@ -128,7 +128,7 @@ impl Standpoint {
         } else if name == "core" && self.corelib_path.is_some() {
             return self.corelib_path;
         } else {
-            // todo: Packages. namespace.
+            // todo: packages. namespace.
             (name, self.directories.get(dir)?)
         };
 
@@ -184,7 +184,7 @@ impl Standpoint {
             .module_map
             .paths()
             .filter(|(idx, _)| *idx != path_idx)
-            .map(|(_, typedmodule)| typedmodule.path_buf.clone())
+            .map(|(_, typed_module)| typed_module.path_buf.clone())
             .collect::<Vec<_>>();
         let core_lib_path = self
             .corelib_path
@@ -581,7 +581,7 @@ impl Standpoint {
         // intrinsic paths.
         let current_module_type = if let Some(folder) = core_path_folder {
             if let Ok(path) = module_path.strip_prefix(folder) {
-                // To prevent unecessary import errors, global prelude symbols are not
+                // To prevent unnecessary import errors, global prelude symbols are not
                 // allowed to be accessed anywhere else inside the code of the core
                 // library.
                 allow_global = false;
@@ -592,7 +592,7 @@ impl Standpoint {
                     Self::BOOL => CurrentModuleType::Boolean,
                     Self::NUMERIC => CurrentModuleType::Numeric,
                     Self::INTERNAL => CurrentModuleType::Internal,
-                    Self::ITERATABLE => CurrentModuleType::Iteration,
+                    Self::ITERABLE => CurrentModuleType::Iteration,
                     Self::OPS => CurrentModuleType::Ops,
                     Self::INTERFACES => CurrentModuleType::Interfaces,
                     Self::RANGE => CurrentModuleType::Range,
@@ -660,7 +660,7 @@ impl Standpoint {
         Some(path_idx)
     }
 
-    /// Removes the module with a particlar index and all its related characteristics.
+    /// Removes the module with a particular index and all its related characteristics.
     pub fn remove_module(&mut self, path_idx: PathIndex) -> Option<(TypedModule, SymbolTable)> {
         let stale_module = self.module_map.get(path_idx).unwrap();
         let area = SurfaceAreaCalculator::gather_from_module(stale_module, self);

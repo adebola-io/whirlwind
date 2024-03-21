@@ -17,7 +17,7 @@ public model boolean
         return false
     }
 
-    public function [Display.toStr] -> String {
+    public function [Display.toString] -> String {
         if this { "true" } else "false"
     }
 
@@ -27,7 +27,7 @@ public model boolean
         if this { 1 } else { 0 }
     }
 
-    public static function [FromStr.fromStr](str: String) -> ?This {
+    public static function [FromStr.fromString](str: String) -> ?This {
         if str == "true" { some(true) } 
         else if str == "false" { some(false) }
         else none()

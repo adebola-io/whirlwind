@@ -28,7 +28,7 @@ public model Quadruple<T, U, V, W>
         this.d = fourth
     }
 
-    public function [Display.toStr]|=(
+    public function [Display.toString]|=(
             T implements Display 
             and U implements Display
             and V implements Display
@@ -36,10 +36,10 @@ public model Quadruple<T, U, V, W>
         ) -> String
     {
         return String.fmt("Quadruple(%, %, %, %)")
-            .add(this.a.toStr())
-            .add(this.b.toStr())
-            .add(this.c.toStr())
-            .add(this.d.toStr())
+            .add(this.a.toString())
+            .add(this.b.toString())
+            .add(this.c.toString())
+            .add(this.d.toString())
             .finish()
     }
 

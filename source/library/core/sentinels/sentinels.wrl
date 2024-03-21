@@ -30,7 +30,7 @@ use core.{
 /// }
 /// ```
 public function todo<M implements Display>(message?: M) -> never {
-    var messageStr = message.map(fn (message) message.toStr())
+    var messageStr = message.map(fn (message) message.toString())
     return fatal(messageStr.orElse(fn some("Entered unfinished code.")))
 }
 

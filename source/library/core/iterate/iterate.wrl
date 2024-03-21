@@ -8,12 +8,10 @@
 /// a more finegrained control over iteration.
 module iterate 
 
-use core.{
-    boolean.boolean,
-    collections.Tuple,
-    maybe.{none, some},
-    numeric.i32,
-}
+use core.boolean.boolean
+use core.collections.Tuple
+use core.maybe.{some, none}
+use core.numeric.i32
 
 /// ## The Iterable interface
 /// The Iterable interface is a common abstraction that allows different types of collections to be traversed in a uniform way. 

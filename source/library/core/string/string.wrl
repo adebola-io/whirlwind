@@ -33,7 +33,7 @@ public model String
     }
 
     /// Implementation of the Display trait.
-    public function [Display.toStr] -> String {
+    public function [Display.toString] -> String {
        return '"' + this.replace('"', '\\"') + '"'
     }
     /// Implementation of the Default trait.
@@ -47,7 +47,7 @@ public model String
     /// assert(str).equals("Hello, world!")
     /// ```
     public function [Addition.add](other: This) -> This {
-        var newString = this
+        var newString = String.fromUtf8(this.vec + [])
         newString.vec.append(this.vec)
         return newString
     }
@@ -627,7 +627,7 @@ public model String
     /// assert(valueStr).equals("1234")
     /// ```
     public static function from<T implements Display>(value: T) -> This {
-       return value.toStr()
+       return value.toString()
     }
     /// Creates a new formattable String template.
     /// ### Usage
@@ -708,5 +708,5 @@ function utf8AccContByte(ch: i32, byte: i32) -> i32 {
 /// Represents an interface for models that can be created from a String representation.
 public interface FromStr {
     /// Parses a provided String and returns an instance of the implementing type.
-    public static function fromStr(str: String) -> ?This
+    public static function fromString(str: String) -> ?This
 }

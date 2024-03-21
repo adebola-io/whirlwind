@@ -25,7 +25,7 @@ public model Template implements Display {
         this.transforms = []
         this.arguments = []
     }
-    public function [Display.toStr] -> String {
+    public function [Display.toString] -> String {
         return this.finish()
     }
     /// Sets an argument based on the list of named parameters in the template String.
@@ -52,7 +52,7 @@ public model Template implements Display {
     ///             The day of joy!")
     /// ```
     public function set<A implements Display>(param: String, value: A) -> This {
-        this.map.set(param, value.toStr())
+        this.map.set(param, value.toString())
         return this
     }
     /// Adds an argument according to the list of positional parameters
@@ -68,7 +68,7 @@ public model Template implements Display {
     /// assert(completed).equals("My name is Sefunmi and I am 21 years old.")
     /// ```
     public function add<A implements Display>(value: A) -> This {
-        this.arguments.push(value.toStr())
+        this.arguments.push(value.toString())
         return this
     }
     /// Appends new template text to the end of the template.
@@ -107,7 +107,7 @@ public model Template implements Display {
     }
     /// Builds a String from the template with all the inputted values.
     public function finish -> String {
-        todo()
+       todo()
     }
 }
 
