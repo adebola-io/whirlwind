@@ -5,7 +5,7 @@
    <p><i>Whirlwind.</i></p>
 </h1>
 
-Whirlwind is an open-source, statically-typed programming language for quickly and easily writing maintenable software. It is designed to be practical, easy to read and efficient.
+Whirlwind is an open-source, statically-typed programming language for quickly and easily writing maintainable software. It is designed to be practical, easy to read and efficient.
 
 ## Documentation 📑
 
@@ -13,12 +13,12 @@ The [Whirlwind website](http://whirlwind-lang.vercel.app) is still pending. For 
 
 ## Features ✨
 
--  First Class Functions.
--  Static, Nominal Typing System.
--  Support for Generic Programming.
--  Support for Union Types.
--  Inbuilt Testing capabilities.
--  Modular organization.
+- First Class Functions.
+- Static, Nominal Typing System.
+- Support for Generic Programming.
+- Support for Union Types.
+- Inbuilt Testing capabilities.
+- Modular organization.
 
 ## Syntax 📐
 
@@ -26,12 +26,12 @@ Whirlwind is inspired heavily by the syntax of already existing languages. An ex
 
 ```ts
 /// Function to add two numbers.
-function add(a: Int, b: Int) -> Int {
+function add(a: i32, b: i32) -> i32 {
    return a + b
 }
 
 /// Entry to the program.
-function main {
+function main() {
    add(2, 3)
 }
 ```
