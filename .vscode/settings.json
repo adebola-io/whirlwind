@@ -8,5 +8,6 @@
     "typecheck",
     "typechecker",
     "Typechecks"
-  ]
+  ],
+  "svg.preview.background": "dark-transparent"
 }
