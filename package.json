@@ -1,21 +1,18 @@
 {
   "name": "@whirlwind/core",
+  "dependencies": {
+    "@types/node": "^20.11.24"
+  },
   "description": "A programming language for clever computing.",
   "scripts": {
     "build.ls.debug": "echo -e '\\033[34mGenerating Language Server Binary in Debug Mode...\\033[0m' && cd source/server && cargo build",
     "build.ls.release": "echo -e '\\033[34mGenerating Language Server Binary in Release Mode...\\033[0m' && cd source/server && cargo build --release",
     "build.cli.debug": "echo -e '\\033[34mGenerating CLI Binary in Debug Mode...\\033[0m' && cd source/cli && cargo build",
     "build.cli.release": "echo -e '\\033[34mGenerating CLI Binary in Release Mode...\\033[0m' && cd source/cli && cargo build --release",
-
     "publish.extensions.code": "echo 'Publishing the VSCode extension...'",
-
     "cli.example": "echo 'Running CLI example...' && cd source/cli && cargo run check ../../examples/hello-world/source/main.wrl --CORELIBPATH=../library/core/core.wrl",
-
     "herald.node": "echo 'Running Herald in Node.js...' && cd source/herald && node source/mod.mjs",
     "herald.deno": "echo 'Running Herald in Deno...' && cd source/herald && deno run --allow-read source/mod.mjs",
     "herald.bun": "echo 'Running Herald in Bun...' && cd source/herald && bun run source/mod.mjs"
-  },
-  "dependencies": {
-    "@types/node": "^20.11.24"
   }
 }

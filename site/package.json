@@ -1,0 +1,21 @@
+{
+  "name": "@whirlwind/site",
+  "module": "index.ts",
+  "type": "module",
+  "scripts": {
+    "dev.web": "vite dev",
+    "dev.server": "bun run --hot server/index.ts",
+    "build.web": "vite build"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "sass": "^1.72.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "vite": "^5.2.3",
+    "hono": "^4.1.3"
+  }
+}

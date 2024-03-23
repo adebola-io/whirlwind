@@ -1,0 +1,66 @@
+@import '../scss/app';
+
+body {
+  background-color: #131313;
+  color: #eaeaea;
+  font-family: 'Sedan', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+}
+.waiting-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  height: 100vh;
+  padding: 0 relative-width(30);
+  background-image: url(../assets/HeavenStream.svg);
+  background-size: 250%;
+  background-position: center;
+  @media (aspect-ratio >= 0.8) {
+    background-repeat: repeat;
+    background-size: 160%;
+  }
+
+  &__icon {
+    $size: relative-width(101.6);
+    width: $size;
+    height: $size;
+    animation: slide_up 500ms;
+    @media (aspect-ratio >= 0.8) {
+      display: none;
+    }
+  }
+
+  &__heading {
+    font-size: relative-width(39.8);
+    @media (aspect-ratio >= 0.8) {
+      animation: slide_up 500ms;
+      font-size: 4.5rem;
+    }
+    font-weight: normal;
+  }
+
+  p {
+    font-family: 'Averia Serif Libre', 'Segoe UI', Tahoma, Geneva, Verdana,
+      sans-serif;
+    font-size: relative-width(14);
+    @media (aspect-ratio >= 0.8) {
+      width: 80%;
+      font-size: 15pt;
+      text-align: center;
+    }
+  }
+
+  &__greeting {
+    width: 100%;
+  }
+
+  &__explanation {
+    text-align: right;
+
+    &__link {
+      text-decoration: none;
+      color: #a4facc;
+    }
+  }
+}

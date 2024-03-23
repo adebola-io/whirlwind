@@ -1,0 +1,9 @@
+/* 
+ * Converts a value in pixels to its representation 
+ * in relative width units, compared to the screen width.
+ * If no screen width is given, the default screen width of 430px
+ * is used.
+ */
+@function relative-width($value, $screen-width: 430) {
+  @return calc(($value / $screen-width) * 100) + vw;
+}
