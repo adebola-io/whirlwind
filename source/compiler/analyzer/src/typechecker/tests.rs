@@ -594,6 +594,49 @@ fn it_errors_on_invalid_enum_tags() {
 }
 
 #[test]
+fn it_errors_on_non_function_assignments() {
+    text_produces_errors!(
+        "
+        module Test
+
+        enum Value {}
+
+        function main {
+            var newValue = Value
+        }
+        ",
+        &[TypeErrorType::InvalidAssignmentTarget]
+    );
+
+    text_produces_errors!(
+        "
+        module Test
+
+        model Person {}
+
+        function main {
+            var person = Person
+        }
+        ",
+        &[TypeErrorType::InvalidAssignmentTarget]
+    );
+
+    check_types!(
+        "module Test
+        
+        function readStream() -> []i32 {
+            todo()
+        }
+
+        function main {
+            var stream = readStream
+        }
+        ",
+        &[("stream", "fn -> Array<i32>")]
+    );
+}
+
+#[test]
 fn it_errors_on_invalid_unary_exp() {}
 
 #[test]

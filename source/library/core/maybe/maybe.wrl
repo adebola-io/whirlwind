@@ -220,7 +220,7 @@ public model Maybe<T>
     /// ### Panics
     /// It panics if called on a `Maybe` with no value.
     public function unwrap -> T {
-        if this.isNone() {
+        if !this.exists {
             fatal(some("Called Unwrap on a Maybe with no value."))
         }
         return this.value

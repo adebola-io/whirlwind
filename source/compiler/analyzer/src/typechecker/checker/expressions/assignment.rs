@@ -98,6 +98,15 @@ pub fn typecheck_assignment_expression(
             checker_ctx.add_error(errors::mutating_method(owner, name, assexp.span));
             return EvaluatedType::Unknown;
         }
+        // Block non-function meta type assignments.
+        if let EvaluatedType::Model(_)
+        | EvaluatedType::Enum(_)
+        | EvaluatedType::Module(_)
+        | EvaluatedType::Interface(_) = &right_type
+        {
+            checker_ctx.add_error(errors::invalid_assignment_target(assexp.span));
+            return EvaluatedType::Unknown;
+        }
         // For other assignment types.
         if let AssignOperator::MinusAssign | AssignOperator::PlusAssign = assexp.operator {
             let interface_ = match assexp.operator {

@@ -5,7 +5,10 @@ module collections
 
 public use arrayStack.ArrayStack
 public use arrayQueue.ArrayQueue
-public use hashMap.{HashMap, HashMapKeys, HashMapValues, Hash, Hasher, ToMap}
+public use hashMap.{
+    HashMap, HashMapKeys, HashMapValues, 
+    Hash, Hasher, ToMap
+}
 public use ntuple.{
     Tuple, pair, Triple, Quadruple,
     Quintuple, Sextuple, NTuple

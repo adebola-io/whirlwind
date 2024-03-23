@@ -26,7 +26,7 @@ public model Array<T>
     new(capacity: i32) {
         this.len = 0
         this.cap = capacity
-        this.data = malloc(this.cap)
+        this.data = malloc(this.len)
     }
     /// Returns an iterator over elements in this array.
     /// ### Usage
@@ -327,17 +327,17 @@ public model Array<T>
     /// var anotherSubArray = [4, 6, 5]
     /// assertThat(!mainArray.includes(anotherSubArray))
     /// ```
-    public function includes(subarray: []T) -> boolean {
+    public function includes(subArray: []T) -> boolean {
         var i = 0
-        while i + subarray.len <= this.len {
+        while i + subArray.len <= this.len {
             var j = 0
-            while j < subarray.len {
-                if this[i + j] != subarray[j] {
+            while j < subArray.len {
+                if this[i + j] != subArray[j] {
                     break
                 }
                 j += 1
             }
-            if j == subarray.len {
+            if j == subArray.len {
                 return true
             }
             i += 1
@@ -366,7 +366,7 @@ public model Array<T>
         return none()
     }
     /// Inserts an element at an index in the array,
-    /// shifting all suceeding elements forward.
+    /// shifting all succeeding elements forward.
     /// ### Usage
     /// ```
     /// var arr = [1, 3, 4, 5]

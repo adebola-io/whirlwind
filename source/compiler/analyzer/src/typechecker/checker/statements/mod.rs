@@ -284,6 +284,17 @@ fn typecheck_variable_declaration(
         .value
         .as_mut()
         .map(|expr| expressions::typecheck_expression(expr, checker_ctx, symbollib));
+    // Block non-function meta type assignments.
+    if let Some(
+        EvaluatedType::Model(_)
+        | EvaluatedType::Enum(_)
+        | EvaluatedType::Module(_)
+        | EvaluatedType::Interface(_),
+    ) = &inferred_result
+    {
+        checker_ctx.add_error(errors::invalid_assignment_target(variable.span));
+        return;
+    }
     // if value and label are available, unification can be done early.
     // so that the focus later will be the extraction of array and model types.
     if declared_type.is_some() && inferred_result.is_some() {
@@ -599,6 +610,16 @@ pub fn typecheck_shorthand_variable_declaration(
     };
     let span = shorthand_variable.span;
     ensure_assignment_validity(&inference_result, checker_ctx, span);
+
+    // Block non-function meta type assignments.
+    if let EvaluatedType::Model(_)
+    | EvaluatedType::Enum(_)
+    | EvaluatedType::Module(_)
+    | EvaluatedType::Interface(_) = &inference_result
+    {
+        checker_ctx.add_error(errors::invalid_assignment_target(span));
+        return;
+    }
     if let SemanticSymbolKind::Variable { inferred_type, .. } =
         &mut symbollib.get_mut(name).unwrap().kind
     {
