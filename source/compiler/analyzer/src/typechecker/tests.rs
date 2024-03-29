@@ -220,6 +220,30 @@ fn it_creates_type_environments() {
 }
 
 #[test]
+fn it_creates_type_environments_for_or_supposition() {
+    check_types!(
+        "
+        module Test
+
+        interface A {
+            public function doStuff -> i32
+        }
+
+        interface B {
+            public function doStuff -> i32
+        }
+
+        model AorBContainer<T> {
+            function call|=(T implements A or T implements B)(value1: T) {
+                var value2 = value1.doStuff()
+            }
+        }
+        ",
+        &[("value2", "i32")]
+    );
+}
+
+#[test]
 fn it_solves_assignment() {}
 
 #[test]

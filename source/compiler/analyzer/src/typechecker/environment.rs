@@ -200,10 +200,73 @@ impl Supposition {
     /// - do not contradict previously established type environments and concrete truths.
     pub fn or(
         self,
-        _other: Supposition,
-        _symbollib: &SymbolLibrary,
+        other: Supposition,
+        symbollib: &SymbolLibrary,
     ) -> Result<Supposition, Vec<TypeErrorType>> {
-        todo!()
+        let methods_for_self = self.get_all_methods(symbollib);
+        let methods_for_other = other.get_all_methods(symbollib);
+
+        let matching_methods = methods_for_self
+            .iter()
+            .filter_map(|(method_name, method_type)| {
+                methods_for_other
+                    .iter()
+                    .find(|(other_method_name, _)| other_method_name == method_name)
+                    .map(|(_, other_method)| (method_name, method_type, other_method))
+            });
+
+        let mut converging_methods = vec![];
+        for (_, method_type, other_method_type) in matching_methods {
+            if let Some(_) = converge_types(method_type, other_method_type, symbollib) {
+                // todo: check static and public.
+                if let EvaluatedType::MethodInstance {
+                    method,
+                    generic_arguments,
+                    ..
+                } = method_type
+                {
+                    // todo: Maybe Ill rewrite later to allow converging generic methods.
+                    if generic_arguments.is_empty() {
+                        converging_methods.push(*method);
+                    }
+                }
+            }
+        }
+
+        let matching_implementations = self.implementations.iter().filter_map(|implementation| {
+            other
+                .implementations
+                .iter()
+                .find(
+                    |other_implementation| match (implementation, other_implementation) {
+                        (
+                            EvaluatedType::InterfaceInstance {
+                                interface_: first, ..
+                            },
+                            EvaluatedType::InterfaceInstance {
+                                interface_: second, ..
+                            },
+                        ) => first == second,
+                        _ => false,
+                    },
+                )
+                .map(|other_implementation| (implementation, other_implementation))
+        });
+
+        let mut converging_implementations = vec![];
+        for (implementation, other_implementation) in matching_implementations {
+            if let Some(implementation) =
+                converge_types(implementation, other_implementation, symbollib)
+            {
+                converging_implementations.push(implementation);
+            }
+        }
+
+        Ok(Supposition {
+            base: self.base,
+            implementations: converging_implementations,
+            methods: converging_methods,
+        })
     }
 
     /// Returns all the methods in the supposition, both from the implementations and the intersected methods.
