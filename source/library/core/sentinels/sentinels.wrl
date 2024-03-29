@@ -105,7 +105,7 @@ import "internals:control" {
 /// }
 /// ```
 public function fatal(message?: String) -> never {
-    var errorMessage = message.unwrapOr("Fatal Sequence error.")
+    var errorMessage = message.valueOr("Fatal Sequence error.")
     // todo: generate stack trace.
     var messageOffset = Ptr.getOffset(errorMessage)
     var messageLength = errorMessage.length()
@@ -147,7 +147,7 @@ public function memoize<T>(func: fn -> T) -> fn -> T {
         if value.isNone() {
             value = some(func())
         }
-        return value.unwrap()
+        return value.value()
     }
 }
 

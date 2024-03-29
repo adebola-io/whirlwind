@@ -19,15 +19,15 @@ public model WeakRef<T> implements Guaranteed<T> {
 
     /// Implementation of the Guaranteed interface.
     function [Guaranteed.guarantee] -> T {
-        this.unwrap()
+        this.value()
     }
 
     /// Forcefully retrieves the value in the reference.
     /// 
     /// It is useful when there is a surety that the value
     /// contained has not been dropped by the runtime.
-    public function unwrap -> T {
-        this.deref().unwrap()
+    public function value -> T {
+        this.deref().value()
     }    
 
     /// Retrieves the value in the reference.

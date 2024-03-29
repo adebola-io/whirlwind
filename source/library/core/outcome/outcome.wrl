@@ -46,38 +46,38 @@ public model Outcome<T, E>
     public function [Display.toString]|=(T implements Display and E implements Display) -> String 
     {
         if this.isOk() {
-            var value = this.successValue.unwrap();
+            var value = this.successValue.value();
             return String.fmt("Outcome.ok(%)").add(value).finish()
         }
-        var errValue = this.errorValue.unwrap();
+        var errValue = this.errorValue.value();
         return String.fmt("Outcome.err(%)").add(errValue).finish()
     }
     function [Guaranteed.guarantee] -> T {
-        return this.unwrap()
+        return this.value()
     }
     function [Try.try] -> Outcome<T, Outcome<never, E>> {
         if this.isOk() {
-            return ok(this.unwrap())
+            return ok(this.value())
         }
-        return err(err(this.errorValue.unwrap()))
+        return err(err(this.errorValue.value()))
     }
     /// Returns the inner value if the operation was a success, or causes a runtime error otherwise.
     /// ### Usage
     /// ```
     /// var outcome = ok(9)
-    /// var value = outcome.unwrap()
+    /// var value = outcome.value()
     /// assert(value).equals(9)
     /// ```
     /// <!--ignore-->
     /// ```
     /// var outcome = err("This was an error")
-    /// outcome.unwrap() // Will cause a runtime error.
+    /// outcome.value() // Will cause a runtime error.
     /// ```
-    public function unwrap -> T {
+    public function value -> T {
         if this.isErr() {
-            fatal(some("Called unwrap on an error value."))
+            fatal(some("Called value on an error value."))
         }
-        return this.successValue.unwrap()
+        return this.successValue.value()
     }
     /// Returns the inner error value if the outcome is an error, or causes a runtime error otherwise.
     /// ### Usage
@@ -90,7 +90,7 @@ public model Outcome<T, E>
         if this.isOk() {
             fatal(some("Called AsErr on an Ok value."))
         }
-        return this.errorValue.unwrap()
+        return this.errorValue.value()
     }
     /// Returns true if the outcome is `ok` 
     /// i.e. The operation was successful.
@@ -120,7 +120,7 @@ public model Outcome<T, E>
     /// assertThat(outcome.isOkAnd(fn(value) value == 42))
     /// ```
     public function isOkAnd(predicate: fn(value: T) -> boolean) -> boolean {
-        this.isOk() and predicate(this.unwrap())
+        this.isOk() and predicate(this.value())
     }
     /// Checks if the outcome failed and checks the error value as well.
     /// ### Usage
@@ -133,7 +133,7 @@ public model Outcome<T, E>
     }
     /// Converts an `Outcome<T, E>` to a `Maybe<T>`.
     public function ok -> ?T {
-        if this.isOk() { some(this.unwrap()) } else { none() }
+        if this.isOk() { some(this.value()) } else { none() }
     }
     /// Converts an `Outcome<T, E>` to an `Outcome<U, E>` by applying a function.
     /// ### Usage

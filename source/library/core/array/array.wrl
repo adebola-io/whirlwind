@@ -22,6 +22,7 @@ public model Array<T>
     var len: i32
     var cap: i32
     var data: Ptr
+    
 
     new(capacity: i32) {
         this.len = 0
@@ -206,7 +207,7 @@ public model Array<T>
     /// assertThat(joined2 == "1+2+3+4+5")
     /// ```
     public function join|=(T implements Display)(separator?: String) -> String {
-        var separatorValue = separator.unwrapOr(" ")
+        var separatorValue = separator.valueOr(" ")
         var string = ""
         var i = 0
         while i < this.len {
@@ -304,7 +305,7 @@ public model Array<T>
     /// ### Usage
     /// ```
     /// var arr = [20, 30, 40, 50, 60]
-    /// assert(arr.first().unwrap()).equals(20)
+    /// assert(arr.first().value()).equals(20)
     /// 
     /// var empty: []i32 = []
     /// assertThat(empty.first() == none())
@@ -568,13 +569,12 @@ public model Array<T>
             return []
         }
         var result = []
-        var sliceStart = start
         var sliceEnd = if end.isNone() {
             this.len
         } else {
-            end.unwrap()
+            end.value()
         }
-        var i = sliceStart
+        var i = start
         while i < sliceEnd - 1 {
             result.push(this[i])
             i += 1

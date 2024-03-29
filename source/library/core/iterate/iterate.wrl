@@ -245,7 +245,7 @@ public interface Iterable<I> {
             if maybeItem.isNone() {
                 break
             }
-            var item = maybeItem.unwrap()
+            var item = maybeItem.value()
             taken.push(item)
             i -= 1
         }

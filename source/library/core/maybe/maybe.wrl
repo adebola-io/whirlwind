@@ -37,10 +37,10 @@ public model Maybe<T>
     /// It should **never** be accessed outside of the 
     /// internals of the model, or without first checking the
     /// flag.
-    var value: T
+    var _value: T
     new(value: T) {
         this.exists = true
-        this.value = value
+        this._value = value
     }
     /// Implementation of the Default interface.
     static function [Default.init] -> This {
@@ -59,16 +59,16 @@ public model Maybe<T>
         if this.isNone() {
             return "Maybe.none"
         }
-        return String.fmt("Maybe.some(%)").add(this.value).finish()
+        return String.fmt("Maybe.some(%)").add(this._value).finish()
     }
     /// Implementation of the `Guaranteed` interface.
     function [Guaranteed.guarantee] -> T {
-        return this.unwrap()
+        return this.value()
     }
     /// Implementation of the `Try` interface.
     function [Try.try] -> Outcome<T, ?never> {
         if this.isSome() {
-            return ok(this.value)
+            return ok(this._value)
         }
         return err(none())
     }
@@ -78,7 +78,7 @@ public model Maybe<T>
     /// ```
     /// ```
     public function andThen<U>(conjunct: fn(former: T) -> ?U) -> ?U {
-        if this.isSome() { conjunct(this.value) } else { none() }
+        if this.isSome() { conjunct(this._value) } else { none() }
     }
     /// Unwraps the Maybe value if it exists, or crashes the running sequence 
     /// if otherwise. 
@@ -91,7 +91,7 @@ public model Maybe<T>
     /// assert(maybeVal.expect("No value!!")).equals("Hello, world!")
     /// ```
     public function expect(error: String) -> T {
-        if this.isNone() { fatal(some(error)) } else { this.value }
+        if this.isNone() { fatal(some(error)) } else { this._value }
     }
     /// Returns a boolean indicating if the Maybe contains no value.
     /// ### Usage
@@ -133,7 +133,7 @@ public model Maybe<T>
     /// assertThat(!maybeInt3.isSomeAnd(predicate))
     /// ```
     public function isSomeAnd(predicate: fn(value: T) -> boolean) -> boolean {
-        this.isSome() and predicate(this.value)
+        this.isSome() and predicate(this._value)
     }
     /// Performs a computation if there is an internal value contained.
     /// ### Usage
@@ -154,7 +154,7 @@ public model Maybe<T>
         if this.isNone() {
             return
         }
-        consequent(this.value)
+        consequent(this._value)
     }
     /// Performs a computation if there is no value contained in the Maybe.
     public function isNoneThen(consequent: fn()) {
@@ -176,7 +176,7 @@ public model Maybe<T>
     /// assertThat(not maybeInt3.isNoneOr(predicate))
     /// ```
     public function isNoneOr(predicate: fn(value: T) -> boolean) -> boolean {
-        this.isNone() or predicate(this.unwrap())
+        this.isNone() or predicate(this.value())
     }
     /// Maps a `Maybe<T>` to an `Outcome<T, E>` by passing in a fallback error
     /// value if there is nothing within.
@@ -184,7 +184,7 @@ public model Maybe<T>
     /// ```
     /// ```
     public function someOr<E>(error: E) -> Outcome<T, E> {
-        if this.isNone() { err(error) } else { ok(this.value) }
+        if this.isNone() { err(error) } else { ok(this._value) }
     }
     /// Maps a `Maybe<T>` to an `Outcome<T, E>` by computing a fallback error
     /// value if there is nothing within.
@@ -198,48 +198,46 @@ public model Maybe<T>
     /// assert(intErr).equals(err(Error("Could not parse.")))
     /// ```
     public function someOrElse<E>(error: fn -> E) -> Outcome<T, E> {
-        if this.isNone() { err(error()) } else { ok(this.value) }
+        if this.isNone() { err(error()) } else { ok(this._value) }
     }
     /// Combines two intermediate values
     public function orElse(alternate: fn -> ?T) -> ?T {
         if this.isSome() { this } else { alternate() }
     }
     /// Ignores the maybe and returns the internal value. 
-    /// It will throw an error if no value is present.
     /// <!--ignore-->
     /// ### Usage
     /// ```
     /// var numValue = some(89)
-    /// assert(numValue.unwrap()).equals(89)
+    /// assert(numValue.value()).equals(89)
     /// ```
     /// <!--ignore-->
     /// ```
     /// noValue: ?number = none()
-    /// noValue.unwrap() // Will panic with an error.
+    /// noValue.value() // Will panic with an error.
     /// ```
-    /// ### Panics
-    /// It panics if called on a `Maybe` with no value.
-    public function unwrap -> T {
+    /// NOTE: It crashes execution if called on a `Maybe` with no value.
+    public function value -> T {
         if !this.exists {
-            fatal(some("Called Unwrap on a Maybe with no value."))
+            fatal(some("Cannot extract the value of an empty Maybe."))
         }
-        return this.value
+        return this._value
     }
     /// Returns the internal value, or another given value.
     /// ### Usage
     /// ```
     /// var maybeVal = some(45)
-    /// assert(maybeVal.unwrapOr(0)).equals(45)
+    /// assert(maybeVal.valueOr(0)).equals(45)
     /// 
     /// maybeVal = none()
-    /// assert(maybeVal.unwrapOr(69)).equals(69)
+    /// assert(maybeVal.valueOr(69)).equals(69)
     /// ```
-    public function unwrapOr(value: T) -> T {
-        if this.isNone() { value } else { this.value }
+    public function valueOr(value: T) -> T {
+        if this.isNone() { value } else { this._value }
     }
     /// Returns the internal value, or computes another given value.
-    public function unwrapOrElse(fallback: fn -> T) -> T {
-        if this.isNone() { fallback() } else { this.value }
+    public function valueOrElse(fallback: fn -> T) -> T {
+        if this.isNone() { fallback() } else { this._value }
     }
     /// Converts a `Maybe<T>` to a `Maybe<E>` by applying a transformation function.
     /// ### Usage
@@ -270,16 +268,16 @@ public model Maybe<T>
     /// ### Usage
     /// ```
     /// var i = some(50)
-    /// assert(i.unwrapOrDefault()).equals(50)
+    /// assert(i.valueOrDefault()).equals(50)
     /// 
     /// var j: ?i32 = none()
-    /// assert(j.unwrapOrDefault()).equals(0) // default value for i32.
+    /// assert(j.valueOrDefault()).equals(0) // default value for i32.
     //  ```
-    public function unwrapOrDefault|=(T implements Default) -> T {
+    public function valueOrDefault|=(T implements Default) -> T {
         if this.isNone() {
             var default: T
             return default
         } 
-        return this.value
+        return this._value
     }
 }

@@ -33,7 +33,7 @@ public function fibonacci(n: i32) -> i32 {
 /// var str2 = "hello"
 /// assertThat(!isPalindrome(input))
 /// ```
-public function isPalindrome(input: string) -> boolean {
+public function isPalindrome(input: String) -> boolean {
     return input == input.reverse()
 }
 
@@ -65,7 +65,7 @@ public function twoSum(nums: []i32, target: i32) -> []i32 {
         var complement = target - num;
         var maybeSolution: ?i32 = map.get(complement);
         if maybeSolution.isSome() {
-            return [maybeSolution.unwrap(), num]
+            return [maybeSolution.value(), num]
         }
         map.set(num, i);
     }

@@ -13,7 +13,7 @@ public model ColoredString implements Display {
     var codes: []i32
 
     new(text?: String) {
-        this.text = text.unwrapOrDefault()
+        this.text = text.valueOrDefault()
     }
 
     /// Changes the color of the text to blue.

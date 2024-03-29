@@ -21,7 +21,7 @@ test "Testing types." {
     var StringItself = identity("String") // Should have type String.
     var result = err(true)
     result = ok(none())
-    result = ok(some("hello, world"))
+    result = ok(some(StringItself))
     // result should coerce to type Outcome<Maybe<String>, Bool>
 
     // Opaque types.
@@ -113,7 +113,7 @@ test "Testing types." {
         public var age: i32 // Set automatically.
         new(name: String, age?: i32) {
             this.name = name
-            this.age = age.unwrapOrDefault()
+            this.age = age.valueOrDefault()
         }
         static function [Default.init] -> This {
             return Person("{unknown}")

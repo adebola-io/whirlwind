@@ -18,7 +18,7 @@ public model ArrayStack<T> {
    
     new(capacity?: i32) {
         // The default capacity is infinity
-        this._capacity = -1
+        this._capacity = capacity.valueOr(-1)
         
     }
     /// Dynamically change the number of items in the stack.
@@ -32,14 +32,14 @@ public model ArrayStack<T> {
     /// assertThat(stack.capacity() == 0)
     /// stack.setCapacity(1) // Sets the stack to contain only one item.
     /// 
-    /// stack.push(10).unwrap()
+    /// stack.push(10).value()
     /// assertThat(stack.push(11).isErr()) // Cannot push since the stack is full.
     ///
     /// // Increasing the capacity.
     /// stack = ArrayStack()
     /// stack.setCapacity(10)
     /// for item in 0..9 {
-    ///     stack.push(item).Unwrap()   
+    ///     stack.push(item).value()   
     /// }
     /// assertThat(stack.push(99).isErr())
     /// stack.setCapacity(11)

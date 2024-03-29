@@ -20,7 +20,7 @@ use core.prelude.Outcome
 ///     if maybeInteger.isNone() {
 ///         return none()
 ///     }
-///     var integer = maybeInteger.unwrap()
+///     var integer = maybeInteger.value()
 ///     return some(integer * integer)
 /// }
 /// ```

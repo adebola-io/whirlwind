@@ -26,7 +26,7 @@ public model Eventual<T> implements Guaranteed<T> {
     /// the value in `Maybe`.
     /// 
     /// Trying to read it while it does not exist will lead to a runtime error.
-    var value: T
+    var internal: T
     /// Returns true if the eventual has been resolved to a value.
     public function isResolved -> boolean {
         return this.resolved
@@ -37,7 +37,7 @@ public model Eventual<T> implements Guaranteed<T> {
     }
     /// Implementation of the Guaranteed interface.
     function [Guaranteed.guarantee] -> T {
-        this.unwrap()
+        this.value()
     }
     /// It attempts to abort the eventual's execution and returns true if it is 
     /// successful.
@@ -119,7 +119,7 @@ public model Eventual<T> implements Guaranteed<T> {
             fatal(some("Cannot call Await on an aborted Eventual."))
         }
         if this.resolved {
-            return this.value
+            return this.value()
         }
         this.resolved = true
         todo()
@@ -128,13 +128,13 @@ public model Eventual<T> implements Guaranteed<T> {
     /// 
     /// There aren't many viable reasons why you should forcefully 
     /// resolve an eventual, but it is still useful in some niche contexts.
-    public function unwrap -> T {
+    public function value -> T {
         if this.aborted {
-            fatal(some("Called Unwrap() on an aborted eventual."))
+            fatal(some("Called value() on an aborted eventual."))
         }
         if not this.resolved {
-            fatal(some("Called Unwrap() on an unresolved eventual."))
+            fatal(some("Called value() on an unresolved eventual."))
         }
-        return this.value
+        return this.internal
     }
 }

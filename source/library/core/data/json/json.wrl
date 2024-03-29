@@ -140,7 +140,7 @@ public interface JsonValue {
 public model JsonString implements JsonValue {
     public var value: String
     new(value?: String) {
-        this.value = value.unwrapOr("")
+        this.value = value.valueOr("")
     }
     public function [JsonValue.getType] -> JsonValueType {
         return JsonValueType.String
@@ -154,7 +154,7 @@ public model JsonString implements JsonValue {
 public model JsonArray implements JsonValue {
     public var value: []RawJsonVal
     new(value?: []RawJsonVal) {
-        this.value = value.unwrapOr([])
+        this.value = value.valueOr([])
     }
     public function [JsonValue.getType] -> JsonValueType {
         return JsonValueType.Array
@@ -168,7 +168,7 @@ public model JsonArray implements JsonValue {
 public model JsonBool implements JsonValue {
     public var value: boolean
     new(value?: boolean) {
-        this.value = value.unwrapOr(false)
+        this.value = value.valueOr(false)
     }
     public function [JsonValue.getType] -> JsonValueType {
         return JsonValueType.boolean
@@ -182,7 +182,7 @@ public model JsonBool implements JsonValue {
 public model JsonNumber implements JsonValue {
     public var value: number
     new(value?: number) {
-        this.value = value.unwrapOr(0)
+        this.value = value.valueOr(0)
     }
     public function [JsonValue.getType] -> JsonValueType {
         return JsonValueType.number
@@ -196,7 +196,7 @@ public model JsonNumber implements JsonValue {
 public model JsonObject implements JsonValue {
     public var map: HashMap<String, RawJsonVal>
     new(map?: HashMap<String, RawJsonVal>) {
-        this.map = map.unwrapOr(HashMap())
+        this.map = map.valueOr(HashMap())
     }
     public function [JsonValue.getType] -> JsonValueType {
         return JsonValueType.Object

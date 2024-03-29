@@ -100,7 +100,7 @@ public model HttpRequestError implements Display {
     new(message: String, request: HttpRequest, statusCode?: i32) {
         this.message = message
         this.route = request.url()
-        this.statusCode = statusCode.unwrapOr(400)
+        this.statusCode = statusCode.valueOr(400)
     }
     public function [Display.toString] -> String {
         return "Error: " + this.message

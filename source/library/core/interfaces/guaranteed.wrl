@@ -10,7 +10,7 @@ module guaranteed
 /// 
 /// The interface is implemented by some built-in types, such as `Maybe`, `Outcome`
 /// and `Eventual`. For these types, the use of the `!` operator is equivalent to calling
-/// the `.unwrap()` method.
+/// the `.value()` method.
 /// <!--ignore-->
 /// ```
 /// var name: ?String = some("Alice")

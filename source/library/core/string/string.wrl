@@ -511,7 +511,7 @@ public model String
         if maybeFirstCharacter.isNone() {
             return ""
         }
-        result += maybeFirstCharacter.unwrap().upperCase()
+        result += maybeFirstCharacter.value().upperCase()
         var i = result.vec.length() // length of first character.
         while i < stringLength {
             result.vec.push(this.vec[i])
@@ -672,14 +672,14 @@ public function nextCodePoint(bytes: ArrayIter<i32>) -> ?i32 {
     var init = utf8FirstByte(x, 2)
     // SAFETY: `bytes` produces an UTF-8-like String,
     // so the iterator must produce a value here.
-    var y = bytes.next().unwrap()
+    var y = bytes.next().value()
     var ch = utf8AccContByte(init, y)
     if x > 0xE0 {
         // [[x y z] w] case
         // 5th bit in 0xE0 .. 0xEF is always clear, so `init` is still valid
         // SAFETY: `bytes` produces an UTF-8-like String,
         // so the iterator must produce a value here.
-        var z = bytes.next().unwrap()
+        var z = bytes.next().value()
         var y_z = utf8AccContByte((y & CONT_MASK), z)
         ch = init << 12 | y_z
         if x >= 0xF0 {
@@ -687,7 +687,7 @@ public function nextCodePoint(bytes: ArrayIter<i32>) -> ?i32 {
             // use only the lower 3 bits of `init`
             // SAFETY: `bytes` produces an UTF-8-like String,
             // so the iterator must produce a value here.
-            var w = bytes.next().unwrap() 
+            var w = bytes.next().value() 
             ch = (init & 7) << 18 | utf8AccContByte(y_z, w)
         }
 

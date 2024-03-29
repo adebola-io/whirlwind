@@ -31,7 +31,7 @@ public model Set<T implements Hash>
 {
     var items: HashMap<T, boolean>
     new(data?: []T) {
-        var dataVal = data.unwrapOrDefault()
+        var dataVal = data.valueOrDefault()
         this.items = HashMap()
         var i = 0
         while i < dataVal.length() {
