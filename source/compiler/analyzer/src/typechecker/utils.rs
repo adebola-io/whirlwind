@@ -4,7 +4,7 @@ use crate::{
     ParameterType, PathIndex, ProgramDiagnostic, ScopeId, SemanticSymbolKind, Supposition,
     SymbolIndex, SymbolLibrary, TypeEnvironment, TypecheckerContext, TypedExpression, UnifyOptions,
 };
-use ast::LogicOperator;
+use ast::{unwrap_or_continue, LogicOperator};
 use errors::{TypeError, TypeErrorType, Warning, WarningType};
 /// Returns an intrinsic symbol from the symbol table or returns an unknown type.
 macro_rules! get_intrinsic {
@@ -326,7 +326,19 @@ pub fn coerce(typ: EvaluatedType, args: &Vec<(SymbolIndex, EvaluatedType)>) -> E
         EvaluatedType::HardGeneric { base } => {
             for (index, new_type) in args {
                 if base == *index {
-                    return new_type.clone();
+                    let new_type = new_type.clone();
+                    // For linked generics, e.g. where I = J and J = K and K = boolean,
+                    // we can burrow further until we reach the solution I = boolean,
+                    // saving time for other operations.
+                    match &new_type {
+                        EvaluatedType::HardGeneric { base: new_base, .. }
+                        | EvaluatedType::Generic { base: new_base, .. }
+                            if *new_base != base =>
+                        {
+                            return coerce(new_type, args)
+                        }
+                        _ => return new_type.clone(),
+                    }
                 }
             }
             EvaluatedType::HardGeneric { base }
@@ -334,6 +346,23 @@ pub fn coerce(typ: EvaluatedType, args: &Vec<(SymbolIndex, EvaluatedType)>) -> E
         // todo: opaque type coercion.
         _ => typ,
     }
+}
+
+/// Utility function for printing out generic arguments.
+pub fn print_generics<'a, I: Iterator<Item = (&'a SymbolIndex, &'a EvaluatedType)>>(
+    generic_arguments: I,
+    symbollib: &SymbolLibrary,
+) {
+    println!("Generic Arguments:");
+    for (idx, solution) in generic_arguments {
+        let symbol = unwrap_or_continue!(symbollib.get(*idx));
+        println!(
+            "{}: {}",
+            symbol.name,
+            symbollib.format_evaluated_type(solution)
+        );
+    }
+    println!("\n")
 }
 
 /// Force all free generic arguments to unify to a given type.

@@ -140,6 +140,7 @@ pub fn typecheck_assignment_expression(
                 checker_ctx.add_error(errors::unimplemented_interface(
                     result_type,
                     interface,
+                    None,
                     assexp.span,
                 ));
             }

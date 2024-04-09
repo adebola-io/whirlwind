@@ -899,7 +899,7 @@ fn evaluate_member_type(
                                 }
                             })
                         }
-                        // Create an intermeduate type to evaluate.
+                        // Create an intermediate type to evaluate.
                         let intermediate = IntermediateType::SimpleType {
                             value: *symbol_idx,
                             generic_args: property.generic_args.clone(),

@@ -90,6 +90,7 @@ pub enum TypeErrorType {
     UnimplementedInterface {
         offender: String,
         _interface: String,
+        base_generic: Option<String>,
     },
     /// Calling a non-callable type.
     NotCallable {
@@ -467,7 +468,7 @@ pub fn attribute_access_on_contructor(
     }
 }
 
-pub fn contructor_non_static_method_access(
+pub fn constructor_non_static_method_access(
     model_name: String,
     method_name: String,
     span: Span,
@@ -630,7 +631,7 @@ pub fn never_as_declared(span: ast::Span) -> TypeError {
     }
 }
 
-pub fn mispelled_name(name: String, span: ast::Span) -> TypeError {
+pub fn misspelled_name(name: String, span: ast::Span) -> TypeError {
     TypeError {
         _type: TypeErrorType::MispelledName { name },
         span,

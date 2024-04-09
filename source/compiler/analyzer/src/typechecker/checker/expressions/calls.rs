@@ -1,17 +1,18 @@
+use crate::utils::get_interface_types_from_symbol;
 use super::*;
 
 /// Typechecks a call expression.
 pub fn typecheck_call_expression(
-    callexp: &mut TypedCallExpr,
+    call_exp: &mut TypedCallExpr,
     symbollib: &mut SymbolLibrary,
     checker_ctx: &mut TypecheckerContext,
 ) -> EvaluatedType {
-    let caller = typecheck_expression(&mut callexp.caller, checker_ctx, symbollib);
-    let caller_span = checker_ctx.span_of_expr(&callexp.caller, &symbollib);
+    let caller = typecheck_expression(&mut call_exp.caller, checker_ctx, symbollib);
+    let caller_span = checker_ctx.span_of_expr(&call_exp.caller, &symbollib);
     let caller = extract_call_of(caller, symbollib, checker_ctx, caller_span);
     // Model instantiations are handled differently.
     if let EvaluatedType::Model(model) = caller {
-        return instantiate_model(symbollib, model, checker_ctx, callexp);
+        return instantiate_model(symbollib, model, checker_ctx, call_exp);
     }
 
     if let EvaluatedType::EnumInstance { .. } = caller {
@@ -19,7 +20,7 @@ pub fn typecheck_call_expression(
     }
 
     if caller.is_unknown() {
-        callexp.arguments.iter_mut().for_each(|arg| {
+        call_exp.arguments.iter_mut().for_each(|arg| {
             typecheck_expression(arg, checker_ctx, symbollib);
         }); // for continuity.
         return caller;
@@ -64,7 +65,7 @@ pub fn typecheck_call_expression(
         }
     };
     // Try to preemptively guess the type of the first argument.
-    if let Some(argument) = callexp.arguments.get_mut(0) {
+    if let Some(argument) = call_exp.arguments.get_mut(0) {
         if let Some(parameter_type) = parameter_types.get(0) {
             infer_ahead(argument, &parameter_type.inferred_type, symbollib);
         }
@@ -76,7 +77,7 @@ pub fn typecheck_call_expression(
     zip_arguments(
         parameter_types,
         checker_ctx,
-        callexp,
+        call_exp,
         symbollib,
         &mut generic_arguments,
     );
@@ -98,22 +99,22 @@ pub fn typecheck_call_expression(
             }
         };
     });
-    callexp.inferred_type = coerce(return_type, &remaining_unsolved);
+    call_exp.inferred_type = coerce(return_type, &remaining_unsolved);
     update_expression_type(
-        &mut callexp.caller,
+        &mut call_exp.caller,
         symbollib,
         checker_ctx.literals,
         &generic_arguments,
-        Some(&callexp.inferred_type),
+        Some(&call_exp.inferred_type),
     );
-    callexp.inferred_type.clone()
+    call_exp.inferred_type.clone()
 }
 
 fn instantiate_model(
     symbollib: &mut SymbolLibrary,
     model: SymbolIndex,
     checker_ctx: &mut TypecheckerContext<'_>,
-    callexp: &mut TypedCallExpr,
+    call_exp: &mut TypedCallExpr,
 ) -> EvaluatedType {
     let model_symbol = symbollib.get_forwarded(model).unwrap();
     let (mut generic_arguments, generic_params, parameter_types) =
@@ -125,7 +126,7 @@ fn instantiate_model(
         } = &model_symbol.kind
         {
             let name = model_symbol.name.clone();
-            let span = callexp.span;
+            let span = call_exp.span;
             // if model does not have a new() function.
             if !*is_constructable {
                 checker_ctx.add_error(errors::model_not_constructable(name, span));
@@ -145,7 +146,7 @@ fn instantiate_model(
     zip_arguments(
         parameter_types,
         checker_ctx,
-        callexp,
+        call_exp,
         symbollib,
         &mut generic_arguments,
     );
@@ -166,24 +167,30 @@ fn instantiate_model(
 pub fn zip_arguments(
     parameter_types: Vec<ParameterType>,
     checker_ctx: &mut TypecheckerContext,
-    callexp: &mut TypedCallExpr,
+    call_exp: &mut TypedCallExpr,
     symbollib: &mut SymbolLibrary,
     generic_arguments: &mut Vec<(SymbolIndex, EvaluatedType)>,
 ) {
     // mismatched arguments. It checks if the parameter list is longer, so it can account for optional parameters.
-    if parameter_types.len() < callexp.arguments.len() {
+    if parameter_types.len() < call_exp.arguments.len() {
         checker_ctx.add_error(errors::mismatched_function_args(
-            callexp.span,
+            call_exp.span,
             parameter_types.len(),
-            callexp.arguments.len(),
+            call_exp.arguments.len(),
             None,
         ));
         return;
     }
     let mut generic_map = HashMap::new();
+    // Inherit all prior generic solutions.
+    for (idx, solution) in generic_arguments.iter() {
+        if generic_map.get(idx).is_none() {
+            generic_map.insert(*idx, solution.clone());
+        }
+    }
     let mut i = 0;
     let caller_type = symbollib
-        .get_expression_type(&callexp.caller, checker_ctx.literals)
+        .get_expression_type(&call_exp.caller, checker_ctx.literals)
         .unwrap_or(EvaluatedType::Unknown);
     while i < parameter_types.len() {
         // HACK: Generics in call expressions are hard by default, but
@@ -202,9 +209,18 @@ pub fn zip_arguments(
             symbollib,
         );
 
+        // if let TypedExpression::AccessExpr(access_expr) = &call_exp.caller {
+        //     if let TypedExpression::Identifier(ident) = &access_expr.property {
+        //         if let "chain" = symbollib.get(ident.value).unwrap().name.as_str() {
+        //             println!("Parameter Type: {}", symbollib.format_evaluated_type(&parameter_type));
+        //             print_generics(generic_map.iter(), symbollib)
+        //         }
+        //     }
+        // }
+
         // Account for optional types.
         let is_optional = parameter_types[i].is_optional;
-        let argument_type = callexp
+        let argument_type = call_exp
             .arguments
             .get_mut(i)
             .map(|expression| typecheck_expression(expression, checker_ctx, symbollib));
@@ -213,19 +229,31 @@ pub fn zip_arguments(
             None => {
                 if !is_optional {
                     checker_ctx.add_error(errors::mismatched_function_args(
-                        callexp.span,
+                        call_exp.span,
                         parameter_types.len(),
-                        callexp.arguments.len(),
+                        call_exp.arguments.len(),
                         parameter_types.iter().position(|param| param.is_optional),
                     ))
                 };
                 break;
             }
         };
+        if let EvaluatedType::Generic { base } | EvaluatedType::HardGeneric { base } = parameter_type {
+            let interfaces = get_interface_types_from_symbol(base, symbollib, generic_arguments);
+            for interface in interfaces {
+                if let EvaluatedType::InterfaceInstance {  generic_arguments: interface_inner_generic_args, .. } = interface {
+                    for (idx, solution) in interface_inner_generic_args {
+                        if generic_arguments.iter().find(|arg| arg.0 == idx).is_none() {
+                            generic_arguments.push((idx, solution))
+                        }
+                    }
+                }
+            }
+        }
         // --- hmm.
-        let is_hard_generic =
-            |child: &EvaluatedType| matches!(child, EvaluatedType::HardGeneric { .. });
-        if is_hard_generic(&argument_type) {
+        if matches!(parameter_type, EvaluatedType::HardGeneric { base } | EvaluatedType::Generic { base } 
+            if generic_map.get(&base).is_none())
+        {
             if !(parameter_type.is_generic()
                 || parameter_types[i]
                     .type_label
@@ -252,7 +280,7 @@ pub fn zip_arguments(
             for errortype in errortype {
                 checker_ctx.add_error(TypeError {
                     _type: errortype,
-                    span: checker_ctx.span_of_expr(&callexp.arguments[i], &symbollib),
+                    span: checker_ctx.span_of_expr(&call_exp.arguments[i], &symbollib),
                 })
             }
         }
@@ -271,7 +299,7 @@ pub fn zip_arguments(
         // the types of future arguments can be inferred.
         if let Some((typ, expression)) = parameter_types
             .get(i + 1)
-            .and_then(|param_type| Some((param_type, callexp.arguments.get_mut(i + 1)?)))
+            .and_then(|param_type| Some((param_type, call_exp.arguments.get_mut(i + 1)?)))
         {
             let target_type = coerce(typ.inferred_type.clone(), &generic_arguments);
             infer_ahead(expression, &target_type, symbollib)

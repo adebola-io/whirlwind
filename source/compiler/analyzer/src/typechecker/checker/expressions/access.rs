@@ -399,7 +399,7 @@ pub fn search_for_property(
     generic_args.append(&mut interface_inner_generics);
     generic_args.append(&mut interface_this_type_solutions);
     // Is property a method?
-    // Search through the compound list of methods for appriopriate property.
+    // Search through the compound list of methods for appropriate property.
     for method in complete_method_list.iter() {
         let method = *method;
         let method_symbol = unwrap_or_continue!(symbollib.get_forwarded(method));
@@ -417,7 +417,7 @@ pub fn search_for_property(
                 property_span,
             ))
         } else if !method_is_static && !object_is_instance {
-            checker_ctx.add_error(errors::contructor_non_static_method_access(
+            checker_ctx.add_error(errors::constructor_non_static_method_access(
                 base_symbol.name.clone(),
                 method_symbol.name.clone(),
                 property_span,
@@ -518,7 +518,7 @@ pub fn search_for_property(
             let attribute = *attributes;
             let attribute_symbol = symbollib.get_forwarded(attribute).unwrap();
             if attribute_symbol.name.to_lowercase() == property_symbol.name.to_lowercase() {
-                checker_ctx.add_error(errors::mispelled_name(
+                checker_ctx.add_error(errors::misspelled_name(
                     attribute_symbol.name.clone(),
                     property_span,
                 ));
@@ -531,7 +531,7 @@ pub fn search_for_property(
     for method in complete_method_list {
         let method_symbol = symbollib.get_forwarded(method).unwrap();
         if method_symbol.name.to_lowercase() == property_symbol.name.to_lowercase() {
-            checker_ctx.add_error(errors::mispelled_name(
+            checker_ctx.add_error(errors::misspelled_name(
                 method_symbol.name.clone(),
                 property_span,
             ));

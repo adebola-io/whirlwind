@@ -54,7 +54,13 @@ impl std::fmt::Display for TypeErrorType {
             format!("The function should return '{expected}', but '{found}' is being returned instead.")
         },
         TypeErrorType::NoSuchProperty { base_type, property } => format!("Property '{property}' does not exist on a value of type '{base_type}'."),
-        TypeErrorType::UnimplementedInterface { offender, _interface } => format!("Operation failed because the type '{offender}' does not implement '{_interface}'."),
+        TypeErrorType::UnimplementedInterface { offender, _interface, base_generic } => {
+            if let Some(base) = base_generic {
+                format!("'{offender}' cannot be assigned to '{base}' because it does not implement '{_interface}'.")
+            } else {
+                format!("Operation failed because {offender} does not implement {_interface}.")
+            }
+        }
         TypeErrorType::NotCallable { caller } => format!("{caller} is not a callable type."),
         TypeErrorType::MismatchedFunctionArgs { expected, found, least_required } => match least_required {
             Some(least) => format!("Requires at least {least} argument{}, but {found} {} given.", if *least == 1 {""} else {"s"}, if *found < 2 {"was"} else {"were"}),

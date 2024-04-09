@@ -1,9 +1,10 @@
 use crate::{
-    utils::{distill_as_function_type, FunctionType, coerce}, EvaluatedType::*, 
+    utils::{distill_as_function_type, get_interface_types_from_symbol, FunctionType}, EvaluatedType::*, 
     SemanticSymbolKind, SymbolIndex, SymbolLibrary, UNKNOWN, *,
 };
 use errors::TypeErrorType;
 use std::collections::HashMap;
+
 
 #[derive(Clone, Copy)]
 pub enum UnifyOptions {
@@ -515,45 +516,57 @@ fn solve_generic_type(
     // If there is already a prior solution for the left type,
     // check that it is unifiable with the right,
     // and update its mapped value.
-    if let Some(map) = map.as_deref_mut() {
-        if let Some(already_assigned) = map.get(base).cloned() {
-            match unify_types(
-                &already_assigned,
-                &free_type,
-                symbollib,
-                options,
-                Some(map),
-            ) {
-                Ok(result_type) => {
-                    map.insert(*base, result_type.clone());
-                    return Ok(result_type);
+    'check_for_prior_solutions: {
+        if let Some(map) = map.as_deref_mut() {
+            if let Some(already_assigned) = map.get(base).cloned() {
+                // for reasons that will have to be checked again later, there are scenarios where 
+                // the solution for the generic T is {type T}, so trying to
+                // solve it results in an infinite loop.
+                if let Generic {base: prior_solution_base} = &already_assigned {
+                    if prior_solution_base == base {
+                        break 'check_for_prior_solutions;
+                    }
                 }
-                Err(mut errors) => {
-                    errors.insert(0, default_error());
-                    return Err(errors);
-                }
+                match unify_types(
+                    &already_assigned,
+                    &free_type,
+                    symbollib,
+                    options,
+                    Some(map),
+                ) {
+                    Ok(result_type) => {
+                        map.insert(*base, result_type.clone());
+                        return Ok(result_type);
+                    }
+                    Err(mut errors) => {
+                            errors.insert(0, default_error());   
+                            return Err(errors);
+                    }
+                }  
             }
         }
     }
+    
     let base_parameter = match symbollib.get_forwarded(*base) {
         Some(base) => base,
         None => return Ok(Unknown),
     };
-    let (interfaces, default_value) = match &base_parameter.kind {
+    let default_value = match &base_parameter.kind {
         SemanticSymbolKind::GenericParameter {
-            interfaces,
             default_value,
+            ..
         } => {
-            (interfaces, default_value)
+            default_value
         }
         // Something has gone wrong if this ever happens. Look into it.
         _ => return Ok(Unknown),
     };
-    // Default generic type if other is unknown.
-    if let Some(default) = default_value {
-        let solved_generics = map
+    // Rendition of prior solutions as a vector.
+    let solved_generics = map
             .as_ref()
             .map(|map| map.iter().map(|(a, b)| (a.clone(), b.clone())).collect());
+    // Default generic type if other is unknown.
+    if let Some(default) = default_value {
         if free_type.is_unknown() {
             return Ok(evaluate(
                 default,
@@ -564,118 +577,65 @@ fn solve_generic_type(
             ));
         }
     }
-    for _interface in interfaces {
-        let mut interface_evaluated = evaluate(_interface, symbollib, None, &mut None, 0);
+    let interfaces_in_generic = get_interface_types_from_symbol(*base, symbollib, solved_generics.as_ref().unwrap_or(&vec![]));
+    if interfaces_in_generic.is_empty() {
+        // Generic parameter solved.
+        let final_type = free_type.clone();
+        if let Some(map) = map.as_deref_mut() {
+            map.insert(*base,  final_type.clone());
+        }
+        return Ok(final_type)
+    }
+
+    let free_type_generics = match free_type {
+        ModelInstance { generic_arguments,.. }
+        | InterfaceInstance { generic_arguments,.. }
+            => Some(generic_arguments),
+        _ => None,
+    };
+    let free_type_implementations = match free_type {
+        ModelInstance { model: base, .. }
+        | InterfaceInstance { interface_: base,.. }
+        | Generic { base }
+        | HardGeneric { base } => get_interface_types_from_symbol(*base, symbollib, free_type_generics.unwrap_or(&vec![])),
+        _ => vec![]
+    };
+
+    let mut errors = vec![];
+    // For every interface implemented on the generic type, there must be a matching unifiable implementation
+    // in the free type.
+    for interface_evaluated in interfaces_in_generic {
         // The interface guard does not refer to a interface.
         // Unification cannot continue, but it is not the problem of this process.
         if !interface_evaluated.is_interface_instance() {
             return Ok(Unknown);
         }
-        // Handle all generics inside the interface to check against.
-        let solved_generics = map
-            .as_ref()
-            .map(|map| map.iter().map(|(a, b)| (a.clone(), b.clone())).collect()).unwrap_or(vec![]);
-        interface_evaluated = coerce(interface_evaluated, &solved_generics);
-        let implementations = match free_type {
-            ModelInstance { model: base, .. }
-            | InterfaceInstance { interface_: base,.. }
-            | Generic { base }
-            | HardGeneric { base } => match &{
-                    match &symbollib.get_forwarded(*base){
-                    Some(base) => base,
-                    None => return Ok(EvaluatedType::Unknown), 
-                }}.kind
-            {
-                SemanticSymbolKind::GenericParameter {
-                    interfaces: implementations,
-                    ..
-                }
-                | SemanticSymbolKind::Interface {
-                    interfaces: implementations, ..
-                }
-                | SemanticSymbolKind::Model {
-                    interfaces: implementations, ..
-                } => Some(implementations),
-                _ => None,
-            },
-            _ => None,
-        };
-        let free_type_generics = match free_type {
-            ModelInstance { generic_arguments,.. }
-            | InterfaceInstance { generic_arguments,.. }
-                => Some(generic_arguments),
-            _ => None,
-        };
-        let mut errors = vec![];
+        
+
         let interface_is_implemented = 
         // Interface is implemented if it has a matching implementation 
         // in the list of the free_type's implementations.
-        implementations.is_some_and(|implementations| {
-            implementations
-                .iter()
-                .any(|implementation| {
-                    // todo: block infinite types.
-                    let intermediate_implemented_type = match implementation {
-                        // Interface constraints?
-                        // Interfaces are implemented based on the truthfulness or falsity of a condition. 
-                        IntermediateType::BoundConstraintType { consequent, clause, .. } => {
-                            if !evaluate_type_clause(clause, symbollib, free_type_generics, &mut None, 0).unwrap_or_default() {
-                                return false;
-                            }
-                            &consequent
-                        }
-                        _ => implementation, 
-                    };
-                    let evaluated_implemented_type = evaluate(
-                        intermediate_implemented_type,
-                        symbollib, 
-                        free_type_generics,
-                        &mut None, 
-                        0);
-                    // Unknown types will unify easily, but it does not conclude that the
-                    // implementation is valid.
-                    if !evaluated_implemented_type.is_interface_instance() {
-                        return false;
-                    }
-                    return unify_types(
-                        &interface_evaluated, 
-                        &evaluated_implemented_type, 
-                        symbollib, 
-                        options, 
-                        map.as_deref_mut()
-                    ).is_ok()
-                })
-        })
-        // Interface is implemented if free type is a generic, and it has a matching implementation 
-        // from a current type environment.
-        || {
-            match free_type {
-                HardGeneric { base } | Generic { base } => {
-                    symbollib
-                        .type_environments
-                        .iter()
-                        .filter_map(|environment| {
-                            environment
-                                .suppositions
-                                .iter()
-                                .find(|supposition| supposition.base == *base)
-                        })
-                        .map(|supposition| supposition.implementations.iter())
-                        .flatten().any(|evaluated_implementation_type| {
-                            unify_types(
-                                &interface_evaluated, 
-                                evaluated_implementation_type, 
-                                symbollib, 
-                                options, 
-                                map.as_deref_mut()
-                            ).is_ok()
-                        })
+        free_type_implementations
+            .iter()
+            .any(|evaluated_implemented_type| {
+                // todo: block infinite types.
+                // if let Some(solved_generics) = solved_generics.as_ref() {
+                //     evaluated_implemented_type = coerce(evaluated_implemented_type, solved_generics)
+                // }
+
+                // Unknown types will unify easily, but it does not conclude that the
+                // implementation is valid.
+                if !evaluated_implemented_type.is_interface_instance() {
+                    return false;
                 }
-                _ => false
-            }
-            
-            
-        }
+                return unify_types(
+                    &interface_evaluated, 
+                    &evaluated_implemented_type, 
+                    symbollib, 
+                    options,
+                    map.as_deref_mut()
+                ).is_ok()
+            })
         || match free_type {
             // An interface is implemented by an opaque type if all its collaborator
             // types implement the interface.
@@ -716,16 +676,21 @@ fn solve_generic_type(
             _ => false,
         };
         if !interface_is_implemented && !is_equal_interface {
-            errors.insert(0, default_error());
             errors.push(
                 TypeErrorType::UnimplementedInterface {
                     offender: symbollib.format_evaluated_type(free_type),
                     _interface: symbollib.format_evaluated_type(&interface_evaluated),
+                    base_generic: Some(base_parameter.name.clone())
                 },
             );
-            return Err(errors);
         }
     }
+
+    if !errors.is_empty() {
+        errors.insert(0, default_error());
+        return Err(errors);
+    }
+    
     // Generic parameter solved.
     let final_type = free_type.clone();
     if let Some(map) = map.as_deref_mut() {

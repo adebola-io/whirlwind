@@ -133,10 +133,9 @@ public model Set<T implements Hash>
     /// ```
     public function union(other: This) -> This {
         var unionSet = Set()
-        this.items
-            .keys()
-            .chain(other.items.keys())
-            .forEach(fn (item) unionSet.add(item))
+        for item in this.items.keys().chain(other.items.keys()) {
+            unionSet.add(item)
+        }
         return unionSet
     }
     /// Generates an intersection set by selecting the common elements

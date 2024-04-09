@@ -61,11 +61,17 @@ pub fn not_sequenced(name: String, span: ast::Span) -> TypeError {
     }
 }
 
-pub fn unimplemented_interface(offender: String, _interface: String, span: ast::Span) -> TypeError {
+pub fn unimplemented_interface(
+    offender: String,
+    _interface: String,
+    base_generic: Option<String>,
+    span: ast::Span,
+) -> TypeError {
     TypeError {
         _type: TypeErrorType::UnimplementedInterface {
             offender,
             _interface,
+            base_generic,
         },
         span,
     }
