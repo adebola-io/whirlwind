@@ -34,7 +34,7 @@ public model String
 
     /// Implementation of the Display trait.
     public function [Display.toString] -> String {
-       return '"' + this.replace('"', '\\"') + '"'
+       return String.fromUtf8(this.vec + [])
     }
     /// Implementation of the Default trait.
     static function [Default.init] -> This {
@@ -96,13 +96,11 @@ public model String
             if char.isWhitespace() {  
                 isNewWord = true
                 result += char 
+            } else if isNewWord {
+                result += char.upperCase()
+                isNewWord = false
             } else {
-                if isNewWord {
-                    result += char.upperCase()
-                    isNewWord = false
-                } else {
-                    result += char
-                }
+                result += char
             }
         }
         return result 

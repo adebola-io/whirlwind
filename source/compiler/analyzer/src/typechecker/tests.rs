@@ -709,7 +709,20 @@ fn it_errors_for_self_referential_types() {}
 fn it_resolves_infinitely_cyclic_types_to_never() {}
 
 #[test]
-fn it_errors_for_uninferable_types() {}
+fn it_errors_for_uninferable_types() {
+    text_produces_errors!(
+        "
+        module Test
+
+        function main() {
+            array := []
+        }
+        ",
+        &[TypeErrorType::UninferrableVariable {
+            name: format!("array")
+        }]
+    );
+}
 
 #[test]
 fn it_maintains_generic_parameter_invariance() {}
@@ -740,5 +753,40 @@ fn it_creates_enum_instances() {
     }
     ",
         &[("room", "Room")]
+    );
+}
+
+#[test]
+fn it_preserves_nested_generic_solutions() {
+    text_produces_errors!(
+        "
+    module Test
+
+    model StringIterator implements Iterable<String> {
+        new(){}
+        public function [Iterable.next] -> ?String {
+            todo()
+        }
+    }
+
+    model BooleanIterator implements Iterable<boolean> {
+        new(){}
+        public function [Iterable.next] -> ?boolean {
+            todo()
+        }
+    }
+
+    function main() {
+        stringIter := StringIterator()
+        boolIter := BooleanIterator()
+
+        stringIter.chain(boolIter);
+    }
+    ",
+        &[TypeErrorType::UnimplementedInterface {
+            offender: format!("BooleanIterator"),
+            _interface: format!("Iterable<String>"),
+            base_generic: Some(format!("That"))
+        }]
     );
 }

@@ -1,10 +1,10 @@
 use crate::{
-    utils::{distill_as_function_type, get_interface_types_from_symbol, FunctionType}, EvaluatedType::*, 
+    utils::{distill_as_function_type, get_interface_types_from_symbol, FunctionType},
+    EvaluatedType::*,
     SemanticSymbolKind, SymbolIndex, SymbolLibrary, UNKNOWN, *,
 };
 use errors::TypeErrorType;
 use std::collections::HashMap;
-
 
 #[derive(Clone, Copy)]
 pub enum UnifyOptions {
@@ -15,12 +15,11 @@ pub enum UnifyOptions {
     Return,
 }
 
-
-/// Given a target type T and a candidate type U, the unification of T <- U is 
+/// Given a target type T and a candidate type U, the unification of T <- U is
 /// an operation that subsumes the type T, compares all its bounds and constraints,
 /// and produces the lowest upper bound for which U is equivalent to T, if it exists,
 /// or type errors if it does not.
-/// 
+///
 /// It optionally takes in a map so it can track the generic parameters
 /// that have been transformed.
 // TODO: Return custom error if one type is a Maybe of the other.
@@ -32,12 +31,17 @@ pub fn unify_types(
     options: UnifyOptions,
     mut map: Option<&mut HashMap<SymbolIndex, EvaluatedType>>,
 ) -> Result<EvaluatedType, Vec<TypeErrorType>> {
+    // println!(
+    //     "Unifying {} <- {}",
+    //     symbollib.format_evaluated_type(target),
+    //     symbollib.format_evaluated_type(candidate)
+    // );
     let default_error = || TypeErrorType::MismatchedAssignment {
         target: symbollib.format_evaluated_type(target),
         right: symbollib.format_evaluated_type(candidate),
     };
     let maybify = |typ| utils::maybify(typ, symbollib);
-    
+
     match (target, candidate) {
         // Types are directly equal, therefore they are unifiable.
         (_, _) if target == candidate => return Ok(target.clone()),
@@ -45,49 +49,26 @@ pub fn unify_types(
         (HardGeneric { base } | Generic { base }, free_type)
             if matches!(options, UnifyOptions::HardConform) =>
         {
-            solve_generic_type(
-                &mut map,
-                base,
-                free_type,
-                symbollib,
-                default_error,
-                options,
-            )
+            solve_generic_type(&mut map, base, free_type, symbollib, default_error, options)
         }
         // Left type is a generic parameter.
-        (Generic { base }, free_type) if !free_type.is_void() => solve_generic_type(
-            &mut map,
-            base,
-            free_type,
-            symbollib,
-            default_error,
-            options,
-        ),
+        (Generic { base }, free_type) if !free_type.is_void() => {
+            solve_generic_type(&mut map, base, free_type, symbollib, default_error, options)
+        }
         // Right type is a generic parameter and conformity is requested.
         (free_type, Generic { base } | HardGeneric { base })
             if matches!(options, UnifyOptions::HardConform) && !free_type.is_void() =>
         {
-            solve_generic_type(
-                &mut map,
-                base,
-                free_type,
-                symbollib,
-                default_error,
-                options,
-            )
+            solve_generic_type(&mut map, base, free_type, symbollib, default_error, options)
         }
         // Right type is a generic parameter and conformity is requested.
         (free_type, Generic { base })
-            if matches!(options, UnifyOptions::Conform | UnifyOptions::AnyNever | UnifyOptions::Return) && !free_type.is_void() =>
-        {
-            solve_generic_type(
-                &mut map,
-                base,
-                free_type,
-                symbollib,
-                default_error,
+            if matches!(
                 options,
-            )
+                UnifyOptions::Conform | UnifyOptions::AnyNever | UnifyOptions::Return
+            ) && !free_type.is_void() =>
+        {
+            solve_generic_type(&mut map, base, free_type, symbollib, default_error, options)
         }
         // Numbers
         // (
@@ -110,7 +91,8 @@ pub fn unify_types(
                 generic_arguments: second_gen_args,
                 ..
             },
-        ) | (
+        )
+        | (
             InterfaceInstance {
                 interface_: first,
                 generic_arguments: first_gen_args,
@@ -121,7 +103,8 @@ pub fn unify_types(
                 generic_arguments: second_gen_args,
                 ..
             },
-        ) | (
+        )
+        | (
             EnumInstance {
                 enum_: first,
                 generic_arguments: first_gen_args,
@@ -180,23 +163,32 @@ pub fn unify_types(
             };
 
             let generic_arguments = final_generic_args
-                    .into_iter()
-                    .filter(|(base, _)| {
-                        first_gen_args
-                            .iter()
-                            .any(|(firstbase, _)| firstbase == base)
-                    })
-                    .take(generic_arg_length)
-                    .collect();
+                .into_iter()
+                .filter(|(base, _)| {
+                    first_gen_args
+                        .iter()
+                        .any(|(firstbase, _)| firstbase == base)
+                })
+                .take(generic_arg_length)
+                .collect();
             return Ok(if first_instance_symbol.kind.is_model() {
                 ModelInstance {
-                model: *first,
-                generic_arguments,
-                is_invariant: false,
-            }} else if first_instance_symbol.kind.is_interface() {
-                InterfaceInstance { interface_: *first, generic_arguments, is_invariant: false }   
+                    model: *first,
+                    generic_arguments,
+                    is_invariant: false,
+                }
+            } else if first_instance_symbol.kind.is_interface() {
+                InterfaceInstance {
+                    interface_: *first,
+                    generic_arguments,
+                    is_invariant: false,
+                }
             } else {
-                EnumInstance { enum_: *first, is_invariant: false, generic_arguments }
+                EnumInstance {
+                    enum_: *first,
+                    is_invariant: false,
+                    generic_arguments,
+                }
             });
         }
         // Either type is unknown.
@@ -209,16 +201,24 @@ pub fn unify_types(
             FunctionExpressionInstance { .. } | FunctionInstance { .. } | MethodInstance { .. },
             FunctionExpressionInstance { .. } | FunctionInstance { .. } | MethodInstance { .. },
         ) => {
-            let FunctionType {is_async: left_is_async, parameter_types: left_params, generic_arguments: left_generic_arguments, return_type: mut left_return_type} =
-                match distill_as_function_type(target, symbollib) {
-                    Some(functiontype) => functiontype,
-                    None => return Ok(EvaluatedType::Unknown)
-                };
-            let FunctionType {is_async: right_is_async, parameter_types: right_params, generic_arguments: right_generic_arguments, return_type: mut right_return_type} =
-                match distill_as_function_type(candidate, symbollib) {
-                    Some(functiontype) => functiontype,
-                    None => return Ok(EvaluatedType::Unknown)
-                };
+            let FunctionType {
+                is_async: left_is_async,
+                parameter_types: left_params,
+                generic_arguments: left_generic_arguments,
+                return_type: mut left_return_type,
+            } = match distill_as_function_type(target, symbollib) {
+                Some(functiontype) => functiontype,
+                None => return Ok(EvaluatedType::Unknown),
+            };
+            let FunctionType {
+                is_async: right_is_async,
+                parameter_types: right_params,
+                generic_arguments: right_generic_arguments,
+                return_type: mut right_return_type,
+            } = match distill_as_function_type(candidate, symbollib) {
+                Some(functiontype) => functiontype,
+                None => return Ok(EvaluatedType::Unknown),
+            };
             // Confirm that there are no generic mismatches between the two functions.
             let generic_args = match unify_generic_arguments(
                 left_generic_arguments,
@@ -243,7 +243,7 @@ pub fn unify_types(
                         least_required: None,
                     },
                 ]);
-            } 
+            }
             for (i, param) in left_params.iter().enumerate() {
                 if param.is_optional {
                     break;
@@ -251,8 +251,12 @@ pub fn unify_types(
                 if right_params.get(i).is_none() {
                     return Err(vec![
                         default_error(),
-                        TypeErrorType::MismatchedFunctionParams { expected: left_params.len(), found: i, least_required: Some(i + 1) }
-                    ])
+                        TypeErrorType::MismatchedFunctionParams {
+                            expected: left_params.len(),
+                            found: i,
+                            least_required: Some(i + 1),
+                        },
+                    ]);
                 }
             }
             let mut params = vec![];
@@ -266,7 +270,13 @@ pub fn unify_types(
                 if right_param.is_optional {
                     right_inferred_type = maybify(right_inferred_type);
                 }
-                let inferred_type = unify_types(&left_inferred_type, &right_inferred_type, symbollib, options, map);
+                let inferred_type = unify_types(
+                    &left_inferred_type,
+                    &right_inferred_type,
+                    symbollib,
+                    options,
+                    map,
+                );
                 let result = ParameterType {
                     name: left_param.name.clone(),
                     is_optional: false,
@@ -331,7 +341,7 @@ pub fn unify_types(
                 generic_arguments: opaque_generics,
                 aliased_as,
                 available_methods: methods,
-                available_interfaces: interfaces
+                available_interfaces: interfaces,
             },
             ModelInstance {
                 model: child,
@@ -374,7 +384,7 @@ pub fn unify_types(
                 collaborators: collaborators.clone(),
                 generic_arguments,
                 available_methods: methods.clone(),
-                available_interfaces: interfaces.clone()
+                available_interfaces: interfaces.clone(),
             });
         }
         // Left type is opaque and right type is generic.
@@ -439,7 +449,7 @@ pub fn unify_types(
                 generic_arguments,
                 aliased_as: *aliased_as,
                 available_methods: methods.clone(),
-                available_interfaces: interfaces.clone()
+                available_interfaces: interfaces.clone(),
             });
         }
         // Otherwise, both types cannot be unified.
@@ -461,12 +471,12 @@ pub fn unify_types(
 // /// - Float64 <: Float32
 // /// - Float64 <: Float64
 // fn unify_numbers(
-//     first_number: &SymbolIndex, 
-//     second_number: &SymbolIndex, 
-//     target: &EvaluatedType, 
+//     first_number: &SymbolIndex,
+//     second_number: &SymbolIndex,
+//     target: &EvaluatedType,
 //     candidate: &EvaluatedType,
-//     symbollib: &SymbolLibrary, 
-//     default_error: impl Fn() -> TypeErrorType, 
+//     symbollib: &SymbolLibrary,
+//     default_error: impl Fn() -> TypeErrorType,
 // ) -> Result<EvaluatedType, Vec<TypeErrorType>> {
 //     let first_model = *first_number;
 //     let second_model = *second_number;
@@ -489,7 +499,7 @@ pub fn unify_types(
 //         (false, false)
 //     };
 //     // Float64 can subsume any other numeric type.
-//     if first_is_float64 || 
+//     if first_is_float64 ||
 //         // Int32 is castable to any other type.
 //         second_is_int32 ||
 //         // Int64 is castable to itself, f32 and f64.
@@ -519,52 +529,52 @@ fn solve_generic_type(
     'check_for_prior_solutions: {
         if let Some(map) = map.as_deref_mut() {
             if let Some(already_assigned) = map.get(base).cloned() {
-                // for reasons that will have to be checked again later, there are scenarios where 
+                // println!(
+                //     "{} already assigned. Unifying {} <- {}",
+                //     symbollib.format_evaluated_type(&already_assigned),
+                //     symbollib.format_evaluated_type(&already_assigned),
+                //     symbollib.format_evaluated_type(free_type)
+                // );
+                // for reasons that will have to be checked again later, there are scenarios where
                 // the solution for the generic T is {type T}, so trying to
                 // solve it results in an infinite loop.
-                if let Generic {base: prior_solution_base} = &already_assigned {
+                if let Generic {
+                    base: prior_solution_base,
+                }
+                | HardGeneric {
+                    base: prior_solution_base,
+                } = &already_assigned
+                {
                     if prior_solution_base == base {
                         break 'check_for_prior_solutions;
                     }
                 }
-                match unify_types(
-                    &already_assigned,
-                    &free_type,
-                    symbollib,
-                    options,
-                    Some(map),
-                ) {
+                match unify_types(&already_assigned, &free_type, symbollib, options, Some(map)) {
                     Ok(result_type) => {
                         map.insert(*base, result_type.clone());
                         return Ok(result_type);
                     }
                     Err(mut errors) => {
-                            errors.insert(0, default_error());   
-                            return Err(errors);
+                        errors.insert(0, default_error());
+                        return Err(errors);
                     }
-                }  
+                }
             }
         }
     }
-    
     let base_parameter = match symbollib.get_forwarded(*base) {
         Some(base) => base,
         None => return Ok(Unknown),
     };
     let default_value = match &base_parameter.kind {
-        SemanticSymbolKind::GenericParameter {
-            default_value,
-            ..
-        } => {
-            default_value
-        }
+        SemanticSymbolKind::GenericParameter { default_value, .. } => default_value,
         // Something has gone wrong if this ever happens. Look into it.
         _ => return Ok(Unknown),
     };
-    // Rendition of prior solutions as a vector.
+    // // Rendition of prior solutions as a vector.
     let solved_generics = map
-            .as_ref()
-            .map(|map| map.iter().map(|(a, b)| (a.clone(), b.clone())).collect());
+        .as_ref()
+        .map(|map| map.iter().map(|(a, b)| (a.clone(), b.clone())).collect());
     // Default generic type if other is unknown.
     if let Some(default) = default_value {
         if free_type.is_unknown() {
@@ -577,29 +587,98 @@ fn solve_generic_type(
             ));
         }
     }
-    let interfaces_in_generic = get_interface_types_from_symbol(*base, symbollib, solved_generics.as_ref().unwrap_or(&vec![]));
+    let interfaces_in_generic = get_interface_types_from_symbol(
+        *base,
+        symbollib,
+        solved_generics.as_ref().unwrap_or(&vec![]),
+    );
     if interfaces_in_generic.is_empty() {
         // Generic parameter solved.
         let final_type = free_type.clone();
         if let Some(map) = map.as_deref_mut() {
-            map.insert(*base,  final_type.clone());
+            map.insert(*base, final_type.clone());
         }
-        return Ok(final_type)
+        return Ok(final_type);
     }
 
     let free_type_generics = match free_type {
-        ModelInstance { generic_arguments,.. }
-        | InterfaceInstance { generic_arguments,.. }
-            => Some(generic_arguments),
+        ModelInstance {
+            generic_arguments, ..
+        }
+        | InterfaceInstance {
+            generic_arguments, ..
+        } => Some(generic_arguments),
         _ => None,
     };
+
     let free_type_implementations = match free_type {
         ModelInstance { model: base, .. }
-        | InterfaceInstance { interface_: base,.. }
+        | InterfaceInstance {
+            interface_: base, ..
+        }
         | Generic { base }
-        | HardGeneric { base } => get_interface_types_from_symbol(*base, symbollib, free_type_generics.unwrap_or(&vec![])),
-        _ => vec![]
+        | HardGeneric { base } => {
+            get_interface_types_from_symbol(*base, symbollib, free_type_generics.unwrap_or(&vec![]))
+        }
+        _ => vec![],
     };
+
+    let empty = vec![];
+    let intermediate_implementations = match free_type {
+        ModelInstance { model: base, .. }
+        | InterfaceInstance {
+            interface_: base, ..
+        }
+        | Generic { base }
+        | HardGeneric { base } => match &{
+            match &symbollib.get_forwarded(*base) {
+                Some(base) => base,
+                None => return Ok(EvaluatedType::Unknown),
+            }
+        }
+        .kind
+        {
+            SemanticSymbolKind::GenericParameter {
+                interfaces: implementations,
+                ..
+            }
+            | SemanticSymbolKind::Interface {
+                interfaces: implementations,
+                ..
+            }
+            | SemanticSymbolKind::Model {
+                interfaces: implementations,
+                ..
+            } => implementations,
+            _ => &empty,
+        },
+        _ => &empty,
+    };
+    let conditional_implementations_on_free_type = intermediate_implementations
+        .iter()
+        .filter_map(|intermediate_type| match intermediate_type {
+            IntermediateType::BoundConstraintType {
+                consequent, clause, ..
+            } => {
+                if evaluate_type_clause(clause, symbollib, free_type_generics, &mut None, 0)
+                    .is_some_and(|x| x)
+                {
+                    return Some(consequent);
+                }
+                return None;
+            }
+            _ => None,
+        })
+        .map(|intermediate_type| {
+            evaluate(
+                &intermediate_type,
+                symbollib,
+                free_type_generics,
+                &mut None,
+                0,
+            )
+        })
+        .collect::<Vec<_>>();
 
     let mut errors = vec![];
     // For every interface implemented on the generic type, there must be a matching unifiable implementation
@@ -610,91 +689,160 @@ fn solve_generic_type(
         if !interface_evaluated.is_interface_instance() {
             return Ok(Unknown);
         }
-        
 
-        let interface_is_implemented = 
-        // Interface is implemented if it has a matching implementation 
+        // Interface is implemented if it has a matching implementation
         // in the list of the free_type's implementations.
-        free_type_implementations
-            .iter()
-            .any(|evaluated_implemented_type| {
-                // todo: block infinite types.
-                // if let Some(solved_generics) = solved_generics.as_ref() {
-                //     evaluated_implemented_type = coerce(evaluated_implemented_type, solved_generics)
-                // }
+        let has_matching_implementation =
+            free_type_implementations
+                .iter()
+                .any(|evaluated_implemented_type| {
+                    // todo: block infinite types.
+                    // Unknown types will unify easily, but it does not conclude that the
+                    // implementation is valid.
+                    if !evaluated_implemented_type.is_interface_instance() {
+                        return false;
+                    }
+                    return unify_types(
+                        &interface_evaluated,
+                        &evaluated_implemented_type,
+                        symbollib,
+                        options,
+                        map.as_deref_mut(),
+                    )
+                    .is_ok();
+                });
 
-                // Unknown types will unify easily, but it does not conclude that the
-                // implementation is valid.
-                if !evaluated_implemented_type.is_interface_instance() {
-                    return false;
-                }
-                return unify_types(
-                    &interface_evaluated, 
-                    &evaluated_implemented_type, 
-                    symbollib, 
-                    options,
-                    map.as_deref_mut()
-                ).is_ok()
-            })
-        || match free_type {
-            // An interface is implemented by an opaque type if all its collaborator
-            // types implement the interface.
-            OpaqueTypeInstance { available_interfaces, .. } => {
-                available_interfaces.iter().find(|interface_| interface_ == &&interface_evaluated).is_some()
-            }
-            _=> false
-        };
-        // Since interface instances are placeholders for instances of models 
-        // that implement said interface, the logical conclusion is that
-        // an interface is an implementation of itself.
-        let is_equal_interface =  
-            free_type == &interface_evaluated
-        || match (free_type, &interface_evaluated) {
-            (
-                EvaluatedType::InterfaceInstance { 
-                    interface_: first_interface, 
-                    generic_arguments: first_gen_args,
-                    ..
-                },
-                EvaluatedType::InterfaceInstance { 
-                    interface_: second_interface, 
-                    generic_arguments: second_gen_args,.. 
-                }
-            ) => {
-                first_interface == second_interface && 
-                match unify_generic_arguments(
-                    first_gen_args, 
-                    second_gen_args, symbollib, options, map.as_deref_mut()
-                ) {
-                    Ok(_) => true,
-                    Err(mut gen_errors) => {
-                        errors.append(&mut gen_errors);
-                        false
-                    },
-                }
-            }
+        if has_matching_implementation {
+            continue;
+        }
+
+        // Interface is implemented if free type is a generic, and it has a matching implementation
+        // from a current type environment.
+        let matches_in_current_type_environment = match free_type {
+            HardGeneric { base } | Generic { base } => symbollib
+                .type_environments
+                .iter()
+                .filter_map(|environment| {
+                    environment
+                        .suppositions
+                        .iter()
+                        .find(|supposition| supposition.base == *base)
+                })
+                .map(|supposition| supposition.implementations.iter())
+                .flatten()
+                .any(|evaluated_implementation_type| {
+                    unify_types(
+                        &interface_evaluated,
+                        evaluated_implementation_type,
+                        symbollib,
+                        options,
+                        map.as_deref_mut(),
+                    )
+                    .is_ok()
+                }),
             _ => false,
         };
-        if !interface_is_implemented && !is_equal_interface {
-            errors.push(
-                TypeErrorType::UnimplementedInterface {
-                    offender: symbollib.format_evaluated_type(free_type),
-                    _interface: symbollib.format_evaluated_type(&interface_evaluated),
-                    base_generic: Some(base_parameter.name.clone())
-                },
-            );
+
+        if matches_in_current_type_environment {
+            continue;
         }
+
+        let matches_conditionally =
+            conditional_implementations_on_free_type
+                .iter()
+                .any(|evaluated_implemented_type| {
+                    // todo: block infinite types.
+                    // Unknown types will unify easily, but it does not conclude that the
+                    // implementation is valid.
+                    if !evaluated_implemented_type.is_interface_instance() {
+                        return false;
+                    }
+                    return unify_types(
+                        &interface_evaluated,
+                        &evaluated_implemented_type,
+                        symbollib,
+                        options,
+                        map.as_deref_mut(),
+                    )
+                    .is_ok();
+                });
+
+        if matches_conditionally {
+            continue;
+        }
+
+        // An interface is implemented by an opaque type if all its collaborator
+        // types implement the interface.
+        let matches_as_opaque_type = match free_type {
+            OpaqueTypeInstance {
+                available_interfaces,
+                ..
+            } => available_interfaces
+                .iter()
+                .find(|interface_| interface_ == &&interface_evaluated)
+                .is_some(),
+            _ => false,
+        };
+
+        if matches_as_opaque_type {
+            continue;
+        }
+
+        // Since interface instances are placeholders for instances of models
+        // that implement said interface, the logical conclusion is that
+        // an interface is an implementation of itself.
+        let is_equal_interface = free_type == &interface_evaluated
+            || match (free_type, &interface_evaluated) {
+                (
+                    EvaluatedType::InterfaceInstance {
+                        interface_: first_interface,
+                        generic_arguments: first_gen_args,
+                        ..
+                    },
+                    EvaluatedType::InterfaceInstance {
+                        interface_: second_interface,
+                        generic_arguments: second_gen_args,
+                        ..
+                    },
+                ) => {
+                    first_interface == second_interface
+                        && match unify_generic_arguments(
+                            first_gen_args,
+                            second_gen_args,
+                            symbollib,
+                            options,
+                            map.as_deref_mut(),
+                        ) {
+                            Ok(_) => true,
+                            Err(mut gen_errors) => {
+                                errors.append(&mut gen_errors);
+                                false
+                            }
+                        }
+                }
+                _ => false,
+            };
+
+        if is_equal_interface {
+            continue;
+        }
+
+        errors.push(TypeErrorType::UnimplementedInterface {
+            offender: symbollib.format_evaluated_type(free_type),
+            _interface: symbollib.format_evaluated_type(&interface_evaluated),
+            base_generic: Some(base_parameter.name.clone()),
+        });
     }
 
     if !errors.is_empty() {
         errors.insert(0, default_error());
         return Err(errors);
     }
-    
-    // Generic parameter solved.
+
+    // // Generic parameter solved.
     let final_type = free_type.clone();
     if let Some(map) = map.as_deref_mut() {
-        map.insert(*base,  final_type.clone());
+        map.insert(*base, final_type.clone());
     }
     Ok(final_type)
 }
@@ -777,7 +925,6 @@ pub fn unify_generic_arguments(
     Ok(generic_args)
 }
 
-
 /// Creates a matching between a list of generic parameters and generic arguments.
 pub fn zip<'a>(
     generic_params: &[SymbolIndex],
@@ -814,7 +961,6 @@ pub fn unify_freely(
         _ => unify_types(left, right, symbollib, UnifyOptions::Conform, map),
     }
 }
-
 
 /// Two types T and U are convergent if `unify_types(T, U) == unify_types(U, T) == Ok(V)`
 pub fn converge_types(

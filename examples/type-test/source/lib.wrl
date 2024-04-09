@@ -22,7 +22,7 @@ test "Testing types." {
     var result = err(true)
     result = ok(none())
     result = ok(some(StringItself))
-    // result should coerce to type Outcome<Maybe<String>, Bool>
+    // result should coerce to type Outcome<Maybe<String>, boolean>
 
     // Opaque types.
     model Football {
@@ -98,13 +98,13 @@ test "Testing types." {
     arr = ["Hello", "world"] // arr should infer type Array<String>
     firstItem := arr[0] // Should infer type String.
     arr2 := []
-    arr2.push(some(true)) // arr2 should infer type Array<Maybe<Bool>>.
+    arr2.push(some(true)) // arr2 should infer type Array<Maybe<boolean>>.
     arr3 := []
     num2: number := 99
     arr3[0] = num // arr3 should infer type Array<number> 
 
     arr4 := []
-    arr4 = [none(), some([]), some([some(true)])] // arr4 should infer type Array<Maybe<Array<Maybe<Bool>>>>
+    arr4 = [none(), some([]), some([some(true)])] // arr4 should infer type Array<Maybe<Array<Maybe<boolean>>>>
 
 
     // Destructuring.
