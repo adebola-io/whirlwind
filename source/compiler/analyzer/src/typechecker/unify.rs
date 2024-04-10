@@ -572,7 +572,7 @@ fn solve_generic_type(
         _ => return Ok(Unknown),
     };
     // // Rendition of prior solutions as a vector.
-    let solved_generics = map
+    let mut solved_generics = map
         .as_ref()
         .map(|map| map.iter().map(|(a, b)| (a.clone(), b.clone())).collect());
     // Default generic type if other is unknown.
@@ -587,6 +587,7 @@ fn solve_generic_type(
             ));
         }
     }
+
     let interfaces_in_generic = get_interface_types_from_symbol(
         *base,
         symbollib,
@@ -622,6 +623,18 @@ fn solve_generic_type(
         }
         _ => vec![],
     };
+
+    // println!(
+    //     "{:?}, {:?}",
+    //     interfaces_in_generic
+    //         .iter()
+    //         .map(|s| symbollib.format_evaluated_type(s))
+    //         .collect::<Vec<_>>(),
+    //     free_type_implementations
+    //         .iter()
+    //         .map(|s| symbollib.format_evaluated_type(s))
+    //         .collect::<Vec<_>>()
+    // );
 
     let empty = vec![];
     let intermediate_implementations = match free_type {
@@ -689,7 +702,6 @@ fn solve_generic_type(
         if !interface_evaluated.is_interface_instance() {
             return Ok(Unknown);
         }
-
         // Interface is implemented if it has a matching implementation
         // in the list of the free_type's implementations.
         let has_matching_implementation =

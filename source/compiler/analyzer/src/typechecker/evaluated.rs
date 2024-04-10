@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{
     converge_types, unify_generic_arguments, unify_types,
     utils::{
@@ -1178,7 +1180,7 @@ fn generate_generics_from_arguments(
             let generic_param_evaluated = evaluate(
                 &intermediate_generic_type,
                 symbollib,
-                solved_generics,
+                None,
                 &mut error_tracker,
                 recursion_depth,
             );
@@ -1212,6 +1214,7 @@ fn generate_generics_from_arguments(
                 &mut error_tracker,
                 recursion_depth,
             );
+
             let result_evaluated_type = match unify_types(
                 &generic_param_evaluated,
                 &argument_evaluated,

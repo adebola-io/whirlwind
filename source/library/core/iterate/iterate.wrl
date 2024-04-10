@@ -4,8 +4,8 @@
 /// Its key feature is the `Iterable` interface, an intrinsic interface implemented by all models
 /// that work with structured sequences.
 /// 
-/// The module also contains useful models that iterate with a certain behaviorial modifier, allowing for
-/// a more finegrained control over iteration.
+/// The module also contains useful models that iterate with a certain behavioral modifier, allowing for
+/// a more fine grained control over iteration.
 module iterate 
 
 use core.boolean.boolean
@@ -150,7 +150,7 @@ public interface Iterable<I> {
     }
     /// Checks if any of the elements produced by the iterator matches a predicate.
     /// 
-    /// The method is shortcircuiting, therefore if there are elements left 
+    /// The method is short-circuiting, therefore if there are elements left 
     /// after the target element is found, the iterator can still be used.
     /// ### Usage
     /// ```
