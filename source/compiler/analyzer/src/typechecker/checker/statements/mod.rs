@@ -830,6 +830,22 @@ fn validate_return_type_and_params(
             )
         }
     }
+    validate_parameters(
+        evaluated_param_types,
+        symbollib,
+        allow_interface,
+        checker_ctx,
+        true,
+    );
+}
+
+pub fn validate_parameters(
+    evaluated_param_types: Vec<(SymbolIndex, EvaluatedType)>,
+    symbollib: &mut SymbolLibrary,
+    allow_interface: bool,
+    checker_ctx: &mut TypecheckerContext,
+    invariance: bool,
+) {
     for (param_idx, mut new_type) in evaluated_param_types {
         let mut interface_in_label = None;
         if let SemanticSymbolKind::Parameter {
@@ -845,7 +861,7 @@ fn validate_return_type_and_params(
                     param_type.as_ref().map(|p| p.span()).unwrap_or_default(),
                 ));
             }
-            new_type.set_invariance(true);
+            new_type.set_invariance(invariance);
             *inferred_type = new_type;
         }
         if let Some((interface_, span)) = interface_in_label {

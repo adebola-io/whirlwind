@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::{
     converge_types, unify_generic_arguments, unify_types,
     utils::{
@@ -1088,13 +1086,16 @@ pub fn evaluate_parameter_idxs(
     symbollib: &SymbolLibrary,
     generic_arguments: Vec<(SymbolIndex, EvaluatedType)>,
     checker_ctx: &mut TypecheckerContext<'_>,
+    force_param_label: bool,
 ) -> Vec<(SymbolIndex, EvaluatedType)> {
     let mut evaluated_param_types = vec![];
     for param in params {
         let parameter_symbol = symbollib.get(*param).unwrap();
+        let mut has_declared_type = false;
         let inferred_type = match &parameter_symbol.kind {
             SemanticSymbolKind::Parameter { param_type, .. } => {
                 if let Some(declared_type) = param_type {
+                    has_declared_type = true;
                     let span = parameter_symbol.ident_span();
                     evaluate(
                         declared_type,
@@ -1109,6 +1110,18 @@ pub fn evaluate_parameter_idxs(
             }
             _ => EvaluatedType::Unknown,
         };
+        // All parameters must have a type label.
+        if !has_declared_type && force_param_label {
+            let name = parameter_symbol.name.clone();
+            let span = parameter_symbol.ident_span();
+            checker_ctx.add_error(errors::unlabelled_parameter(name, span));
+        }
+        // The type assigned to each parameter must evaluate to something reasonable.
+        if inferred_type.is_unknown() {
+            let name = parameter_symbol.name.clone();
+            let span = parameter_symbol.ident_span();
+            checker_ctx.add_error(errors::uninferrable_parameter(name, span))
+        }
         evaluated_param_types.push((*param, inferred_type));
     }
     evaluated_param_types

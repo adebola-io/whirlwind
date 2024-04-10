@@ -572,7 +572,7 @@ fn solve_generic_type(
         _ => return Ok(Unknown),
     };
     // // Rendition of prior solutions as a vector.
-    let mut solved_generics = map
+    let solved_generics = map
         .as_ref()
         .map(|map| map.iter().map(|(a, b)| (a.clone(), b.clone())).collect());
     // Default generic type if other is unknown.
@@ -623,18 +623,6 @@ fn solve_generic_type(
         }
         _ => vec![],
     };
-
-    // println!(
-    //     "{:?}, {:?}",
-    //     interfaces_in_generic
-    //         .iter()
-    //         .map(|s| symbollib.format_evaluated_type(s))
-    //         .collect::<Vec<_>>(),
-    //     free_type_implementations
-    //         .iter()
-    //         .map(|s| symbollib.format_evaluated_type(s))
-    //         .collect::<Vec<_>>()
-    // );
 
     let empty = vec![];
     let intermediate_implementations = match free_type {

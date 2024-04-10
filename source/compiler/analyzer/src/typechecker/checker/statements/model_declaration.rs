@@ -292,8 +292,13 @@ fn typecheck_model_property(
                 {
                     checker_ctx.current_function_is_static = Some(*is_static);
                     let generic_arguments = evaluate_generic_params(generic_params, true);
-                    let evaluated_param_types =
-                        evaluate_parameter_idxs(params, symbollib, generic_arguments, checker_ctx);
+                    let evaluated_param_types = evaluate_parameter_idxs(
+                        params,
+                        symbollib,
+                        generic_arguments,
+                        checker_ctx,
+                        true,
+                    );
                     let return_type = return_type.as_ref();
                     (
                         evaluated_param_types,
@@ -438,12 +443,38 @@ fn typecheck_model_constructor(
 ) -> ControlFlow<()> {
     // If the model has a constructor:
     if let Some(constructor) = &mut model.body.constructor {
-        // For a model to be validly constructed, all its attributes have been definitively assigned in its constructor.
-        // i.e. for every attribute, there must be an assignment expression (with =) where the attribute is the lhs.
-        // question: What about in cases where the attribute is used before it is assigned? e.g.:
-        // this.a = this.b;
-        // this.b = someValue;
-        // answer: All instances of the attribute are recorded and tracked. If the first instance is not an assignment, error.
+        let model_symbol = symbollib.get(model.name).unwrap();
+        let constructor_parameters = if let SemanticSymbolKind::Model {
+            constructor_parameters,
+            ..
+        } = &model_symbol.kind
+        {
+            constructor_parameters
+        } else {
+            return ControlFlow::Break(());
+        };
+
+        // The constructor parameters have the same rules with normal function methods.
+        if let Some(constructor_parameters) = constructor_parameters {
+            let evaluated_param_types = evaluate_parameter_idxs(
+                constructor_parameters,
+                symbollib,
+                vec![],
+                checker_ctx,
+                true,
+            );
+            for (param_idx, param_type) in evaluated_param_types {
+                let param_symbol = unwrap_or_continue!(symbollib.get(param_idx));
+                if param_type.is_interface_instance() {
+                    checker_ctx.add_error(errors::interface_as_type(
+                        symbollib.format_evaluated_type(&param_type),
+                        param_symbol.ident_span(),
+                    ));
+                }
+            }
+        }
+
+        // Symbol is declared again to bypass borrow rules.
         let model_symbol = symbollib.get(model.name).unwrap();
         let attribute_idxs =
             if let SemanticSymbolKind::Model { attributes, .. } = &model_symbol.kind {
@@ -451,6 +482,13 @@ fn typecheck_model_constructor(
             } else {
                 return ControlFlow::Break(());
             };
+
+        // For a model to be validly constructed, all its attributes have been definitively assigned in its constructor.
+        // i.e. for every attribute, there must be an assignment expression (with =) where the attribute is the lhs.
+        // question: What about in cases where the attribute is used before it is assigned? e.g.:
+        // this.a = this.b;
+        // this.b = someValue;
+        // answer: All instances of the attribute are recorded and tracked. If the first instance is not an assignment, error.
         let mut attributes = HashMap::new();
         for idx in attribute_idxs {
             let idx = *idx;

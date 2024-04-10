@@ -45,8 +45,13 @@ fn typecheck_interface_property(
                 } = &symbol.kind
                 {
                     let generic_arguments = evaluate_generic_params(generic_params, true);
-                    let evaluated_param_types =
-                        evaluate_parameter_idxs(params, symbollib, generic_arguments, checker_ctx);
+                    let evaluated_param_types = evaluate_parameter_idxs(
+                        params,
+                        symbollib,
+                        generic_arguments,
+                        checker_ctx,
+                        true,
+                    );
                     let return_type = return_type.as_ref();
                     (
                         evaluated_param_types,
@@ -83,8 +88,13 @@ fn typecheck_interface_property(
                 {
                     checker_ctx.current_function_is_static = Some(*is_static);
                     let generic_arguments = evaluate_generic_params(generic_params, true);
-                    let evaluated_param_types =
-                        evaluate_parameter_idxs(params, symbollib, generic_arguments, checker_ctx);
+                    let evaluated_param_types = evaluate_parameter_idxs(
+                        params,
+                        symbollib,
+                        generic_arguments,
+                        checker_ctx,
+                        true,
+                    );
                     let return_type = return_type.as_ref();
                     (
                         evaluated_param_types,

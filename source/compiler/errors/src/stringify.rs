@@ -38,7 +38,7 @@ impl std::fmt::Display for TypeErrorType {
         TypeErrorType::MismatchedModelArgs { name, expected, assigned } => {
             format!("'{name}' expects {expected} constructor arguments, but got {assigned}.")
         },
-        TypeErrorType::UninferrableParameter(name) => format!("Cannot infer the type of parameter '{name}'. Please provide a type label."),
+        TypeErrorType::UnknownParameter(name) => format!("Cannot infer the type of parameter '{name}'. Please provide a type label."),
         TypeErrorType::ConstructorAssigntoInstance(name) => format!("A constructor cannot be assigned as an instance. Do you mean `new {name}...`?"),
         TypeErrorType::AttributeAccessOnConstructor { model, attribute_name } => format!("Cannot access an attribute on a model blueprint. Did you mean (new {model}(...)).{attribute_name}?"),
         TypeErrorType::ConstructorNonStaticMethodAccess { model_name, method_name } => format!("{method_name} is not a static method on {model_name}, but it is being used in a static context."),
@@ -148,6 +148,7 @@ impl std::fmt::Display for TypeErrorType {
         TypeErrorType::SelfReference { valuename } => format!("{valuename} cannot be referenced in its own declaration."),
         TypeErrorType::DuplicateImportName { name } => format!("'{name}' has already been imported in this namespace."),
         TypeErrorType::GenericFunctionImport => format!("External functions cannot have generic parameters."),
+        TypeErrorType::UnlabelledParameter { name } => format!("The parameter '{name}' must be labelled with a type."),
         };
         write!(f, "{message}")
     }

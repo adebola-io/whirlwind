@@ -56,7 +56,7 @@ pub enum TypeErrorType {
         expected: usize,
         assigned: usize,
     },
-    UninferrableParameter(String),
+    UnknownParameter(String),
     ConstructorAssigntoInstance(String),
     AttributeAccessOnConstructor {
         model: String,
@@ -329,6 +329,9 @@ pub enum TypeErrorType {
         name: String,
     },
     GenericFunctionImport,
+    UnlabelledParameter {
+        name: String,
+    },
 }
 
 pub fn invalid_binary(left: String, operator: BinOperator, right: String, span: Span) -> TypeError {
@@ -442,7 +445,7 @@ pub fn mismatched_model_args(
 
 pub fn uninferrable_parameter(name: String, span: ast::Span) -> TypeError {
     TypeError {
-        _type: TypeErrorType::UninferrableParameter(name),
+        _type: TypeErrorType::UnknownParameter(name),
         span,
     }
 }

@@ -20,9 +20,11 @@ pub fn typecheck_function(
             let mut evaluated_param_types = vec![];
             for param in params {
                 let parameter_symbol = symbollib.get(*param).unwrap();
+                let mut has_declared_type = false;
                 let inferred_type = match &parameter_symbol.kind {
                     SemanticSymbolKind::Parameter { param_type, .. } => {
                         if let Some(declared_type) = param_type {
+                            has_declared_type = true;
                             evaluate(
                                 declared_type,
                                 symbollib,
@@ -36,6 +38,18 @@ pub fn typecheck_function(
                     }
                     _ => EvaluatedType::Unknown,
                 };
+                // All parameters must have a type label.
+                if !has_declared_type {
+                    let name = parameter_symbol.name.clone();
+                    let span = parameter_symbol.ident_span();
+                    checker_ctx.add_error(errors::unlabelled_parameter(name, span));
+                }
+                // The type assigned to each parameter must evaluate to something reasonable.
+                if inferred_type.is_unknown() {
+                    let name = parameter_symbol.name.clone();
+                    let span = parameter_symbol.ident_span();
+                    checker_ctx.add_error(errors::uninferrable_parameter(name, span))
+                }
                 evaluated_param_types.push((*param, inferred_type));
             }
             let return_type = return_type.as_ref();

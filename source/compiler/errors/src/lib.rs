@@ -242,3 +242,10 @@ pub fn generic_function_import(span: ast::Span) -> TypeError {
         span,
     }
 }
+
+pub fn unlabelled_parameter(name: String, span: ast::Span) -> TypeError {
+    TypeError {
+        _type: TypeErrorType::UnlabelledParameter { name },
+        span,
+    }
+}

@@ -790,3 +790,38 @@ fn it_preserves_nested_generic_solutions() {
         }]
     );
 }
+
+#[test]
+fn it_errors_on_unknown_parameters() {
+    text_produces_errors!(
+        "
+        module Test
+
+        function add(x, y) {
+            return x + y
+        }
+
+        model AnonymousModel {
+            new(a) {}
+            public function performAction(param) {
+
+            }
+        }
+
+        interface AnonymousInterface {
+            public function doStuff(param2)
+        }
+        ",
+        &[
+            TypeErrorType::UnlabelledParameter { name: format!("a") },
+            TypeErrorType::UnlabelledParameter { name: format!("x") },
+            TypeErrorType::UnlabelledParameter { name: format!("y") },
+            TypeErrorType::UnlabelledParameter {
+                name: format!("param")
+            },
+            TypeErrorType::UnlabelledParameter {
+                name: format!("param2")
+            }
+        ]
+    );
+}

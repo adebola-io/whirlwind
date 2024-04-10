@@ -110,7 +110,7 @@ test "Testing types." {
     // Destructuring.
     model Person implements Default + Display {
         public var name: String
-        public var age: i32 // Set automatically.
+        public var age: i32 // Set automatically because i32 implements Default.
         new(name: String, age?: i32) {
             this.name = name
             this.age = age.valueOrDefault()
