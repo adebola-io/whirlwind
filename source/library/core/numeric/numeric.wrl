@@ -246,6 +246,26 @@ public model i32
     public function isNegative -> boolean {
         return wasm.__i32_lt_s(this, 0) == 1
     }
+
+    /// Calculates and returns the square of the current number.
+    /// ### Usage
+    /// ```
+    /// var x = 2
+    /// assertThat(x.square() == 4)
+    /// ```
+    public function square -> i32 {
+        return this.mul(this)
+    }
+
+    /// Returns the square root of the current number.
+    /// ### Usage
+    /// ```
+    /// var x = 25
+    /// assertThat(x.sqrt() == (5).f32())
+    /// ```
+    public function sqrt -> f32 {
+        return wasm.__f32_sqrt((this).f32())
+    }
 }
 
 public model i64
@@ -452,6 +472,26 @@ public model i64
     public function isNegative -> boolean {
         return wasm.__i64_lt_s(this, (0).i64()) == 1
     }
+
+    /// Calculates and returns the square of the current number.
+    /// ### Usage
+    /// ```
+    /// var x = (2).i64()
+    /// assertThat(x.square() == (4).i64())
+    /// ```
+    public function square() -> i64 {
+        return this.mul(this)
+    }
+
+    /// Returns the square root of the current number.
+    /// ### Usage
+    /// ```
+    /// var x = (25).i64()
+    /// assertThat(x.sqrt() == (5).f64())
+    /// ```
+    public function sqrt -> f64 {
+        return wasm.__f64_sqrt((this).f64())
+    }
 }
 
 /// A 32-bit floating number.
@@ -487,6 +527,26 @@ public model f32
     public function [Bitwise.bitand](other: f32) -> f32 {
         core.sentinels.todo()
     }
+        
+    /// Calculates and returns the square of the current number.
+    /// ### Usage
+    /// ```
+    /// var x = (2).f32()
+    /// assertThat(x.square() == (4).f32())
+    /// ```
+    public function square() -> f32 {
+        return this.mul(this)
+    }
+
+    /// Returns the square root of the current number.
+    /// ### Usage
+    /// ```
+    /// var x = (25).f32()
+    /// assertThat(x.sqrt() == (5).f32())
+    /// ```
+    public function sqrt -> f32 {
+        return wasm.__f32_sqrt(this)
+    }
 
     // Compiler built in.
 }
@@ -506,11 +566,31 @@ public model f64
     + Hash
     + Convertible
 {
+    /// Calculates and returns the square of the current number.
+    /// ### Usage
+    /// ```
+    /// var x = (2).f64()
+    /// assertThat(x.square() == (4).f64())
+    /// ```
+    public function square() -> f64 {
+        return this.mul(this)
+    }
+
+    /// Returns the square root of the current number.
+    /// ### Usage
+    /// ```
+    /// var x = (25).f64()
+    /// assertThat(x.sqrt() == (5).f64())
+    /// ```
+    public function sqrt -> f64 {
+        return wasm.__f64_sqrt(this)
+    }
     // Compiler built in.
 }
 
 /// A union type for integers.
 public type int = i32 | i64
+
 /// A union type for floats.
 public type float = f32 | f64
 

@@ -65,7 +65,7 @@ public interface Iterable<I> {
         while this.next().isSome() {
             count += 1
         }
-        count
+        return count
     }
     /// Consumes the iterator, running a callback for all the items produced by it.
     /// 
@@ -437,17 +437,17 @@ public model Zip<I, I1 implements Iterable<I>, J, I2 implements Iterable<J>> imp
 }
 
 public model Interleave<I, J implements Iterable<I>> implements Iterable<I> {
-    var delimeter: I
+    var delimiter: I
     var iterator: J
     var flag: boolean
-    new(iterator: J, delimeter: I) {
+    new(iterator: J, delimiter: I) {
         this.iterator = iterator
-        this.delimeter = delimeter
+        this.delimiter = delimiter
         this.flag = false
     }
     public function [Iterable.next] -> ?I {
         if this.flag {
-            return some(this.delimeter)
+            return some(this.delimiter)
         } else {
             var value = this.iterator.next()?
             this.flag = true

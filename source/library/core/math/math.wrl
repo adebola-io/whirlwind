@@ -10,24 +10,7 @@ use core.{
 }
 
 import "internal:math" {
-    // ---PUBLIC IMPORTS---
-    /// Computes the square of a number.
-    /// ### Usage
-    /// ```
-    /// use core.math.square
-    /// 
-    /// assert(square(2)).equals(4)
-    /// ```
-    "square" as public function square(a: number) -> number    
-    /// Computes the square root of a number.
-    /// ### Usage
-    /// ```
-    /// use core.math.sqrt
-    /// 
-    /// var num = sqrt(4)
-    /// assertThat(num == 2)
-    /// ```
-    "sqrt" as public function sqrt(a: number) -> number
+    // ---PUBLIC IMPORTS---  
     /// Returns the smallest integer greater than or equal to 
     /// the number passed in.
     /// ### Usage
@@ -102,7 +85,7 @@ import "internal:math" {
 /// assert(randNo2).isLessThan(2)
 /// ```
 public function psrandom(range?: Range<i32>) -> f64 {
-    var { start, end }: Range<i32> = range.valueOr(0..1);
+    var { start, end } = range.valueOr(0..1);
     return randInRange(start, end)
 }
 
