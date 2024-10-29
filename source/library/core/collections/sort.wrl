@@ -140,17 +140,3 @@ public function insertionSort<T implements Orderable>(array: []T) {
         i += 1
     }
 }
-
-
-/// An implementation of the Tim Sort algorithm.
-/// ### Usage
-/// ```
-/// use core.collections.timSort
-/// 
-/// var arr = [5, 6, 7, 8, 2]
-/// var sorted = timSort(arr)
-/// assert(sorted).equals([2, 5, 6, 7, 8])
-/// ```
-public function timSort<T implements Orderable>(array: []T) -> []T {
-   core.sentinels.todo()
-}

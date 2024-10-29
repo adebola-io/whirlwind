@@ -12,5 +12,5 @@ module internals
 
 
 public use never.never
-public use wasm
+public use base
 

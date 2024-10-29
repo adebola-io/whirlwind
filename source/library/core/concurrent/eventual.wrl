@@ -27,6 +27,7 @@ public model Eventual<T> implements Guaranteed<T> {
     /// 
     /// Trying to read it while it does not exist will lead to a runtime error.
     var internal: T
+    
     /// Returns true if the eventual has been resolved to a value.
     public function isResolved -> boolean {
         return this.resolved

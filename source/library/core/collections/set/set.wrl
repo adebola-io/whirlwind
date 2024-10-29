@@ -3,7 +3,6 @@ module set
 use core.boolean.boolean
 use core.iterate.{AsIterator, Iterable}
 use core.numeric.i32
-use core.sentinels.todo
 use core.string.{Display, String}
 
 use super.{Hash, HashMap, HashMapKeys}
@@ -177,7 +176,24 @@ public model Set<T implements Hash>
     /// Returns the power set of the current set, i.e.
     /// the set of all possible subsets.
     public function powerSet -> Set<Set<T>> {
-        todo()
+        var result = Set()
+        var elements = []
+        for element in this.items.keys() {
+            elements.push(element)
+        }
+        var n = elements.length()
+        var powerSetSize = 1 << n  // 2^n
+
+        for i in 0..powerSetSize {
+            var subset = Set()
+            for j in 0..n {
+                if (i & (1 << j)) != 0 {
+                    subset.add(elements[j]);
+                }
+            }
+            result.add(subset)
+        }
+        return result
     }
     /// Returns true if the current set can be found within
     /// another.

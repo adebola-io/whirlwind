@@ -1,6 +1,5 @@
 module coloredstring
 
-use core.sentinels.todo
 use core.maybe.some
 use core.numeric.i32
 use string.String
@@ -28,8 +27,85 @@ public model ColoredString implements Display {
         return this
     }
 
+    /// Changes the color of the text to green.
+    public function green -> This {
+        this.codes.push(32)
+        return this
+    }
+
+    /// Changes the color of the text to yellow.
+    public function yellow -> This {
+        this.codes.push(33)
+        return this
+    }
+
+    /// Makes the text bold.
+    public function bold -> This {
+        this.codes.push(1)
+        return this
+    }
+
+    /// Underlines the text.
+    public function underline -> This {
+        this.codes.push(4)
+        return this
+    }
+
+    /// Inverts the foreground and background colors.
+    public function inverse -> This {
+        this.codes.push(7)
+        return this
+    }
+
+    /// Changes the color of the text to magenta.
+    public function magenta -> This {
+        this.codes.push(35)
+        return this
+    }
+
+    /// Changes the color of the text to cyan.
+    public function cyan -> This {
+        this.codes.push(36)
+        return this
+    }
+
+    /// Changes the color of the text to white.
+    public function white -> This {
+        this.codes.push(37)
+        return this
+    }
+
+    /// Makes the text italic.
+    public function italic -> This {
+        this.codes.push(3)
+        return this
+    }
+
+    /// Adds a strikethrough to the text.
+    public function strikethrough -> This {
+        this.codes.push(9)
+        return this
+    }
+
+    /// Resets all color and style changes.
+    public function reset -> This {
+        this.codes = []
+        return this
+    }
+
+    /// Applies a custom ANSI code to the text.
+    public function custom(code: i32) -> This {
+        this.codes.push(code)
+        return this
+    }
+
+
     public function [Display.toString] -> String {
-        todo()
+        if this.codes.length() == 0 {
+            return this.text
+        }
+        var codeString = this.codes.join(some(";"))
+        return "\u001b[" + codeString + "m" + this.text + "\u001b[0m"
     }
 
     public static function from<T implements Display>(value: T) -> This {

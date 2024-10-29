@@ -6,7 +6,9 @@ use core.{
     boolean.boolean,
     maybe.some,
     numeric.i32,
+    memory.Ptr,
     sentinels.{fatal, todo},
+    internals.base
 }
 use eventual.Eventual
 
@@ -25,6 +27,8 @@ public model Prospect<T> {
     var consumed: boolean
     /// The function to execute when the run method is called.
     var func: fn -> T
+    /// The callback function to be executed when the prospect completes.
+    var recoverCallback: ?fn(error: SequenceError)
 
     new(func: fn -> T) {
         this.consumed = false
@@ -69,7 +73,7 @@ public model Prospect<T> {
     /// ### Usage
     /// ```
     /// async function aFunc {
-    ///     Print("Hello from prospect!")
+    ///     print("Hello from prospect!")
     /// }
     /// var prospect = aFunc() // Nothing happens yet.
     /// prospect.run() // aFunc runs and print "Hello from prospect!".
@@ -99,7 +103,11 @@ public model Prospect<T> {
             fatal(some("Cannot rerun a consumed Prospect."))
         }
         this.consumed = true
-        return todo()
+
+        var eventualId = base._prospect_run(Ptr.getOffset(this.func))
+       
+        // @wrl_transform 
+        return this.run();
     }
     /// Sets a timeout on the prospect's eventual execution. If the duration elapses 
     /// before the eventual can be resolved, it is abruptly aborted.
@@ -109,7 +117,7 @@ public model Prospect<T> {
     }
     /// Attaches a callback that should run if the execution of the prospect fails.
     public function recover(callback: fn(error: SequenceError)) {
-        todo()
+       this.recoverCallback = some(callback)
     }
     /// Races a prospect against another.
     /// 
@@ -119,7 +127,7 @@ public model Prospect<T> {
     /// other eventual will be immediately aborted.
     /// ### Usage
     /// ```
-    /// use core.Time.sleep
+    /// use core.time.sleep
     /// var first = async fn {
     ///     sleep(300) 
     ///     return "Hello!"

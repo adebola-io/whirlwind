@@ -4,6 +4,7 @@ module array
 
 use core.boolean.boolean
 use core.interfaces.Default
+use core.internals.base
 use core.iterate.{AsIterator, Iterable, Reversed}
 use core.math.{max, min, psrandom}
 use core.maybe.{none, some}
@@ -25,9 +26,8 @@ public model Array<T>
     
 
     new(capacity: i32) {
-        this.len = 0
-        this.cap = capacity
-        this.data = malloc(this.len)
+       this.cap = capacity
+       this.data = malloc(this.cap)
     }
     /// Returns an iterator over elements in this array.
     /// ### Usage
@@ -119,7 +119,14 @@ public model Array<T>
     /// assert(arrSorted).equals([1, 8, 10, 12, 16, 26, 35, 87])
     /// ```
     public function sort|=(T implements Orderable) -> []T {
-        return core.collections.timSort(this)
+        var result = []
+        var i = 0
+        while i < this.len {
+            result.push(this[i])
+            i += 1
+        }
+        core.collections.insertionSort(result);
+        return result
     }
     /// Fills an array with default values, given that the element type can be defaulted.
     /// ### Usage
@@ -457,12 +464,26 @@ public model Array<T>
     /// assert(array.length()).equals(5)
     /// ```
     public function push(value: T) {
-       if this.len == this.cap {
-           this.cap = this.cap * 2
-        //    this.data = realloc(this.data, this.cap)
-       }
-    //    this.data[this.len] = value
-       this.len += 1
+        if this.len == this.cap {
+            // Double the capacity if we've reached the limit
+            var newCap = this.cap * 2
+            var newData = malloc(newCap)
+            
+            // Copy existing data to new allocation
+            var i = 0
+            while i < this.len {
+                base._i32_store(base._i32_add(newData.address, i * 4), base._i32_load(base._i32_add(this.data.address, i * 4)))
+                i += 1
+            }
+            
+            // Update array properties
+            this.cap = newCap
+            this.data = newData
+        }
+        
+        // Add new element
+        base._i32_store(base._i32_add(this.data.address, this.len * 4), Ptr.getOffset(value))
+        this.len += 1
     }
     /// Removes an item from the end of the array.
     /// ### Usage

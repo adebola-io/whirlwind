@@ -10,7 +10,7 @@ use core.{
     internals.never,
     maybe.{none, some},
     memory.Ptr,
-    numeric.i32,
+    internals.base
 }
 
 /// Indicates that the current piece of code is unfinished.
@@ -45,11 +45,11 @@ public function todo<M implements Display>(message?: M) -> never {
 /// use core.sentinels.unreachable
 /// 
 /// function validateInput(x: i32) {
-///     if x != 0 {
+///     if x < 0 {
 ///         return
 ///     }
 ///     if x < 0 {
-///         unreachable() // unsigned integers are always positive.
+///         unreachable()
 ///     }
 ///     // proceed with validation.
 /// }
@@ -69,21 +69,6 @@ public function unreachable(message?: String) -> never {
 public function forever -> never {
     while true {}
     unreachable()
-}
-
-import "internals:control" {
-    /// Immediately halts the execution of the sequence with a given ID.
-    "stop" as function stop(id: i32, messageOffset: i32, messageLength: i32) -> never
-
-    /// Closes all sequences and exits the program with a given code.
-    /// ### Usage
-    /// ```
-    /// use core.sentinels.exit
-    /// exit(0)
-    /// ```
-    "exit" as public function exit(code?: i32) -> never
-    /// Returns the ID of the current sequence.
-    "getSeqId" as public function getSequenceID -> i32
 }
 
 /// Called when an execution sequence encounters an unrecoverable or
@@ -109,14 +94,14 @@ public function fatal(message?: String) -> never {
     // todo: generate stack trace.
     var messageOffset = Ptr.getOffset(errorMessage)
     var messageLength = errorMessage.length()
-    var id = getSequenceID()
-    stop(id, messageOffset, messageLength)
+    var id = base._seq_id()
+    base._seq_stop(id, messageOffset, messageLength, 1)
 }
 
 /// Called when an execution sequence encounters a recoverable error. It displays a
 /// message at runtime, and continues execution with the normal flow.
 public function nonfatal(message: String) {
-    todo()
+    core.data.print(message)
 }
 
 /// Caches the return value of a function based on its arguments. Subsequent

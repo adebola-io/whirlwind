@@ -1,3 +1,26 @@
 module data
 
+use core.internals.base
+use core.memory.Ptr
+use core.string.Display
+use core.sentinels.fatal
+
 public use json
+
+/// Prints the string representation of the given value to the standard output.
+///
+/// @param value The value to be printed. It must implement the `Display` trait.
+public function print<T implements Display>(value: T) {
+    var string = value.toString()
+    var ptr = Ptr.getOffset(string)
+    var length = string.length()
+    base._print(ptr, length)
+    
+    // Flush the output buffer to ensure immediate display
+    base._stdout_flush()
+    
+    if base._stdout_error() != 0 {
+       fatal();
+    }
+}
+

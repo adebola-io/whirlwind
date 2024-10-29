@@ -5,70 +5,115 @@ module math
 
 use core.{
     boolean.boolean,
-    numeric.{f64, number, i32, int},
+    numeric.{f64, number, i32},
     ops.{Orderable, Ordering, Range},
+    internals.base
 }
 
-import "internal:math" {
-    // ---PUBLIC IMPORTS---  
-    /// Returns the smallest integer greater than or equal to 
-    /// the number passed in.
-    /// ### Usage
-    /// ```
-    /// use core.math.ceil
-    /// 
-    /// assert(ceil(8.5)).equals(9)
-    /// assert(ceil(10.23)).equals(11)
-    /// ```
-    "ceil" as public function ceil(x: number) -> i32
-    /// Returns the largest integer smaller than or equal to
-    /// the number passed in.
-    /// ### Usage
-    /// ```
-    /// use core.math.floor
-    /// 
-    /// assert(floor(9.3)).equals(9)
-    /// assert(floor(100.99)).equals(100)
-    /// ```
-    "floor" as public function floor(x: number) -> i32
-    /// Returns the absolute value of a number.
-    /// 
-    /// ### Usage
-    /// ```
-    /// use core.math.abs
-    /// 
-    /// assert(max(-4)).equals(4)
-    /// assert(max(10)).equals(10)
-    /// ```
-    "abs" as public function abs(a: number) -> i32
-    /// Determines if a number is prime.
-    /// ### Usage
-    /// ```
-    /// 
-    /// ```
-    "isPrime" as public function isPrime(x: number) -> boolean
-    /// Calculates the greatest common divisor of two numbers.
-    /// The GCD is the largest positive integer that divides both input 
-    /// integers without a remainder.
-    /// ### Usage
-    /// ```
-    /// use core.math.gcd
-    /// 
-    /// assert(gcd(12, 18)).equals(6)
-    /// assert(gcd(0, 24)).equals(0)
-    /// ```
-    "gcd" as public function gcd(a: number, b: number) -> int
-    /// Returns the approximate value of the PI constant as a double-precision
-    /// 64-bit floating-point number.
-    /// ### Usage
-    /// ```
-    /// var pi = core.math.pi() // 3.1415926536...
-    /// ```
-    "pi" as public function pi() -> f64
 
-    /// Returns a random floating number in a specified range.
-    "randInRange" as function randInRange(start: i32, end: i32) -> f64
+
+/// Returns the smallest integer greater than or equal to 
+/// the number passed in.
+/// ### Usage
+/// ```
+/// use core.math.ceil
+/// 
+/// assert(ceil(8.5)).equals(9)
+/// assert(ceil(10.23)).equals(11)
+/// ```
+public function ceil(x: number) -> i32 {
+    return base._i32_trunc_sat_f64_s(base._f64_ceil(x.f64()));
 }
+
+/// Returns the largest integer smaller than or equal to
+/// the number passed in.
+/// ### Usage
+/// ```
+/// use core.math.floor
+/// 
+/// assert(floor(9.3)).equals(9)
+/// assert(floor(100.99)).equals(100)
+/// ```
+public function floor(x: number) -> i32 {
+    return base._i32_trunc_sat_f64_s(base._f64_floor(x.f64()));
+}
+
+/// Calculates the greatest common divisor of two numbers.
+/// The GCD is the largest positive integer that divides both input 
+/// integers without a remainder.
+/// ### Usage
+/// ```
+/// use core.math.gcd
+/// 
+/// assert(gcd(12, 18)).equals(6)
+/// assert(gcd(0, 24)).equals(0)
+/// ```
+public function gcd(a: i32, b: i32) -> i32 {
+    while base._i32_eq(b, 0) == 0 {
+        var temp = b
+        b = base._i32_rem_u(a, b)
+        a = temp
+    }
+    return a
+}
+
+/// Returns the approximate value of the PI constant as a double-precision
+/// 64-bit floating-point number.
+/// ### Usage
+/// ```
+/// var pi = core.math.pi() // 3.1415926536...
+/// ```
+public function pi() -> f64 {
+    return 3.141592653589793
+}
+
+/// Determines if a number is prime.
+/// ### Usage
+/// ```
+/// use core.math.isPrime
+/// 
+/// assert(isPrime(2)).equals(true)
+/// assert(isPrime(17)).equals(true)
+/// assert(isPrime(4)).equals(false)
+/// assert(isPrime(100)).equals(false)
+/// ```
+public function isPrime(xnum: number) -> boolean {
+    var x = xnum.i32();
+    if base._i32_le_u(x, 1) == 1 {
+        return false
+    }
+    if base._i32_eq(x, 2) == 1 {
+        return true
+    }
+    if base._i32_eq(base._i32_rem_u(x, 2), 0) == 1 {
+        return false
+    }
+    
+    var i: i32 = 3
+    while base._i32_le_u(base._i32_mul(i, i), x) == 1 {
+        if base._i32_eq(base._i32_rem_u(x, i), 0) == 1 {
+            return false
+        }
+        i = base._i32_add(i, 2)
+    }
+    
+    return true
+}
+
+
+/// Returns the absolute value of a number.
+/// 
+/// ### Usage
+/// ```
+/// use core.math.abs
+/// 
+/// assert(max(-4)).equals(4)
+/// assert(max(10)).equals(10)
+/// ```
+public function abs(a: number) -> i32 {
+    return base._i32_trunc_sat_f64_s(base._f64_abs(a.f64()));
+}
+
 
 
 /// Generates a single pseudo-random floating-point number within a range.
@@ -86,7 +131,7 @@ import "internal:math" {
 /// ```
 public function psrandom(range?: Range<i32>) -> f64 {
     var { start, end } = range.valueOr(0..1);
-    return randInRange(start, end)
+    return base._rand(start, end)
 }
 
 /// Returns the minimum of two values that implement Orderable.

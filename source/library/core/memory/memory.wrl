@@ -1,19 +1,25 @@
 module memory
 
 use core.boolean.boolean
-use core.internals.never
+use core.internals.base
 use core.numeric.i32
-use core.sentinels.todo
 
 public use ref.WeakRef
 
-import "internal:mem" {
-    /// Returns the value at a particular offset in linear memory.
-    "at" as public function at(offset: i32) -> i32;
-}
+var HEADER_SIZE: i32 = 8
+var PAGE_SIZE: i32 = 65536
+var MIN_BLOCK_SIZE: i32 = 32
 
+var HEAP_START: i32 = 0
+var HEAP_END: i32 = 0
+
+/// Represents a pointer to a memory address.
 public model Ptr {
     public var address: i32
+
+    new(address: i32) {
+        this.address = address
+    }
 
     /// Determines whether two variables point to the same location in memory
     /// by comparing their pointer values.
@@ -30,14 +36,13 @@ public model Ptr {
     /// assertThat(Ptr.same(arr2, arr1))
     /// ```
     public static function same<T>(left: T, right: T) -> boolean {
-        todo()
+        return Ptr.getOffset(left) == Ptr.getOffset(right)
     }
 
 
     /// Returns the address of an object instance in linear memory.
     public static function getOffset<T>(value: T) -> i32 {
-        // False recursion. The implementation of this function
-        // is built into the compiler.
+        // @wrl_transform
         return Ptr.getOffset(value)
     }
 }
@@ -61,29 +66,24 @@ public model Ptr {
 /// assertThat(ptr.address > 0)
 /// ```
 public function malloc(size: i32) -> Ptr {
-    todo()
+    var aligned_size = align(base._i32_add(size, HEADER_SIZE), 8)
+    var block = find_free_block(aligned_size)
+
+    if block == 0 {
+        block = extend_heap(aligned_size)
+        if block == 0 {
+            return Ptr(0)
+        }
+    }
+
+    var block_size = base._i32_load(block)
+    if base._i32_sub(block_size, aligned_size) >= MIN_BLOCK_SIZE {
+        split_block(block, aligned_size)
+    }
+
+    base._i32_store(base._i32_add(block, 4), 1) // Mark as allocated
+    return Ptr(base._i32_add(block, HEADER_SIZE))
 }
-
-
-/// Given a number of bytes, `calloc` allocates a block of memory on the heap,
-/// returning a pointer to the start of the block.
-/// 
-/// Unlike with `malloc`, the memory is initialized to zero.
-/// 
-/// @param size - The number of bytes to allocate.
-/// @returns A pointer to the start of the newly allocated block of memory.
-/// 
-/// ### Usage
-/// ```
-/// use core.memory.calloc
-/// 
-/// var ptr = calloc(1024)
-/// assertThat(ptr.address > 0)
-/// ```
-public function calloc(size: i32) -> Ptr {
-    todo()
-}
-
 
 /// Frees a block of memory previously allocated with `malloc` or `calloc`.
 /// 
@@ -94,37 +94,153 @@ public function calloc(size: i32) -> Ptr {
 /// var ptr = malloc(1024)
 /// free(ptr)
 /// ```
-public function free(p: Ptr) {
-    todo()
+public function free(ptr: Ptr) {
+    if ptr.address == 0 {
+        return
+    }
+
+    var block = base._i32_sub(ptr.address, HEADER_SIZE)
+    base._i32_store(base._i32_add(block, 4), 0) // Mark as free
+
+    // Coalesce with adjacent free blocks
+    coalesce(block)
 }
 
-
-
-
-/// Returns the last value on the call stack.
+/// Given a number of bytes, `calloc` allocates a block of memory on the heap,
+/// returning a pointer to the start of the block.
 /// 
-/// It will crash the program if it is called when 
-/// the call stack has more than one value in it,
-/// or when the call stack is empty.
-public function stackLast -> never {
-    // False recursion. The implementation of this function
-    // is built into the compiler.
-    return stackLast()
-}
-
-
-/// Swaps the memory address of two values.
-/// # Usage
+/// Unlike with `malloc`, the memory is initialized to zero.
+/// 
+/// @param num - The number of elements to allocate.
+/// @param size - The size of each element.
+/// @returns A pointer to the start of the newly allocated block of memory.
+/// 
+/// ### Usage
 /// ```
-/// use core.memory.swap
+/// use core.memory.calloc
 /// 
-/// var a = [1, 2, 3]
-/// var b = [4, 5, 6]
-/// swap(a, b)
-/// 
-/// assert(a).equals([4, 5, 6])
-/// assert(b).equals([1, 2, 3])
+/// var ptr = calloc(10, 4) // allocates 10 * 4 bytes.
 /// ```
-public function swap<T>(a: T, b: T) {
-    todo()
+public function calloc(num: i32, size: i32) -> Ptr {
+    var total_size = base._i32_mul(num, size)
+    var ptr = malloc(total_size)
+    
+    if (ptr.address != 0) {
+        base._memory_fill(ptr.address, 0, total_size)
+    }
+    
+    return ptr
 }
+
+/// Searches for a free memory block of at least the specified size.
+/// 
+/// @param size The minimum size of the memory block to find, in bytes.
+/// @returns The address of a suitable free memory block, or 0 if no such block is found.
+function find_free_block(size: i32) -> i32 {
+    var current = HEAP_START
+    while current != 0 {
+        var block_size = base._i32_load(current)
+        var is_free = base._i32_load(base._i32_add(current, 4))
+        if is_free == 0 and block_size >= size {
+            return current
+        }
+        current = base._i32_load(base._i32_add(current, 8)) // Next block
+    }
+    return 0
+}
+
+
+/// Extends the heap by allocating additional memory pages.
+///
+/// This function attempts to grow the heap by allocating a specified number of memory pages.
+/// It calculates the number of pages needed based on the requested size, attempts to grow
+/// the memory, and sets up a new memory block if successful.
+///
+/// @param size The minimum size (in bytes) by which to extend the heap.
+/// @returns The address of the newly allocated memory block if successful.
+/// @returns 0 if the memory allocation fails.
+/// 
+/// # Note
+/// The actual allocated size may be larger than the requested size due to page size alignment.
+function extend_heap(size: i32) -> i32 {
+    var pages = base._i32_div_u(base._i32_add(size, PAGE_SIZE - 1), PAGE_SIZE)
+    var old_break = base._memory_size()
+    if base._memory_grow(pages) == -1 {
+        return 0
+    }
+
+    var new_block = base._i32_mul(old_break, PAGE_SIZE)
+    base._i32_store(new_block, base._i32_mul(pages, PAGE_SIZE))
+    base._i32_store(base._i32_add(new_block, 4), 0) // Mark as free
+    base._i32_store(base._i32_add(new_block, 8), 0) // No next block
+
+    // Coalesce with previous block if it's free
+    coalesce(new_block)
+    return new_block
+}
+
+/// Splits a memory block into two separate blocks.
+///
+/// @param block The address of the memory block to split.
+/// @param size The size of the first part of the split block.
+///
+/// # Effects
+/// - Creates a new block from the remaining space.
+/// - Updates the size and next pointer of the original block.
+/// - Initializes the new block as free and sets its next pointer.
+function split_block(block: i32, size: i32) {
+    var old_size = base._i32_load(block)
+    var new_block = base._i32_add(block, size)
+    var new_size = base._i32_sub(old_size, size)
+
+    base._i32_store(new_block, new_size)
+    base._i32_store(base._i32_add(new_block, 4), 0) // Mark as free
+    base._i32_store(base._i32_add(new_block, 8), base._i32_load(base._i32_add(block, 8))) // Copy next pointer
+
+    base._i32_store(block, size)
+    base._i32_store(base._i32_add(block, 8), new_block) // Update next pointer
+}
+
+/// Coalesces a memory block with the next block if possible.
+/// 
+/// This function attempts to merge the given memory block with the next adjacent block
+/// if the next block is free. This helps reduce memory fragmentation.
+/// 
+/// @param `block`: An integer representing the address of the current memory block.
+/// 
+/// ### Behavior
+/// 
+/// If the next block exists and is free, this function will:
+/// 1. Calculate the total size of both blocks.
+/// 2. Update the size of the current block to include both.
+/// 3. Update the next pointer of the current block to skip the merged block.
+/// 
+/// If the next block doesn't exist or is not free, no action is taken.
+/// 
+/// ### Note
+/// 
+/// This function modifies memory in-place and does not return a value.
+function coalesce(block: i32) {
+    var next = base._i32_load(base._i32_add(block, 8))
+    if next != 0 and base._i32_load(base._i32_add(next, 4)) == 0 {
+        // Merge with next block
+        var merged_size = base._i32_add(base._i32_load(block), base._i32_load(next))
+        base._i32_store(block, merged_size)
+        base._i32_store(base._i32_add(block, 8), base._i32_load(base._i32_add(next, 8)))
+    }
+}
+
+/// Aligns a given integer `n` to the specified `align` value.
+/// 
+/// The alignment is performed by adding the necessary offset to `n` to make it a multiple of `align`.
+/// 
+/// # Parameters
+/// - `n`: The integer value to be aligned.
+/// - `align`: The alignment value, which must be a power of 2.
+/// 
+/// # Returns
+/// The aligned integer value.
+function align(n: i32, align: i32) -> i32 {
+    return base._i32_and(base._i32_add(n, base._i32_sub(align, 1)), base._i32_xor(base._i32_sub(align, 1), -1))
+}
+

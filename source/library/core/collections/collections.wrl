@@ -14,4 +14,4 @@ public use ntuple.{
     Quintuple, Sextuple, NTuple
 }
 public use set.{Set, SetIterator}
-public use sort.{mergeSort, quickSort, insertionSort, bubbleSort, timSort}
+public use sort.{mergeSort, quickSort, insertionSort, bubbleSort}
