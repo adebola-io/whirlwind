@@ -11,7 +11,7 @@
     "dev:site:server": "bun run --hot source/website/server/index.ts",
     "dev:site:web": "vite dev",
     "publish:extensions:code": "echo 'Publishing the VSCode extension...'",
-    "cli:example": "echo 'Running CLI example...' && cd source/cli && cargo run build ../../examples/hello-world/source/main.wrl --CORELIBPATH=../library/core/core.wrl",
+    "cli:example": "echo 'Running CLI example...' && cd source/cli && cargo run run ../../examples/hello-world/source/main.wrl --CORELIBPATH=../library/core/core.wrl",
     "herald:node": "echo 'Running Herald in Node.js...' && cd source/herald && node source/mod.mjs",
     "herald:deno": "echo 'Running Herald in Deno...' && cd source/herald && deno run --allow-read source/mod.mjs",
     "herald:bun": "echo 'Running Herald in Bun...' && cd source/herald && bun run source/mod.mjs"

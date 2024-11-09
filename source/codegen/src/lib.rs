@@ -39,3 +39,5 @@ pub fn generate_wasm_from_whirlwind_standpoint(
     }
     Ok(vec![])
 }
+
+pub struct WasmBytecode {}

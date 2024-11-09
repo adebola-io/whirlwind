@@ -32,7 +32,7 @@ pub fn print_help() {
     let mut args = TerminalTable::new("Arguments:");
     args.sideline(&sideline)
         .row("--CORELIBPATH=[path]", vec!["Path to Core Library folder."])
-        .row("--OUTDIR=[path]", vec!["Output path for the build."])
+        .row("--OUTDIR=[path]", vec!["Output path for the WASM build."])
         .row(
             "--NO-WARNING=[true|false]",
             vec!["Disables warning messages."],

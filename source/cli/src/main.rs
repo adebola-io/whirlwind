@@ -3,7 +3,12 @@ use analyzer::{Module, Standpoint};
 use diagnostics::print_diagnostics;
 use help::print_help;
 use options::CliCommand;
-use std::{path::PathBuf, process::exit};
+use std::{
+    env::current_dir,
+    fs,
+    path::PathBuf,
+    process::{exit, Command, Stdio},
+};
 use utils::terminal::{self, Colorable};
 
 mod diagnostics;
@@ -140,10 +145,38 @@ fn exec(path: PathBuf, code: &mut i32, corelibpath: PathBuf, options: options::C
 
     // Build the standpoint.
     let build = codegen::generate_wasm_from_whirlwind_standpoint(&standpoint);
-    if build.is_err() {
-        terminal::error(build.err().unwrap().to_string());
+    if let Err(error) = &build {
+        terminal::error(error.to_string());
         *code = 1;
         return;
+    }
+    let bytes = build.unwrap();
+
+    let output_directory = &options
+        .arguments
+        .get("--OUTDIR")
+        .map(|x| PathBuf::from(x))
+        .unwrap_or(match current_dir() {
+            Ok(dir) => dir,
+            Err(error) => {
+                terminal::error("Could not determine output directory.");
+                terminal::error(error.to_string());
+                *code = 1;
+                return;
+            }
+        });
+
+    if !output_directory.exists() {
+        if let Err(error) = fs::create_dir_all(&output_directory) {
+            terminal::error(error.to_string());
+            *code = 1;
+            return;
+        }
+    }
+
+    let output = output_directory.join("main.wasm");
+    if let Err(error) = fs::write(output.as_path(), bytes) {
+        terminal::error(error.to_string());
     }
 
     // Write to disk
@@ -156,5 +189,66 @@ fn exec(path: PathBuf, code: &mut i32, corelibpath: PathBuf, options: options::C
         return;
     }
 
+    if matches!(options.command, Some(options::CliCommand::Run)) {
+        let arguments = vec![];
+        let run_message = format!("Running...").color().green();
+        println!("{run_message}");
+        match run_wasm_with_node(output, arguments) {
+            Ok(_) => {}
+            Err(error) => {
+                terminal::error(error);
+                *code = 1;
+                return;
+            }
+        }
+        *code = 0;
+        return;
+    }
+
     // Run the standpoint.
+}
+
+fn run_wasm_with_node(wasm_path: PathBuf, arguments: Vec<String>) -> Result<(), String> {
+    let dir = match wasm_path.parent() {
+        Some(dir) => dir,
+        None => {
+            return Err("Could not determine directory of wasm file.".to_string());
+        }
+    };
+
+    let mut command = Command::new("node");
+    command
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .stdin(Stdio::inherit());
+    let wasm_path = wasm_path.display().to_string();
+    let text = format!(
+        "
+    const fs = require('fs');
+
+    async function main() {{
+        const importObject = {{
+            console: {{
+                log: (ptr) => console.log('Hello, World!')
+            }}
+        }};
+        const wasm = fs.readFileSync('{wasm_path}');
+        const module = await WebAssembly.compile(wasm);
+        const instance = await WebAssembly.instantiate(module, importObject);
+        instance.exports.main();
+    }}
+
+    main();
+    "
+    );
+
+    command.arg("-e").arg(text);
+    command.current_dir(dir);
+    command.args(arguments);
+
+    if let Err(error) = command.output() {
+        return Err(error.to_string());
+    }
+
+    Ok(())
 }
