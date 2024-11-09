@@ -2,8 +2,7 @@ module template
 
 use core.{
     collections.HashMap,
-    numeric.i32,
-    sentinels.todo
+    numeric.i32
 }
 use display.Display
 use string.String
@@ -105,10 +104,46 @@ public model Template implements Display {
         this.transforms.push(transformer)
         return this
     }
-    /// Builds a String from the template with all the inputted values.
-    public function finish -> String {
-       todo()
-    }
+    /// Builds a `String` from the template with all the inputted values.
+    /// ### Usage
+    /// ```
+    /// var city = "Paris"
+    /// var country = "France"
+    /// 
+    /// var template = String.fmt("Welcome to %, the capital of %!")
+    /// var completed = template.add(city).add(country).finish()
+    /// 
+    /// assert(completed).equals("Welcome to Paris, the capital of France!")
+    /// ```
+   public function finish -> String {
+        var result = this.template
+        var argIndex = 0
+        
+        // Handle named parameters first
+        for { a as key, b as value} in this.map {
+            result = result.replace("%{" + key + "}", value)
+        }
+        
+        // Handle positional parameters
+        while result.contains("%") {
+            if argIndex >= this.arguments.length() {
+                break
+            }
+            
+            var value = this.arguments[argIndex]
+            
+            // Apply any transforms for this position
+            for transform in this.transforms {
+                value = transform(value)
+            }
+            
+            result = result.replaceFirst("%", value)
+            argIndex += 1
+        }
+        
+        return result
+}
+
 }
 
 

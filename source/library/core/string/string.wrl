@@ -236,7 +236,54 @@ public model String
     /// assertThat(str.isWhitespace())
     /// ```
     public function isWhitespace -> boolean {
-        todo()
+        if this.isEmpty() {
+            return true
+        }
+        
+        for char in this.characters() {
+            var cp = char.vec[0]
+            
+            // Space separators
+            if !(cp == 0x0020  // space
+                || cp == 0x00A0  // no-break space
+                || cp == 0x1680  // ogham space mark
+                || cp == 0x2000  // en quad
+                || cp == 0x2001  // em quad
+                || cp == 0x2002  // en space
+                || cp == 0x2003  // em space
+                || cp == 0x2004  // three-per-em space
+                || cp == 0x2005  // four-per-em space
+                || cp == 0x2006  // six-per-em space
+                || cp == 0x2007  // figure space
+                || cp == 0x2008  // punctuation space
+                || cp == 0x2009  // thin space
+                || cp == 0x200A  // hair space
+                || cp == 0x202F  // narrow no-break space
+                || cp == 0x205F  // medium mathematical space
+                || cp == 0x3000  // ideographic space
+
+                // Line separators
+                || cp == 0x2028  // line separator
+                || cp == 0x2029  // paragraph separator
+
+                // Bidirectional markers
+                || cp == 0x200B  // zero width space
+                || cp == 0x200C  // zero width non-joiner
+                || cp == 0x200D  // zero width joiner
+                || cp == 0xFEFF  // zero width no-break space
+
+                // Control characters
+                || cp == 0x0009  // tab
+                || cp == 0x000A  // line feed
+                || cp == 0x000B  // vertical tab
+                || cp == 0x000C  // form feed
+                || cp == 0x000D  // carriage return
+                || cp == 0x0085) // next line
+            {
+                return false
+            }
+        }
+        return true
     }
     /// Returns true if the String has no characters.
     /// ## Usage
@@ -445,6 +492,18 @@ public model String
     public function replace(subStr: String, newStr: String) -> String {
         todo()
     }
+    /// Replaces the first instance of a substring and returns the new String.
+    /// ## Usage
+    /// ```
+    /// var str = "John goes to school. John buys a book."
+    /// 
+    /// var str2 = str.replaceFirst("John", "Mike")
+    /// 
+    /// assert(str2).equals("Mike goes to school. John buys a book.") // Only first instance is replaced.
+    /// ```
+    public function replaceFirst(subStr: String, newStr: String) -> String {
+        todo()
+    }
     /// Returns a reversed version of the String.
     /// ## Usage
     /// ```
@@ -525,7 +584,7 @@ public model String
     /// assert(str.trim()).equals("What then shall we say?")
     /// ```
     public function trim -> String {
-        todo()
+        return this.trimEnd().trimStart()
     }  
     /// Mutates the String in place and removes left or right whitespace padding.
     /// ## Usage
@@ -547,7 +606,22 @@ public model String
     /// assert(str.trimStart()).equals("What then shall we say?\n")
     /// ```
     public function trimStart -> String {
-        todo()
+        var result = String.withCapacity(this.vec.length())
+        var foundNonWhitespace = false
+        
+        for char in this.characters() {
+            if !foundNonWhitespace {
+                var cp = char.vec[0]
+                if cp != 0x20 && cp != 0x09 && cp != 0x0A && cp != 0x0D {
+                    foundNonWhitespace = true
+                    result += char
+                }
+            } else {
+                result += char
+            }
+        }
+        
+        return result
     } 
     /// Returns a version of the String without right whitespace padding.
     /// ## Usage
@@ -557,7 +631,29 @@ public model String
     /// assert(str.trimEnd()).equals("\nWhat then shall we say?")
     /// ```
     public function trimEnd -> String { 
-       todo()
+        var result = String.withCapacity(this.vec.length())
+        var lastNonWhitespace = -1
+        var i = 0
+        
+        // Find position of last non-whitespace character
+        for char in this.characters() {
+            var cp = char.vec[0]
+            if cp != 0x20 && cp != 0x09 && cp != 0x0A && cp != 0x0D {
+                lastNonWhitespace = i
+            }
+            i += 1
+        }
+        
+        // Copy up to last non-whitespace character
+        i = 0
+        for char in this.characters() {
+            if i <= lastNonWhitespace {
+                result += char
+            }
+            i += 1
+        }
+        
+        return result
     }
     /// Changes the case of all letters in the String to upper case.
     /// ## Usage
