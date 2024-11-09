@@ -64,6 +64,16 @@ impl From<(&Standpoint, SymbolIndex)> for HoverInfo {
             language: String::from("wrl"),
             value: string,
         }));
+        // Imported from external library?
+        if let SemanticSymbolKind::Function {
+            extern_import_source: Some(source),
+            ..
+        } = &symbol.kind
+        {
+            contents.push(MarkedString::String(format!(
+                "_Imported from `{source}`_\n"
+            )));
+        }
         // Documentation?
         if let Some(ref docs) = symbol.doc_info {
             if !is_opaque {

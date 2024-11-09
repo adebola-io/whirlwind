@@ -157,6 +157,7 @@ pub enum SemanticSymbolKind {
         is_async: bool,
         params: Vec<SymbolIndex>,
         generic_params: Vec<SymbolIndex>,
+        extern_import_source: Option<String>,
         return_type: Option<IntermediateType>,
     },
     TypeName {
@@ -372,6 +373,7 @@ impl SemanticSymbol {
                 params: vec![],
                 generic_params: vec![],
                 return_type: None,
+                extern_import_source: None, // set later on.
             },
             references: vec![SymbolReferenceList {
                 module_path: path_idx,

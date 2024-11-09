@@ -293,6 +293,7 @@ impl<'a> SymbolWriter<'a> {
                 params,
                 generic_params,
                 return_type,
+                ..
             } => {
                 // Construct function signature.
                 if *is_public {

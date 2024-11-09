@@ -1065,6 +1065,7 @@ impl<L: Lexer> Parser<L> {
             generic_params,
             return_type,
             is_public,
+            extern_import_source: None,
         };
 
         let entry_no = self
@@ -3272,7 +3273,7 @@ impl<L: Lexer> Parser<L> {
             span: token.span,
         };
         self.advance(); // Move past source.
-        let (opt, mut errors) = self.imports().to_tuple();
+        let (opt, mut errors) = self.imports(&source.value).to_tuple();
         if opt.is_none() {
             return Partial::from_errors(errors);
         }
@@ -3292,7 +3293,10 @@ impl<L: Lexer> Parser<L> {
     }
 
     /// Parses a block of imports in an import declaration.
-    fn imports(&self) -> Imperfect<(Vec<(WhirlString, ScopeAddress)>, [u32; 2])> {
+    fn imports(
+        &self,
+        import_library: &str,
+    ) -> Imperfect<(Vec<(WhirlString, ScopeAddress)>, [u32; 2])> {
         expect_or_return!(TokenType::Bracket(LCurly), self);
         self.advance(); // Move past {
         let mut importlist = vec![];
@@ -3304,7 +3308,8 @@ impl<L: Lexer> Parser<L> {
             {
                 break;
             }
-            let (imported_function, mut function_errors) = self.imported_function().to_tuple();
+            let (imported_function, mut function_errors) =
+                self.imported_function(import_library).to_tuple();
             if let Some(imported) = imported_function {
                 importlist.push(imported)
             }
@@ -3324,7 +3329,7 @@ impl<L: Lexer> Parser<L> {
     }
 
     /// Parses the identifier string and signature of an imported function.
-    fn imported_function(&self) -> Imperfect<(WhirlString, ScopeAddress)> {
+    fn imported_function(&self, import_library: &str) -> Imperfect<(WhirlString, ScopeAddress)> {
         let function_denoter = match self.token() {
             Some(Token {
                 _type: TokenType::String(string),
@@ -3407,6 +3412,7 @@ impl<L: Lexer> Parser<L> {
             generic_params,
             params,
             return_type,
+            extern_import_source: Some(import_library.to_string()),
         }));
         let address = ScopeAddress {
             module_id: ambience.module_id,

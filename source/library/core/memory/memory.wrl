@@ -7,11 +7,6 @@ use core.sentinels.todo
 
 public use ref.WeakRef
 
-import "internal:mem" {
-    /// Returns the value at a particular offset in linear memory.
-    "at" as public function at(offset: i32) -> i32;
-}
-
 public model Ptr {
     public var address: i32
 
@@ -30,7 +25,7 @@ public model Ptr {
     /// assertThat(Ptr.same(arr2, arr1))
     /// ```
     public static function same<T>(left: T, right: T) -> boolean {
-        todo()
+        return Ptr.getOffset(left) == Ptr.getOffset(right)
     }
 
 

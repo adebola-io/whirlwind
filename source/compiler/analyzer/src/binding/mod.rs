@@ -2605,6 +2605,7 @@ mod statements {
                 let signature_generic_params = signature.generic_params.take();
                 let signature_params = take(&mut signature.params);
                 let return_type = signature.return_type.take();
+                let extern_import_source_solved = signature.extern_import_source.take();
                 let generic_params_solved = bind_generic_parameters(
                     signature_generic_params.as_ref(),
                     binder,
@@ -2638,6 +2639,7 @@ mod statements {
                     params,
                     generic_params,
                     return_type,
+                    extern_import_source,
                     ..
                 }) = symbol_library
                     .get_mut(symbol_idx)
@@ -2645,7 +2647,8 @@ mod statements {
                 {
                     *generic_params = generic_params_solved;
                     *params = parameters;
-                    *return_type = return_type_solved
+                    *return_type = return_type_solved;
+                    *extern_import_source = extern_import_source_solved;
                 }
                 binder.pop_generic_pool();
                 imports.push((name, symbol_idx));
@@ -2654,7 +2657,7 @@ mod statements {
         // Bind generic params, params and return types.
         let typed_import_decl = TypedImportDeclaration {
             name: bind_string(import_decl.source, binder.path, literals),
-            imports: imports.clone(),
+            imports,
             span: import_decl.span,
         };
         return typed_import_decl;

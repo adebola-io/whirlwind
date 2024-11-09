@@ -146,6 +146,9 @@ pub struct FunctionSignature {
     pub is_async: bool,
     /// Whether or not the function is denoted by `public`.
     pub is_public: bool,
+    /// Whether or not the function is imported from an external library.
+    /// It either contains the name of the library or `None` if it is not imported.
+    pub extern_import_source: Option<String>,
     /// Generic Parameters of the function, if any.
     pub generic_params: Option<Vec<GenericParameter>>,
     /// The parameters of the function, if any.
