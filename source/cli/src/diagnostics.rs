@@ -1,5 +1,6 @@
 use analyzer::{DiagnosticType, ProgramDiagnostic, Standpoint};
 use std::{
+    collections::HashMap,
     fs::File,
     io::{self, Read, Seek},
     path::Path,
@@ -35,7 +36,7 @@ pub fn print_diagnostic_into(
             .color()
             .cyan(),
     ));
-    if let Ok(text) = read_span_from_file(span, path, line_lengths) {
+    if let Ok(raw_text) = read_span_from_file(span, path, line_lengths) {
         // todo: multiline spans.
         if span.is_single_line() {
             string.push_str(
@@ -45,19 +46,19 @@ pub fn print_diagnostic_into(
                     .cyan()
                     .str(),
             );
-            let whitespace_len = (text.len() - text.trim().len()) as u32;
-            let text = pretty::highlight(text.trim());
+            let text = pretty::highlight(raw_text.trim());
             string.push_str(&text);
 
             string.push_str(&format!("\n{}|", shift).color().bold().cyan().str());
             let mut character_count = 0;
-            while character_count < span.start[1] - whitespace_len + 2 {
+            let starting_whitespace = (raw_text.len() - raw_text.trim_start().len()) as u32;
+            let underline_start = span.start[1] - starting_whitespace;
+            let underline_end = span.end[1] - starting_whitespace;
+            while character_count <= underline_start {
                 string.push(' ');
                 character_count += 1
             }
-            while character_count < (span.start[1] - whitespace_len + 2)
-                || character_count < span.end[1] - whitespace_len + 2
-            {
+            while character_count <= underline_end {
                 let squiggle = "~".color().bold();
                 string.push_str(
                     &if diagnostic.is_error() {
@@ -92,11 +93,14 @@ fn read_span_from_file(
 
 /// Prints the diagnostics from the standpoint.
 /// It returns a boolean indicating whether compilation can continue.
-pub fn print_diagnostics(standpoint: &Standpoint) -> bool {
+pub fn print_diagnostics(standpoint: &Standpoint, arguments: &HashMap<String, String>) -> bool {
     let mut can_continue = true;
 
     let mut errors = 0;
     let mut warnings = 0;
+    let showing_all = arguments
+        .get("--SHOW-ALL-DIAGNOSTICS")
+        .is_some_and(|s| s != "false");
 
     standpoint
         .diagnostics
@@ -141,7 +145,7 @@ pub fn print_diagnostics(standpoint: &Standpoint) -> bool {
         if diagnostic.is_error() {
             can_continue = false;
         }
-        if idx == 29 {
+        if idx == 29 && !showing_all {
             let note = "note: ".color().bold();
             let message = "Showing at most 30 diagnostics. To show all, run the command again with \"--SHOW-ALL-DIAGNOSTICS=true\".".color().italic();
             println!("\n{note}{message}\n");

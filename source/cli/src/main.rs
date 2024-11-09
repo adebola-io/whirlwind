@@ -49,7 +49,7 @@ fn manage(options: options::CliObject, code: &mut i32) {
     if let Some(corelibpath) = options.arguments.get("--CORELIBPATH") {
         let corelibpath = PathBuf::from(corelibpath);
         match corelibpath.canonicalize() {
-            Ok(path) => check_paths(path, code, corelibpath, options),
+            Ok(path) => exec(path, code, corelibpath, options),
             Err(error) => {
                 terminal::error(format!("Invalid core library path: {error}"));
                 *code = 1;
@@ -62,7 +62,7 @@ fn manage(options: options::CliObject, code: &mut i32) {
     }
 }
 
-fn check_paths(path: PathBuf, code: &mut i32, corelibpath: PathBuf, options: options::CliObject) {
+fn exec(path: PathBuf, code: &mut i32, corelibpath: PathBuf, options: options::CliObject) {
     if !path.exists() {
         terminal::error("core library path does not exist.");
         *code = 1;
@@ -115,7 +115,9 @@ fn check_paths(path: PathBuf, code: &mut i32, corelibpath: PathBuf, options: opt
     if standpoint.diagnostics.len() > 0 {
         standpoint.validate(); // see idk
     }
-    print_diagnostics(&standpoint);
+    let elapsed = time.elapsed();
+
+    print_diagnostics(&standpoint, &options.arguments);
     if standpoint
         .diagnostics
         .iter()
@@ -125,30 +127,34 @@ fn check_paths(path: PathBuf, code: &mut i32, corelibpath: PathBuf, options: opt
         return;
     }
 
-    let elapsed = time.elapsed();
-    let build_finished = format!("Build finished in {elapsed:?}.\n").color().green();
-    println!("{build_finished}",);
+    let checking_finished = format!("Checking finished in {elapsed:?}.\n")
+        .color()
+        .green();
+    println!("{checking_finished}",);
 
-    // let object = bytecode::generate_from(&standpoint);
-    // std::mem::drop(standpoint);
-    // let object = match object {
-    //     Ok(object) => object,
-    //     Err(error) => {
-    //         terminal::error(format!("{error}"));
-    //         *code = 1;
-    //         return;
-    //     }
-    // };
-    // let mut vm = VM::from_object(object);
+    // Break if checking.
+    if matches!(options.command, Some(options::CliCommand::Check)) {
+        *code = 0;
+        return;
+    }
 
-    // println!("SIZE: {}B,\n\nBYTECODE:", vm.instructions.len());
-    // print_instructions(&vm.instructions);
-    // println!("FUNCTIONS: {}", vm.dispatch_table.len());
+    // Build the standpoint.
+    let build = codegen::generate_wasm_from_whirlwind_standpoint(&standpoint);
+    if build.is_err() {
+        terminal::error(build.err().unwrap().to_string());
+        *code = 1;
+        return;
+    }
 
-    // if let Err(error) = vm.run() {
-    //     terminal::error(error.to_string());
-    //     *code = 1;
-    // };
-    // vm
-    // --
+    // Write to disk
+    if matches!(options.command, Some(options::CliCommand::Build)) {
+        // ...
+        let elapsed = time.elapsed();
+        let build = format!("Build finished in {elapsed:?}.\n").color().green();
+        println!("{build}",);
+        *code = 0;
+        return;
+    }
+
+    // Run the standpoint.
 }
