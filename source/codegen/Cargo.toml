@@ -1,0 +1,9 @@
+[package]
+name = "codegen"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+analyzer = { path = "../compiler/analyzer" }
+ast = { path = "../compiler/ast" }
+errors = { path = "../compiler/errors" }

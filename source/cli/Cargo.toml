@@ -11,3 +11,4 @@ analyzer = {version = "*", path = "../compiler/analyzer"}
 utils = {version = "*", path = "../compiler/utils"}
 errors = {version = "*", path = "../compiler/errors"}
 pretty = {version = "*", path = "../compiler/pretty"}
+codegen = {version = "*", path = "../codegen"}

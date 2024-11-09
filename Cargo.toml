@@ -9,9 +9,8 @@ members = [
     "source/compiler/analyzer",
     "source/compiler/utils",
     "source/compiler/macros",
-    "source/compiler/middleend",
     "source/cli",
     "source/server",
-    "source/repl",
-    "source/interpreter"
+    "source/repl", 
+    "source/codegen",
 ]

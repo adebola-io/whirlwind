@@ -64,7 +64,7 @@ impl std::fmt::Display for TypeErrorType {
         TypeErrorType::NotCallable { caller } => format!("{caller} is not a callable type."),
         TypeErrorType::MismatchedFunctionArgs { expected, found, least_required } => match least_required {
             Some(least) => format!("Requires at least {least} argument{}, but {found} {} given.", if *least == 1 {""} else {"s"}, if *found < 2 {"was"} else {"were"}),
-            None => format!("Expects {expected} argument{}, but {found} {} given.", if *expected == 1 {""} else {"s"}, if *found < 2 {"was"} else {"were"}),
+            None => format!("Function expects {expected} argument{}, but {found} {} given.", if *expected == 1 {""} else {"s"}, if *found < 2 {"was"} else {"were"}),
         },
         TypeErrorType::MismatchedFunctionParams { expected, found, least_required } => match least_required {
             Some(least) => format!("Requires at least {least} parameter{}, but this function has only {found}.", if *least == 1 {""} else {"s"}),
@@ -324,7 +324,10 @@ impl std::fmt::Display for BytecodeError {
             BytecodeError::MainIsAsync => "The entry main() function cannot be async.",
             BytecodeError::MainReturns => "The entry main() function cannot have a return type.",
             BytecodeError::MainNotFound => "main() function not found in entry file.",
-            BytecodeError::MainHasParameters => "The entry main() function cannot have parameters.",
+            BytecodeError::MainHasParameters => "The entry main() function cannot have generic or value parameters.",
+            BytecodeError::MainNotResolvable => "The entry main() function could not be resolved.",
+            BytecodeError::MainNotPublic => "The entry main() function is not marked as public. main() functions must be public to be callable.",
+            BytecodeError::MainIsImported => "The entry main() function cannot be imported from an external library.",
         };
         write!(f, "{message}")
     }

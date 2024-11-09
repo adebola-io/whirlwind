@@ -112,9 +112,19 @@ version = "0.0.1"
 dependencies = [
  "analyzer",
  "ast",
+ "codegen",
  "errors",
  "pretty",
  "utils",
+]
+
+[[package]]
+name = "codegen"
+version = "0.1.0"
+dependencies = [
+ "analyzer",
+ "ast",
+ "errors",
 ]
 
 [[package]]
@@ -258,13 +268,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "interpreter"
-version = "0.1.0"
-dependencies = [
- "analyzer",
-]
-
-[[package]]
 name = "itoa"
 version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -320,10 +323,6 @@ name = "memchr"
 version = "2.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5486aed0026218e61b8a01d5fbd5a0a134649abb71a0e53b7bc088529dced86e"
-
-[[package]]
-name = "middleend"
-version = "0.1.0"
 
 [[package]]
 name = "miniz_oxide"

@@ -4,6 +4,7 @@ function print<T implements Display>(message: T) {
     todo()
 }
 
-function main() {
+public function main(hello: i32) -> Tuple<i32, i32, i32> {
     print("Hello, world!")
+    return Tuple(1, 2, 3)
 }
