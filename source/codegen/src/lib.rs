@@ -1,8 +1,11 @@
+mod error_helpers;
 mod opcode;
 
 use analyzer::{
-    SemanticSymbolKind, Standpoint, SymbolLibrary, TypedFunctionDeclaration, TypedStmnt,
+    simple_evaluate, SemanticSymbol, SemanticSymbolKind, Standpoint, SymbolLibrary,
+    TypedFunctionDeclaration,
 };
+use error_helpers::{function_mismatch_error, function_resolve_error};
 use errors::BytecodeError;
 use opcode::{WasmSectionId, WasmType};
 
@@ -23,13 +26,16 @@ pub fn generate_wasm_from_whirlwind_standpoint(
 }
 
 #[derive(Debug, Default, Clone, PartialEq)]
-pub struct WasmBytecodeTypeSection {
+pub struct WasmBytecodeSection {
     chunks: Vec<Vec<u8>>,
 }
 
 #[derive(Debug, Default, Clone)]
 pub struct WasmBytecode {
-    pub type_section: WasmBytecodeTypeSection,
+    pub type_section: WasmBytecodeSection,
+    pub export_section: WasmBytecodeSection,
+    pub functions: Vec<u8>,
+    pub code_section: WasmBytecodeSection,
 }
 
 impl WasmBytecode {
@@ -70,7 +76,8 @@ impl WasmBytecode {
 
         let mut bytecode: WasmBytecode = Default::default();
 
-        // ..
+        let symbollib = &standpoint.symbol_library;
+        bytecode.emit_function(main_function, symbollib);
 
         Ok(bytecode)
     }
@@ -80,6 +87,7 @@ impl WasmBytecode {
         function: &TypedFunctionDeclaration,
         symbollib: &SymbolLibrary,
     ) {
+        // Generating function type signature.
         let mut type_chunk: Vec<u8> = vec![];
         type_chunk.push(WasmType::Function.into());
 
@@ -88,55 +96,112 @@ impl WasmBytecode {
             None => function_resolve_error(function),
         };
 
+        let mut function_is_public = false;
         match &function_symbol.kind {
             SemanticSymbolKind::Function {
                 is_public,
-                is_async,
                 params,
-                generic_params,
-                extern_import_source,
                 return_type,
+                ..
             } => {
-                if *is_async {
-                    type_chunk.push(WasmType::I32.into());
-                }
-                if return_type.is_some() {
-                    type_chunk.push(WasmType::I32.into());
-                }
-                if !is_public {
-                    type_chunk.push(WasmType::I32.into());
-                }
+                // Encode parameters.
+                type_chunk.extend_from_slice(&params.len().to_le_bytes());
                 for param in params {
-                    type_chunk.push(WasmType::I32.into());
+                    type_chunk.push(WasmType::from_parameter(*param, symbollib).into());
                 }
-                // TODO: Generic params
-
-                self.type_section.chunks.push(type_chunk);
+                // Encode return type.
+                if let Some(return_type) = return_type {
+                    let return_type_evaled = simple_evaluate(return_type, symbollib);
+                    type_chunk.push(0x01);
+                    type_chunk
+                        .push(WasmType::from_evaluated_type(&return_type_evaled, symbollib).into());
+                }
+                function_is_public = *is_public;
             }
             _ => function_mismatch_error(function_symbol),
         }
+
+        self.type_section.chunks.push(type_chunk);
+        let type_chunk_index = self.type_section.chunks.len() - 1;
+
+        // Add function type index to function section.
+        self.functions
+            .extend_from_slice(&type_chunk_index.to_le_bytes());
+
+        self.emit_function_body(function, symbollib);
+
+        if function_is_public {
+            self.export_function(function_symbol, type_chunk_index);
+        }
     }
 
-    pub fn emit_statement(&mut self, statement: &TypedStmnt, symbollib: &SymbolLibrary) {
-        todo!()
+    pub fn emit_function_body(
+        &mut self,
+        _function: &TypedFunctionDeclaration,
+        _symbollib: &SymbolLibrary,
+    ) {
+        let mut code_chunk: Vec<u8> = vec![];
+        code_chunk.push(0x00); // size of function placeholder.
+        code_chunk.push(0x0b);
+        self.code_section.chunks.push(code_chunk);
     }
 
-    pub fn to_bytes(mut self) -> Vec<u8> {
+    pub fn export_function(&mut self, function_symbol: &SemanticSymbol, type_chunk_index: usize) {
+        let mut export_chunk: Vec<u8> = vec![];
+        // Export name length.
+        export_chunk.extend_from_slice(&function_symbol.name.len().to_le_bytes());
+        // Export name.
+        export_chunk.extend_from_slice(function_symbol.name.as_bytes());
+        // Export kind.
+        export_chunk.push(0x00); // Function
+                                 // Export type index.
+        export_chunk.extend_from_slice(&type_chunk_index.to_le_bytes());
+
+        self.export_section.chunks.push(export_chunk);
+    }
+
+    pub fn to_bytes(self) -> Vec<u8> {
         let mut bytes = vec![
             0x00, 0x61, 0x73, 0x6D, // Magic
             0x01, 0x00, 0x00, 0x00, // Version
         ];
 
+        // Appending type section.
+        bytes.push(WasmSectionId::TypeSectionId.into());
+        let mut section_length = 1; // starting with the section id.
+
+        for chunk_length in self.type_section.chunks.iter().map(|chunk| chunk.len()) {
+            section_length += chunk_length;
+        }
+
+        bytes.extend_from_slice(&section_length.to_le_bytes()); // section length.
+        bytes.extend_from_slice(&self.type_section.chunks.len().to_le_bytes()); // number of types.
+
+        for chunk in self.type_section.chunks {
+            bytes.extend_from_slice(&chunk); // type chunks.
+        }
+
+        // Appending function section.
+        bytes.push(WasmSectionId::FunctionSectionId.into());
+        section_length = 1 + self.functions.len(); // starting with the section id.
+
+        bytes.extend_from_slice(&section_length.to_le_bytes()); // section length.
+        bytes.extend_from_slice(&self.functions.len().to_le_bytes()); // number of functions.
+        bytes.extend_from_slice(&self.functions); // function chunks.
+
+        // Appending export section.
+        bytes.push(WasmSectionId::ExportSectionId.into());
+        section_length = 1; // starting with the section id.
+
+        for chunk_length in self.export_section.chunks.iter().map(|chunk| chunk.len()) {
+            section_length += chunk_length;
+        }
+        bytes.extend_from_slice(&section_length.to_le_bytes()); // section length.
+        bytes.extend_from_slice(&self.export_section.chunks.len().to_le_bytes()); // number of exports.
+        for chunk in self.export_section.chunks {
+            bytes.extend_from_slice(&chunk);
+        }
+
         bytes
     }
-}
-
-const REPORT: &str =
-    "This is a compiler bug. Please report this at https://github.com/adebola-io/whirlwind/issues.";
-fn function_mismatch_error(function_symbol: &analyzer::SemanticSymbol) {
-    unreachable!("A function declaration was matched to a symbol of type {:?} during bytecode generation. {REPORT}", function_symbol.kind)
-}
-
-fn function_resolve_error(function_symbol: &TypedFunctionDeclaration) -> ! {
-    unreachable!("A function declaration {:?} did not resolve to a symbol during bytecode generation. {REPORT}", function_symbol)
 }

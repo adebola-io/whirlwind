@@ -432,6 +432,13 @@ impl EvaluatedType {
     }
 }
 
+/// Evaluates an `IntermediateType` to an `EvaluatedType` using the provided `SymbolLibrary`.
+///
+/// This is a convenience function that calls the more complex `evaluate` function with default arguments.
+pub fn simple_evaluate(typ: &IntermediateType, symbollib: &SymbolLibrary) -> EvaluatedType {
+    evaluate(typ, symbollib, None, &mut None, 0)
+}
+
 /// Converts an intermediate type into an evaluation.
 pub fn evaluate(
     typ: &IntermediateType,
